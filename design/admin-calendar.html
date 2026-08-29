@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理員日曆 — 寶天醫館</title>
+  <link rel="stylesheet" href="design-system.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .date-nav {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: var(--r-full);
+      padding: 0.35rem;
+      border: 1px solid rgba(139, 125, 107, 0.1);
+    }
+
+    .date-nav button {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--taupe-600);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .date-nav button:hover {
+      background: var(--cream-200);
+      color: var(--taupe-800);
+    }
+
+    .date-nav span {
+      padding: 0 0.8rem;
+      font-weight: 600;
+      color: var(--taupe-800);
+      min-width: 160px;
+      text-align: center;
+    }
+
+    .legend-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-lg);
+      padding: var(--space-md);
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--r-lg);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--taupe-600);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .calendar-outer {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(139, 125, 107, 0.1);
+      border-radius: var(--r-2xl);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .calendar-top {
+      display: grid;
+      grid-template-columns: 70px repeat(7, 1fr);
+      background: rgba(247, 244, 238, 0.6);
+      border-bottom: 1.5px solid var(--cream-300);
+    }
+
+    .calendar-top .corner {
+      border-right: 1px solid rgba(139, 125, 107, 0.08);
+    }
+
+    .day-header {
+      padding: 0.85rem 0.5rem;
+      text-align: center;
+      border-right: 1px solid rgba(139, 125, 107, 0.06);
+    }
+
+    .day-header:last-child { border-right: none; }
+
+    .day-header .day-name {
+      font-size: 0.72rem;
+      color: var(--taupe-400);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .day-header .day-num {
+      font-family: var(--font-head);
+      font-size: 1.2rem;
+      color: var(--taupe-800);
+    }
+
+    .calendar-body {
+      display: grid;
+      grid-template-columns: 70px repeat(7, 1fr);
+      position: relative;
+    }
+
+    .time-labels {
+      border-right: 1px solid rgba(139, 125, 107, 0.08);
+    }
+
+    .time-label {
+      height: var(--slot-height, 60px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--taupe-400);
+      border-bottom: 1px dashed rgba(139, 125, 107, 0.06);
+    }
+
+    .day-column {
+      position: relative;
+      border-right: 1px solid rgba(139, 125, 107, 0.06);
+      min-height: calc(var(--slot-height, 60px) * 22);
+    }
+
+    .day-column:last-child { border-right: none; }
+
+    .time-slot-line {
+      height: var(--slot-height, 60px);
+      border-bottom: 1px dashed rgba(139, 125, 107, 0.06);
+    }
+
+    .booking-block-admin {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      border-radius: var(--r-md);
+      padding: 0.5rem 0.65rem;
+      font-size: 0.74rem;
+      color: var(--taupe-800);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      overflow: hidden;
+      cursor: pointer;
+      transition: var(--transition);
+      z-index: 2;
+    }
+
+    .booking-block-admin:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+      z-index: 5;
+    }
+
+    .booking-block-admin b {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.1rem;
+    }
+
+    .booking-block-admin .meta {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      opacity: 0.85;
+      font-size: 0.68rem;
+    }
+
+    .booking-block-admin.internal { background: linear-gradient(135deg, var(--sage-100), var(--sage-50)); }
+    .booking-block-admin.acupuncture { background: linear-gradient(135deg, #EDE8F0, var(--cream-100)); }
+    .booking-block-admin.manual { background: linear-gradient(135deg, var(--cream-200), var(--cream-100)); }
+    .booking-block-admin.pediatric { background: linear-gradient(135deg, #E8F0E8, var(--sage-50)); }
+
+    .booking-block-admin.overlap {
+      left: 28%;
+      right: 4px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1.5px dashed var(--taupe-400);
+      z-index: 3;
+    }
+
+    .booking-block-admin.overlap::after {
+      content: '重疊 15 分鐘';
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: var(--r-full);
+      background: var(--taupe-700);
+      color: var(--cream-50);
+      letter-spacing: 0.03em;
+    }
+
+    .bed-icon {
+      position: absolute;
+      bottom: 4px;
+      left: 6px;
+      font-size: 0.65rem;
+      color: var(--taupe-500);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 0.1rem 0.35rem;
+      border-radius: var(--r-full);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .doctor-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin-bottom: var(--space-md);
+    }
+
+    .doctor-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: var(--r-full);
+      font-size: 0.85rem;
+      color: var(--taupe-700);
+      border: 1px solid rgba(139, 125, 107, 0.08);
+    }
+
+    .doctor-chip img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--cream-200);
+    }
+
+    .exception-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .affected-list {
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--cream-300);
+      border-radius: var(--r-md);
+      padding: var(--space-sm);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .affected-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 0.7rem;
+      border-bottom: 1px solid rgba(139, 125, 107, 0.06);
+      font-size: 0.85rem;
+    }
+
+    .affected-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div class="wave-bg"></div>
+  <div class="leaf-watermark"></div>
+
+  <div class="page-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">寶</div>
+        <div class="sidebar-brand-title">
+          寶天醫館
+          <small>Admin Panel</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="admin-calendar.html" class="active"><i class="fa-regular fa-calendar-days"></i> 預約日曆</a>
+        <a href="admin-clients.html"><i class="fa-solid fa-users"></i> 客戶與家庭</a>
+        <a href="admin-finance.html"><i class="fa-solid fa-chart-line"></i> 財務報表</a>
+        <a href="public-home.html"><i class="fa-solid fa-globe"></i> 官網預覽</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--taupe-600);display:grid;place-items:center"><i class="fa-solid fa-user-shield"></i></div>
+          <div>
+            <div style="font-weight:600;color:var(--cream-50)">Admin</div>
+            <div style="font-size:.7rem">系統管理員</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <div class="label-caps">Booking & Scheduling</div>
+          <h1>智慧預約日曆</h1>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-sm)">
+          <button class="btn btn-coral" onclick="openExceptionModal()">
+            <i class="fa-solid fa-cloud-bolt"></i> 醫師請假 / 天氣
+          </button>
+          <div class="date-nav">
+            <button><i class="fa-solid fa-chevron-left"></i></button>
+            <span>2026 年 8 月 17 – 23 日</span>
+            <button><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="doctor-row">
+        <div class="doctor-chip"><i class="fa-solid fa-user-doctor"></i> 陳凱風 · 針灸</div>
+        <div class="doctor-chip"><i class="fa-solid fa-user-doctor"></i> 林雅萱 · 內科</div>
+        <div class="doctor-chip"><i class="fa-solid fa-user-doctor"></i> 張牧野 · 手法 / 小兒</div>
+      </div>
+
+      <div class="legend-bar">
+        <span class="legend-item"><span class="legend-dot" style="background:var(--sage-500)"></span> 內科開藥 15 分鐘</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#9B8AA6"></span> 針灸 15 分鐘</span>
+        <span class="legend-item"><span class="legend-dot" style="background:var(--gold-500)"></span> 手法治療 30 分鐘</span>
+        <span class="legend-item"><span class="legend-dot" style="background:var(--sage-400)"></span> 小兒推拿 30 分鐘</span>
+        <span class="legend-item"><i class="fa-solid fa-bed" style="color:var(--taupe-500)"></i> 床位資源</span>
+        <span class="legend-item"><i class="fa-solid fa-layer-group" style="color:var(--taupe-500)"></i> 重疊時段</span>
+      </div>
+
+      <div class="calendar-outer">
+        <div class="calendar-top">
+          <div class="corner"></div>
+          <div class="day-header"><div class="day-name">Mon</div><div class="day-num">17</div></div>
+          <div class="day-header"><div class="day-name">Tue</div><div class="day-num">18</div></div>
+          <div class="day-header"><div class="day-name">Wed</div><div class="day-num">19</div></div>
+          <div class="day-header"><div class="day-name">Thu</div><div class="day-num">20</div></div>
+          <div class="day-header"><div class="day-name">Fri</div><div class="day-num">21</div></div>
+          <div class="day-header"><div class="day-name">Sat</div><div class="day-num">22</div></div>
+          <div class="day-header"><div class="day-name">Sun</div><div class="day-num">23</div></div>
+        </div>
+
+        <div class="calendar-body" id="calendarBody" style="--slot-height:60px">
+          <div class="time-labels">
+            <div class="time-label">09:00</div>
+            <div class="time-label">09:30</div>
+            <div class="time-label">10:00</div>
+            <div class="time-label">10:30</div>
+            <div class="time-label">11:00</div>
+            <div class="time-label">11:30</div>
+            <div class="time-label">12:00</div>
+            <div class="time-label">12:30</div>
+            <div class="time-label">13:00</div>
+            <div class="time-label">13:30</div>
+            <div class="time-label">14:00</div>
+            <div class="time-label">14:30</div>
+            <div class="time-label">15:00</div>
+            <div class="time-label">15:30</div>
+            <div class="time-label">16:00</div>
+            <div class="time-label">16:30</div>
+            <div class="time-label">17:00</div>
+            <div class="time-label">17:30</div>
+            <div class="time-label">18:00</div>
+          </div>
+
+          <!-- Monday -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <!-- 10:00 Manual Therapy 30 min -->
+            <div class="booking-block-admin manual" style="top:120px;height:60px">
+              <b>手法治療</b>
+              <div class="meta"><i class="fa-solid fa-user"></i> 王大明</div>
+              <div class="meta"><i class="fa-solid fa-user-doctor"></i> 張牧野 · 10:00–10:30</div>
+              <span class="status-dot" style="position:absolute;top:6px;right:6px;background:var(--gold-500)"></span>
+            </div>
+            <!-- 10:15 Acupuncture 15 min overlaps -->
+            <div class="booking-block-admin acupuncture overlap" style="top:150px;height:30px">
+              <b>針灸</b>
+              <div class="meta"><i class="fa-solid fa-user"></i> 李小姐 · 10:15–10:30</div>
+              <div class="bed-icon"><i class="fa-solid fa-bed"></i> 床位 A</div>
+            </div>
+            <!-- 11:00 Internal Medicine -->
+            <div class="booking-block-admin internal" style="top:240px;height:30px">
+              <b>內科開藥</b>
+              <div class="meta"><i class="fa-solid fa-user"></i> 陳先生 · 11:00</div>
+            </div>
+            <!-- 14:00 Pediatric -->
+            <div class="booking-block-admin pediatric" style="top:600px;height:60px">
+              <b>小兒推拿</b>
+              <div class="meta"><i class="fa-solid fa-user"></i> 黃小寶 · 14:00–14:30</div>
+            </div>
+          </div>
+
+          <!-- Tuesday -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <div class="booking-block-admin acupuncture" style="top:90px;height:30px">
+              <b>針灸</b>
+              <div class="meta">09:30 · 吳先生</div>
+              <div class="bed-icon"><i class="fa-solid fa-bed"></i> 床位 B</div>
+            </div>
+            <div class="booking-block-admin internal" style="top:210px;height:30px">
+              <b>內科開藥</b>
+              <div class="meta">10:30 · 周小姐</div>
+            </div>
+            <div class="booking-block-admin manual" style="top:510px;height:60px">
+              <b>手法治療</b>
+              <div class="meta">13:30–14:00 · 鄭先生</div>
+            </div>
+          </div>
+
+          <!-- Wednesday -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <div class="booking-block-admin pediatric" style="top:150px;height:60px">
+              <b>小兒推拿</b>
+              <div class="meta">10:15–10:45 · 王小明</div>
+            </div>
+            <div class="booking-block-admin acupuncture" style="top:300px;height:30px">
+              <b>針灸</b>
+              <div class="meta">12:00 · 馮小姐</div>
+            </div>
+          </div>
+
+          <!-- Thursday -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <div class="booking-block-admin internal" style="top:120px;height:30px">
+              <b>內科開藥</b>
+              <div class="meta">10:00 · 林雅婷</div>
+            </div>
+            <div class="booking-block-admin manual" style="top:360px;height:60px">
+              <b>手法治療</b>
+              <div class="meta">13:00–13:30 · 趙先生</div>
+            </div>
+          </div>
+
+          <!-- Friday -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <div class="booking-block-admin acupuncture" style="top:180px;height:30px">
+              <b>針灸</b>
+              <div class="meta">10:30 · 錢小姐</div>
+              <div class="bed-icon"><i class="fa-solid fa-bed"></i> 床位 A</div>
+            </div>
+            <div class="booking-block-admin pediatric" style="top:420px;height:60px">
+              <b>小兒推拿</b>
+              <div class="meta">14:00–14:30 · 李小寶</div>
+            </div>
+          </div>
+
+          <!-- Saturday -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <div class="booking-block-admin manual" style="top:240px;height:60px">
+              <b>手法治療</b>
+              <div class="meta">11:00–11:30 · 孫先生</div>
+            </div>
+            <div class="booking-block-admin internal" style="top:420px;height:30px">
+              <b>內科開藥</b>
+              <div class="meta">14:00 · 周太太</div>
+            </div>
+          </div>
+
+          <!-- Sunday (closed / few) -->
+          <div class="day-column">
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div><div class="time-slot-line"></div>
+            <div class="time-slot-line"></div>
+
+            <div style="position:absolute;inset:0;display:grid;place-items:center;color:var(--taupe-400);font-size:.85rem">
+              <span>休診</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel mt-lg">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fa-solid fa-list-check"></i> 本日 Booking 狀態</div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>客戶</th>
+              <th>服務</th>
+              <th>醫師</th>
+              <th>狀態</th>
+              <th>床位</th>
+            </tr>
+          </thead>
+          <tbody id="statusTableBody">
+            <tr>
+              <td>10:00 – 10:30</td>
+              <td>王大明</td>
+              <td>手法治療</td>
+              <td>張牧野</td>
+              <td><span class="status-badge status-in-treatment"><i class="fa-solid fa-spinner fa-spin-pulse"></i> 治療中</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>10:15 – 10:30</td>
+              <td>李小姐</td>
+              <td>針灸</td>
+              <td>陳凱風</td>
+              <td><span class="status-badge status-confirmed">預約成功</span></td>
+              <td>床位 A</td>
+            </tr>
+            <tr>
+              <td>11:00 – 11:15</td>
+              <td>陳先生</td>
+              <td>內科開藥</td>
+              <td>林雅萱</td>
+              <td><span class="status-badge status-visited"><i class="fa-solid fa-check"></i> 到訪</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>11:30 – 11:45</td>
+              <td>張太太</td>
+              <td>內科開藥</td>
+              <td>林雅萱</td>
+              <td><span class="status-badge status-no-show"><i class="fa-solid fa-xmark"></i> 未到訪</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>14:00 – 14:30</td>
+              <td>黃小寶</td>
+              <td>小兒推拿</td>
+              <td>張牧野</td>
+              <td><span class="status-badge status-dispensing"><i class="fa-solid fa-mortar-pestle"></i> 配藥中</span></td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- New Booking Modal -->
+  <div class="modal-overlay" id="newBookingModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-regular fa-calendar-plus"></i> 新增預約 · 重疊智慧排程</div>
+        <button class="modal-close" onclick="closeNewBooking()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-muted mb-md">管理員後台建立預約。系統會依服務項目自動鎖定時長；若與相鄰預約重疊，將以半透明標示共享資源。</p>
+        <div class="exception-form">
+          <div class="form-row">
+            <div class="form-field">
+              <label>日期</label>
+              <select id="nbDay"></select>
+            </div>
+            <div class="form-field">
+              <label>開始時間</label>
+              <input type="time" id="nbStart" value="10:00" step="900" onchange="updateNbEnd()">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>服務項目（自動鎖定時長）</label>
+              <select id="nbService" onchange="updateNbEnd()">
+                <option value="internal">內科開藥 · 15 分鐘</option>
+                <option value="acupuncture">針灸 · 15 分鐘</option>
+                <option value="manual">手法治療 · 30 分鐘</option>
+                <option value="pediatric">小兒推拿 · 30 分鐘</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>醫師</label>
+              <select id="nbDoctor"><option>陳凱風</option><option>林雅萱</option><option>張牧野</option></select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>客人姓名</label>
+            <input type="text" id="nbPatient" placeholder="客人姓名">
+          </div>
+          <div class="form-field">
+            <label>床位資源（如適用，長療程專用）</label>
+            <select id="nbBed"><option value="">無</option><option>床位 A</option><option>床位 B</option></select>
+          </div>
+          <div class="form-field" style="background:var(--cream-100);border-radius:var(--r-md);padding:var(--space-md)">
+            <span class="text-sm">系統將自動鎖定：<b id="nbEnd">10:00 – 10:30</b>。<span id="nbOverlapNote"></span></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeNewBooking()">取消</button>
+        <button class="btn btn-coral" onclick="saveNewBooking()"><i class="fa-solid fa-check"></i> 建立預約</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Status Modal -->
+  <div class="modal-overlay" id="bookingModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-rotate"></i> 更新預約狀態</div>
+        <button class="modal-close" onclick="closeBookingModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-muted mb-md" id="bmInfo"></p>
+        <div style="display:flex;flex-direction:column;gap:.6rem">
+          <button class="btn btn-secondary" onclick="setStatus('confirmed')"><span class="status-dot" style="background:var(--state-confirmed)"></span> 預約成功</button>
+          <button class="btn btn-secondary" onclick="setStatus('in-treatment')"><span class="status-dot" style="background:var(--state-in-treatment)"></span> 治療中</button>
+          <button class="btn btn-secondary" onclick="setStatus('dispensing')"><span class="status-dot" style="background:var(--state-dispensing)"></span> 配藥中</button>
+          <button class="btn btn-secondary" onclick="setStatus('visited')"><span class="status-dot" style="background:var(--state-visited)"></span> 到訪</button>
+          <button class="btn btn-secondary" onclick="setStatus('no-show')"><span class="status-dot" style="background:var(--state-no-show)"></span> 未到訪</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeBookingModal()">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exception Modal -->
+  <div class="modal-overlay" id="exceptionModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-cloud-bolt"></i> 醫師請假 / 天氣異常</div>
+        <button class="modal-close" onclick="closeExceptionModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="exception-form">
+          <div class="form-row">
+          <div class="form-field">
+            <label>日期</label>
+            <input type="date" id="excDate" value="2026-08-20" onchange="updateAffected()">
+          </div>
+          <div class="form-field">
+            <label>時段</label>
+            <select id="excPeriod" onchange="updateAffected()">
+              <option value="all">全日</option>
+              <option value="am">上午 09:00–13:00</option>
+              <option value="pm">下午 14:00–18:00</option>
+            </select>
+          </div>
+          </div>
+          <div class="form-field">
+            <label>原因</label>
+            <select id="reasonSelect" onchange="updateAffected()">
+              <option value="typhoon">颱風 / 惡劣天氣</option>
+              <option value="leave">醫師請假</option>
+              <option value="emergency">診所緊急休診</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>受影響預約（自動篩選 · <span id="excCount">0</span> 筆）</label>
+            <div class="affected-list" id="affectedList"></div>
+          </div>
+          <div class="form-field">
+            <label>通知方式</label>
+            <div style="display:flex;gap:var(--space-md);font-size:.9rem">
+              <label class="switch"><input type="checkbox" checked> WhatsApp</label>
+              <label class="switch"><input type="checkbox"> Email（已停用）</label>
+              <label class="switch"><input type="checkbox"> SMS（已停用）</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeExceptionModal()">取消</button>
+        <button class="btn btn-coral" onclick="sendNotifications()">
+          <i class="fa-brands fa-whatsapp"></i> 發送改期通知
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" style="color:var(--sage-500)"></i>
+    <span id="toast-msg">操作成功</span>
+  </div>
+
+  <script>
+    /* ===== 智慧日曆：重疊排程邏輯 ===== */
+    const SLOT_START = 540;   // 09:00
+    const SLOT_END   = 1080;  // 18:00
+    const PX_PER_MIN = 2;     // 60px / 30min
+
+    const SERVICES = {
+      internal:    { label: '內科開藥', dur: 15, cls: 'internal' },
+      acupuncture: { label: '針灸',     dur: 15, cls: 'acupuncture' },
+      manual:      { label: '手法治療', dur: 30, cls: 'manual' },
+      pediatric:   { label: '小兒推拿', dur: 30, cls: 'pediatric' }
+    };
+
+    const STATUS = {
+      'confirmed':     { label: '預約成功', cls: 'status-confirmed' },
+      'in-treatment':  { label: '治療中',   cls: 'status-in-treatment' },
+      'dispensing':    { label: '配藥中',   cls: 'status-dispensing' },
+      'visited':       { label: '到訪',     cls: 'status-visited' },
+      'no-show':       { label: '未到訪',   cls: 'status-no-show' }
+    };
+
+    const DAY_DATES = ['2026-08-17','2026-08-18','2026-08-19','2026-08-20','2026-08-21','2026-08-22','2026-08-23'];
+    const DAY_LABELS = ['8/17 週一','8/18 週二','8/19 週三','8/20 週四','8/21 週五','8/22 週六','8/23 週日'];
+
+    let nextId = 100;
+    let bookings = [
+      { id: 1,  day: 0, start: '10:00', service: 'manual',      patient: '王大明', doctor: '張牧野', bed: null,        status: 'in-treatment' },
+      { id: 2,  day: 0, start: '10:15', service: 'acupuncture', patient: '李小姐', doctor: '陳凱風', bed: '床位 A',    status: 'confirmed' },
+      { id: 3,  day: 0, start: '11:00', service: 'internal',    patient: '陳先生', doctor: '林雅萱', bed: null,        status: 'visited' },
+      { id: 4,  day: 0, start: '14:00', service: 'pediatric',   patient: '黃小寶', doctor: '張牧野', bed: null,        status: 'dispensing' },
+      { id: 5,  day: 1, start: '09:30', service: 'acupuncture', patient: '吳先生', doctor: '陳凱風', bed: '床位 B',    status: 'confirmed' },
+      { id: 6,  day: 1, start: '10:30', service: 'internal',    patient: '周小姐', doctor: '林雅萱', bed: null,        status: 'confirmed' },
+      { id: 7,  day: 1, start: '13:30', service: 'manual',      patient: '鄭先生', doctor: '張牧野', bed: null,        status: 'confirmed' },
+      { id: 8,  day: 2, start: '10:15', service: 'pediatric',   patient: '王小明', doctor: '張牧野', bed: null,        status: 'confirmed' },
+      { id: 9,  day: 2, start: '12:00', service: 'acupuncture', patient: '馮小姐', doctor: '陳凱風', bed: null,        status: 'confirmed' },
+      { id: 10, day: 3, start: '10:00', service: 'internal',    patient: '林雅婷', doctor: '林雅萱', bed: null,        status: 'confirmed' },
+      { id: 11, day: 3, start: '13:00', service: 'manual',      patient: '趙先生', doctor: '張牧野', bed: null,        status: 'confirmed' },
+      { id: 12, day: 4, start: '10:30', service: 'acupuncture', patient: '錢小姐', doctor: '陳凱風', bed: '床位 A',    status: 'confirmed' },
+      { id: 13, day: 4, start: '14:00', service: 'pediatric',   patient: '李小寶', doctor: '張牧野', bed: null,        status: 'confirmed' },
+      { id: 14, day: 5, start: '11:00', service: 'manual',      patient: '孫先生', doctor: '張牧野', bed: null,        status: 'confirmed' },
+      { id: 15, day: 5, start: '14:00', service: 'internal',    patient: '周太太', doctor: '林雅萱', bed: null,        status: 'confirmed' }
+    ];
+
+    const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const fmtMin = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+    function renderCalendar() {
+      const body = document.getElementById('calendarBody');
+      let html = '<div class="time-labels">';
+      for (let m = SLOT_START; m <= SLOT_END; m += 30) html += `<div class="time-label">${fmtMin(m)}</div>`;
+      html += '</div>';
+      for (let d = 0; d < 7; d++) {
+        html += `<div class="day-column" data-day="${d}" onclick="onDayClick(event, ${d})">`;
+        for (let m = SLOT_START; m < SLOT_END; m += 30) html += '<div class="time-slot-line"></div>';
+        if (d === 6) {
+          html += '<div style="position:absolute;inset:0;display:grid;place-items:center;color:var(--taupe-400);font-size:.85rem"><span>休診</span></div>';
+        } else {
+          const list = bookings.filter(b => b.day === d).sort((a, b) => toMin(a.start) - toMin(b.start));
+          list.forEach(b => {
+            const s = SERVICES[b.service];
+            const top = (toMin(b.start) - SLOT_START) * PX_PER_MIN;
+            const h = s.dur * PX_PER_MIN;
+            html += `<div class="booking-block-admin ${s.cls}" style="top:${top}px;height:${h}px" onclick="openBooking(event, ${b.id})">
+              <b>${s.label}</b>
+              <div class="meta"><i class="fa-solid fa-user"></i> ${b.patient}</div>
+              <div class="meta"><i class="fa-solid fa-user-doctor"></i> ${b.doctor} · ${b.start}–${fmtMin(toMin(b.start) + s.dur)}</div>
+              ${b.bed ? `<span class="bed-icon"><i class="fa-solid fa-bed"></i> ${b.bed}</span>` : ''}
+              <span class="status-dot" style="position:absolute;top:6px;right:6px;background:var(--state-${b.status})"></span>
+            </div>`;
+          });
+          // 重疊視覺化：相鄰預約若時段交疊，標示共享資源
+          for (let i = 0; i < list.length - 1; i++) {
+            const a = list[i], c = list[i + 1];
+            const aEnd = toMin(a.start) + SERVICES[a.service].dur;
+            const cStart = toMin(c.start);
+            if (cStart < aEnd) {
+              const ovTop = (cStart - SLOT_START) * PX_PER_MIN;
+              const ovEnd = Math.min(aEnd, toMin(c.start) + SERVICES[c.service].dur);
+              const ovH = (ovEnd - cStart) * PX_PER_MIN;
+              html += `<div class="overlap-band" style="position:absolute;left:6px;right:6px;top:${ovTop}px;height:${ovH}px;background:rgba(255,255,255,0.55);border:1.5px dashed var(--taupe-400);border-radius:8px;z-index:4;display:flex;align-items:flex-start;justify-content:flex-end;padding:2px 6px;font-size:.6rem;color:var(--taupe-600);pointer-events:none"><span>重疊 ${ovH / PX_PER_MIN} 分鐘</span></div>`;
+            }
+          }
+        }
+        html += '</div>';
+      }
+      body.innerHTML = html;
+      renderStatusTable();
+    }
+
+    function renderStatusTable() {
+      const tbody = document.getElementById('statusTableBody');
+      const list = bookings.filter(b => b.day === 0).sort((a, b) => toMin(a.start) - toMin(b.start));
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-muted">本日暫無預約</td></tr>'; return; }
+      tbody.innerHTML = list.map(b => {
+        const s = SERVICES[b.service];
+        const st = STATUS[b.status];
+        return `<tr>
+          <td>${b.start} – ${fmtMin(toMin(b.start) + s.dur)}</td>
+          <td>${b.patient}</td>
+          <td>${s.label}</td>
+          <td>${b.doctor}</td>
+          <td><span class="status-badge ${st.cls}">${st.label}</span></td>
+          <td>${b.bed || '—'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    /* ===== 新增預約 ===== */
+    function onDayClick(e, day) {
+      if (e.target.closest('.booking-block-admin')) return; // 點擊預約塊由 openBooking 處理
+      openNewBooking(day);
+    }
+
+    function openNewBooking(day) {
+      const sel = document.getElementById('nbDay');
+      sel.innerHTML = DAY_LABELS.map((l, i) => `<option value="${i}" ${i === day ? 'selected' : ''}>${l}</option>`).join('');
+      updateNbEnd();
+      document.getElementById('newBookingModal').classList.add('open');
+    }
+    function closeNewBooking() { document.getElementById('newBookingModal').classList.remove('open'); }
+
+    function updateNbEnd() {
+      const start = document.getElementById('nbStart').value || '10:00';
+      const dur = SERVICES[document.getElementById('nbService').value].dur;
+      const end = fmtMin(toMin(start) + dur);
+      document.getElementById('nbEnd').textContent = `${start} – ${end}`;
+      // 提示重疊
+      const day = parseInt(document.getElementById('nbDay').value, 10);
+      const overlap = bookings.some(b => b.day === day &&
+        toMin(start) < toMin(b.start) + SERVICES[b.service].dur &&
+        toMin(b.start) < toMin(start) + dur);
+      document.getElementById('nbOverlapNote').innerHTML = overlap
+        ? ' <span style="color:var(--coral-600);font-weight:600">⚠ 與現有預約重疊，將以半透明標示</span>'
+        : '';
+    }
+
+    function saveNewBooking() {
+      const patient = document.getElementById('nbPatient').value.trim();
+      if (!patient) { showToast('請填寫客人姓名'); return; }
+      const day = parseInt(document.getElementById('nbDay').value, 10);
+      const start = document.getElementById('nbStart').value;
+      const service = document.getElementById('nbService').value;
+      const doctor = document.getElementById('nbDoctor').value;
+      const bed = document.getElementById('nbBed').value || null;
+      bookings.push({ id: nextId++, day, start, service, patient, doctor, bed, status: 'confirmed' });
+      closeNewBooking();
+      renderCalendar();
+      showToast(`已建立預約：${SERVICES[service].label} ${start}（${patient}）`);
+    }
+
+    /* ===== 預約狀態 ===== */
+    let currentBookingId = null;
+    function openBooking(e, id) {
+      e.stopPropagation();
+      currentBookingId = id;
+      const b = bookings.find(x => x.id === id);
+      const s = SERVICES[b.service];
+      document.getElementById('bmInfo').textContent =
+        `${s.label} · ${b.patient} · ${b.start}–${fmtMin(toMin(b.start) + s.dur)} · ${b.doctor}`;
+      document.getElementById('bookingModal').classList.add('open');
+    }
+    function closeBookingModal() { document.getElementById('bookingModal').classList.remove('open'); }
+    function setStatus(status) {
+      const b = bookings.find(x => x.id === currentBookingId);
+      if (b) b.status = status;
+      closeBookingModal();
+      renderCalendar();
+      showToast('預約狀態已更新為：' + STATUS[status].label);
+    }
+
+    /* ===== 醫師請假 / 天氣 異常管理 ===== */
+    function openExceptionModal() { updateAffected(); document.getElementById('exceptionModal').classList.add('open'); }
+    function closeExceptionModal() { document.getElementById('exceptionModal').classList.remove('open'); }
+
+    function dateToDay(dateStr) {
+      const i = DAY_DATES.indexOf(dateStr);
+      return i; // -1 if not in range
+    }
+    function inPeriod(min, period) {
+      if (period === 'am') return min < 780;      // 13:00
+      if (period === 'pm') return min >= 780;
+      return true;
+    }
+    function updateAffected() {
+      const day = dateToDay(document.getElementById('excDate').value);
+      const period = document.getElementById('excPeriod').value;
+      const list = (day < 0 ? [] : bookings.filter(b => b.day === day))
+        .filter(b => inPeriod(toMin(b.start), period))
+        .sort((a, b) => toMin(a.start) - toMin(b.start));
+      const box = document.getElementById('affectedList');
+      document.getElementById('excCount').textContent = list.length;
+      if (!list.length) { box.innerHTML = '<div class="affected-item"><span class="text-muted">該時段沒有受影響的預約</span></div>'; return; }
+      box.innerHTML = list.map(b => {
+        const s = SERVICES[b.service];
+        return `<div class="affected-item">
+          <span><i class="fa-regular fa-clock"></i> ${b.start} ${b.patient} · ${s.label}</span>
+          <input type="checkbox" checked data-bid="${b.id}">
+        </div>`;
+      }).join('');
+    }
+    function sendNotifications() {
+      const checked = document.querySelectorAll('#affectedList input:checked').length;
+      closeExceptionModal();
+      renderCalendar();
+      showToast(`已透過 WhatsApp 批量發送 ${checked} 筆改期通知`);
+    }
+
+    /* ===== Toast ===== */
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    renderCalendar();
+  </script>
+</body>
+</html>

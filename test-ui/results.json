@@ -1,0 +1,112 @@
+[
+  {
+    "name": "A1 hero 標題右邊有［寶天］印章",
+    "pass": true,
+    "extra": "\"寶\\n天\\n之 印\""
+  },
+  {
+    "name": "A2 印章喺標題右邊（水平位置）",
+    "pass": true,
+    "extra": "{\"h1Right\":988.015625,\"sealLeft\":1004.607666015625,\"sealVisible\":true}"
+  },
+  {
+    "name": "A3 導覽列有「成功案例」連結",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "A4 成功案例區顯示匿名案例（陳小姐）",
+    "pass": true,
+    "extra": "SUCCESS STORIES 成功案例，真實見證  康復路上的每一份喜悅，都是我們前進的動力。所有案例均已匿名處理，保"
+  },
+  {
+    "name": "A5 登入區提示由診所職員開戶",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "A6 舊「自行註冊」提示已移除",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "A7 前台冇自行註冊表單輸入框",
+    "pass": true,
+    "extra": "found 0"
+  },
+  {
+    "name": "B1 員工成功登入",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "B2 有「記錄遲到」按鈕",
+    "pass": true,
+    "extra": "buttons: 已到訪 | 治療中 | 記錄遲到 | 已到訪 | 治療中 | 記錄遲到 | 已到訪 | 治療中 | 記錄遲到 | 已到訪 | 治療中 | 記錄遲到 | 治療中 | 配藥中 | 記錄遲到"
+  },
+  {
+    "name": "B3 有「治療中」按鈕",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "B4 有「配藥中」按鈕",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "B5 有「已到訪」按鈕",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C1 管理員登入成功",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C2 初體驗記錄視圖：摘要卡",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C3 初體驗記錄視圖：有資料（客戶「測試」）",
+    "pass": true,
+    "extra": "has rows"
+  },
+  {
+    "name": "C4 收入報表有「應診人數」",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C5 收入報表有訂閱統計",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C6 用戶表有「遲到記錄」欄",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C7 遲到統計顯示（1 次 · 共 15 分鐘）",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C8 醫師請假 Modal 開啟",
+    "pass": true,
+    "extra": ""
+  },
+  {
+    "name": "C9 醫師下拉有醫師選項",
+    "pass": true,
+    "extra": "所有醫師,張醫師,李醫師,王醫師,梁醫師"
+  },
+  {
+    "name": "C10 天氣停診按鈕存在",
+    "pass": true,
+    "extra": ""
+  }
+]

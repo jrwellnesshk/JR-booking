@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>財務儀表板 — 寶天醫館</title>
+  <link rel="stylesheet" href="design-system.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(139, 125, 107, 0.09);
+      border-radius: var(--r-xl);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: var(--taupe-500);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+
+    .stat-card .value {
+      font-family: var(--font-head);
+      font-size: 1.9rem;
+      color: var(--taupe-800);
+      margin-bottom: 0.2rem;
+    }
+
+    .stat-card .change {
+      font-size: 0.8rem;
+      color: var(--sage-600);
+      font-weight: 500;
+    }
+
+    .upload-zone {
+      border: 2px dashed var(--cream-300);
+      border-radius: var(--r-xl);
+      padding: var(--space-xl);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.5);
+      transition: var(--transition);
+      cursor: pointer;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--taupe-400);
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .upload-zone i {
+      font-size: 2.2rem;
+      color: var(--taupe-400);
+      margin-bottom: var(--space-md);
+    }
+
+    .upload-zone h3 {
+      margin-bottom: 0.3rem;
+    }
+
+    .upload-zone p {
+      margin: 0 auto var(--space-md);
+      max-width: 420px;
+      font-size: 0.88rem;
+    }
+
+    .upload-zone input {
+      display: none;
+    }
+
+    .columns-hint {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      justify-content: center;
+    }
+
+    .columns-hint span {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--r-full);
+      background: var(--cream-200);
+      color: var(--taupe-600);
+    }
+
+    .chart-panel {
+      margin-top: var(--space-xl);
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 320px;
+    }
+
+    .finance-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--space-xl);
+      margin-top: var(--space-xl);
+      align-items: start;
+    }
+
+    .service-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .breakdown-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .breakdown-bar {
+      flex: 1;
+      height: 10px;
+      background: var(--cream-200);
+      border-radius: var(--r-full);
+      overflow: hidden;
+    }
+
+    .breakdown-fill {
+      height: 100%;
+      border-radius: var(--r-full);
+      background: linear-gradient(90deg, var(--taupe-500), var(--taupe-400));
+    }
+
+    .breakdown-label {
+      min-width: 100px;
+      font-size: 0.85rem;
+      color: var(--taupe-700);
+    }
+
+    .breakdown-value {
+      min-width: 70px;
+      text-align: right;
+      font-weight: 600;
+      color: var(--taupe-800);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 1024px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .finance-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .stats-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wave-bg"></div>
+  <div class="leaf-watermark"></div>
+
+  <div class="page-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">寶</div>
+        <div class="sidebar-brand-title">
+          寶天醫館
+          <small>Admin Panel</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="admin-calendar.html"><i class="fa-regular fa-calendar-days"></i> 預約日曆</a>
+        <a href="admin-clients.html"><i class="fa-solid fa-users"></i> 客戶與家庭</a>
+        <a href="admin-finance.html" class="active"><i class="fa-solid fa-chart-line"></i> 財務報表</a>
+        <a href="public-home.html"><i class="fa-solid fa-globe"></i> 官網預覽</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--taupe-600);display:grid;place-items:center"><i class="fa-solid fa-user-shield"></i></div>
+          <div>
+            <div style="font-weight:600;color:var(--cream-50)">Admin</div>
+            <div style="font-size:.7rem">系統管理員</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <div class="label-caps">Income Reporting</div>
+          <h1>財務儀表板</h1>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" onclick="document.getElementById('excelInput').click()">
+            <i class="fa-solid fa-file-excel"></i> Excel 資料匯入
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="downloadSample()" title="下載範例 Excel 測試匯入">
+            <i class="fa-solid fa-download"></i> 範例
+          </button>
+        </div>
+        <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleUpload(this)">
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="label">總收入</div>
+          <div class="value" id="statTotal">HK$ 328,400</div>
+          <div class="change"><i class="fa-solid fa-arrow-trend-up"></i> 匯入後自動更新</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">本月收入</div>
+          <div class="value" id="statMonth">HK$ 48,600</div>
+          <div class="change"><i class="fa-solid fa-arrow-trend-up"></i> 2026-08 累計</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">最多預約服務</div>
+          <div class="value" id="statTop">手法治療</div>
+          <div class="change">佔總收入最高</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">活躍會員數</div>
+          <div class="value">86</div>
+          <div class="change">+5 位本月新增</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="upload-zone" onclick="document.getElementById('excelInput').click()">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <h3>上傳 Excel 收入報表</h3>
+          <p>系統將自動解析日期、金額、服務項目與客戶名稱，並即時更新下方的總收入與趨勢圖。</p>
+          <div class="columns-hint">
+            <span>日期</span>
+            <span>金額</span>
+            <span>服務項目</span>
+            <span>客戶名稱</span>
+            <span>醫師</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fa-solid fa-chart-area"></i> 收入趨勢</div>
+          <div class="badge badge-cream">2026 年 1 – 8 月</div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="incomeChart"></canvas>
+        </div>
+      </div>
+
+      <div class="finance-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-solid fa-table-list"></i> 匯入資料預覽</div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>客戶</th>
+                <th>服務</th>
+                <th>醫師</th>
+                <th style="text-align:right">金額</th>
+              </tr>
+            </thead>
+            <tbody id="financeTable">
+              <tr>
+                <td>2026 / 08 / 20</td>
+                <td>王大明</td>
+                <td>手法治療</td>
+                <td>張牧野</td>
+                <td style="text-align:right;font-weight:600">HK$ 800</td>
+              </tr>
+              <tr>
+                <td>2026 / 08 / 20</td>
+                <td>李小姐</td>
+                <td>針灸</td>
+                <td>陳凱風</td>
+                <td style="text-align:right;font-weight:600">HK$ 600</td>
+              </tr>
+              <tr>
+                <td>2026 / 08 / 19</td>
+                <td>黃小寶</td>
+                <td>小兒推拿</td>
+                <td>張牧野</td>
+                <td style="text-align:right;font-weight:600">HK$ 700</td>
+              </tr>
+              <tr>
+                <td>2026 / 08 / 18</td>
+                <td>林雅婷</td>
+                <td>內科開藥</td>
+                <td>林雅萱</td>
+                <td style="text-align:right;font-weight:600">HK$ 500</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-solid fa-chart-pie"></i> 服務佔比</div>
+          </div>
+          <div class="service-breakdown" id="serviceBreakdown">
+            <div class="breakdown-item">
+              <span class="breakdown-label">手法治療</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width:34%"></div></div>
+              <span class="breakdown-value">34%</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">針灸</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width:28%"></div></div>
+              <span class="breakdown-value">28%</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">小兒推拿</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width:22%"></div></div>
+              <span class="breakdown-value">22%</span>
+            </div>
+            <div class="breakdown-item">
+              <span class="breakdown-label">內科開藥</span>
+              <div class="breakdown-bar"><div class="breakdown-fill" style="width:16%"></div></div>
+              <span class="breakdown-value">16%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" style="color:var(--sage-500)"></i>
+    <span id="toast-msg">Excel 已匯入</span>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('incomeChart').getContext('2d');
+    const incomeChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月'],
+        datasets: [{
+          label: '月收入 (HK$)',
+          data: [32000, 35000, 31000, 38000, 42000, 40000, 44900, 48600],
+          borderColor: '#8B7D6B',
+          backgroundColor: 'rgba(139, 125, 107, 0.12)',
+          borderWidth: 2.5,
+          tension: 0.4,
+          fill: true,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#8B7D6B',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(62, 51, 40, 0.9)',
+            titleFont: { family: 'Inter, Noto Sans TC' },
+            bodyFont: { family: 'Inter, Noto Sans TC' },
+            padding: 12,
+            cornerRadius: 12,
+            displayColors: false,
+            callbacks: {
+              label: function(context) {
+                return 'HK$ ' + context.parsed.y.toLocaleString();
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#8B7D6B', font: { family: 'Inter, Noto Sans TC' } }
+          },
+          y: {
+            border: { display: false },
+            grid: { color: 'rgba(139, 125, 107, 0.08)' },
+            ticks: {
+              color: '#8B7D6B',
+              callback: function(value) { return 'HK$ ' + (value / 1000) + 'k'; }
+            }
+          }
+        }
+      }
+    });
+
+    /* ===== Excel / CSV 匯入解析 ===== */
+    function findCol(headers, keys) {
+      const h = headers.map(x => (x == null ? '' : x.toString().trim().toLowerCase()));
+      for (const k of keys) { const i = h.indexOf(k); if (i >= 0) return i; }
+      for (const k of keys) { const i = h.findIndex(x => x.includes(k)); if (i >= 0) return i; }
+      return -1;
+    }
+
+    function parseDate(s) {
+      if (!s) return { date: '—', month: '未知' };
+      s = s.toString().trim();
+      let m = s.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      let y, mo, d;
+      if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+      else {
+        m = s.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+        if (m) { mo = +m[1]; d = +m[2]; y = +m[3]; }
+      }
+      if (!y) return { date: s, month: '未知' };
+      return { date: `${y}/${String(mo).padStart(2, '0')}/${String(d).padStart(2, '0')}`, month: `${y}-${String(mo).padStart(2, '0')}` };
+    }
+
+    const parseAmount = (v) => { if (v == null) return 0; const s = v.toString().replace(/[^\d.\-]/g, ''); return parseFloat(s) || 0; };
+
+    function mapRows(json) {
+      if (!json.length) return [];
+      const headers = Object.keys(json[0]);
+      const iDate = findCol(headers, ['日期', 'date', 'day']);
+      const iAmt  = findCol(headers, ['金額', 'amount', 'amt', '費用', 'price', '收入']);
+      const iSvc  = findCol(headers, ['服務', 'service', '項目', 'treatment']);
+      const iCust = findCol(headers, ['客戶', 'customer', 'name', '客人', '會員']);
+      const iDoc  = findCol(headers, ['醫師', 'doctor', '醫生']);
+      return json.map(r => {
+        const { date, month } = parseDate(iDate >= 0 ? r[headers[iDate]] : '');
+        return {
+          date, month,
+          amount: iAmt >= 0 ? parseAmount(r[headers[iAmt]]) : 0,
+          service: iSvc >= 0 ? (r[headers[iSvc]] || '').toString().trim() : '',
+          customer: iCust >= 0 ? (r[headers[iCust]] || '').toString().trim() : '',
+          doctor: iDoc >= 0 ? (r[headers[iDoc]] || '').toString().trim() : ''
+        };
+      });
+    }
+
+    function renderFinance(rows) {
+      const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+      const monthMap = {}, serviceMap = {};
+      let thisMonthSum = 0;
+      const THIS = '2026-08';
+      rows.forEach(r => {
+        const mo = r.month || '未知';
+        monthMap[mo] = (monthMap[mo] || 0) + (Number(r.amount) || 0);
+        const sv = r.service || '其他';
+        serviceMap[sv] = (serviceMap[sv] || 0) + (Number(r.amount) || 0);
+        if (r.month === THIS) thisMonthSum += (Number(r.amount) || 0);
+      });
+
+      document.getElementById('statTotal').textContent = 'HK$ ' + total.toLocaleString();
+      document.getElementById('statMonth').textContent = 'HK$ ' + thisMonthSum.toLocaleString();
+      const top = Object.entries(serviceMap).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('statTop').textContent = top ? top[0] : '—';
+
+      const months = Object.keys(monthMap).filter(m => m !== '未知').sort();
+      incomeChart.data.labels = months;
+      incomeChart.data.datasets[0].data = months.map(m => monthMap[m]);
+      incomeChart.update();
+
+      document.getElementById('financeTable').innerHTML = rows.slice(0, 15).map(r => `<tr>
+        <td>${r.date}</td>
+        <td>${r.customer || '—'}</td>
+        <td>${r.service || '—'}</td>
+        <td>${r.doctor || '—'}</td>
+        <td style="text-align:right;font-weight:600">HK$ ${(Number(r.amount) || 0).toLocaleString()}</td>
+      </tr>`).join('');
+
+      const max = Math.max(...Object.values(serviceMap), 1);
+      document.getElementById('serviceBreakdown').innerHTML = Object.entries(serviceMap)
+        .sort((a, b) => b[1] - a[1]).map(([sv, amt]) => {
+          const pct = Math.round(amt / max * 100);
+          const share = total ? Math.round(amt / total * 100) : 0;
+          return `<div class="breakdown-item">
+            <span class="breakdown-label">${sv}</span>
+            <div class="breakdown-bar"><div class="breakdown-fill" style="width:${pct}%"></div></div>
+            <span class="breakdown-value">${share}%</span>
+          </div>`;
+        }).join('');
+    }
+
+    function handleUpload(input) {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      showToast('正在解析：' + f.name);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          const rows = mapRows(json);
+          if (!rows.length) { showToast('找不到資料列，請檢查欄位'); input.value = ''; return; }
+          renderFinance(rows);
+          const sum = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+          showToast(`已匯入 ${rows.length} 筆，總收入 HK$ ${sum.toLocaleString()}`);
+        } catch (err) {
+          showToast('解析失敗：' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(f);
+      input.value = '';
+    }
+
+    function downloadSample() {
+      const aoa = [
+        ['日期', '金額', '服務項目', '客戶名稱', '醫師'],
+        ['2026-01-05', 600, '針灸', '李小姐', '陳凱風'],
+        ['2026-02-11', 800, '手法治療', '王大明', '張牧野'],
+        ['2026-03-08', 500, '內科開藥', '林雅婷', '林雅萱'],
+        ['2026-03-20', 700, '小兒推拿', '黃小寶', '張牧野'],
+        ['2026-04-02', 600, '針灸', '錢小姐', '陳凱風'],
+        ['2026-04-18', 800, '手法治療', '孫先生', '張牧野'],
+        ['2026-05-09', 500, '內科開藯', '周太太', '林雅萱'],
+        ['2026-05-22', 700, '小兒推拿', '李小寶', '張牧野'],
+        ['2026-06-14', 800, '手法治療', '鄭先生', '張牧野'],
+        ['2026-06-30', 600, '針灸', '吳先生', '陳凱風'],
+        ['2026-07-07', 500, '內科開藥', '陳先生', '林雅萱'],
+        ['2026-07-25', 800, '手法治療', '趙先生', '張牧野'],
+        ['2026-08-03', 600, '針灸', '馮小姐', '陳凱風'],
+        ['2026-08-16', 700, '小兒推拿', '王小明', '張牧野'],
+        ['2026-08-20', 800, '手法治療', '王大明', '張牧野']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '收入');
+      XLSX.writeFile(wb, '寶天醫館_收入範例.xlsx');
+      showToast('已下載範例 Excel，可即刻匯入測試');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+  </script>
+</body>
+</html>

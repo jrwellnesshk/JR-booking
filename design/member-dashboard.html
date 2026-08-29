@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>會員儀表板 — 寶天醫館</title>
+  <link rel="stylesheet" href="design-system.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: var(--space-xl);
+      padding-top: var(--space-xl);
+    }
+
+    .member-sidebar {
+      position: sticky;
+      top: 90px;
+      height: fit-content;
+    }
+
+    .member-card {
+      text-align: center;
+      padding: var(--space-xl);
+    }
+
+    .member-avatar {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto var(--space-md);
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--taupe-500), var(--taupe-700));
+      color: var(--cream-50);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-head);
+      font-size: 2rem;
+    }
+
+    .member-name {
+      font-family: var(--font-head);
+      font-size: 1.35rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .member-tier {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: var(--space-md);
+    }
+
+    .member-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-top: var(--space-lg);
+    }
+
+    .member-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.7rem 1rem;
+      border-radius: var(--r-md);
+      color: var(--taupe-600);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .member-nav a:hover,
+    .member-nav a.active {
+      background: var(--cream-200);
+      color: var(--taupe-800);
+    }
+
+    .dashboard-main {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+    }
+
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--taupe-700) 0%, var(--taupe-600) 100%);
+      color: var(--cream-50);
+      border-radius: var(--r-2xl);
+      padding: var(--space-xl);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-banner h2 {
+      color: var(--cream-50);
+      margin-bottom: 0.4rem;
+    }
+
+    .welcome-banner p {
+      color: var(--cream-200);
+      margin: 0;
+      max-width: 560px;
+    }
+
+    .welcome-banner::after {
+      content: '';
+      position: absolute;
+      right: -5%;
+      top: -30%;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 60%);
+    }
+
+    .tier-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-md);
+    }
+
+    .tier-card {
+      position: relative;
+      border: 1.5px solid transparent;
+      border-radius: var(--r-xl);
+      padding: var(--space-lg);
+      background: rgba(255, 255, 255, 0.72);
+      transition: var(--transition);
+    }
+
+    .tier-card.current {
+      border-color: var(--taupe-500);
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .tier-card.current::before {
+      content: '目前方案';
+      position: absolute;
+      top: -11px;
+      left: 1rem;
+      background: var(--taupe-700);
+      color: var(--cream-50);
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.65rem;
+      border-radius: var(--r-full);
+    }
+
+    .tier-card h4 {
+      margin-bottom: 0.3rem;
+    }
+
+    .tier-price {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      color: var(--taupe-800);
+      margin-bottom: var(--space-sm);
+    }
+
+    .tier-price span {
+      font-size: 0.8rem;
+      color: var(--taupe-500);
+      font-family: var(--font-body);
+    }
+
+    .tier-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 var(--space-md);
+      font-size: 0.85rem;
+      color: var(--taupe-600);
+    }
+
+    .tier-features li {
+      padding: 0.35rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tier-features li.included i {
+      color: var(--sage-500);
+    }
+
+    .tier-features li.not-included {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
+
+    .preference-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .preference-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: var(--r-lg);
+    }
+
+    .preference-item .info h5 {
+      margin-bottom: 0.15rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+    }
+
+    .preference-item .info p {
+      margin: 0;
+      font-size: 0.8rem;
+    }
+
+    .family-application {
+      background: linear-gradient(135deg, var(--sage-50), rgba(255,255,255,0.7));
+      border: 1.5px dashed var(--sage-300);
+      border-radius: var(--r-xl);
+      padding: var(--space-xl);
+      text-align: center;
+    }
+
+    .family-application i {
+      font-size: 2.2rem;
+      color: var(--sage-500);
+      margin-bottom: var(--space-md);
+    }
+
+    .info-row {
+      display: flex;
+      gap: var(--space-lg);
+      flex-wrap: wrap;
+    }
+
+    .info-item {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .info-item label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--taupe-500);
+      margin-bottom: 0.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .info-item value {
+      display: block;
+      font-weight: 600;
+      color: var(--taupe-800);
+    }
+
+    .next-appointment {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--r-lg);
+    }
+
+    .next-appointment .date-box {
+      width: 72px;
+      height: 72px;
+      border-radius: var(--r-md);
+      background: var(--taupe-700);
+      color: var(--cream-50);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .next-appointment .date-box .day {
+      font-family: var(--font-head);
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .next-appointment .date-box .month {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .member-sidebar { position: relative; top: 0; }
+      .tier-cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wave-bg"></div>
+  <div class="leaf-watermark"></div>
+
+  <nav class="top-nav">
+    <div class="top-nav-inner">
+      <a href="public-home.html" class="top-nav-brand">
+        <div class="top-nav-brand-icon">寶</div>
+        <div class="top-nav-brand-text">
+          <strong>寶天醫館</strong>
+          <small>Natural Wellness · Central</small>
+        </div>
+      </a>
+      <div class="top-nav-links">
+        <a href="public-home.html#services">服務</a>
+        <a href="public-home.html#doctors">醫師團隊</a>
+        <a href="public-home.html#cases">案例</a>
+        <a href="#" class="active">會員中心</a>
+      </div>
+      <a href="public-home.html" class="btn btn-outline btn-sm">登出</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="dashboard-grid">
+      <aside class="member-sidebar">
+        <div class="card member-card">
+          <div class="member-avatar">林</div>
+          <div class="member-name">林雅婷</div>
+          <div class="member-tier badge badge-coral">
+            <i class="fa-solid fa-crown"></i> 一般會員
+          </div>
+          <div class="member-nav">
+            <a href="#" class="active"><i class="fa-solid fa-chart-pie"></i> 儀表板</a>
+            <a href="#subscription"><i class="fa-solid fa-gem"></i> 訂閱管理</a>
+            <a href="#family"><i class="fa-solid fa-people-roof"></i> 家庭帳戶</a>
+            <a href="#preferences"><i class="fa-brands fa-whatsapp"></i> WhatsApp 偏好</a>
+            <a href="#profile"><i class="fa-solid fa-id-card"></i> 個人資料</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="dashboard-main">
+        <div class="welcome-banner">
+          <h2>午安，雅婷</h2>
+          <p id="welcomeDesc">歡迎回到寶天醫館。您目前為一般會員，可預約所有服務並於儀表板管理通知偏好。</p>
+        </div>
+
+        <div class="panel" id="subscription">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-solid fa-gem"></i> 訂閱管理</div>
+          </div>
+          <div class="tier-cards">
+            <div class="tier-card" id="tier-general">
+              <h4>一般會員</h4>
+              <div class="tier-price">免費 <span>/ 永久</span></div>
+              <ul class="tier-features">
+                <li class="included"><i class="fa-solid fa-check"></i> 所有服務預約</li>
+                <li class="included"><i class="fa-solid fa-check"></i> 個人預約紀錄</li>
+                <li class="not-included"><i class="fa-solid fa-xmark"></i> 家庭子帳戶</li>
+                <li class="not-included"><i class="fa-solid fa-xmark"></i> 專屬健康貼士</li>
+              </ul>
+              <button class="btn btn-secondary w-full" id="btn-general" disabled>目前方案</button>
+            </div>
+            <div class="tier-card" id="tier-premium">
+              <h4>高級會員</h4>
+              <div class="tier-price">HK$ 388 <span>/ 月</span></div>
+              <ul class="tier-features">
+                <li class="included"><i class="fa-solid fa-check"></i> 所有一般會員權益</li>
+                <li class="included"><i class="fa-solid fa-check"></i> 優先預約時段</li>
+                <li class="included"><i class="fa-solid fa-check"></i> 專屬健康貼士</li>
+                <li class="not-included"><i class="fa-solid fa-xmark"></i> 家庭子帳戶</li>
+              </ul>
+              <button class="btn btn-primary w-full" id="btn-premium" onclick="upgradeTier('premium')">
+                <i class="fa-brands fa-stripe"></i> 升級高級會員
+              </button>
+            </div>
+            <div class="tier-card" id="tier-family">
+              <h4>家庭會員</h4>
+              <div class="tier-price">HK$ 688 <span>/ 月</span></div>
+              <ul class="tier-features">
+                <li class="included"><i class="fa-solid fa-check"></i> 所有高級會員權益</li>
+                <li class="included"><i class="fa-solid fa-check"></i> 最多 5 位子帳戶</li>
+                <li class="included"><i class="fa-solid fa-check"></i> 家長管理面板</li>
+                <li class="included"><i class="fa-solid fa-check"></i> 共享預約日曆</li>
+              </ul>
+              <button class="btn btn-sage w-full" id="btn-family" onclick="upgradeTier('family')">
+                <i class="fa-solid fa-people-roof"></i> 升級家庭會員
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="family">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-solid fa-people-roof"></i> 家庭帳戶</div>
+          </div>
+          <div id="familyPanel"></div>
+        </div>
+
+        <div class="panel" id="preferences">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-brands fa-whatsapp"></i> WhatsApp 通知偏好</div>
+          </div>
+          <p class="text-sm text-muted mb-md">我們已全面改用 WhatsApp Business API。請選擇您希望接收的訊息類型。</p>
+          <div class="preference-list">
+            <div class="preference-item">
+              <div class="info">
+                <h5>天氣通知</h5>
+                <p>極端天氣或颱風影響診所營運時發送。</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="waWeather" checked onchange="savePrefs()">
+              </label>
+            </div>
+            <div class="preference-item">
+              <div class="info">
+                <h5>預約確認</h5>
+                <p>預約成功、提醒與改期通知。</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="waConfirm" checked onchange="savePrefs()">
+              </label>
+            </div>
+            <div class="preference-item">
+              <div class="info">
+                <h5>健康貼士</h5>
+                <p>根據節氣與體質推播養生建議（僅高級會員）。</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="waHealth" onchange="savePrefs()">
+              </label>
+            </div>
+          </div>
+          <p class="text-xs text-muted mt-sm">系統策略：所有 SMS 與 Gmail 自動通知已停用，統一改由 WhatsApp Business API 發送。</p>
+        </div>
+
+        <div class="panel" id="profile">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-solid fa-id-card"></i> 個人資料</div>
+            <span class="badge badge-sage"><i class="fa-solid fa-shield-halved"></i> 已包含保險</span>
+          </div>
+          <div class="info-row">
+            <div class="info-item">
+              <label>姓名</label>
+              <value>林雅婷</value>
+            </div>
+            <div class="info-item">
+              <label>電話</label>
+              <value>+852 9123 4567</value>
+            </div>
+            <div class="info-item">
+              <label>出生日期</label>
+              <value>1988 / 04 / 15</value>
+            </div>
+            <div class="info-item">
+              <label>保險覆蓋</label>
+              <value>團體醫療保險 A 計劃</value>
+            </div>
+          </div>
+          <div class="mt-lg">
+            <div class="next-appointment">
+              <div class="date-box">
+                <div class="day">22</div>
+                <div class="month">Aug</div>
+              </div>
+              <div>
+                <h4 style="margin-bottom:.2rem">下次預約：針灸調理</h4>
+                <p style="margin:0" class="text-sm">2026 / 08 / 22（四）10:00 · 15 分鐘 · 陳凱風醫師</p>
+              </div>
+              <span class="status-badge status-confirmed" style="margin-left:auto">預約成功</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Payment (Stripe demo) Modal -->
+  <div class="modal-overlay" id="payModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-brands fa-stripe"></i> Stripe 自助付款</div>
+        <button class="modal-close" onclick="closePay()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-muted mb-md" id="payDesc"></p>
+        <div class="exception-form">
+          <div class="form-field">
+            <label>卡號</label>
+            <input type="text" value="4242 4242 4242 4242">
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>到期日</label><input type="text" value="12 / 29"></div>
+            <div class="form-field"><label>CVC</label><input type="text" value="123"></div>
+          </div>
+        </div>
+        <p class="text-xs text-muted mt-sm"><i class="fa-solid fa-lock"></i> 測試模式：不會真實扣款，僅演示網站前端自助升級／續費流程（已整合 Stripe API）。</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePay()">取消</button>
+        <button class="btn btn-primary" onclick="confirmPay()"><i class="fa-solid fa-lock"></i> 確認付款</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Sub-account Modal -->
+  <div class="modal-overlay" id="subModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-user-plus"></i> 新增家庭子帳戶</div>
+        <button class="modal-close" onclick="closeSub()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="exception-form">
+          <div class="form-field"><label>姓名</label><input type="text" id="subName" placeholder="子帳戶姓名"></div>
+          <div class="form-field"><label>出生日期</label><input type="date" id="subDob" value="2015-01-01" onchange="updateSubHint()"></div>
+        </div>
+        <p class="text-xs text-muted mt-sm" id="subPermHint"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeSub()">取消</button>
+        <button class="btn btn-sage" onclick="addSub()">加入家庭帳戶</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" style="color:var(--sage-500)"></i>
+    <span id="toast-msg">操作成功</span>
+  </div>
+
+  <script>
+    /* ===== 會員狀態 ===== */
+    const TIER_LABEL = { general: '一般會員', premium: '高級會員', family: '家庭會員' };
+    const TIER_PRICE = { premium: 'HK$ 388 / 月', family: 'HK$ 688 / 月' };
+
+    function loadMember() { try { return JSON.parse(localStorage.getItem('ba_member')); } catch (e) { return null; } }
+    function saveMember() { localStorage.setItem('ba_member', JSON.stringify(member)); }
+
+    let member = loadMember() || {
+      name: '林雅婷', tier: 'general', family: [],
+      whatsapp: { weather: true, confirm: true, health: false }, insurance: true
+    };
+    let pendingTier = null;
+
+    function calcAge(dob) {
+      if (!dob) return 0;
+      const d = new Date(dob), n = new Date('2026-08-20');
+      let a = n.getFullYear() - d.getFullYear();
+      const m = n.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && n.getDate() < d.getDate())) a--;
+      return a;
+    }
+
+    function renderTiers() {
+      ['general', 'premium', 'family'].forEach(t =>
+        document.getElementById('tier-' + t).classList.toggle('current', member.tier === t));
+      document.getElementById('btn-general').disabled = true;
+      document.getElementById('btn-general').textContent = '目前方案';
+      const bp = document.getElementById('btn-premium');
+      const bf = document.getElementById('btn-family');
+      bp.disabled = member.tier !== 'general';
+      bp.textContent = member.tier === 'premium' ? '目前方案' : (member.tier === 'family' ? '已含於家庭會員' : '升級高級會員');
+      bf.disabled = member.tier === 'family';
+      bf.textContent = member.tier === 'family' ? '目前方案' : '升級家庭會員';
+      document.querySelector('.member-tier').innerHTML = `<i class="fa-solid fa-crown"></i> ${TIER_LABEL[member.tier]}`;
+      document.getElementById('welcomeDesc').textContent =
+        `歡迎回到寶天醫館。您目前為${TIER_LABEL[member.tier]}，` +
+        (member.tier === 'general' ? '可預約所有服務並管理通知偏好。' : '享優先預約與專屬健康貼士。');
+    }
+
+    function renderFamily() {
+      const box = document.getElementById('familyPanel');
+      if (member.tier !== 'family') {
+        box.innerHTML = `<div class="family-application">
+          <i class="fa-solid fa-people-roof"></i>
+          <h3>轉用家庭帳戶</h3>
+          <p style="max-width:480px;margin:0 auto var(--space-md)">升級為家庭會員後，即可建立子帳戶，統一管理家人的預約與健康資料。${member.tier === 'general' ? '（請先升級至家庭會員）' : ''}</p>
+          <button class="btn btn-sage" onclick="upgradeTier('family')"><i class="fa-solid fa-people-roof"></i> 申請轉用家庭帳戶</button>
+        </div>`;
+        return;
+      }
+      const nodes = member.family.map(m => {
+        const age = calcAge(m.dob), minor = age < 18;
+        return `<div class="family-node">
+          <div class="family-avatar ${minor ? 'child' : 'adult'}">${m.name.charAt(0)}</div>
+          <div class="family-meta"><strong>${m.name}</strong><span>子帳戶 · ${age} 歲</span></div>
+          <span class="permission-chip ${minor ? '' : 'limited'}">${minor ? '父帳戶可管理所有資料與預約' : '父帳戶僅可查看「預約成功」'}</span>
+        </div>`;
+      }).join('');
+      box.innerHTML = `<div class="family-application" style="text-align:left">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+            <div><i class="fa-solid fa-people-roof" style="font-size:1.6rem;color:var(--sage-500)"></i>
+            <h3 style="display:inline;margin-left:.5rem">家庭帳戶</h3></div>
+            <button class="btn btn-sage btn-sm" onclick="openSub()"><i class="fa-solid fa-user-plus"></i> 新增子帳戶</button>
+          </div>
+          <p class="text-sm text-muted mt-sm">父帳戶可完整管理未滿 18 歲之子帳戶；滿 18 歲者僅能查看其「預約成功」狀態，不得更改資料或查看醫療／遲到紀錄。</p>
+        </div>
+        <div class="family-tree-panel" style="margin-top:var(--space-md)">
+          <div class="family-tree">
+            <div class="family-root">
+              <div class="family-avatar">${member.name.charAt(0)}</div>
+              <div class="family-meta"><strong>${member.name}</strong><span>父帳戶 · 家庭會員</span></div>
+              <span class="permission-chip">完整管理</span>
+            </div>
+            <div class="family-branch">${nodes || '<div class="text-muted text-sm" style="padding:.5rem 0">尚未新增子帳戶</div>'}</div>
+          </div>
+        </div>`;
+    }
+
+    /* ===== 訂閱升級（Stripe 演示） ===== */
+    function upgradeTier(t) {
+      if (member.tier === t) return;
+      pendingTier = t;
+      document.getElementById('payDesc').textContent = `您將升級至「${TIER_LABEL[t]}」（${TIER_PRICE[t]}）。完成付款後立即生效，可隨時於此續費。`;
+      document.getElementById('payModal').classList.add('open');
+    }
+    function closePay() { document.getElementById('payModal').classList.remove('open'); }
+    function confirmPay() {
+      member.tier = pendingTier;
+      saveMember(); closePay();
+      renderTiers(); renderFamily(); syncPrefsUI();
+      showToast('付款成功，已升級為' + TIER_LABEL[member.tier]);
+    }
+
+    /* ===== 家庭子帳戶 ===== */
+    function openSub() {
+      document.getElementById('subDob').value = '2015-01-01';
+      updateSubHint();
+      document.getElementById('subModal').classList.add('open');
+    }
+    function closeSub() { document.getElementById('subModal').classList.remove('open'); }
+    function updateSubHint() {
+      const dob = document.getElementById('subDob').value, age = calcAge(dob);
+      document.getElementById('subPermHint').textContent = dob
+        ? `年齡 ${age} 歲 → ${age < 18 ? '父帳戶可全權管理（資料／預約／醫療紀錄）' : '滿 18 歲：父帳戶僅可查看「預約成功」'}`
+        : '';
+    }
+    function addSub() {
+      const name = document.getElementById('subName').value.trim();
+      const dob = document.getElementById('subDob').value;
+      if (!name) { showToast('請填寫姓名'); return; }
+      if (!dob) { showToast('請填寫出生日期'); return; }
+      member.family.push({ name, dob });
+      saveMember(); closeSub();
+      renderFamily();
+      showToast('已新增子帳戶：' + name);
+    }
+
+    /* ===== WhatsApp 偏好 ===== */
+    function syncPrefsUI() {
+      document.getElementById('waWeather').checked = member.whatsapp.weather;
+      document.getElementById('waConfirm').checked = member.whatsapp.confirm;
+      const health = document.getElementById('waHealth');
+      const locked = member.tier === 'general';
+      health.disabled = locked;
+      health.checked = locked ? false : member.whatsapp.health;
+      health.closest('.preference-item').querySelector('p').textContent =
+        locked ? '僅高級會員可用，請先升級。' : '根據節氣與體質推播養生建議（僅高級會員）。';
+    }
+    function savePrefs() {
+      member.whatsapp.weather = document.getElementById('waWeather').checked;
+      member.whatsapp.confirm = document.getElementById('waConfirm').checked;
+      member.whatsapp.health = document.getElementById('waHealth').checked && !document.getElementById('waHealth').disabled;
+      saveMember();
+      showToast('WhatsApp 通知偏好已儲存');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    renderTiers();
+    renderFamily();
+    syncPrefsUI();
+  </script>
+</body>
+</html>

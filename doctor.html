@@ -1,0 +1,1544 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>醫師版面 - 寶天醫館</title>
+    <link rel="icon" type="image/svg+xml" href="picture/favicon.svg" />
+    <link rel="stylesheet" href="css/tailwind.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/auth-fetch.js"></script>
+    <style>
+      /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
+      [v-cloak]{ display:none !important; }
+      #boot-splash{
+        position:fixed; inset:0; z-index:99999;
+        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+        background:linear-gradient(170deg,#FDF6FA 0%,#EEF4E9 55%,#EBF1E6 100%);
+        font-family:"Noto Serif TC",serif;
+        transition:opacity .4s ease;
+      }
+      #boot-splash.hide{ opacity:0; pointer-events:none; }
+      #boot-splash .boot-logo{
+        width:64px; height:64px; border-radius:50%;
+        background:linear-gradient(135deg,#7E9476,#A8B89A);
+        color:#FDF6FA; display:flex; align-items:center; justify-content:center;
+        font-size:22px; font-weight:700;
+        box-shadow:0 12px 28px -12px rgba(62,82,64,.5);
+      }
+      #boot-splash .boot-name{ font-size:17px; font-weight:600; color:#3E3328; letter-spacing:.3em; text-indent:.3em; }
+      #boot-splash .boot-sub{ font-size:11px; color:#8B7D6B; letter-spacing:.22em; text-indent:.22em; }
+      #boot-splash .boot-ring{
+        width:26px; height:26px; border-radius:50%;
+        border:3px solid rgba(126,148,118,.25); border-top-color:#7E9476;
+        animation:bootSpin .9s linear infinite;
+      }
+      @keyframes bootSpin{ to{ transform:rotate(360deg);} }
+
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=Noto+Serif+TC:wght@500;600;700&display=swap");
+      :root{
+        --pink-500:#C08875; --pink-600:#A06D56; --pink-700:#7A4E3C;
+        --pink-soft:#F5E5D5; --pink-border:#E8C9B5;
+        --sage-300:#A8B89A; --sage-500:#7E9476; --sage-700:#3E5240;
+        --sage-soft:#E5E8D9; --sage-border:#CCD2BC;
+        --taupe-800:#3E3328; --taupe-700:#4F4438; --taupe-600:#6B5D4D; --taupe-500:#8B7D6B;
+        --cream-50:#F0E4D2; --cream-100:#EBDBC5; --cream-200:#E2D2B8;
+        --blue-soft:#EAF1F8; --blue-border:#CFE0EE; --blue-700:#3E6390;
+        --green-soft:#E5E8D9; --green-border:#CCD2BC; --green-700:#3E5240;
+        --orange-soft:#FBEDE6; --orange-border:#F2D8CC; --orange-700:#B86B4D;
+        --red-soft:#FBEAE8; --red-border:#F4CFCA; --red-700:#B4453A;
+        --rose-soft:#F5E5D5; --rose-border:#E8C9B5; --rose-700:#7A4E3C;
+        --teal-soft:#E2F0EE; --teal-border:#C2DED9; --teal-700:#3D7A75;
+        --amber-soft:#FBF1DD; --amber-border:#F2DFB8; --amber-700:#B45309;
+        --slate-soft:#F1EFEC; --slate-border:#E2DED6; --slate-700:#6B5D4D;
+        --warm-shadow:0 10px 30px -14px rgba(62,51,40,.18);
+        --warm-shadow-lg:0 24px 60px -22px rgba(62,51,40,.22);
+        --warm-shadow-sm:0 6px 16px -8px rgba(62,51,40,.12);
+      }
+      html{ scroll-behavior:smooth; }
+      body {
+        font-family:"Noto Sans TC","Inter",sans-serif;
+        color:var(--taupe-700);
+        background:
+          radial-gradient(1100px 620px at 92% -12%, rgba(192,130,104,.08), transparent 60%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(157,170,133,.13), transparent 58%),
+          radial-gradient(800px 460px at 50% 125%, rgba(192,130,104,.05), transparent 60%),
+          var(--cream-50) !important;
+        background-attachment: fixed;
+        -webkit-font-smoothing:antialiased;
+      }
+      /* 柔和葉片水印 — 溫柔質感 */
+      body::before{
+        content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='400' viewBox='0 0 280 400'%3E%3Cpath d='M140 0C140 0 60 80 40 160C20 240 60 320 140 400C220 320 260 240 240 160C220 80 140 0 140 0Z' fill='%237E9476' fill-opacity='0.06'/%3E%3Cpath d='M140 40C140 40 80 100 70 160C60 220 90 280 140 340C190 280 220 220 210 160C200 100 140 40 140 40Z' fill='%237E9476' fill-opacity='0.07'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cpath d='M20 180 Q60 120 100 100 Q140 80 180 20 Q120 60 100 100 Q80 140 20 180Z' fill='%23C08875' fill-opacity='0.04'/%3E%3C/svg%3E");
+        background-repeat:no-repeat;
+        background-position:94% 10%, 6% 90%;
+        background-size:420px auto, 320px auto;
+      }
+      /* 襯線標題 — 優雅溫柔 */
+      h1,h2,h3,h4,h5,h6{ font-family:"Noto Serif TC",serif; color:var(--taupe-800); font-weight:600; letter-spacing:.01em; }
+      /* 溫暖柔和陰影 + 大圓角 */
+      .shadow{ box-shadow:var(--warm-shadow)!important; }
+      .shadow-lg{ box-shadow:var(--warm-shadow-lg)!important; }
+      .shadow-sm{ box-shadow:var(--warm-shadow-sm)!important; }
+      .rounded-lg{ border-radius:1rem!important; }
+      .rounded-xl{ border-radius:1.3rem!important; }
+      .rounded-2xl{ border-radius:1.7rem!important; }
+      /* 卡片磨砂質感 */
+      .bg-white{ border:1px solid rgba(139,125,107,.09)!important; }
+      .bg-white.rounded-xl,.bg-white.rounded-2xl{ backdrop-filter:blur(8px); background-color:rgba(255,255,255,.86)!important; }
+
+      /* === 品牌主題：粉紅 + 淺綠（柔和粉彩，無白字） === */
+      .text-emerald-600,.text-purple-600,.text-cyan-600{ color:var(--pink-600)!important; }
+      .text-emerald-700,.text-purple-700,.text-cyan-700{ color:var(--pink-700)!important; }
+      .text-emerald-500,.text-purple-500,.text-cyan-500{ color:var(--pink-500)!important; }
+      .text-emerald-400,.text-purple-400,.text-cyan-400{ color:var(--pink-600)!important; }
+      .bg-emerald-100,.bg-purple-100,.bg-cyan-100{ background-color:var(--pink-soft)!important; }
+      .bg-emerald-50,.bg-purple-50,.bg-cyan-50{ background-color:var(--cream-100)!important; }
+      .border-emerald-200,.border-purple-200,.border-cyan-200{ border-color:var(--pink-border)!important; }
+      .ring-emerald-500,.ring-purple-500,.ring-cyan-500{ --tw-ring-color:var(--pink-500)!important; }
+      .ring-emerald-300,.ring-purple-300,.ring-cyan-300{ --tw-ring-color:var(--pink-border)!important; }
+      .focus\:border-cyan-500:focus,.focus\:border-purple-500:focus,.focus\:border-emerald-500:focus{ border-color:var(--pink-500)!important; }
+
+      /* 全站去除白字（改為深棕，避免淺底上睇唔到） */
+      .text-white{ color:var(--taupe-800)!important; }
+
+      /* 實色按鈕 → 粉彩柔和按鈕 */
+      .bg-emerald-600,.bg-purple-600,.bg-cyan-600{ background-color:var(--pink-soft)!important; }
+      .bg-emerald-600.text-white,.bg-purple-600.text-white,.bg-cyan-600.text-white{ color:var(--pink-700)!important; border:1px solid var(--pink-border)!important; }
+      .hover\:bg-emerald-700:hover,.hover\:bg-purple-700:hover,.hover\:bg-cyan-700:hover{ background-color:var(--pink-border)!important; color:var(--pink-700)!important; }
+
+      .bg-green-600,.bg-green-500{ background-color:var(--green-soft)!important; }
+      .bg-green-600.text-white,.bg-green-500.text-white{ color:var(--green-700)!important; border:1px solid var(--green-border)!important; }
+      .hover\:bg-green-700:hover{ background-color:var(--sage-border)!important; color:var(--green-700)!important; }
+
+      .bg-blue-600,.bg-blue-500{ background-color:var(--blue-soft)!important; }
+      .bg-blue-600.text-white,.bg-blue-500.text-white{ color:var(--blue-700)!important; border:1px solid var(--blue-border)!important; }
+      .hover\:bg-blue-700:hover{ background-color:var(--blue-border)!important; color:var(--blue-700)!important; }
+
+      .bg-orange-500,.bg-orange-600{ background-color:var(--orange-soft)!important; }
+      .bg-orange-500.text-white,.bg-orange-600.text-white{ color:var(--orange-700)!important; border:1px solid var(--orange-border)!important; }
+      .hover\:bg-orange-600:hover,.hover\:bg-orange-700:hover{ background-color:var(--orange-border)!important; color:var(--orange-700)!important; }
+
+      .bg-red-600,.bg-red-500{ background-color:var(--red-soft)!important; }
+      .bg-red-600.text-white,.bg-red-500.text-white{ color:var(--red-700)!important; border:1px solid var(--red-border)!important; }
+      .hover\:bg-red-700:hover{ background-color:var(--red-border)!important; color:var(--red-700)!important; }
+
+      .bg-rose-500,.bg-rose-600{ background-color:var(--rose-soft)!important; }
+      .bg-rose-500.text-white,.bg-rose-600.text-white{ color:var(--rose-700)!important; border:1px solid var(--rose-border)!important; }
+      .hover\:bg-rose-600:hover{ background-color:var(--rose-border)!important; color:var(--rose-700)!important; }
+
+      .bg-teal-600,.bg-teal-500{ background-color:var(--teal-soft)!important; }
+      .bg-teal-600.text-white,.bg-teal-500.text-white{ color:var(--teal-700)!important; border:1px solid var(--teal-border)!important; }
+      .hover\:bg-teal-700:hover{ background-color:var(--teal-border)!important; color:var(--teal-700)!important; }
+
+      .bg-slate-600{ background-color:var(--slate-soft)!important; }
+      .bg-slate-600.text-white{ color:var(--slate-700)!important; border:1px solid var(--slate-border)!important; }
+
+      .bg-amber-500{ background-color:var(--amber-soft)!important; }
+      .bg-amber-500.text-white{ color:var(--amber-700)!important; border:1px solid var(--amber-border)!important; }
+      .feedback-notification-bar .text-white{ color:var(--amber-700)!important; }
+
+      .bg-pink-600{ background-color:var(--pink-soft)!important; }
+      .bg-pink-600.text-white{ color:var(--pink-700)!important; border:1px solid var(--pink-border)!important; }
+
+      /* 側邊欄 → 浮起圓角粉彩面板（無白字） */
+      .bg-slate-900{
+        background:linear-gradient(170deg,#FDF6FA 0%,#EEF4E9 55%,#EBF1E6 100%)!important;
+        border-radius:1.7rem!important;
+        margin:1rem!important;
+        min-height:calc(100vh - 2rem)!important;
+        box-shadow:var(--warm-shadow-lg)!important;
+        border:1px solid rgba(139,125,107,.08)!important;
+        color:var(--taupe-800)!important;
+      }
+      .border-slate-700{ border-color:rgba(139,125,107,.12)!important; }
+      .bg-slate-900 .text-slate-100,.bg-slate-900 .text-slate-200{ color:var(--taupe-800)!important; }
+      .bg-slate-900 .text-slate-300,.bg-slate-900 .text-slate-400{ color:var(--sage-700)!important; }
+      .bg-slate-900 .text-emerald-400{ color:var(--pink-600)!important; }
+      .bg-slate-900 nav button:hover{ color:var(--taupe-800)!important; background:var(--sage-soft)!important; }
+      .hover\:bg-slate-800:hover{ background-color:var(--sage-soft)!important; }
+    </style>
+  </head>
+  <body class="text-slate-800 min-h-screen">
+    <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+    <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
+    <div id="boot-splash" aria-hidden="true">
+      <div class="boot-logo">寶</div>
+      <div class="boot-name">寶天醫館</div>
+      <div class="boot-sub">醫師版</div>
+      <div class="boot-ring"></div>
+    </div>
+    <script>
+      (function () {
+        var app = document.getElementById('app');
+        var splash = document.getElementById('boot-splash');
+        var done = false;
+        var finish = function () {
+          if (done || !splash) return;
+          done = true;
+          splash.classList.add('hide');
+          setTimeout(function () { splash.parentNode && splash.parentNode.removeChild(splash); }, 450);
+          if (mo) mo.disconnect();
+          clearInterval(timer);
+        };
+        var mo = app ? new MutationObserver(function () { if (!app.hasAttribute('v-cloak')) finish(); }) : null;
+        if (mo && app) mo.observe(app, { attributes: true, attributeFilter: ['v-cloak'] });
+        var timer = setInterval(function () { if (!app || !app.hasAttribute('v-cloak')) finish(); }, 120);
+        setTimeout(finish, 15000);
+      })();
+    </script>
+    <div id="app" v-cloak>
+
+      <!-- ==================== 登入頁面 ==================== -->
+      <div v-if="!isLoggedIn" class="max-w-md mx-auto py-16 px-4">
+        <div class="bg-white rounded-2xl shadow-lg p-8">
+          <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-user-md text-4xl text-purple-600"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800">醫師登入</h1>
+            <p class="text-slate-500 text-sm mt-1">寶天醫館 · 醫師管理系統</p>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2">用戶名</label>
+              <input
+                type="text"
+                v-model="loginUsername"
+                @keyup.enter="handleLogin"
+                class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                placeholder="請輸入用戶名"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2">密碼</label>
+              <div class="relative">
+                <input
+                  :type="showPassword ? 'text' : 'password'"
+                  v-model="loginPassword"
+                  @keyup.enter="handleLogin"
+                  class="w-full border border-slate-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="請輸入密碼"
+                />
+                <button
+                  type="button"
+                  @click="showPassword = !showPassword"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 🔒 驗證碼 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2">驗證碼</label>
+              <div class="flex gap-2 items-center">
+                <input
+                  type="text"
+                  v-model="loginCaptchaAnswer"
+                  @keyup.enter="handleLogin"
+                  class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="請輸入圖片中的文字"
+                />
+                <div
+                  class="shrink-0 cursor-pointer"
+                  @click="loadCaptcha"
+                  title="點擊重新整理驗證碼"
+                >
+                  <img
+                    v-if="captchaUrl"
+                    :src="captchaUrl"
+                    class="h-11 rounded-lg border border-slate-200 bg-slate-50"
+                    alt="驗證碼"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div v-if="loginError" class="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p class="text-red-700 text-sm"><i class="fas fa-exclamation-circle mr-1"></i>{{ loginError }}</p>
+            </div>
+
+            <button
+              @click="handleLogin"
+              :disabled="isLoggingIn"
+              class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-medium transition-colors disabled:opacity-50"
+            >
+              <i v-if="isLoggingIn" class="fas fa-spinner fa-spin mr-2"></i>
+              {{ isLoggingIn ? '登入中...' : '登入' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 主版面 ==================== -->
+      <div v-else class="min-h-screen">
+        <div class="flex">
+          <!-- 左側導航欄（與管理員後台一致） -->
+          <aside class="w-60 bg-slate-900 text-white min-h-screen flex flex-col shadow-lg flex-shrink-0">
+            <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
+              <i class="fas fa-user-md text-emerald-400 text-3xl"></i>
+              <div class="min-w-0">
+                <div class="text-sm font-bold truncate">寶天醫館 · 醫師版</div>
+                <div class="text-xs opacity-70 truncate">{{ doctorInfo ? doctorInfo.name : doctorUser.name }}</div>
+              </div>
+            </div>
+            <button
+              @click="handleLogout"
+              class="mt-2 mx-2 mb-2 text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
+            >
+              <i class="fas fa-sign-out-alt mr-2"></i>登出
+            </button>
+            <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide">
+              <button @click="docTab='bookings'" :class="docTab==='bookings' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-list mr-2"></i>預約列表
+              </button>
+              <button @click="docTab='schedule'; loadMyLeaves()" :class="docTab==='schedule' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-calendar-xmark mr-2"></i>排程／請假
+              </button>
+            </nav>
+            <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
+              {{ currentDateStr }}
+            </div>
+          </aside>
+
+          <!-- 右側主內容區 -->
+          <div class="flex-1 min-w-0 min-h-screen">
+          <main class="max-w-7xl mx-auto px-4 py-6 w-full">
+
+          <!-- 頂部統計卡片 -->
+          <div v-show="docTab==='bookings'" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-100 rounded-lg">
+                  <i class="fas fa-calendar-check text-blue-600"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">今日預約</p>
+                  <p class="text-xl font-bold text-slate-800">{{ todayBookings.length }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-green-100 rounded-lg">
+                  <i class="fas fa-check-circle text-green-600"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">今日已完成</p>
+                  <p class="text-xl font-bold text-green-600">{{ todayCompletedCount }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-amber-100 rounded-lg">
+                  <i class="fas fa-clock text-amber-600"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">待診人數</p>
+                  <p class="text-xl font-bold text-amber-600">{{ todayPendingCount }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="flex items-center gap-3">
+                <div class="p-2 bg-purple-100 rounded-lg">
+                  <i class="fas fa-calendar-alt text-purple-600"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">本週預約</p>
+                  <p class="text-xl font-bold text-purple-600">{{ weekBookings.length }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 日期篩選 & 搜尋 -->
+          <div v-show="docTab==='bookings'" class="bg-white rounded-xl shadow p-4 mb-6">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-slate-700">日期：</label>
+                <input
+                  type="date"
+                  v-model="selectedDate"
+                  @change="loadBookings"
+                  class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div class="flex gap-2">
+                <button
+                  @click="setToday"
+                  class="px-3 py-2 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 border border-purple-200"
+                >
+                  今日
+                </button>
+                <button
+                  @click="setTomorrow"
+                  class="px-3 py-2 text-sm bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200"
+                >
+                  明日
+                </button>
+                <button
+                  @click="clearDateFilter"
+                  class="px-3 py-2 text-sm bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200"
+                >
+                  全部
+                </button>
+              </div>
+              <div class="flex items-center gap-2 ml-auto">
+                <label class="text-sm font-medium text-slate-700">狀態：</label>
+                <select
+                  v-model="statusFilter"
+                  class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">全部</option>
+                  <option value="confirmed">已確認</option>
+                  <option value="visited">已到訪</option>
+                  <option value="in-treatment">治療中</option>
+                  <option value="dispensing">配藥中</option>
+                  <option value="completed">已完成</option>
+                  <option value="no-show">未到場</option>
+                  <option value="cancelled">已取消</option>
+                </select>
+              </div>
+              <button
+                @click="loadBookings"
+                class="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <i class="fas fa-sync mr-1"></i>重新整理
+              </button>
+            </div>
+          </div>
+
+          <!-- 預約列表 -->
+          <div v-show="docTab==='bookings'" class="bg-white rounded-xl shadow overflow-hidden">
+            <div class="px-6 py-4 border-b flex items-center justify-between">
+              <h2 class="font-semibold text-slate-800">
+                <i class="fas fa-list mr-2 text-purple-600"></i>
+                預約列表
+                <span v-if="selectedDate" class="text-sm font-normal text-slate-500 ml-2">{{ selectedDate }}</span>
+              </h2>
+              <span class="text-sm text-slate-500">共 {{ filteredBookings.length }} 筆</span>
+            </div>
+
+            <!-- 載入中 -->
+            <div v-if="isLoading" class="py-12 text-center">
+              <i class="fas fa-spinner fa-spin text-3xl text-purple-400 mb-3"></i>
+              <p class="text-slate-500">載入中...</p>
+            </div>
+
+            <!-- 無資料 -->
+            <div v-else-if="filteredBookings.length === 0" class="py-12 text-center">
+              <i class="fas fa-calendar-times text-4xl text-slate-300 mb-3"></i>
+              <p class="text-slate-500">{{ selectedDate ? '該日期沒有預約記錄' : '沒有預約記錄' }}</p>
+            </div>
+
+            <!-- 預約卡片（手機版）-->
+            <div v-else class="divide-y">
+              <div
+                v-for="booking in filteredBookings"
+                :key="booking.id"
+                class="p-4 hover:bg-slate-50 transition-colors"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <!-- 左側：時間 + 客戶資料 -->
+                  <div class="flex items-start gap-4 flex-1 min-w-0">
+                    <!-- 時間區塊 -->
+                    <div class="text-center min-w-[60px]">
+                      <div class="text-lg font-bold text-purple-700">{{ booking.appointment_time }}</div>
+                      <div class="text-xs text-slate-400">{{ booking.appointment_date }}</div>
+                    </div>
+                    <!-- 客戶資料 -->
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-semibold text-slate-800">{{ booking.customer_name }}</span>
+                        <span
+                          :class="statusClass(booking.status)"
+                          class="text-xs px-2 py-0.5 rounded-full font-medium"
+                        >
+                          {{ statusLabel(booking.status) }}
+                        </span>
+                      </div>
+                      <div class="text-sm text-slate-500 mt-1">
+                        <i class="fas fa-phone mr-1"></i>{{ booking.customer_phone }}
+                        <span v-if="booking.service_name" class="ml-3">
+                          <i class="fas fa-stethoscope mr-1"></i>{{ booking.service_name }}
+                        </span>
+                        <span v-if="booking.bed_type" class="ml-3 text-xs px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 font-medium">
+                          🛏️ {{ bedLabel(booking.bed_type, booking.bed_number) }}
+                        </span>
+                      </div>
+                      <div v-if="booking.notes" class="text-sm text-slate-400 mt-1 truncate">
+                        <i class="fas fa-sticky-note mr-1"></i>{{ booking.notes }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 右側：操作按鈕 -->
+                  <div class="flex flex-col gap-2 min-w-[100px]">
+                    <button
+                      v-if="booking.status === 'confirmed'"
+                      @click="updateStatus(booking.id, 'visited')"
+                      class="px-3 py-1.5 text-xs bg-teal-500 text-white rounded-lg hover:bg-teal-600 whitespace-nowrap"
+                    >
+                      <i class="fas fa-user-check mr-1"></i>已到訪
+                    </button>
+                    <button
+                      v-if="booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-progress'"
+                      @click="updateStatus(booking.id, 'in-treatment')"
+                      class="px-3 py-1.5 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 whitespace-nowrap"
+                    >
+                      <i class="fas fa-hand-holding-medical mr-1"></i>治療中
+                    </button>
+                    <button
+                      v-if="booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'in-progress'"
+                      @click="updateStatus(booking.id, 'dispensing')"
+                      class="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 whitespace-nowrap"
+                    >
+                      <i class="fas fa-pills mr-1"></i>配藥中
+                    </button>
+                    <button
+                      v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
+                      @click="updateStatus(booking.id, 'completed')"
+                      class="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap"
+                    >
+                      <i class="fas fa-check mr-1"></i>標記完成
+                    </button>
+                    <button
+                      v-if="booking.status === 'confirmed'"
+                      @click="updateStatus(booking.id, 'no-show')"
+                      class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 whitespace-nowrap"
+                    >
+                      <i class="fas fa-user-times mr-1"></i>未到場
+                    </button>
+                    <button
+                      v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
+                      @click="recordLateness(booking)"
+                      class="px-3 py-1.5 text-xs bg-rose-400 text-white rounded-lg hover:bg-rose-500 whitespace-nowrap"
+                    >
+                      <i class="fas fa-clock mr-1"></i>記錄遲到
+                    </button>
+                    <button
+                      v-if="booking.status === 'completed' || booking.status === 'no-show' || booking.status === 'in-treatment' || booking.status === 'dispensing' || booking.status === 'visited'"
+                      @click="updateStatus(booking.id, 'confirmed')"
+                      class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
+                    >
+                      <i class="fas fa-undo mr-1"></i>還原確認
+                    </button>
+                    <button
+                      v-if="booking.status === 'completed' || booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'dispensing'"
+                      @click="selectedBooking = { ...booking }; openMedicalRecordModal()"
+                      class="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 whitespace-nowrap"
+                    >
+                      <i class="fas fa-file-medical mr-1"></i>病歴管理
+                    </button>
+                    <button
+                      @click="viewBookingDetail(booking)"
+                      class="px-3 py-1.5 text-xs bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 whitespace-nowrap"
+                    >
+                      <i class="fas fa-info-circle mr-1"></i>詳情
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== 排程／請假 ==================== -->
+          <div v-if="docTab==='schedule'" class="space-y-6">
+            <h2 class="text-2xl font-bold text-slate-800">
+              <i class="fas fa-calendar-xmark mr-2 text-purple-600"></i>排程／請假
+            </h2>
+
+            <!-- 申請請假 -->
+            <div class="bg-white rounded-xl shadow p-5">
+              <h3 class="text-lg font-semibold text-slate-800 mb-4">
+                <i class="fas fa-plane-departure mr-2 text-purple-600"></i>申請請假
+              </h3>
+              <div class="flex flex-wrap items-end gap-3">
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">請假日期 *</label>
+                  <input v-model="leaveForm.date" type="date" :min="todayStr"
+                    class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                  <label class="block text-xs text-slate-500 mb-1">原因（會顯示喺通知入面）</label>
+                  <input v-model="leaveForm.reason" placeholder="例如：進修 / 休息 / 私人事務"
+                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
+                  <input type="checkbox" v-model="leaveForm.notify" class="w-4 h-4">
+                  WhatsApp 通知受影響客戶
+                </label>
+                <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
+                  <input type="checkbox" v-model="leaveForm.cancel" class="w-4 h-4">
+                  同時自動取消該日我嘅預約
+                </label>
+                <button @click="submitLeave" :disabled="leaveBusy"
+                  class="px-5 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50">
+                  <i v-if="leaveBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-paper-plane mr-1"></i>提交申請
+                </button>
+              </div>
+              <p class="text-xs text-slate-400 mt-3">
+                <i class="fas fa-circle-info mr-1"></i>請假當日客戶將無法預約你嘅時段。如該日已有預約，建議剔選「自動取消」並通知客戶，或聯絡職員協助改期。
+              </p>
+
+              <!-- 提交結果 -->
+              <div v-if="leaveResult" class="mt-4 rounded-xl border p-4" :class="leaveResult.ok ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'">
+                <p class="text-sm font-medium" :class="leaveResult.ok ? 'text-emerald-800' : 'text-red-700'">
+                  <i :class="leaveResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" class="mr-1"></i>{{ leaveResult.message }}
+                </p>
+                <div v-if="leaveResult.ok && leaveResult.affected && leaveResult.affected.length" class="mt-3">
+                  <p class="text-xs text-slate-600 mb-1">該日受影響預約（{{ leaveResult.affected.length }} 筆）：</p>
+                  <div class="space-y-1">
+                    <div v-for="b in leaveResult.affected" :key="b.id" class="text-xs text-slate-600 bg-white rounded px-3 py-1.5 flex flex-wrap gap-3">
+                      <span class="font-mono">{{ (b.appointment_time || '').slice(0,5) }}</span>
+                      <span class="font-medium">{{ b.customer_name }}</span>
+                      <span>{{ b.service_name }}</span>
+                      <span :class="b.status === 'cancelled' ? 'text-red-500' : 'text-slate-400'">{{ b.status === 'cancelled' ? '已取消' : '原狀態：' + b.status }}</span>
+                    </div>
+                  </div>
+                  <p v-if="leaveResult.notified" class="text-xs text-slate-500 mt-2">
+                    WhatsApp 通知：{{ leaveResult.notified.whatsapp || 0 }} 成功 / {{ leaveResult.notified.failed || 0 }} 失敗
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 即將請假列表 -->
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+              <div class="px-6 py-4 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-slate-800">
+                  <i class="fas fa-calendar-days mr-2 text-purple-600"></i>即將請假日子
+                </h3>
+                <button @click="loadMyLeaves" :disabled="leaveListLoading" class="text-sm text-purple-600 hover:text-purple-800">
+                  <i class="fas fa-sync-alt mr-1"></i>重新整理
+                </button>
+              </div>
+              <div v-if="leaveListLoading" class="py-10 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
+              <div v-else-if="!myLeaves.length" class="py-10 text-center text-slate-400">
+                <i class="fas fa-mug-hot text-3xl mb-3 block"></i>目前冇已申請嘅請假
+              </div>
+              <div v-else class="divide-y">
+                <div v-for="lv in myLeaves" :key="lv.id" class="p-4 flex items-center justify-between gap-3 hover:bg-slate-50">
+                  <div>
+                    <p class="font-medium text-slate-800">
+                      <i class="far fa-calendar mr-2 text-purple-500"></i>{{ lv.exception_date }}
+                      <span class="text-xs text-slate-400 ml-2">{{ weekdayLabel(lv.exception_date) }}</span>
+                    </p>
+                    <p class="text-xs text-slate-500 mt-0.5" v-if="lv.reason">原因：{{ lv.reason }}</p>
+                  </div>
+                  <button @click="cancelLeave(lv)" class="text-sm text-red-500 hover:text-red-700 whitespace-nowrap">
+                    <i class="fas fa-rotate-left mr-1"></i>取消請假
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 預約詳情 Modal ==================== -->
+      <div
+        v-if="showDetailModal && selectedBooking"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="showDetailModal = false"
+      >
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-800">
+              <i class="fas fa-calendar-check mr-2 text-purple-600"></i>預約詳情
+            </h3>
+            <button @click="showDetailModal = false" class="text-slate-400 hover:text-slate-600">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">預約編號</span>
+              <span class="text-sm font-medium">#{{ selectedBooking.id }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">狀態</span>
+              <span :class="statusClass(selectedBooking.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">
+                {{ statusLabel(selectedBooking.status) }}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">客戶姓名</span>
+              <span class="text-sm font-medium">{{ selectedBooking.customer_name }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">電話</span>
+              <span class="text-sm font-medium">{{ selectedBooking.customer_phone }}</span>
+            </div>
+            <div v-if="selectedBooking.customer_email" class="flex justify-between">
+              <span class="text-sm text-slate-500">電郵</span>
+              <span class="text-sm font-medium">{{ selectedBooking.customer_email }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">日期</span>
+              <span class="text-sm font-medium">{{ selectedBooking.appointment_date }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">時間</span>
+              <span class="text-sm font-medium">{{ selectedBooking.appointment_time }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-sm text-slate-500">服務</span>
+              <span class="text-sm font-medium">{{ selectedBooking.service_name || selectedBooking.service_id }}</span>
+            </div>
+            <div v-if="selectedBooking.notes" class="pt-2 border-t">
+              <p class="text-sm text-slate-500 mb-1">備註</p>
+              <p class="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{{ selectedBooking.notes }}</p>
+            </div>
+          </div>
+
+          <!-- 操作按鈕 -->
+          <div class="flex flex-wrap gap-2 mt-6">
+            <button
+              v-if="selectedBooking.status === 'confirmed'"
+              @click="updateStatus(selectedBooking.id, 'visited'); showDetailModal = false"
+              class="flex-1 min-w-[90px] bg-teal-500 text-white py-2 rounded-lg hover:bg-teal-600 text-sm"
+            >
+              <i class="fas fa-user-check mr-1"></i>已到訪
+            </button>
+            <button
+              v-if="['confirmed','visited','in-progress'].includes(selectedBooking.status)"
+              @click="updateStatus(selectedBooking.id, 'in-treatment'); showDetailModal = false"
+              class="flex-1 min-w-[90px] bg-indigo-500 text-white py-2 rounded-lg hover:bg-indigo-600 text-sm"
+            >
+              <i class="fas fa-hand-holding-medical mr-1"></i>治療中
+            </button>
+            <button
+              v-if="['visited','in-treatment','in-progress'].includes(selectedBooking.status)"
+              @click="updateStatus(selectedBooking.id, 'dispensing'); showDetailModal = false"
+              class="flex-1 min-w-[90px] bg-amber-500 text-white py-2 rounded-lg hover:bg-amber-600 text-sm"
+            >
+              <i class="fas fa-pills mr-1"></i>配藥中
+            </button>
+            <button
+              v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(selectedBooking.status)"
+              @click="updateStatus(selectedBooking.id, 'completed'); showDetailModal = false"
+              class="flex-1 min-w-[90px] bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 text-sm"
+            >
+              <i class="fas fa-check mr-1"></i>標記完成
+            </button>
+            <button
+              v-if="selectedBooking.status === 'confirmed'"
+              @click="updateStatus(selectedBooking.id, 'no-show'); showDetailModal = false"
+              class="flex-1 min-w-[90px] bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 text-sm"
+            >
+              <i class="fas fa-user-times mr-1"></i>未到場
+            </button>
+            <button
+              v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(selectedBooking.status)"
+              @click="recordLateness(selectedBooking)"
+              class="flex-1 min-w-[90px] bg-rose-400 text-white py-2 rounded-lg hover:bg-rose-500 text-sm"
+            >
+              <i class="fas fa-clock mr-1"></i>記錄遲到
+            </button>
+            <button
+              v-if="['completed','confirmed','visited','in-treatment','dispensing'].includes(selectedBooking.status)"
+              @click="openMedicalRecordModal"
+              class="flex-1 min-w-[90px] bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 text-sm"
+            >
+              <i class="fas fa-file-medical mr-1"></i>病歴管理
+            </button>
+            <button
+              @click="showDetailModal = false"
+              class="flex-1 min-w-[90px] bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 text-sm"
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 新增/編輯病歴 Modal ==================== -->
+      <div
+        v-if="showMedicalRecordModal && selectedBooking"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      >
+        <div class="bg-white rounded-xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-800">
+              <i class="fas fa-file-medical mr-2 text-purple-600"></i>病歴管理 - {{ selectedBooking.customer_name }}
+            </h3>
+            <button @click="showMedicalRecordModal = false" class="text-slate-400 hover:text-slate-600">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+
+          <!-- 既有病歴列表 -->
+          <div v-if="existingRecords.length > 0" class="mb-6">
+            <h4 class="text-sm font-semibold text-slate-700 mb-2">
+              <i class="fas fa-folder-open mr-1 text-purple-500"></i>既有病歴 ({{ existingRecords.length }})
+            </h4>
+            <div class="space-y-2">
+              <div
+                v-for="rec in existingRecords"
+                :key="rec.id"
+                class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3"
+              >
+                <div class="min-w-0">
+                  <p class="text-sm text-slate-700 truncate">
+                    <i class="fas fa-calendar-day mr-1 text-purple-500"></i>{{ rec.record_date }}
+                    <span class="text-slate-400 ml-1">#{{ rec.id }}</span>
+                  </p>
+                  <p v-if="rec.diagnosis" class="text-xs text-slate-500 truncate">{{ rec.diagnosis }}</p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                  <button
+                    @click="selectRecordForEdit(rec)"
+                    class="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 whitespace-nowrap"
+                  >
+                    <i class="fas fa-edit mr-1"></i>{{ editingRecordId === rec.id ? '正在編輯' : '編輯' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-if="editingRecordId" class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+              <i class="fas fa-info-circle mr-1"></i>正在編輯病歴 #{{ editingRecordId }}，儲存後會更新既有病歴及錄音。
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-semibold text-slate-700">
+              <i class="fas fa-pen mr-1 text-purple-500"></i>{{ editingRecordId ? '更新病歴資料' : '新增病歴資料' }}
+            </h4>
+            <button
+              v-if="editingRecordId"
+              @click="resetRecordForm"
+              class="text-xs text-slate-500 hover:text-slate-700"
+            >
+              <i class="fas fa-plus mr-1"></i>新增另一筆
+            </button>
+          </div>
+
+          <form @submit.prevent="submitMedicalRecord" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">診斷結果</label>
+              <textarea v-model="medicalRecordForm.diagnosis" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" required></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">治療方案</label>
+              <textarea v-model="medicalRecordForm.treatment_plan" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" required></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">備註</label>
+              <textarea v-model="medicalRecordForm.notes" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">上傳問題相片 (選填，可多選)</label>
+              <input type="file" ref="photoFile" @change="handlePhotoUpload" accept="image/*" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"/>
+              <div v-if="medicalRecordForm.photoFiles.length > 0" class="mt-2">
+                <p class="text-xs text-slate-500 mb-1">新增預覽 ({{ medicalRecordForm.photoFiles.length }})</p>
+                <div class="flex flex-wrap gap-2">
+                  <div v-for="(pf, idx) in medicalRecordForm.photoFiles" :key="'new-' + idx" class="relative">
+                    <img :src="pf.preview" class="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                    <button type="button" @click="removeNewPhoto(idx)" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div v-if="editingRecordId && existingPhotoCount > 0" class="mt-2">
+                <p class="text-xs text-slate-500 mb-1">既有相片 ({{ existingPhotoCount }}，可刪除)</p>
+                <div class="flex flex-wrap gap-2">
+                  <div v-for="(ex, idx) in existingRecordPhotos" :key="'old-' + ex.id" class="relative">
+                    <img :src="photoUrl(ex.photo_file_path)" class="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                    <button type="button" @click="removeExistingPhoto(ex)" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h4 class="text-md font-semibold text-slate-800 mt-6 mb-2">療程進度追蹤 (選填)</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">指標名稱 (例如: 手臂活動度)</label>
+                <input type="text" v-model="medicalRecordForm.metric_name" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">目前數值 (例如: 40%)</label>
+                <input type="text" v-model="medicalRecordForm.current_value" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">目標數值 (選填)</label>
+                <input type="text" v-model="medicalRecordForm.target_value" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">進度評分 (1-10)</label>
+                <input type="number" v-model.number="medicalRecordForm.progress_score" min="1" max="10" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
+              </div>
+            </div>
+
+            <button type="submit" :disabled="isSubmittingRecord" class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-medium transition-colors disabled:opacity-50 mt-6">
+              <i v-if="isSubmittingRecord" class="fas fa-spinner fa-spin mr-2"></i>
+              {{ isSubmittingRecord ? '提交中...' : (editingRecordId ? '儲存更新' : '提交病歴') }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            // 登入狀態
+            isLoggedIn: false,
+            loginUsername: "",
+            loginPassword: "",
+            showPassword: false,
+            loginError: "",
+            isLoggingIn: false,
+            // 🛏️ 床位自訂名稱（針灸/推拿）
+            bedLabels: { tuina: [], acupuncture: [] },
+            // 🔒 驗證碼
+            captchaUrl: "",
+            loginCaptchaAnswer: "",
+
+            // 醫師資料
+            doctorUser: null,
+            doctorInfo: null,
+
+            // 分頁：bookings=預約列表 / schedule=排程請假
+            docTab: "bookings",
+
+            // 排程／請假
+            leaveForm: { date: "", reason: "", notify: true, cancel: false },
+            leaveBusy: false,
+            leaveResult: null,
+            myLeaves: [],
+            leaveListLoading: false,
+
+            // 預約列表
+            bookings: [],
+            isLoading: false,
+            selectedDate: new Date().toISOString().split("T")[0],
+            statusFilter: "",
+
+            // 詳情 Modal
+            showDetailModal: false,
+            selectedBooking: null,
+            showMedicalRecordModal: false,
+            medicalRecordForm: {
+              diagnosis: "",
+              treatment_plan: "",
+              notes: "",
+              metric_name: "",
+              current_value: "",
+              target_value: "",
+              progress_score: null,
+              photoFiles: [],
+            },
+            existingRecords: [],
+            existingRecordPhotos: [],
+            editingRecordId: null,
+            isSubmittingRecord: false,
+          };
+        },
+
+        computed: {
+          currentDateStr() {
+            return new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+          },
+          todayStr() {
+            return new Date().toISOString().split("T")[0];
+          },
+          todayBookings() {
+            return this.bookings.filter(b => b.appointment_date === this.todayStr);
+          },
+          todayCompletedCount() {
+            return this.todayBookings.filter(b => b.status === "completed").length;
+          },
+          todayPendingCount() {
+            return this.todayBookings.filter(b => b.status === "confirmed").length;
+          },
+          weekBookings() {
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            return this.bookings.filter(b => {
+              const d = new Date(b.appointment_date);
+              return d >= weekStart && d <= weekEnd;
+            });
+          },
+          filteredBookings() {
+            let result = this.bookings;
+            if (this.selectedDate) {
+              result = result.filter(b => b.appointment_date === this.selectedDate);
+            }
+            if (this.statusFilter) {
+              result = result.filter(b => b.status === this.statusFilter);
+            }
+            return result.sort((a, b) => {
+              if (a.appointment_date !== b.appointment_date) return a.appointment_date.localeCompare(b.appointment_date);
+              return a.appointment_time.localeCompare(b.appointment_time);
+            });
+          },
+          existingPhotoCount() {
+            return this.existingRecordPhotos.length;
+          },
+        },
+
+        methods: {
+          // ==================== 登入 ====================
+          async handleLogin() {
+            if (!this.loginUsername || !this.loginPassword) {
+              this.loginError = "請輸入用戶名和密碼";
+              return;
+            }
+            this.isLoggingIn = true;
+            this.loginError = "";
+            try {
+              const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  username: this.loginUsername,
+                  password: this.loginPassword,
+                  captchaAnswer: this.loginCaptchaAnswer,
+                }),
+              });
+              const data = await response.json();
+              if (!response.ok) {
+                if (data.field === "captcha") this.loadCaptcha();
+                this.loginError = data.error || "登入失敗";
+                return;
+              }
+              if (data.user.role !== "doctor") {
+                this.loginError = "此頁面僅供醫師使用，請使用正確的帳號登入";
+                return;
+              }
+              this.doctorUser = data.user;
+              localStorage.setItem("doctorUser", JSON.stringify(data.user));
+              // 🔑 儲存 JWT Token
+              if (data.token) {
+                localStorage.setItem("jwtToken", data.token);
+              }
+              this.isLoggedIn = true;
+              await this.loadDoctorProfile();
+              await this.loadBookings();
+            } catch (error) {
+              this.loginError = "系統錯誤，請稍後再試";
+            } finally {
+              this.isLoggingIn = false;
+            }
+          },
+
+          // 🔒 載入驗證碼圖片
+          loadCaptcha() {
+            this.captchaUrl = "/api/auth/captcha?t=" + Date.now();
+            this.loginCaptchaAnswer = "";
+          },
+
+          handleLogout() {
+            if (!confirm("確定要登出嗎？")) return;
+            // 🔒 通知伺服器將 token 加入黑名單
+            try {
+              fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+            } catch (e) {}
+            localStorage.removeItem("doctorUser");
+            localStorage.removeItem("jwtToken");
+            this.isLoggedIn = false;
+            this.doctorUser = null;
+            this.doctorInfo = null;
+            this.bookings = [];
+            this.loginUsername = "";
+            this.loginPassword = "";
+            window.location.href = "index.html";
+          },
+
+          checkLoginStatus() {
+            const saved = localStorage.getItem("doctorUser");
+            const token = localStorage.getItem("jwtToken");
+            if (saved && token) {
+              try {
+                const user = JSON.parse(saved);
+                if (user && user.role === "doctor") {
+                  this.doctorUser = user;
+                  this.isLoggedIn = true;
+                  this.loadDoctorProfile();
+                  this.loadBookings();
+                  return;
+                }
+              } catch (e) {
+                localStorage.removeItem("doctorUser");
+              }
+            }
+            // 沒有有效登入資訊或 token，清空並顯示登入畫面
+            localStorage.removeItem("doctorUser");
+            localStorage.removeItem("jwtToken");
+            this.isLoggedIn = false;
+          },
+
+          // ==================== 醫師資料 ====================
+          async loadDoctorProfile() {
+            try {
+              const response = await fetch(`/api/admin/doctor/profile?userId=${this.doctorUser.id}`);
+              if (response.ok) {
+                const data = await response.json();
+                this.doctorInfo = data.doctor;
+              }
+            } catch (error) {
+              console.error("載入醫師資料失敗:", error);
+            }
+          },
+
+          // ==================== 排程／請假 ====================
+          weekdayLabel(ds) {
+            if (!ds) return "";
+            const names = ["日", "一", "二", "三", "四", "五", "六"];
+            const d = new Date(ds + "T00:00:00");
+            if (isNaN(d.getTime())) return "";
+            return "星期" + names[d.getDay()];
+          },
+
+          async loadMyLeaves() {
+            this.leaveListLoading = true;
+            try {
+              const resp = await fetch("/api/admin/doctor/my-leaves");
+              const data = await resp.json();
+              if (resp.ok && data.ok) this.myLeaves = data.data || [];
+              else this.myLeaves = [];
+            } catch (e) {
+              console.error("載入請假記錄失敗:", e);
+              this.myLeaves = [];
+            } finally {
+              this.leaveListLoading = false;
+            }
+          },
+
+          async submitLeave() {
+            if (!this.leaveForm.date) { alert("請選擇請假日期"); return; }
+            if (!confirm(`確定申請 ${this.leaveForm.date} 請假？`)) return;
+            this.leaveBusy = true;
+            this.leaveResult = null;
+            try {
+              const resp = await fetch("/api/admin/doctor/my-leave", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  exception_date: this.leaveForm.date,
+                  reason: this.leaveForm.reason || "",
+                  notifyWhatsapp: this.leaveForm.notify,
+                  cancelBookings: this.leaveForm.cancel,
+                }),
+              });
+              const data = await resp.json();
+              if (resp.ok && data.ok) {
+                this.leaveResult = {
+                  ok: true,
+                  message: `${data.exception_date} 請假已登記。` +
+                    (data.affected_count ? `該日你有 ${data.affected_count} 筆預約受影響` + (data.cancelled ? `，已自動取消 ${data.cancelled} 筆。` : "，如需改期請聯絡職員。") : "該日冇預約受影響。"),
+                  affected: data.affected || [],
+                  notified: data.notified,
+                };
+                this.leaveForm.date = "";
+                this.leaveForm.reason = "";
+                this.leaveForm.cancel = false;
+                this.loadMyLeaves();
+                this.loadBookings();
+              } else {
+                this.leaveResult = { ok: false, message: data.error || "申請失敗" };
+              }
+            } catch (e) {
+              console.error("申請請假失敗:", e);
+              this.leaveResult = { ok: false, message: "服務暫時不可用" };
+            } finally {
+              this.leaveBusy = false;
+            }
+          },
+
+          async cancelLeave(lv) {
+            if (!confirm(`確定取消 ${lv.exception_date} 嘅請假？該日會恢復接受預約。`)) return;
+            try {
+              const resp = await fetch(`/api/admin/doctor/my-leaves/${lv.id}`, { method: "DELETE" });
+              const data = await resp.json().catch(() => ({}));
+              if (resp.ok && data.ok) {
+                alert(data.message || "已取消請假");
+                this.loadMyLeaves();
+              } else {
+                alert(data.error || "取消失敗");
+              }
+            } catch (e) {
+              console.error("取消請假失敗:", e);
+              alert("服務暫時不可用");
+            }
+          },
+
+          // ==================== 預約管理 ====================
+          async loadBookings() {
+            if (!this.doctorUser) return;
+            this.isLoading = true;
+            try {
+              let url = `/api/admin/doctor/bookings?userId=${this.doctorUser.id}`;
+              const response = await fetch(url);
+              if (response.ok) {
+                const data = await response.json();
+                this.bookings = data.data || [];
+              } else {
+                this.bookings = [];
+              }
+            } catch (error) {
+              console.error("載入預約失敗:", error);
+              this.bookings = [];
+            } finally {
+              this.isLoading = false;
+            }
+          },
+
+          async updateStatus(bookingId, newStatus) {
+            const labels = {
+              completed: "已完成", "no-show": "未到場", confirmed: "已確認", cancelled: "已取消",
+              visited: "已到訪", "in-treatment": "治療中", dispensing: "配藥中", "in-progress": "處理中"
+            };
+            if (!confirm(`確定將此預約標記為「${labels[newStatus] || newStatus}」？`)) return;
+
+            try {
+              const response = await fetch(`/api/admin/doctor/bookings/${bookingId}/status`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus }),
+              });
+              if (response.ok) {
+                // 本地更新
+                const idx = this.bookings.findIndex(b => b.id === bookingId);
+                if (idx !== -1) this.bookings[idx].status = newStatus;
+                if (this.selectedBooking && this.selectedBooking.id === bookingId) {
+                  this.selectedBooking.status = newStatus;
+                }
+              } else {
+                const data = await response.json();
+                alert(data.error || "更新失敗");
+              }
+            } catch (error) {
+              alert("系統錯誤，請稍後再試");
+            }
+          },
+
+          // 🆕 記錄客戶遲到（分鐘數 → PUT /api/bookings/:id/lateness）
+          async recordLateness(booking) {
+            const input = prompt(
+              `請輸入「${booking.customer_name}」遲到嘅分鐘數（0 = 準時）：`,
+              booking.lateness_minutes || ""
+            );
+            if (input === null) return;
+            const minutes = parseInt(input, 10);
+            if (isNaN(minutes) || minutes < 0) {
+              alert("請輸入有效嘅分鐘數（≥0）");
+              return;
+            }
+            try {
+              const response = await fetch(`/api/bookings/${booking.id}/lateness`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lateness_minutes: minutes }),
+              });
+              const data = await response.json();
+              if (response.ok) {
+                const idx = this.bookings.findIndex(b => b.id === booking.id);
+                if (idx !== -1) this.bookings[idx].lateness_minutes = minutes;
+                alert(data.message || `已記錄遲到 ${minutes} 分鐘`);
+              } else {
+                alert(data.error || "記錄失敗");
+              }
+            } catch (error) {
+              alert("系統錯誤，請稍後再試");
+            }
+          },
+
+          viewBookingDetail(booking) {
+            this.selectedBooking = { ...booking };
+            this.showDetailModal = true;
+          },
+
+          openMedicalRecordModal() {
+            this.showDetailModal = false;
+            this.resetRecordForm();
+            this.showMedicalRecordModal = true;
+            this.loadBookingRecords(this.selectedBooking.id);
+          },
+
+          resetRecordForm() {
+            this.medicalRecordForm = {
+              diagnosis: "",
+              treatment_plan: "",
+              notes: "",
+              metric_name: "",
+              current_value: "",
+              target_value: "",
+              progress_score: null,
+              photoFiles: [],
+            };
+            this.existingRecordPhotos = [];
+            this.editingRecordId = null;
+            if (this.$refs.photoFile) this.$refs.photoFile.value = null;
+          },
+
+          // 載入指定預約的既有病歴
+          async loadBookingRecords(bookingId) {
+            if (!this.doctorUser) return;
+            this.existingRecords = [];
+            try {
+              const response = await fetch(`/api/medical-records/doctor/booking/${bookingId}`);
+              if (response.ok) {
+                const data = await response.json();
+                this.existingRecords = data.data || [];
+              }
+            } catch (error) {
+              console.error("載入既有病歴失敗:", error);
+              this.existingRecords = [];
+            }
+          },
+
+          // 選取既有病歴進行編輯
+          selectRecordForEdit(record) {
+            this.editingRecordId = record.id;
+            this.medicalRecordForm = {
+              diagnosis: record.diagnosis || "",
+              treatment_plan: record.treatment_plan || "",
+              notes: record.notes || "",
+              metric_name: (record.progress && record.progress.length > 0) ? record.progress[record.progress.length - 1].metric_name : "",
+              current_value: (record.progress && record.progress.length > 0) ? record.progress[record.progress.length - 1].current_value : "",
+              target_value: (record.progress && record.progress.length > 0) ? record.progress[record.progress.length - 1].target_value : "",
+              progress_score: (record.progress && record.progress.length > 0) ? record.progress[record.progress.length - 1].progress_score : null,
+              photoFiles: [],
+            };
+            this.existingRecordPhotos = (record.photos && record.photos.length > 0) ? [...record.photos] : [];
+            if (this.$refs.photoFile) this.$refs.photoFile.value = null;
+          },
+
+          // ==================== 日期快捷 ====================
+          setToday() {
+            this.selectedDate = this.todayStr;
+          },
+          setTomorrow() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            this.selectedDate = tomorrow.toISOString().split("T")[0];
+          },
+          clearDateFilter() {
+            this.selectedDate = "";
+          },
+
+          // ==================== 輔助函數 ====================
+          statusLabel(status) {
+            const map = {
+              pending: "待確認", confirmed: "已確認", completed: "已完成", "no-show": "未到場",
+              cancelled: "已取消", visited: "已到訪", "in-treatment": "治療中",
+              dispensing: "配藥中", "in-progress": "處理中"
+            };
+            return map[status] || status;
+          },
+          statusClass(status) {
+            const map = {
+              pending: "bg-slate-100 text-slate-800",
+              confirmed: "bg-blue-100 text-blue-800",
+              completed: "bg-green-100 text-green-800",
+              "no-show": "bg-orange-100 text-orange-800",
+              cancelled: "bg-red-100 text-red-800",
+              visited: "bg-teal-100 text-teal-800",
+              "in-treatment": "bg-indigo-100 text-indigo-800",
+              dispensing: "bg-amber-100 text-amber-800",
+              "in-progress": "bg-purple-100 text-purple-800",
+            };
+            return map[status] || "bg-slate-100 text-slate-800";
+          },
+          // 🛏️ 床位自訂名稱顯示：有自訂名就顯示「名稱 (#編號)」，否則退回「類型 #編號」
+          bedLabel(bedType, bedNumber) {
+            if (!bedType || !bedNumber) return "";
+            const names = (bedType === 'tuina' ? this.bedLabels.tuina : this.bedLabels.acupuncture) || [];
+            const nm = names[Number(bedNumber) - 1];
+            const base = bedType === 'tuina' ? '推拿床' : bedType === 'acup' ? '針灸床' : '混合床';
+            return nm ? `${nm} (#${bedNumber})` : `${base} #${bedNumber}`;
+          },
+          async loadBedLabels() {
+            try {
+              const r = await fetch("/api/beds/labels");
+              if (r.ok) this.bedLabels = await r.json();
+            } catch (e) { /* 忽略，使用預設編號 */ }
+          },
+
+          // 相片上傳處理（支援多選）
+          handlePhotoUpload(event) {
+            const files = Array.from(event.target.files || []);
+            files.forEach((file) => {
+              if (file.type.startsWith("image/")) {
+                this.medicalRecordForm.photoFiles.push({ file, preview: URL.createObjectURL(file) });
+              }
+            });
+            if (this.$refs.photoFile) this.$refs.photoFile.value = null;
+          },
+
+          // 移除新選取的相片
+          removeNewPhoto(idx) {
+            const removed = this.medicalRecordForm.photoFiles.splice(idx, 1);
+            if (removed[0] && removed[0].preview) URL.revokeObjectURL(removed[0].preview);
+          },
+
+          // 移除既有相片（呼叫後端刪除）
+          async removeExistingPhoto(photo) {
+            if (!this.editingRecordId) return;
+            if (!confirm("確定要刪除這張相片嗎？")) return;
+            try {
+              const response = await fetch(`/api/medical-records/doctor/records/${this.editingRecordId}/photos/${photo.id}`, {
+                method: "DELETE",
+              });
+              if (response.ok) {
+                this.existingRecordPhotos = this.existingRecordPhotos.filter(p => p.id !== photo.id);
+                const rec = this.existingRecords.find(r => r.id === this.editingRecordId);
+                if (rec) rec.photos = (rec.photos || []).filter(p => p.id !== photo.id);
+                alert("相片已刪除");
+              } else {
+                const errorData = await response.json();
+                alert(`刪除失敗: ${errorData.error || '未知錯誤'}`);
+              }
+            } catch (error) {
+              console.error("刪除相片失敗:", error);
+              alert("刪除相片時發生錯誤，請稍後再試。");
+            }
+          },
+
+          // 相片路徑轉網址
+          photoUrl(filePath) {
+            if (!filePath) return "";
+            return "" + filePath;
+          },
+
+          async submitMedicalRecord() {
+            if (!this.selectedBooking) return;
+            this.isSubmittingRecord = true;
+
+            // 更新既有病歴
+            if (this.editingRecordId) {
+              const formData = new FormData();
+              formData.append("diagnosis", this.medicalRecordForm.diagnosis);
+              formData.append("treatment_plan", this.medicalRecordForm.treatment_plan);
+              formData.append("notes", this.medicalRecordForm.notes);
+              this.medicalRecordForm.photoFiles.forEach((pf) => {
+                formData.append("photos", pf.file);
+              });
+
+              try {
+                const response = await fetch(`/api/medical-records/doctor/records/${this.editingRecordId}`, {
+                  method: "PUT",
+                  body: formData,
+                });
+
+                if (response.ok) {
+                  // 如果有進度數據，新增一筆進度
+                  if (this.medicalRecordForm.metric_name && this.medicalRecordForm.current_value) {
+                    await fetch(`/api/medical-records/doctor/records/${this.editingRecordId}/progress`, {
+                      method: "POST",
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        metric_name: this.medicalRecordForm.metric_name,
+                        current_value: this.medicalRecordForm.current_value,
+                        target_value: this.medicalRecordForm.target_value,
+                        progress_score: this.medicalRecordForm.progress_score,
+                        notes: this.medicalRecordForm.notes,
+                      }),
+                    });
+                  }
+                  alert("病歴已更新！");
+                  this.resetRecordForm();
+                  this.showMedicalRecordModal = false;
+                  this.loadBookingRecords(this.selectedBooking.id);
+                } else {
+                  const errorData = await response.json();
+                  alert(`更新失敗: ${errorData.error || '未知錯誤'}`);
+                }
+              } catch (error) {
+                console.error("更新病歴時發生錯誤:", error);
+                alert("更新病歴時發生錯誤，請稍後再試。");
+              } finally {
+                this.isSubmittingRecord = false;
+              }
+              return;
+            }
+
+            // 新增病歴
+            const formData = new FormData();
+            formData.append("booking_id", this.selectedBooking.id);
+            formData.append("user_id", this.selectedBooking.user_id);
+            formData.append("diagnosis", this.medicalRecordForm.diagnosis);
+            formData.append("treatment_plan", this.medicalRecordForm.treatment_plan);
+            formData.append("notes", this.medicalRecordForm.notes);
+            formData.append("metric_name", this.medicalRecordForm.metric_name);
+            formData.append("current_value", this.medicalRecordForm.current_value);
+            formData.append("target_value", this.medicalRecordForm.target_value);
+            formData.append("progress_score", this.medicalRecordForm.progress_score);
+            this.medicalRecordForm.photoFiles.forEach((pf) => {
+              formData.append("photos", pf.file);
+            });
+
+            try {
+              // 使用醫師專用端點（JWT 身份由 auth-fetch 自動帶入）
+              const response = await fetch("/api/medical-records/doctor/records", {
+                method: "POST",
+                body: formData,
+              });
+
+              if (response.ok) {
+                alert("病歷提交成功！");
+                this.showMedicalRecordModal = false;
+                this.resetRecordForm();
+                this.loadBookingRecords(this.selectedBooking.id);
+              } else {
+                const errorData = await response.json();
+                alert(`提交失敗: ${errorData.error || '未知錯誤'}`);
+              }
+            } catch (error) {
+              console.error("提交病歷時發生錯誤:", error);
+              alert("提交病歷時發生錯誤，請稍後再試。");
+            } finally {
+              this.isSubmittingRecord = false;
+            }
+          },
+        },
+
+        mounted() {
+          this.checkLoginStatus();
+          this.loadBedLabels();
+          if (!this.isLoggedIn) this.loadCaptcha();
+          // ⎋ ESC 閂 modal（優次序：預約詳情 → 病歴表單）
+          this._escHandler = (e) => {
+            if (e.key !== "Escape") return;
+            if (this.showDetailModal) { this.showDetailModal = false; return; }
+            if (this.showMedicalRecordModal) { this.showMedicalRecordModal = false; return; }
+          };
+          window.addEventListener("keydown", this._escHandler);
+        },
+        beforeUnmount() {
+          if (this._escHandler) window.removeEventListener("keydown", this._escHandler);
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>

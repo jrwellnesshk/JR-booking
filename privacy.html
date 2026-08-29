@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>私隱政策 — 寶天醫館</title>
+    <meta name="description" content="寶天醫館私隱政策：說明本診所如何收集、使用、儲存及保護閣下的個人資料（包括健康資料），以及閣下根據香港《個人資料（私隱）條例》所享有嘅權利。" />
+    <link rel="icon" type="image/svg+xml" href="picture/favicon.svg" />
+    <link rel="stylesheet" href="css/tailwind.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+      :root{
+        --p500:#c08268; --p600:#a06853; --p700:#7e5140;
+        --text:#3e2a1e; --bg:#f0e4d2;
+      }
+      body{
+        font-family:"Noto Sans TC","Inter",sans-serif;
+        color:var(--text);
+        background:
+          radial-gradient(1100px 620px at 92% -12%, rgba(192,130,104,.08), transparent 60%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(157,170,133,.13), transparent 58%),
+          var(--bg);
+        background-attachment:fixed;
+        -webkit-font-smoothing:antialiased;
+      }
+      h1,h2,h3{ font-family:"Noto Serif TC",serif; color:var(--text); font-weight:600; }
+      .policy-card{
+        background:rgba(255,255,255,.88);
+        border:1px solid rgba(139,125,107,.12);
+        border-radius:1.2rem;
+        box-shadow:0 10px 30px -14px rgba(62,51,40,.18);
+      }
+      .policy-card h2{
+        font-size:1.15rem; padding:.9rem 1.4rem; margin:-1.4rem -1.4rem 1rem;
+        background:linear-gradient(90deg, rgba(192,130,104,.12), rgba(163,179,148,.10));
+        border-radius:1.2rem 1.2rem 0 0;
+      }
+      .policy-card p, .policy-card li{ font-size:.95rem; line-height:1.85; }
+      .policy-card ul{ list-style:disc; padding-left:1.4rem; }
+      a.back-link{ color:var(--p600); }
+      a.back-link:hover{ color:var(--p700); }
+    </style>
+</head>
+  <body class="min-h-screen">
+    <main class="max-w-3xl mx-auto px-4 py-10">
+      <a href="index.html" class="back-link inline-flex items-center gap-2 text-sm mb-6">
+        <i class="fas fa-arrow-left"></i>返回寶天醫館主頁
+      </a>
+
+      <header class="text-center mb-8">
+        <div class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-3"
+             style="background:linear-gradient(135deg,#a06853,#c08268);color:#fdf6ea;font-family:'Noto Serif TC',serif;font-size:22px;font-weight:700;">寶</div>
+        <h1 class="text-2xl md:text-3xl font-bold">私隱政策</h1>
+        <p class="text-sm text-slate-500 mt-2">最近更新：2026 年 8 月 24 日</p>
+      </header>
+
+      <div class="space-y-6">
+        <section class="policy-card p-[1.4rem]">
+          <h2>一、引言</h2>
+          <p>寶天醫館（「本診所」）承諾遵守香港《個人資料（私隱）條例》（第 486 章）（「條例」）。本政策說明本診所如何收集、使用、儲存、保護及處理閣下喺使用本預約系統時提供嘅個人資料。</p>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>二、本診所收集嘅個人資料</h2>
+          <ul>
+            <li><b>基本身份資料</b>：中文／英文姓名、會員 ID、電話號碼、電子郵件地址、出生日期</li>
+            <li><b>身份證明</b>：香港身份證號碼（選填）</li>
+            <li><b>聯絡資料</b>：通訊地址、緊急聯絡人姓名及電話</li>
+            <li><b>健康資料</b>：就診記錄、醫師診斷、治療方案、療程進度、問題相片及診症錄音（如有）</li>
+            <li><b>預約資料</b>：預約日期時間、服務類型、到訪記錄、遲到記錄</li>
+            <li><b>技術資料</b>：登入記錄、IP 地址（用於安全監控）</li>
+            <li><b>家庭成員資料</b>：如閣下係家庭會員，本診所會處理閣下為 18 歲以下子女開設子帳戶時提供嘅資料</li>
+          </ul>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>三、收集目的</h2>
+          <ul>
+            <li>處理及管理預約、更改及取消</li>
+            <li>提供中醫診療服務及記錄病歷</li>
+            <li>經 WhatsApp／電郵發送預約確認、提醒、停診通知及健康資訊</li>
+            <li>處理會員計劃、付費升級（經 Stripe 安全支付）及家庭帳戶管理</li>
+            <li>回覆閣下嘅查詢及意見</li>
+            <li>保障帳戶安全（登入鎖定、密碼重設審計）</li>
+            <li>符合法規要求嘅診療記錄保存</li>
+          </ul>
+          <p class="mt-2 text-sm text-slate-600">本診所唔會將閣下嘅個人資料用於上述目的以外嘅用途，亦唔會出售閣下嘅資料予任何第三方。</p>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>四、資料保留</h2>
+          <ul>
+            <li>診療記錄（病歷）：按照香港中醫診所專業慣例及法規要求保存</li>
+            <li>預約記錄：完成服務後保留合理時間作營運及審計用途</li>
+            <li>未完成註冊嘅帳戶資料：3 日後自動刪除</li>
+            <li>登入安全記錄：保留 24 小時至 30 日不等，用於防範未授權存取</li>
+          </ul>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>五、資料安全</h2>
+          <ul>
+            <li>密碼以 bcrypt 單向加密儲存，本診所職員都無法查看</li>
+            <li>所有登入工作階段採用加密 Token，登出後即時失效</li>
+            <li>敏感操作（開戶、重設密碼、刪除資料）需要二次密碼驗證</li>
+            <li>登入設有失敗鎖定機制，防止暴力破解</li>
+            <li>資料庫每日自動備份，備份檔妥善存放</li>
+          </ul>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>六、資料披露</h2>
+          <p>除以下情況，本診所唔會向第三方披露閣下嘅個人資料：</p>
+          <ul>
+            <li>支付處理：Stripe（只處理支付卡資料，本診所唔會儲存閣下嘅卡號）</li>
+            <li>訊息發送：Twilio／WhatsApp（只接收發送所需嘅電話號碼及訊息內容）</li>
+            <li>法例要求或獲閣下同意嘅情況</li>
+          </ul>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>七、閣下嘅權利</h2>
+          <ul>
+            <li><b>查閱及更正</b>：閣下可隨時喺「設定」更新個人資料，或致電本診所要求查閱及更正</li>
+            <li><b>修改會員 ID／姓名</b>：每年可修改一次（系統內自助）</li>
+            <li><b>取消通知</b>：可喺「設定 → WhatsApp 通知偏好」關閉健康貼士等非必要訊息</li>
+            <li><b>刪除帳戶</b>：可致電本診所要求刪除帳戶；診療記錄會按法規要求另行處理</li>
+          </ul>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>八、未成年人士</h2>
+          <p>18 歲以下人士嘅子帳戶必須由家長或監護人經職員協助開設，家長可查看該子帳戶嘅預約狀況。子帳戶年滿 18 歲後，其資料管理權限將按本診所職員指引處理。</p>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>九、Cookie 及本地儲存</h2>
+          <p>本系統使用瀏覽器 localStorage 儲存登入狀態（登出即清除）及介面偏好設定，並使用圖形驗證碼防止機械人濫用。本系統唔使用廣告追蹤 Cookie。</p>
+        </section>
+
+        <section class="policy-card p-[1.4rem]">
+          <h2>十、聯絡我們</h2>
+          <p>如對本私隱政策或閣下嘅個人資料有任何查詢、投訴或行使上述權利，請聯絡：</p>
+          <ul class="mt-2">
+            <li><i class="fas fa-phone mr-2" style="color:var(--p500);"></i>電話：2555-1136</li>
+            <li><i class="fab fa-whatsapp mr-2" style="color:var(--p500);"></i>WhatsApp：852 2555 1136</li>
+            <li><i class="fas fa-location-dot mr-2" style="color:var(--p500);"></i>地址：香港中環（詳細地址請致電查詢）</li>
+          </ul>
+        </section>
+
+        <p class="text-xs text-slate-400 text-center pb-6">本政策可不时更新，更新後將喺本頁公布。繼續使用本系統即表示接受更新後嘅政策。</p>
+      </div>
+    </main>
+  </body>
+</html>

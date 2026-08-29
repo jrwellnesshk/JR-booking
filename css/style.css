@@ -1,0 +1,167 @@
+/* 寶天醫館 - 預約系統樣式表 */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap");
+
+body {
+  font-family: "Noto Sans TC", sans-serif;
+}
+
+.step-indicator {
+  transition: all 0.3s ease;
+}
+
+.service-card,
+.time-slot {
+  transition: all 0.2s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-2px);
+}
+
+.time-slot:hover {
+  transform: scale(1.02);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.ai-chat-container {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.chat-message {
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.user-message {
+  margin-left: auto;
+}
+
+.ai-message {
+  margin-right: auto;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.calendar-day:hover {
+  background-color: #f0f9ff;
+}
+
+.calendar-day.selected {
+  background-color: #10b981;
+  color: white;
+}
+
+.calendar-day.disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.calendar-day.past {
+  color: #d1d5db;
+  background-color: #f9fafb;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.calendar-day.past:hover {
+  background-color: #f9fafb;
+}
+
+.calendar-day.today {
+  border: 2px solid #10b981;
+}
+
+.calendar-day.closed {
+  background-color: #fef2f2;
+  color: #dc2626;
+  cursor: not-allowed;
+}
+
+.calendar-day.closed:hover {
+  background-color: #fee2e2;
+}
+
+.calendar-day.holiday {
+  background-color: #fff7ed;
+  color: #ea580c;
+  cursor: not-allowed;
+}
+
+.calendar-day.holiday:hover {
+  background-color: #ffedd5;
+}
+
+.calendar-day.working-holiday {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px dashed #10b981;
+}
+
+.calendar-day.working-holiday:hover {
+  background-color: #d1fae5;
+}
+
+.calendar-day.month-closed {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.calendar-day.month-closed:hover {
+  background-color: #e2e8f0;
+}
+
+/* ==================== 💄 列印版（預約確認） ==================== */
+@media print {
+  #vanta-bg-aurora,
+  .m-side-nav,
+  .m-side-foot,
+  header,
+  footer,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .m-panel-head {
+    color: #000 !important;
+  }
+}

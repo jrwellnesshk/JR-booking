@@ -1,0 +1,37 @@
+# 依賴
+node_modules/
+
+# 環境變數 / 機密（切勿提交）
+.env
+.env.*
+!.env.example
+
+# 資料庫（含生產資料，唔落 git）
+*.db
+*.db.bak*
+*.sqlite
+*.sqlite3
+
+# 日誌
+*.log
+server_bg*
+npm-debug.log*
+
+# 系統 / 編輯器
+.DS_Store
+.vscode/
+Thumbs.db
+
+# 工具 / agent 內部狀態
+.workbuddy/
+backup/
+
+# 臨時探索腳本 / 生成物（保留兩個正式測試）
+_*.js
+!_qa_cross_test.js
+!_qa_ui_check.js
+_*.py
+_*.ps1
+_*.json
+_*.md
+test-ui/results.json

@@ -1,0 +1,110 @@
+{
+  "fatal": "登入失敗 qrx3en: 429 {\"error\":\"請求過於頻繁，請稍後再試\"}",
+  "results": [
+    {
+      "name": "P0 伺服器時間",
+      "ok": true,
+      "detail": "2026-08-28 01:05:19"
+    },
+    {
+      "name": "P0 通知渠道已靜音（WhatsApp原值=true）",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "P0 敏感檔封鎖 /.env",
+      "ok": true,
+      "detail": "404"
+    },
+    {
+      "name": "P0 敏感檔封鎖 /database.db",
+      "ok": true,
+      "detail": "404"
+    },
+    {
+      "name": "P0 敏感檔封鎖 /package.json",
+      "ok": true,
+      "detail": "404"
+    },
+    {
+      "name": "P0 版面載入 /index.html",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "P0 版面載入 /staff.html",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "P0 版面載入 /doctor.html",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "P0 版面載入 /admin.html",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "P1 公開服務列表",
+      "ok": true,
+      "detail": "200 [{\"id\":\"S1\",\"name\":\"初體驗（一小時）\",\"duration\":60,\"price\":380,\"requires_bed\":0,\"short_name\":null},{\"id\":\"S2\",\"name\":\"針灸（Acupuncture）\",\"duration\":15,\"price\":250,\"requi"
+    },
+    {
+      "name": "P1 時段表(S1)",
+      "ok": true,
+      "detail": "200 [{\"time\":\"10:00\",\"available\":true},{\"time\":\"10:30\",\"available\":false,\"reason\":\"與下一預約（11:00）重疊超過 15 分鐘，請改選其他時段\"},{\"time\":\"11:00\",\"available\":false,\"reason\":\"該時段已"
+    },
+    {
+      "name": "P1 時段表(S6含床位資訊)",
+      "ok": true,
+      "detail": "200 [{\"time\":\"10:00\",\"available\":true,\"bedLeft\":5,\"bedCap\":5},{\"time\":\"10:30\",\"available\":true,\"bedLeft\":5,\"bedCap\":5},{\"time\":\"11:00\",\"available\":false,\"reason\":\"該"
+    },
+    {
+      "name": "P1 揾到訪客可約時段",
+      "ok": true,
+      "detail": "{\"date\":\"2026-08-28\",\"time\":\"14:00\"}"
+    },
+    {
+      "name": "P1 訪客預約初體驗",
+      "ok": true,
+      "detail": "200 {\"success\":true,\"booking\":{\"id\":712,\"customer_name\":\"訪rx3en\",\"customer_phone\":\"94158465\",\"service_id\":\"S1\",\"service_name\":\"初體驗（一小時）\",\"doctor_name\":\"張醫師\",\"appoin"
+    },
+    {
+      "name": "P1 訪客訂非初體驗被拒",
+      "ok": true,
+      "detail": "403 {\"error\":\"訪客模式僅可預約「初體驗（一小時）」服務，如需其他服務請先註冊帳戶。\"}"
+    },
+    {
+      "name": "P1 過去日期被拒",
+      "ok": true,
+      "detail": "400 {\"error\":\"無法預約過往日期\",\"code\":\"past_date\"}"
+    },
+    {
+      "name": "P1 非營業時間被拒",
+      "ok": true,
+      "detail": "400 {\"error\":\"請於營業時間內預約（10:00-19:00）\",\"code\":\"business_hours\"}"
+    },
+    {
+      "name": "P1 同時段雙訂被拒(409)",
+      "ok": true,
+      "detail": "409 {\"error\":\"該時段已被預約\",\"code\":\"overlap\"}"
+    },
+    {
+      "name": "P2 新客註冊",
+      "ok": true,
+      "detail": "200 {\"ok\":true,\"userId\":241}"
+    },
+    {
+      "name": "P2 重複用戶名被拒",
+      "ok": true,
+      "detail": "400 {\"error\":\"該姓名已被使用，無法註冊\",\"field\":\"name\"}"
+    },
+    {
+      "name": "P2 弱密碼被拒",
+      "ok": true,
+      "detail": "400 {\"error\":\"會員ID必須為1-6個字元，只能包含英文字母和數字\"}"
+    }
+  ]
+}

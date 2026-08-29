@@ -1,0 +1,37 @@
+# 寶天醫館預約系統 - Docker 部署（SQLite 版，現時可直接跑）
+# 用法：
+#   1. cp .env.example .env   並填好 SESSION_SECRET 等
+#   2. docker compose up -d --build
+#   3. docker compose logs app   睇初始 admin 密碼
+# 轉 PostgreSQL 見 README-DEPLOY.md（步驟 6 同 DATABASE_URL）
+
+services:
+  app:
+    build: .
+    container_name: aurora-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./database.db:/app/database.db   # 生產資料持久化
+      - ./logs:/app/logs
+    expose:
+      - "4000"            # 只對內部網絡開放，由 caddy 反向代理
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: aurora-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

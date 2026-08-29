@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>客戶與家庭帳戶 — 寶天醫館</title>
+  <link rel="stylesheet" href="design-system.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(139, 125, 107, 0.12);
+      border-radius: var(--r-full);
+      padding: 0.5rem 1rem;
+      min-width: 280px;
+    }
+
+    .search-bar input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 0.9rem;
+      color: var(--taupe-800);
+      width: 100%;
+    }
+
+    .search-bar input::placeholder {
+      color: var(--taupe-400);
+    }
+
+    .client-layout {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: var(--space-xl);
+      align-items: start;
+    }
+
+    .client-list {
+      max-height: 720px;
+      overflow-y: auto;
+      padding-right: var(--space-sm);
+    }
+
+    .client-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      border-radius: var(--r-lg);
+      background: rgba(255, 255, 255, 0.5);
+      margin-bottom: var(--space-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1.5px solid transparent;
+    }
+
+    .client-item:hover,
+    .client-item.active {
+      background: rgba(255, 255, 255, 0.85);
+      border-color: var(--taupe-400);
+    }
+
+    .client-avatar-sm {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--taupe-500), var(--taupe-700));
+      color: var(--cream-50);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-head);
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .client-avatar-sm.sage {
+      background: linear-gradient(135deg, var(--sage-400), var(--sage-600));
+    }
+
+    .client-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .client-meta strong {
+      display: block;
+      color: var(--taupe-800);
+      font-weight: 600;
+    }
+
+    .client-meta span {
+      font-size: 0.78rem;
+      color: var(--taupe-500);
+    }
+
+    .lateness-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--r-full);
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .lateness-pill.clean {
+      background: var(--sage-100);
+      color: var(--sage-700);
+    }
+
+    .lateness-pill.warn {
+      background: rgba(217, 139, 106, 0.12);
+      color: var(--coral-600);
+    }
+
+    .detail-panel {
+      position: sticky;
+      top: 90px;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .detail-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--taupe-500), var(--taupe-700));
+      color: var(--cream-50);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-head);
+      font-size: 1.6rem;
+    }
+
+    .detail-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .detail-header p {
+      margin: 0;
+      font-size: 0.85rem;
+    }
+
+    .insurance-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--r-full);
+      background: var(--sage-100);
+      color: var(--sage-700);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .lateness-section {
+      background: rgba(217, 139, 106, 0.06);
+      border: 1px solid rgba(217, 139, 106, 0.12);
+      border-radius: var(--r-lg);
+      padding: var(--space-md);
+    }
+
+    .lateness-stat {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      margin-bottom: var(--space-md);
+    }
+
+    .lateness-stat b {
+      font-family: var(--font-head);
+      font-size: 2rem;
+      color: var(--coral-600);
+    }
+
+    .lateness-history {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .lateness-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 0.75rem;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--r-md);
+      font-size: 0.85rem;
+    }
+
+    .lateness-row span {
+      color: var(--taupe-500);
+    }
+
+    .lateness-row b {
+      color: var(--coral-600);
+    }
+
+    .family-tree-panel {
+      margin-top: var(--space-lg);
+    }
+
+    .permission-legend {
+      display: flex;
+      gap: var(--space-md);
+      margin-top: var(--space-sm);
+      font-size: 0.75rem;
+      color: var(--taupe-500);
+    }
+
+    .form-check {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: var(--space-sm);
+      background: var(--sage-50);
+      border-radius: var(--r-md);
+      margin-top: var(--space-sm);
+    }
+
+    .form-check input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--sage-500);
+    }
+
+    .form-check label {
+      font-size: 0.9rem;
+      color: var(--taupe-700);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="wave-bg"></div>
+  <div class="leaf-watermark"></div>
+
+  <div class="page-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">寶</div>
+        <div class="sidebar-brand-title">
+          寶天醫館
+          <small>Admin Panel</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="admin-calendar.html"><i class="fa-regular fa-calendar-days"></i> 預約日曆</a>
+        <a href="admin-clients.html" class="active"><i class="fa-solid fa-users"></i> 客戶與家庭</a>
+        <a href="admin-finance.html"><i class="fa-solid fa-chart-line"></i> 財務報表</a>
+        <a href="public-home.html"><i class="fa-solid fa-globe"></i> 官網預覽</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--taupe-600);display:grid;place-items:center"><i class="fa-solid fa-user-shield"></i></div>
+          <div>
+            <div style="font-weight:600;color:var(--cream-50)">Admin</div>
+            <div style="font-size:.7rem">系統管理員</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <div class="label-caps">Account & Membership</div>
+          <h1>客戶與家庭帳戶</h1>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-sm)">
+          <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass" style="color:var(--taupe-400)"></i>
+            <input type="text" placeholder="搜尋客戶姓名或電話">
+          </div>
+          <button class="btn btn-primary" onclick="openRegisterModal()">
+            <i class="fa-solid fa-user-plus"></i> 新增帳戶
+          </button>
+        </div>
+      </div>
+
+      <div class="client-layout">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fa-solid fa-users"></i> 客戶列表</div>
+            <span class="badge badge-taupe">128 位客戶</span>
+          </div>
+          <div class="client-list" id="clientList"></div>
+        </div>
+
+        <div class="detail-panel">
+          <div class="panel" id="detailPanel"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Register Modal -->
+  <div class="modal-overlay" id="registerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-user-plus"></i> 員工後台註冊新帳戶</div>
+        <button class="modal-close" onclick="closeRegisterModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-muted mb-md">前台禁止自行註冊，新帳戶必須由診所員工在後台建立。</p>
+          <div class="exception-form">
+            <div class="form-row">
+              <div class="form-field">
+                <label>姓名</label>
+                <input type="text" id="regName" placeholder="客戶姓名">
+              </div>
+              <div class="form-field">
+                <label>電話</label>
+                <input type="tel" id="regPhone" placeholder="+852">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>電郵</label>
+                <input type="email" id="regEmail" placeholder="email@example.com">
+              </div>
+              <div class="form-field">
+                <label>出生日期</label>
+                <input type="date" id="regDob">
+              </div>
+            </div>
+            <div class="form-field">
+              <label>會員層級</label>
+              <select id="regTier">
+                <option>一般會員</option>
+                <option>高級會員</option>
+                <option>家庭會員</option>
+              </select>
+            </div>
+          <div class="form-check">
+            <input type="checkbox" id="insuranceCheck" checked>
+            <label for="insuranceCheck">此帳戶包含保險覆蓋（強制欄位）</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeRegisterModal()">取消</button>
+        <button class="btn btn-primary" onclick="registerClient()">建立帳戶</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" style="color:var(--sage-500)"></i>
+    <span id="toast-msg">操作成功</span>
+  </div>
+
+  <script>
+    /* ===== 客戶資料（含家庭結構與遲到紀錄） ===== */
+    let clients = [
+      { id: 1, name: '王大明', tier: '家庭會員', phone: '+852 9123 4567', dob: '1982-06-21', insurance: true,
+        lateness: [
+          { date: '2026 / 08 / 14', service: '手法治療', mins: 20 },
+          { date: '2026 / 07 / 22', service: '內科開藥', mins: 15 }
+        ],
+        family: { role: '父帳戶', members: [
+          { name: '黃小寶', dob: '2018-03-10' },
+          { name: '王小明', dob: '2004-05-02' }
+        ] } },
+      { id: 2, name: '林雅婷', tier: '一般會員', phone: '+852 9234 5678', dob: '1988-04-15', insurance: true, lateness: [], family: null },
+      { id: 3, name: '陳家豪', tier: '高級會員', phone: '+852 9345 6789', dob: '1990-11-03', insurance: false,
+        lateness: [
+          { date: '2026 / 08 / 10', service: '針灸', mins: 5 },
+          { date: '2026 / 07 / 30', service: '手法治療', mins: 12 },
+          { date: '2026 / 06 / 15', service: '內科開藥', mins: 8 },
+          { date: '2026 / 05 / 20', service: '針灸', mins: 10 },
+          { date: '2026 / 04 / 18', service: '手法治療', mins: 15 }
+        ], family: null },
+      { id: 4, name: '黃小寶', tier: '子帳戶（8 歲）', phone: '—', dob: '2018-03-10', insurance: true, lateness: [], family: null },
+      { id: 5, name: '趙雅芝', tier: '高級會員', phone: '+852 9456 7890', dob: '1995-09-12', insurance: true, lateness: [], family: null }
+    ];
+    let selectedId = 1;
+
+    function calcAge(dob) {
+      if (!dob) return 0;
+      const d = new Date(dob), n = new Date('2026-08-20');
+      let a = n.getFullYear() - d.getFullYear();
+      const m = n.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && n.getDate() < d.getDate())) a--;
+      return a;
+    }
+
+    function renderClients() {
+      const box = document.getElementById('clientList');
+      box.innerHTML = clients.map(c => {
+        const n = c.lateness.length;
+        const pill = n > 0
+          ? `<span class="lateness-pill warn"><i class="fa-solid fa-clock"></i> 遲到 ${n} 次</span>`
+          : `<span class="lateness-pill clean"><i class="fa-solid fa-check"></i> 準時</span>`;
+        const avatarCls = c.tier.includes('家庭') || c.tier.includes('子') ? ' client-avatar-sm sage' : ' client-avatar-sm';
+        return `<div class="client-item ${c.id === selectedId ? 'active' : ''}" onclick="selectClient(${c.id})">
+          <div class="${avatarCls}">${c.name.charAt(0)}</div>
+          <div class="client-meta">
+            <strong>${c.name}</strong>
+            <span>${c.tier} · ${c.phone}</span>
+          </div>
+          ${pill}
+        </div>`;
+      }).join('');
+    }
+
+    function selectClient(id) { selectedId = id; renderClients(); renderDetail(); }
+
+    function renderDetail() {
+      const c = clients.find(x => x.id === selectedId);
+      if (!c) return;
+      const totalMins = c.lateness.reduce((s, r) => s + r.mins, 0);
+      const latenessHtml = c.lateness.length
+        ? `<div class="lateness-section">
+            <div class="lateness-stat"><b>${c.lateness.length}</b><span>總遲到次數 · 累計 ${totalMins} 分鐘</span></div>
+            <div class="lateness-history">
+              ${c.lateness.map(r => `<div class="lateness-row"><span>${r.date} ${r.service}</span><b>+${r.mins} 分鐘</b></div>`).join('')}
+            </div>
+          </div>`
+        : `<div class="lateness-section"><div class="lateness-stat"><b>0</b><span>無遲到紀錄</span></div></div>`;
+
+      let familyHtml = '';
+      if (c.family) {
+        const nodes = c.family.members.map(m => {
+          const age = calcAge(m.dob), minor = age < 18;
+          return `<div class="family-node">
+            <div class="family-avatar ${minor ? 'child' : 'adult'}">${m.name.charAt(0)}</div>
+            <div class="family-meta"><strong>${m.name}</strong><span>子帳戶 · ${age} 歲</span></div>
+            <span class="permission-chip ${minor ? '' : 'limited'}">${minor ? '父帳戶可管理所有資料與預約' : '父帳戶僅可查看「預約成功」'}</span>
+          </div>`;
+        }).join('');
+        familyHtml = `<div class="family-tree-panel">
+          <h3 style="margin-bottom:var(--space-md)"><i class="fa-solid fa-people-roof" style="color:var(--taupe-500)"></i> 家庭帳戶結構</h3>
+          <div class="family-tree">
+            <div class="family-root">
+              <div class="family-avatar">${c.name.charAt(0)}</div>
+              <div class="family-meta"><strong>${c.name}</strong><span>${c.family.role} · ${c.tier}</span></div>
+              <span class="permission-chip">完整管理</span>
+            </div>
+            <div class="family-branch">${nodes}</div>
+          </div>
+          <div class="permission-legend">
+            <span><i class="fa-solid fa-circle" style="color:var(--sage-500);font-size:.5rem"></i> &lt; 18 歲：父帳戶全權管理</span>
+            <span><i class="fa-solid fa-circle" style="color:var(--taupe-400);font-size:.5rem"></i> ≥ 18 歲：僅預約成功可見</span>
+          </div>
+        </div>`;
+      }
+
+      document.getElementById('detailPanel').innerHTML = `
+        <div class="detail-header">
+          <div class="detail-avatar">${c.name.charAt(0)}</div>
+          <div>
+            <h2>${c.name}</h2>
+            <p>${c.tier} · ${c.phone} · ${c.dob ? c.dob.replace(/-/g, ' / ') : '—'}</p>
+            ${c.insurance ? '<span class="insurance-badge"><i class="fa-solid fa-shield-halved"></i> 已包含保險</span>'
+                          : '<span class="insurance-badge" style="background:rgba(217,139,106,.12);color:var(--coral-600)"><i class="fa-solid fa-shield-halved"></i> 無保險覆蓋</span>'}
+          </div>
+        </div>
+        ${latenessHtml}
+        ${familyHtml}`;
+    }
+
+    /* ===== 員工後台註冊：強制保險欄位 ===== */
+    function openRegisterModal() { document.getElementById('registerModal').classList.add('open'); }
+    function closeRegisterModal() { document.getElementById('registerModal').classList.remove('open'); }
+    function registerClient() {
+      const insurance = document.getElementById('insuranceCheck').checked;
+      if (!insurance) {
+        showToast('⚠ 保險覆蓋為強制欄位，請先勾選');
+        return;
+      }
+      const name = document.getElementById('regName').value.trim();
+      if (!name) { showToast('請填寫客戶姓名'); return; }
+      const newId = Math.max(...clients.map(c => c.id)) + 1;
+      clients.push({
+        id: newId, name,
+        tier: document.getElementById('regTier').value,
+        phone: document.getElementById('regPhone').value || '—',
+        dob: document.getElementById('regDob').value || '',
+        insurance: true, lateness: [], family: null
+      });
+      closeRegisterModal();
+      selectClient(newId);
+      showToast('新帳戶已建立（後台註冊），保險狀態已記錄');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    renderClients();
+    renderDetail();
+  </script>
+</body>
+</html>
