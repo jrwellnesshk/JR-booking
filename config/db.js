@@ -25,7 +25,8 @@ function verifyPassword(password, hashedPassword) {
 
 // 初始化資料庫
 function initializeDatabase() {
-  const db = new sqlite3.Database("./database.db", (err) => {
+  const DB_PATH = process.env.DB_PATH || './database.db';
+  const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
       console.error("無法連接到資料庫:", err);
     } else {

@@ -110,6 +110,10 @@ const captchaService = require("./services/captcha");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// 生產經 Caddy / Nginx 等反向代理，必須信任 proxy 先可以正確讀取客戶 IP
+// （否則 express-rate-limit 見到 X-Forwarded-For 會擲 ValidationError，login 等路由變 500）
+app.set('trust proxy', 1);
+
 // ==================== 輔助函數 ====================
 
 /**

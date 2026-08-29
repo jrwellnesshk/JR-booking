@@ -8,6 +8,7 @@ node_modules/
 
 # 資料庫（含生產資料，唔落 git）
 *.db
+*.db.*
 *.db.bak*
 *.sqlite
 *.sqlite3

@@ -1,0 +1,39 @@
+# ---- 依賴（構建時 npm ci 會重裝，唔使焗入 image）----
+node_modules
+
+# ---- 環境 / 機密（切莫焗入 image）----
+.env
+.env.*
+!.env.example
+
+# ---- 資料庫（容器靠 volume 掛載；唔好焗入 image，否則會帶埋 dev 資料）----
+*.db
+*.db.bak*
+*.sqlite
+*.sqlite3
+
+# ---- 日誌 ----
+*.log
+server_bg*
+logs
+
+# ---- 測試 / agent 產物（唔使落生產 image）----
+_qa_*
+_*.js
+_*.json
+_*.md
+_*.py
+_*.ps1
+test-ui
+
+# ---- 系統 / 編輯器 ----
+.DS_Store
+.vscode
+.workbuddy
+backup
+
+# ---- git（唔使焗入 image）----
+.git
+
+# ---- 大二進制 ----
+*.pptx

@@ -12,8 +12,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - DB_PATH=/app/data/database.db   # 容器內 SQLite 路徑（配合 ./data volume）；host 跑 dev 時唔設呢個，用預設 ./database.db
     volumes:
-      - ./database.db:/app/database.db   # 生產資料持久化
+      - ./data:/app/data                 # 生產資料持久化（目錄 volume，避免單一檔 bind mount 喺新 DB 時 CANTOPEN）
       - ./logs:/app/logs
     expose:
       - "4000"            # 只對內部網絡開放，由 caddy 反向代理
