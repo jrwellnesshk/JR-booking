@@ -7,9 +7,11 @@
  * 產出：_qa_cross_results.json
  */
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 const BASE = 'http://localhost:4000';
 const BYPASS = 'test999';
+const ADMIN_PW = process.env.QA_ADMIN_PW || 'aurora2026';
 const TOKENS_FILE = '_qa_tokens.json';
 
 let tokens = {};
@@ -92,6 +94,49 @@ async function login(username, password, force) {
   return { token: null, id: null, role: null, name: null, loginFailed: true };
 }
 
+// 自備演示帳戶（唔依賴 DB 種子）：職員 / 醫師 / 家庭戶主 + 子帳戶
+const DEMO_ACCOUNTS = [
+  { username: 'pptstaff01', name: 'PPT職員一', role: 'staff', pw: 'PptTest123', phone: '91001111', insurance_covered: 1 },
+  { username: 'pptdoc01', name: '黃醫師', role: 'doctor', pw: 'PptTest123', phone: '91001112' },
+  { username: 'tdoc02', name: '李醫師', role: 'doctor', pw: 'Test1234', phone: '91001113' },
+  { username: 'pptmember1', name: '陳大文', role: 'customer', pw: 'PptTest123', phone: '91001114', tier: 'family' },
+  { username: 'pptm01', name: '陳小明', role: 'customer', pw: 'Kid2026ok', phone: '91001115' },
+];
+const dbAll = (sql, p = []) => new Promise((res, rej) => dbw.all(sql, p, (e, rows) => e ? rej(e) : res(rows || [])));
+async function ensureDemoAccounts() {
+  const h = (pw) => bcrypt.hashSync(pw, 10);
+  for (const a of DEMO_ACCOUNTS) {
+    const ex = await dbq('SELECT id FROM users WHERE username=?', [a.username]);
+    if (ex) continue;
+    await dbRun(
+      'INSERT INTO users (username,password,name,phone,role,profile_completed,insurance_covered,membership_tier) VALUES (?,?,?,?,?,1,?,?)',
+      [a.username, h(a.pw), a.name, a.phone, a.role, a.insurance_covered != null ? a.insurance_covered : null, a.tier || null]
+    );
+    const row = await dbq('SELECT id FROM users WHERE username=?', [a.username]);
+    if (a.role === 'doctor') {
+      await dbRun('UPDATE doctors SET user_id=? WHERE name=? AND is_active=1', [row.id, a.name]);
+    }
+  }
+  // 家庭連結：pptm01 -> pptmember1
+  const head = await dbq('SELECT id FROM users WHERE username=?', ['pptmember1']);
+  const child = await dbq('SELECT id FROM users WHERE username=?', ['pptm01']);
+  if (head && child) {
+    await dbRun('UPDATE users SET family_head_id=? WHERE id=?', [head.id, head.id]);
+    await dbRun('UPDATE users SET family_head_id=? WHERE id=?', [head.id, child.id]);
+    await dbRun('INSERT OR IGNORE INTO family_links (parent_user_id, child_user_id, relation) VALUES (?,?,?)', [head.id, child.id, 'parent']);
+  }
+}
+async function cleanupDemoAccounts() {
+  const names = DEMO_ACCOUNTS.map(a => a.username);
+  const rows = await dbAll('SELECT id FROM users WHERE username IN (' + names.map(() => '?').join(',') + ')', names);
+  const ids = rows.map(r => r.id);
+  if (ids.length) {
+    await dbRun('DELETE FROM family_links WHERE parent_user_id IN (' + ids.map(() => '?').join(',') + ') OR child_user_id IN (' + ids.map(() => '?').join(',') + ')', [...ids, ...ids]);
+    await dbRun('UPDATE doctors SET user_id=NULL WHERE user_id IN (' + ids.map(() => '?').join(',') + ')', ids);
+    await dbRun('DELETE FROM users WHERE id IN (' + ids.map(() => '?').join(',') + ')', ids);
+  }
+}
+
 // 揀可用時段
 async function pickSlot(date, serviceId, doctorName) {
   const q = `?date=${date}&serviceId=${serviceId}` + (doctorName ? `&doctor=${encodeURIComponent(doctorName)}` : '');
@@ -166,6 +211,12 @@ const state = { ids: {}, bookings: {}, records: {}, waOriginal: null, allBooking
   console.log('=== QA 交叉場景測試開始 ' + new Date().toLocaleTimeString() + ' ===');
   const t0 = Date.now();
   dbw = new (require('sqlite3').Database)('./database.db');
+
+  // 自備演示帳戶（職員/醫師/家庭會員），避免依賴已清走嘅種子資料；測後會刪除保持 DB 整潔
+  await ensureDemoAccounts();
+  for (const a of DEMO_ACCOUNTS) delete tokens[a.username];
+  delete tokens['admin'];
+  fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens));
 
   // ---------- P0 環境 ----------
   const st = await api('GET', '/api/server-time');
@@ -441,7 +492,7 @@ const state = { ids: {}, bookings: {}, records: {}, waOriginal: null, allBooking
   rec('P5 醫師睇家庭樹被拒', r, 403);
 
   // ---------- P6 管理員交叉 ----------
-  const adminT = (await login('admin', '12345678')).token;
+  const adminT = (await login('admin', ADMIN_PW)).token;
   r = await api('GET', '/api/users', { token: adminT });
   rec('P6 用戶列表含新註冊客（交叉）', r, 200, d => JSON.stringify(d).includes(uname));
   r = await api('GET', '/api/membership/admin/tree', { token: adminT });
@@ -559,11 +610,13 @@ const state = { ids: {}, bookings: {}, records: {}, waOriginal: null, allBooking
   }
   ok('P8 本輪QA預約已清理', true, qaIds.join(','));
   // 管理員刪除測試帳戶（API交叉）→ 再登入應失敗
-  r = await api('DELETE', `/api/admin/users/${state.ids.qax}`, { token: adminT, body: { adminPassword: '12345678' } });
+  r = await api('DELETE', `/api/admin/users/${state.ids.qax}`, { token: adminT, body: { adminPassword: ADMIN_PW } });
   rec('P8 管理員刪除測試帳戶（二次驗證）', r, 200);
   await dbRun('DELETE FROM login_attempts WHERE username=?', [uname]); // 清走鎖定記錄，確保刪除後登入返回 401 而非 429
   r = await api('POST', '/api/auth/login', { body: { username: uname, password: upass, captchaAnswer: BYPASS } });
   rec('P8 已刪帳戶無法登入→401', r, 401);
+  await cleanupDemoAccounts();
+  if (uname) await dbRun('DELETE FROM users WHERE username=?', [uname]);
   delete tokens[uname]; fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens));
 
   // 還原 WhatsApp 通知設定

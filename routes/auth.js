@@ -308,8 +308,13 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
 
   // 用戶登入（含帳戶鎖定機制）
   router.post("/login", loginLimiter, async (req, res) => {
-    const { username, password, captchaAnswer } = req.body;
+    const { username, password, captchaAnswer, portal } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
+
+    // 🆕 入口角色映射：登入 tab → 允許嘅角色（嚴格分隔）
+    // 員工 tab 同時接受 staff 同 admin（後台管理員經員工入口登入）
+    const PORTAL_ROLES = { customer: ['customer'], doctor: ['doctor'], staff: ['staff', 'admin'], admin: ['admin'] };
+    const ROLE_NAMES = { admin: '管理員', doctor: '醫師', staff: '員工', customer: '客戶' };
     
     if (!username || !password) {
       return res.status(400).json({ error: "請提供用戶名和密碼" });
@@ -370,6 +375,14 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
             return res.status(401).json({ 
               error: `登入失敗，請檢查您的用戶名和密碼。剩餘 ${remainingAttempts} 次嘗試機會`,
               remainingAttempts: remainingAttempts
+            });
+          }
+
+          // 🆕 入口角色驗證：按登入 tab 限制可登入嘅角色（嚴格分隔）
+          if (portal && PORTAL_ROLES[portal] && !PORTAL_ROLES[portal].includes(user.role)) {
+            return res.status(403).json({
+              error: `請使用對應入口登入（此帳號為 ${ROLE_NAMES[user.role] || user.role}）`,
+              field: 'role'
             });
           }
 

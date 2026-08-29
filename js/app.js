@@ -1408,6 +1408,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                   username: loginId.value,
                   password: loginPassword.value,
                   captchaAnswer: loginCaptchaAnswer.value,
+                  portal: loginRole.value,
                 }),
               });
 
@@ -3687,6 +3688,18 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           // 初始化
           onMounted(async () => {
             console.log("🚀 頁面開始初始化");
+
+            // 🛡️ A: 客戶版面角色閘門 —— 非客戶角色（admin/doctor/staff）跳返對應後台
+            if (localStorage.getItem('adminToken') || localStorage.getItem('adminUser')) {
+              window.location.href = 'admin.html'; return;
+            }
+            if (localStorage.getItem('doctorUser')) {
+              window.location.href = 'doctor.html'; return;
+            }
+            if (localStorage.getItem('staffUser')) {
+              window.location.href = 'staff.html'; return;
+            }
+
             console.log("📋 初始 SERVICES 內容:", SERVICES.value);
 
             // 🆕 載入官網內容（公告/影片/社交/評價/動態文字）
