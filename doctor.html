@@ -295,6 +295,12 @@
               </div>
             </div>
             <button
+              @click="showChangePwd=true"
+              class="mt-2 mx-2 text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
+            >
+              <i class="fas fa-key mr-2"></i>更改密碼
+            </button>
+            <button
               @click="handleLogout"
               class="mt-2 mx-2 mb-2 text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
             >
@@ -899,6 +905,46 @@
         </div>
       </div>
 
+      <!-- ==================== 更改密碼 Modal ==================== -->
+      <div v-if="showChangePwd" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="closeChangePwd">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-key mr-2 text-emerald-600"></i>更改密碼</h3>
+            <button @click="closeChangePwd" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+          </div>
+          <div v-if="changePwdSuccess" class="mb-3 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm">
+            <i class="fas fa-check-circle mr-1"></i>{{ changePwdSuccess }}
+          </div>
+          <form @submit.prevent="submitChangePwd">
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">目前密碼</label>
+                <input v-model="changePwdData.currentPassword" type="password" required autocomplete="current-password"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">新密碼（最少 10 字元，含英文大細階＋數字）</label>
+                <input v-model="changePwdData.newPassword" type="password" required autocomplete="new-password"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">確認新密碼</label>
+                <input v-model="changePwdData.confirmPassword" type="password" required autocomplete="new-password"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+            <div v-if="changePwdError" class="mt-3 p-3 bg-rose-50 text-rose-700 rounded-lg text-sm">
+              <i class="fas fa-exclamation-circle mr-1"></i>{{ changePwdError }}
+            </div>
+            <button type="submit" :disabled="changePwdBusy"
+              class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50">
+              <i v-if="changePwdBusy" class="fas fa-spinner fa-spin mr-2"></i>
+              {{ changePwdBusy ? '提交中...' : '確認更改密碼' }}
+            </button>
+          </form>
+        </div>
+      </div>
+
     </div>
 
     <script>
@@ -919,6 +965,13 @@
             // 🔒 驗證碼
             captchaUrl: "",
             loginCaptchaAnswer: "",
+
+            // 🔑 更改密碼
+            showChangePwd: false,
+            changePwdBusy: false,
+            changePwdError: "",
+            changePwdSuccess: "",
+            changePwdData: { currentPassword: "", newPassword: "", confirmPassword: "" },
 
             // 醫師資料
             doctorUser: null,
@@ -1075,6 +1128,52 @@
             window.location.href = "index.html";
           },
 
+          // ==================== 更改密碼 ====================
+          openChangePwd() {
+            this.showChangePwd = true;
+            this.changePwdError = "";
+            this.changePwdSuccess = "";
+            this.changePwdData = { currentPassword: "", newPassword: "", confirmPassword: "" };
+          },
+          closeChangePwd() {
+            this.showChangePwd = false;
+            this.changePwdError = "";
+            this.changePwdSuccess = "";
+            this.changePwdData = { currentPassword: "", newPassword: "", confirmPassword: "" };
+          },
+          async submitChangePwd() {
+            this.changePwdError = "";
+            this.changePwdSuccess = "";
+            const d = this.changePwdData;
+            if (!d.currentPassword || !d.newPassword || !d.confirmPassword) {
+              this.changePwdError = "請填寫完整密碼欄位";
+              return;
+            }
+            if (d.newPassword !== d.confirmPassword) {
+              this.changePwdError = "新密碼與確認密碼不一致";
+              return;
+            }
+            this.changePwdBusy = true;
+            try {
+              const res = await fetch("/api/auth/change-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
+                body: JSON.stringify({ currentPassword: d.currentPassword, newPassword: d.newPassword }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) {
+                this.changePwdSuccess = "密碼已更新，下次請用新密碼登入";
+                this.changePwdData = { currentPassword: "", newPassword: "", confirmPassword: "" };
+              } else {
+                this.changePwdError = data.error || "更改密碼失敗，請稍後再試";
+              }
+            } catch (e) {
+              this.changePwdError = "網絡錯誤，請稍後再試";
+            } finally {
+              this.changePwdBusy = false;
+            }
+          },
+
           checkLoginStatus() {
             const saved = localStorage.getItem("doctorUser");
             const token = localStorage.getItem("jwtToken");
@@ -1101,7 +1200,7 @@
           // ==================== 醫師資料 ====================
           async loadDoctorProfile() {
             try {
-              const response = await fetch(`/api/admin/doctor/profile?userId=${this.doctorUser.id}`);
+              const response = await fetch(`/api/admin/doctor/profile?userId=${this.doctorUser.id}`, { headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") } });
               if (response.ok) {
                 const data = await response.json();
                 this.doctorInfo = data.doctor;
@@ -1123,7 +1222,7 @@
           async loadMyLeaves() {
             this.leaveListLoading = true;
             try {
-              const resp = await fetch("/api/admin/doctor/my-leaves");
+              const resp = await fetch("/api/admin/doctor/my-leaves", { headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") } });
               const data = await resp.json();
               if (resp.ok && data.ok) this.myLeaves = data.data || [];
               else this.myLeaves = [];
@@ -1143,7 +1242,7 @@
             try {
               const resp = await fetch("/api/admin/doctor/my-leave", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
                 body: JSON.stringify({
                   exception_date: this.leaveForm.date,
                   reason: this.leaveForm.reason || "",
@@ -1179,7 +1278,7 @@
           async cancelLeave(lv) {
             if (!confirm(`確定取消 ${lv.exception_date} 嘅請假？該日會恢復接受預約。`)) return;
             try {
-              const resp = await fetch(`/api/admin/doctor/my-leaves/${lv.id}`, { method: "DELETE" });
+              const resp = await fetch(`/api/admin/doctor/my-leaves/${lv.id}`, { method: "DELETE", headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") } });
               const data = await resp.json().catch(() => ({}));
               if (resp.ok && data.ok) {
                 alert(data.message || "已取消請假");
@@ -1199,7 +1298,7 @@
             this.isLoading = true;
             try {
               let url = `/api/admin/doctor/bookings?userId=${this.doctorUser.id}`;
-              const response = await fetch(url);
+              const response = await fetch(url, { headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") } });
               if (response.ok) {
                 const data = await response.json();
                 this.bookings = data.data || [];
@@ -1224,7 +1323,7 @@
             try {
               const response = await fetch(`/api/admin/doctor/bookings/${bookingId}/status`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
                 body: JSON.stringify({ status: newStatus }),
               });
               if (response.ok) {
@@ -1258,7 +1357,7 @@
             try {
               const response = await fetch(`/api/bookings/${booking.id}/lateness`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
                 body: JSON.stringify({ lateness_minutes: minutes }),
               });
               const data = await response.json();
@@ -1307,7 +1406,7 @@
             if (!this.doctorUser) return;
             this.existingRecords = [];
             try {
-              const response = await fetch(`/api/medical-records/doctor/booking/${bookingId}`);
+              const response = await fetch(`/api/medical-records/doctor/booking/${bookingId}`, { headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") } });
               if (response.ok) {
                 const data = await response.json();
                 this.existingRecords = data.data || [];
@@ -1381,7 +1480,7 @@
           },
           async loadBedLabels() {
             try {
-              const r = await fetch("/api/beds/labels");
+              const r = await fetch("/api/beds/labels", { headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") } });
               if (r.ok) this.bedLabels = await r.json();
             } catch (e) { /* 忽略，使用預設編號 */ }
           },
@@ -1410,6 +1509,7 @@
             try {
               const response = await fetch(`/api/medical-records/doctor/records/${this.editingRecordId}/photos/${photo.id}`, {
                 method: "DELETE",
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
               });
               if (response.ok) {
                 this.existingRecordPhotos = this.existingRecordPhotos.filter(p => p.id !== photo.id);
@@ -1449,6 +1549,7 @@
               try {
                 const response = await fetch(`/api/medical-records/doctor/records/${this.editingRecordId}`, {
                   method: "PUT",
+                  headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
                   body: formData,
                 });
 
@@ -1457,7 +1558,7 @@
                   if (this.medicalRecordForm.metric_name && this.medicalRecordForm.current_value) {
                     await fetch(`/api/medical-records/doctor/records/${this.editingRecordId}/progress`, {
                       method: "POST",
-                      headers: { 'Content-Type': 'application/json' },
+                      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem("jwtToken") || '') },
                       body: JSON.stringify({
                         metric_name: this.medicalRecordForm.metric_name,
                         current_value: this.medicalRecordForm.current_value,
@@ -1503,6 +1604,7 @@
               // 使用醫師專用端點（JWT 身份由 auth-fetch 自動帶入）
               const response = await fetch("/api/medical-records/doctor/records", {
                 method: "POST",
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
                 body: formData,
               });
 
