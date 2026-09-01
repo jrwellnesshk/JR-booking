@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 認證相關路由
  * 包括：註冊、登入、忘記密碼、重設密碼（支持電郵和 SMS）
@@ -206,7 +207,10 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
       return res.status(400).json({ error: captchaResult.error || '驗證碼錯誤', field: 'captcha' });
     }
 
-    console.log("📝 註冊請求:", { username, name, name_en, phone, email, hasPassword: !!password });
+    // 🔒 記錄註冊請求（電話/電郵已遮罩，避免 PII 明文入 log）
+    const maskPhone = (p) => (p && p.length >= 4) ? p.slice(0, 3) + '****' + p.slice(-2) : (p ? '****' : null);
+    const maskEmail = (e) => (e && /@/.test(e)) ? e.replace(/^(.)[^@]*@/, '$1***@') : e;
+    console.log("📝 註冊請求:", { username, name, name_en, phone: maskPhone(phone), email: maskEmail(email), hasPassword: !!password });
     
     // 驗證必填欄位（電話必填，電郵選填）
     if (!username || !password || !name || !phone) {
@@ -257,7 +261,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
     
     db.get(checkQuery, checkParams, (err, row) => {
         if (err) {
-          return res.status(500).json({ error: err.message });
+          return serverError(res, err);
         }
 
         if (row) {
@@ -289,7 +293,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
               if (err.message.includes("UNIQUE")) {
                 return res.status(400).json({ error: "用戶資料衝突，無法註冊" });
               }
-              return res.status(500).json({ error: err.message });
+              return serverError(res, err);
             }
             
             // 發送歡迎郵件（只有有電郵才發送）
@@ -477,7 +481,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
         [email],
         async (err, user) => {
           if (err) {
-            return res.status(500).json({ error: err.message });
+            return serverError(res, err);
           }
           
           if (!user) {
@@ -582,7 +586,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
               [hashedPassword, user.id],
               function(err) {
                 if (err) {
-                  return res.status(500).json({ error: err.message });
+                  return serverError(res, err);
                 }
 
                 // 標記驗證碼已使用
@@ -620,7 +624,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
     }
 
     db.get(query, params, (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!row) return res.status(404).json({ error: "找不到符合的用戶" });
       
       res.json({ ok: true, username: row.username });
@@ -637,7 +641,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
     }
 
     db.get("SELECT id, password, role FROM users WHERE id=?", [userId], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(404).json({ error: "用戶不存在" });
 
       // 🔒 密碼強度檢查（按登入者角色分層）
@@ -657,7 +661,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
 
       const hashedPassword = hashPassword(newPassword);
       db.run("UPDATE users SET password=?, must_change_password=0 WHERE id=?", [hashedPassword, userId], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, message: "密碼已更新" });
       });
     });

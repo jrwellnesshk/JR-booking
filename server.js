@@ -4,6 +4,7 @@
  */
 
 // 載入環境變數（必須在最開頭）
+const { serverError } = require("./services/httpResp");
 require('dotenv').config();
 
 // 📋 日誌輪轉（每日檔案 + 自動清理，必須喺其他模組之前掛載）
@@ -422,7 +423,7 @@ app.post('/api/notifications/test-whatsapp', requireAuth, requireRole('admin'), 
     res.json(result);
   } catch (error) {
     console.error('測試 WhatsApp 錯誤:', error);
-    res.status(500).json({ success: false, error: error.message || '發送失敗' });
+    serverError(res, error);
   }
 });
 
@@ -460,7 +461,7 @@ app.post("/api/find-user-id", legacyFindUserLimiter, (req, res) => {
     [name, name, phone, cleanPhone],
     (err, row) => {
       console.log("查詢結果:", { err, row });
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!row) return res.status(404).json({ error: "找不到匹配的用戶" });
       
       // 返回用戶名和姓名（優先返回中文名，如果沒有則返回英文名）
@@ -538,7 +539,7 @@ app.post("/api/register", async (req, res) => {
   }
 
   db.get(checkQuery, checkParams, (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       if (row) {
         if (row.username.toLowerCase() === username.toLowerCase()) {
@@ -557,7 +558,7 @@ app.post("/api/register", async (req, res) => {
         "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [username, hashedPassword, name, name_en || "", phone, email || "", "customer", 0],
         function (err) {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           res.json({ ok: true, userId: this.lastID });
         }
       );
@@ -689,12 +690,12 @@ app.post("/api/reset-password-authenticated", requireAuth, (req, res) => {
 
   // 根據 username 查找用戶
   db.get("SELECT id FROM users WHERE username=? COLLATE NOCASE", [username], (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     if (!user) return res.status(404).json({ error: "用戶不存在" });
 
     const hashedPassword = hashPassword(newPassword);
     db.run("UPDATE users SET password=?, must_change_password=0 WHERE id=?", [hashedPassword, user.id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true, message: "密碼已更新" });
     });
   });
@@ -707,7 +708,7 @@ app.get("/api/register/check", (req, res) => {
   if (!username) return res.json({ available: true });
 
   db.get("SELECT username FROM users WHERE username=? COLLATE NOCASE", [username], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
 
     if (!row) return res.json({ available: true });
 
@@ -732,7 +733,7 @@ app.get("/api/users", requireAuth, requireRole('admin'), (req, res) => {
               ORDER BY b.appointment_date DESC, b.appointment_time DESC LIMIT 1) AS last_late_record
     FROM users u ORDER BY u.created_at DESC
   `, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
 
     // 計算每個用戶的剩餘天數（未完成資料的用戶）
     const now = new Date();
@@ -778,14 +779,14 @@ app.get("/api/timeslots", async (req, res) => {
     "SELECT appointment_time, COUNT(*) as count FROM bookings WHERE appointment_date=? AND status='confirmed' GROUP BY appointment_time",
     [date],
     (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
 
       // 查詢時段設定
       db.all(
         "SELECT time, is_available, max_capacity, current_bookings FROM time_slots WHERE date=?",
         [date],
         (err, slotSettings) => {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
 
           const bookedMap = {};
           rows.forEach(r => { bookedMap[r.appointment_time] = r.count; });
@@ -842,7 +843,7 @@ app.get("/api/time-slots/:date", (req, res) => {
     "SELECT * FROM time_slots WHERE date=?",
     [date],
     (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
 
       const settingsMap = {};
       rows.forEach(r => {
@@ -885,7 +886,7 @@ app.put("/api/time-slots", requireAuth, requireRole('admin'), (req, res) => {
      VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))`,
     [date, time, isAvailable ? 1 : 0, maxCapacity || 3, notes || ""],
     function(err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true });
     }
   );
@@ -909,7 +910,7 @@ app.post("/api/time-slots/batch", requireAuth, requireRole('admin'), (req, res) 
   });
 
   stmt.finalize((err) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     res.json({ ok: true, updated: slots.length });
   });
 });
@@ -917,7 +918,7 @@ app.post("/api/time-slots/batch", requireAuth, requireRole('admin'), (req, res) 
 // 診所設定（向後兼容）
 app.get("/api/clinic-settings", (req, res) => {
   db.all("SELECT setting_key, setting_value FROM clinic_settings", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     
     const settings = {};
     rows.forEach(row => {
@@ -946,7 +947,7 @@ app.put("/api/clinic-settings", requireAuth, requireRole('admin'), (req, res) =>
   });
 
   stmt.finalize((err) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     res.json({ ok: true });
   });
 });
@@ -955,7 +956,7 @@ app.put("/api/clinic-settings", requireAuth, requireRole('admin'), (req, res) =>
 app.get("/api/api-settings", (req, res) => {
   const SAFE_KEYS = ['ai_consultation_enabled', 'email_notification_enabled', 'sms_notification_enabled', 'whatsapp_notification_enabled'];
   db.all("SELECT setting_key, setting_value FROM api_settings", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     
     const settings = {};
     rows.forEach(row => {
@@ -986,7 +987,7 @@ app.put("/api/api-settings", requireAuth, requireRole('admin'), (req, res) => {
   });
 
   stmt.finalize((err) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     res.json({ ok: true });
   });
 });
@@ -994,7 +995,7 @@ app.put("/api/api-settings", requireAuth, requireRole('admin'), (req, res) => {
 // 醫師管理（向後兼容）
 app.get("/api/doctors", (req, res) => {
   db.all("SELECT * FROM doctors WHERE is_active=1 ORDER BY id", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     res.json(rows);
   });
 });
@@ -1010,7 +1011,7 @@ app.post("/api/doctors", requireAuth, requireRole('admin'), (req, res) => {
     "INSERT INTO doctors (name, specialty, is_active) VALUES (?, ?, 1)",
     [name, specialty],
     function(err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true, id: this.lastID });
     }
   );
@@ -1025,7 +1026,7 @@ app.put("/api/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
     "UPDATE doctors SET name=?, specialty=?, is_active=? WHERE id=?",
     [name, specialty, is_active ? 1 : 0, id],
     function(err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true });
     }
   );
@@ -1036,7 +1037,7 @@ app.delete("/api/doctors/:id", requireAuth, requireRole('admin'), (req, res) => 
   const { id } = req.params;
 
   db.run("UPDATE doctors SET is_active=0 WHERE id=?", [id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return serverError(res, err);
     res.json({ ok: true });
   });
 });

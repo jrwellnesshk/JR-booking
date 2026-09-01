@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 預約管理路由
  * 包括：建立預約、查詢預約、修改預約、取消預約、時段管理
@@ -26,6 +27,10 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     if (req.user.role === 'admin' || req.user.role === 'doctor' || req.user.role === 'staff') return true;
     return booking && Number(booking.user_id) === Number(req.user.id);
   };
+
+  // 🔒 日誌遮罩：避免電話/電郵 PII 明文入 log
+  const maskPhone = (p) => (p && p.length >= 4) ? p.slice(0, 3) + '****' + p.slice(-2) : (p ? '****' : null);
+  const maskEmail = (e) => (e && /@/.test(e)) ? e.replace(/^(.)[^@]*@/, '$1***@') : e;
 
   // ==================== 重疊時段邏輯 ====================
   // 規則：每個預約可與前一個預約重疊最多 15 分鐘（後 15 分鐘），
@@ -383,14 +388,14 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
           localTime,
           1, // is_locked 預設為 1 (true)
           async function (err) {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
             
             const bookingId = this.lastID;
             console.log(`✅ 預約已建立 - ID: ${bookingId}, created_at: ${localTime}`);
             
             // 🆕 處理通知（新邏輯：WhatsApp 優先 → 電郵同時）
             console.log(`🚀 開始處理通知...`);
-            console.log(`📞 原始電話號碼: ${customerPhone}`);
+            console.log(`📞 原始電話號碼: ${maskPhone(customerPhone)}`);
             try {
               // 獲取通知設定
               
@@ -409,7 +414,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
               });
 
               console.log(`📊 通知設定狀態: WhatsApp=${whatsappEnabled}, Email=${emailEnabled}`);
-              console.log(`📞 客戶電話: ${customerPhone}, 電郵: ${customerEmail}`);
+              console.log(`📞 客戶電話: ${maskPhone(customerPhone)}, 電郵: ${maskEmail(customerEmail)}`);
 
               // 🔒 用戶 WhatsApp 偏好閘門：已登入用戶如關閉「預約確認」偏好，則跳過訊息通知
               let whatsappPrefOk = true;
@@ -544,7 +549,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     query += " ORDER BY appointment_date DESC, appointment_time ASC";
     
     db.all(query, params, (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       const currentTime = getLocalTimeString();
       const serverDate = currentTime.slice(0, 10);
@@ -639,7 +644,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       
     } catch (error) {
       console.error("刪除預約記錄失敗:", error);
-      res.status(500).json({ error: "刪除失敗：" + error.message });
+      serverError(res, error);
     }
   });
 
@@ -648,7 +653,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const { id } = req.params;
     
     db.get("SELECT * FROM bookings WHERE id=?", [id], (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!row) return res.status(404).json({ error: "預約不存在" });
       if (!isOwnerOrStaff(req, row)) {
         return res.status(403).json({ error: "無權限查看此預約" });
@@ -664,7 +669,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
     // 獲取原有預約資料以比較變更
     db.get("SELECT * FROM bookings WHERE id=?", [id], (err, oldBooking) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!oldBooking) return res.status(404).json({ error: "預約不存在" });
 
       // 權限檢查：僅限本人或管理員/醫師/員工
@@ -845,7 +850,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     
     // 獲取預約資料用於發送取消通知
     db.get("SELECT * FROM bookings WHERE id=?", [id], (err, booking) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!booking) return res.status(404).json({ error: "預約不存在" });
 
       // 權限檢查：僅限本人或管理員/醫師/員工
@@ -980,7 +985,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     
     // 先獲取預約資料（用於發送郵件）
     db.get("SELECT * FROM bookings WHERE id=?", [id], (err, booking) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!booking) return res.status(404).json({ error: "預約不存在" });
 
       // 🆕 權限：員工可改任何單；醫師只可改自己嘅單（與 admin.js 一致，避免繞過）
@@ -1088,7 +1093,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const { lateness_minutes, actual_arrival_time } = req.body || {};
 
     db.get("SELECT id, appointment_date, appointment_time, status FROM bookings WHERE id=?", [id], (err, booking) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!booking) return res.status(404).json({ error: "預約不存在" });
       if (booking.status === 'cancelled' || booking.status === 'no-show') {
         return res.status(400).json({ error: "已取消或未到場嘅預約無法記錄遲到" });
@@ -1220,7 +1225,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
          WHERE ${bookingWhere}`,
         params,
         async (err, rows) => {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
 
           // 特別時段限制
           let filtered = slots;
@@ -1270,7 +1275,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       "SELECT * FROM time_slots WHERE date = ?",
       [date],
       (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         
         const slots = timeSlots.map(time => {
           const dbSlot = rows.find(r => r.time === time);
@@ -1302,7 +1307,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [date, time, is_available ? 1 : 0, max_capacity || 3, notes || ''],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true, message: "時段狀態已更新" });
       }
     );
@@ -1334,7 +1339,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     });
     
     stmt.finalize(err => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ success: true, message: `已更新 ${successCount} 個時段` });
     });
   });
@@ -1347,7 +1352,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     
     // 先獲取診所設定的營業時間
     db.all("SELECT setting_key, setting_value FROM clinic_settings", (err, settingsRows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       // 將設定轉換為物件
       const clinicSettings = {};
@@ -1386,7 +1391,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       
       // 獲取醫師列表
       db.all("SELECT id, name FROM doctors WHERE is_active = 1 ORDER BY id", (err, doctors) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         
         // 如果沒有醫師資料，使用預設醫師
         if (!doctors || doctors.length === 0) {
@@ -1403,14 +1408,14 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
           "SELECT * FROM doctor_time_slots WHERE date = ?",
           [date],
           (err, doctorSlots) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
             
             // 獲取該日期的預約記錄 - 使用正確的欄位名
             db.all(
               "SELECT doctor_name, appointment_time, COUNT(*) as count FROM bookings WHERE appointment_date = ? AND status != 'cancelled' GROUP BY doctor_name, appointment_time",
               [date],
               (err, bookings) => {
-                if (err) return res.status(500).json({ error: err.message });
+                if (err) return serverError(res, err);
                 
                 // 構建結果
                 const result = {
@@ -1462,7 +1467,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [date, time, doctor_id, is_available ? 1 : 0, max_capacity || 1, notes || ''],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true, message: "醫師時段狀態已更新" });
       }
     );
@@ -1495,7 +1500,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     });
     
     stmt.finalize(err => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ success: true, message: `已更新 ${successCount} 個醫師時段` });
     });
   });

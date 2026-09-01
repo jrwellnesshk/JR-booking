@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 雜項路由
  * 包括：聊天機器人、伺服器時間、公共 FAQ 等
@@ -59,7 +60,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
   // 取得公開 FAQ 列表
   router.get("/faqs", (req, res) => {
     db.all("SELECT id, question, answer, display_order FROM faqs WHERE is_active=1 ORDER BY display_order", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows);
     });
   });
@@ -67,7 +68,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
   // 取得床位自訂名稱（公開）
   router.get("/beds/labels", (req, res) => {
     db.all("SELECT setting_key, setting_value FROM clinic_settings WHERE setting_key IN ('tuina_bed_names','acupuncture_bed_names')", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       const parse = (k) => {
         const r = rows.find(x => x.setting_key === k);
         if (!r || !r.setting_value) return [];
@@ -80,7 +81,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
   // 取得服務列表（公開）
   router.get("/services", (req, res) => {
     db.all("SELECT * FROM services", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows);
     });
   });
@@ -114,7 +115,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     params.push(id);
 
     db.run(`UPDATE services SET ${updates.join(", ")} WHERE id=?`, params, function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true });
     });
   });
@@ -184,7 +185,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       "UPDATE users SET profile_completed=1 WHERE username=?",
       [username],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) return res.status(404).json({ error: "找不到用戶" });
         res.json({ ok: true, message: "資料已完成" });
       }

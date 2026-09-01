@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 用戶管理路由
  * 包括：用戶資料、修改姓名/用戶名等
@@ -36,7 +37,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         ORDER BY u.created_at DESC`,
       [],
       (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
 
         // 計算每個用戶的剩餘天數（未完成資料的用戶）
         const now = new Date();
@@ -59,7 +60,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   router.put("/:id/staff-note", requireAuth, requireRole('admin', 'staff'), (req, res) => {
     const note = String((req.body && req.body.staff_note) || '').slice(0, 500);
     db.run("UPDATE users SET staff_note=? WHERE id=? AND role='customer'", [note, Number(req.params.id)], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '客戶不存在' });
       res.json({ ok: true });
     });
@@ -78,7 +79,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       "SELECT id, username, name, name_en, phone, email, id_card, address, birth_date, emergency_contact, emergency_phone, username_last_changed, name_last_changed, membership_tier, insurance_covered, family_head_id, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?",
       [id],
       (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (!row) return res.status(404).json({ error: "用戶不存在" });
         res.json(row);
       }
@@ -96,7 +97,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     const values = [toInt(whatsapp_weather), toInt(whatsapp_confirm), toInt(whatsapp_health)];
     const sql = "UPDATE users SET whatsapp_weather=COALESCE(?,whatsapp_weather), whatsapp_confirm=COALESCE(?,whatsapp_confirm), whatsapp_health=COALESCE(?,whatsapp_health) WHERE id=?";
     db.run(sql, [...values, id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true });
     });
   });
@@ -183,7 +184,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         [check.value, id],
         (err, existingUser) => {
           if (err) {
-            return res.status(500).json({ error: err.message });
+            return serverError(res, err);
           }
           
           if (existingUser) {
@@ -227,7 +228,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         `UPDATE users SET ${sets.join(", ")} WHERE id=?`,
         params,
         function (err) {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           res.json({ ok: true, message: "個人資料已更新" });
         }
       );
@@ -269,7 +270,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           return res.status(400).json({ error: "此操作需要輸入管理員密碼進行驗證", requiresVerification: true });
         }
         db.get("SELECT password, role FROM users WHERE id=?", [req.user.id], (err, admin) => {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           if (!admin || admin.role !== 'admin') {
             return res.status(403).json({ error: "無權限執行此操作" });
           }
@@ -287,7 +288,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           return res.status(400).json({ error: "請輸入目前密碼" });
         }
         db.get("SELECT password FROM users WHERE id=?", [id], (err, user) => {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           if (!user) return res.status(404).json({ error: "用戶不存在" });
           if (!verifyPassword(currentPassword, user.password)) {
             return res.status(401).json({ error: "目前密碼不正確" });
@@ -304,7 +305,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         // 管理員重置他人密碼：設定 must_change_password，強制對方下次登入修改
         const mustChange = (isAdmin && Number(req.user.id) !== Number(id)) ? 1 : 0;
         db.run("UPDATE users SET password=?, must_change_password=? WHERE id=?", [hashedPassword, mustChange, id], function (err) {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           res.json({ ok: true });
         });
       }
@@ -322,7 +323,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
 
     db.get("SELECT password, role FROM users WHERE id=?", [req.user.id], (err, admin) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!admin || admin.role !== 'admin') {
         return res.status(403).json({ error: "無權限執行此操作" });
       }
@@ -359,7 +360,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         db.run("UPDATE doctors SET user_id = NULL WHERE user_id = ?", [id], () => {
           // 最後刪除用戶
           db.run("DELETE FROM users WHERE id=?", [id], function (err) {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
             res.json({ ok: true });
           });
         });
@@ -392,7 +393,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
     
     db.get("SELECT username, username_last_changed FROM users WHERE id=?", [id], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(404).json({ error: "用戶不存在" });
       
       // 檢查是否在一年內已修改過
@@ -416,7 +417,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       }
       
       db.get("SELECT id FROM users WHERE username=? AND id!=?", [trimmedUsername, id], (err, existing) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (existing) return res.status(400).json({ error: "此會員ID已被使用，請選擇其他ID" });
         
         const now = new Date().toISOString();
@@ -424,7 +425,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           "UPDATE users SET username=?, username_last_changed=? WHERE id=?",
           [trimmedUsername, now, id],
           function(err) {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
             res.json({ 
               ok: true, 
               message: "會員ID已更新",
@@ -458,7 +459,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
     
     db.get("SELECT name, name_last_changed FROM users WHERE id=?", [id], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(404).json({ error: "用戶不存在" });
       
       if (user.name_last_changed) {
@@ -482,7 +483,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       
       // 檢查姓名是否已被其他用戶使用
       db.get("SELECT id FROM users WHERE name=? AND id!=?", [trimmedName, id], (err, existing) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (existing) return res.status(400).json({ error: "此中文姓名已被其他用戶使用，請使用不同的姓名" });
         
         const now = new Date().toISOString();
@@ -490,7 +491,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           "UPDATE users SET name=?, name_last_changed=? WHERE id=?",
           [trimmedName, now, id],
           function(err) {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
             res.json({ 
               ok: true, 
               message: "中文姓名已更新",
@@ -516,7 +517,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       "UPDATE users SET profile_completed=1 WHERE username=?",
       [username],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) {
           return res.status(404).json({ error: "用戶不存在" });
         }

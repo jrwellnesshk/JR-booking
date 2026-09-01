@@ -1,3 +1,4 @@
+const { serverError } = require('../services/httpResp');
 ﻿
 const express = require('express');
 const router = express.Router();
@@ -175,7 +176,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, message: '病歷和療程進度已成功上傳', medicalRecordId });
     } catch (error) {
       console.error('上傳病歷失敗:', error.message);
-      res.status(500).json({ error: '上傳病歷失敗', details: error.message });
+      res.status(500).json({ error: '上傳病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -213,7 +214,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, data: withPhotos });
     } catch (error) {
       console.error('取得預約病歷失敗:', error.message);
-      res.status(500).json({ error: '取得病歷失敗', details: error.message });
+      res.status(500).json({ error: '取得病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -268,7 +269,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, message: '病歷已更新', medicalRecordId: record_id });
     } catch (error) {
       console.error('更新病歷失敗:', error.message);
-      res.status(500).json({ error: '更新病歷失敗', details: error.message });
+      res.status(500).json({ error: '更新病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -297,7 +298,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, message: '相片已刪除' });
     } catch (error) {
       console.error('刪除相片失敗:', error.message);
-      res.status(500).json({ error: '刪除相片失敗', details: error.message });
+      res.status(500).json({ error: '刪除相片失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -335,7 +336,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, data: withPhotos });
     } catch (error) {
       console.error('取得客戶病歷歷史失敗:', error.message);
-      res.status(500).json({ error: '取得病歷失敗', details: error.message });
+      res.status(500).json({ error: '取得病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -379,7 +380,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, message: '療程進度已新增', medicalRecordId: record_id });
     } catch (error) {
       console.error('新增療程進度失敗:', error.message);
-      res.status(500).json({ error: '新增療程進度失敗', details: error.message });
+      res.status(500).json({ error: '新增療程進度失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -391,7 +392,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       "SELECT mr.*, u.name as doctor_name, b.appointment_date, b.appointment_time FROM medical_records mr JOIN users u ON mr.doctor_user_id = u.id JOIN bookings b ON mr.booking_id = b.id WHERE mr.user_id=? ORDER BY mr.record_date DESC",
       [user_id],
       (err, records) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, data: records });
       }
     );
@@ -406,7 +407,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       "SELECT tp.* FROM treatment_progress tp JOIN medical_records mr ON tp.medical_record_id = mr.id WHERE mr.id=? AND mr.user_id=? ORDER BY tp.progress_date ASC",
       [record_id, user_id],
       (err, progress) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, data: progress });
       }
     );
@@ -418,7 +419,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     const { record_id } = req.params;
 
     db.get("SELECT audio_file_path FROM medical_records WHERE id=? AND user_id= ?", [record_id, user_id], (err, record) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!record || !record.audio_file_path) {
         return res.status(404).json({ error: '錄音檔案不存在或無權限' });
       }
@@ -470,7 +471,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, data: withPhotos });
     } catch (error) {
       console.error('取得 booking 病歷失敗:', error.message);
-      res.status(500).json({ error: '取得病歷失敗', details: error.message });
+      res.status(500).json({ error: '取得病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -533,7 +534,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, message: '療程進度已記錄', medicalRecordId });
     } catch (error) {
       console.error('記錄療程進度失敗:', error.message);
-      res.status(500).json({ error: '記錄療程進度失敗', details: error.message });
+      res.status(500).json({ error: '記錄療程進度失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -677,7 +678,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, data: result });
     } catch (error) {
       console.error('AI 分析病歴失敗:', error.message);
-      res.status(500).json({ error: 'AI 分析病歴失敗', details: error.message });
+      res.status(500).json({ error: 'AI 分析病歴失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -738,7 +739,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       res.json({ ok: true, total: withPhotos.length, data: withPhotos });
     } catch (error) {
       console.error('取得全部病歷失敗:', error.message);
-      res.status(500).json({ error: '取得病歷失敗', details: error.message });
+      res.status(500).json({ error: '取得病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
     }
   });
 
@@ -746,7 +747,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
   router.get('/admin/records/:record_id/audio', authorizeRole(['admin', 'staff']), (req, res) => {
     const { record_id } = req.params;
     db.get("SELECT audio_file_path FROM medical_records WHERE id=?", [record_id], (err, record) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!record || !record.audio_file_path) {
         return res.status(404).json({ error: '錄音檔案不存在' });
       }

@@ -26,12 +26,18 @@ const CLINIC_INFO = {
   email: 'info@potinhk.com'
 };
 
+// 寄件人電郵：以 EMAIL_USER 為準；未設定時退回診所官方電郵（唔好再用個人 Gmail）
+const SENDER_EMAIL = process.env.EMAIL_USER || CLINIC_INFO.email;
+if (!process.env.EMAIL_USER) {
+  console.warn('⚠️ EMAIL_USER 未設定，寄件人將使用診所官方電郵:', SENDER_EMAIL, '（建議喺 .env 設 EMAIL_USER / EMAIL_PASS 以正常發送個人化郵件）');
+}
+
 /**
  * 發送驗證碼郵件（忘記密碼用）
  */
 async function sendVerificationCode(to, code, username) {
   const mailOptions = {
-    from: `"${CLINIC_INFO.name}" <${process.env.EMAIL_USER}>`,
+    from: `"${CLINIC_INFO.name}" <${SENDER_EMAIL}>`,
     to: to,
     subject: `【${CLINIC_INFO.name}】密碼重設驗證碼`,
     html: `
@@ -101,7 +107,7 @@ async function sendVerificationCode(to, code, username) {
  */
 async function sendBookingConfirmation(to, booking) {
   const mailOptions = {
-    from: `"${CLINIC_INFO.name}" <${process.env.EMAIL_USER || 'a8006300@gmail.com'}>`,
+    from: `"${CLINIC_INFO.name}" <${SENDER_EMAIL}>`,
     to: to,
     subject: `【${CLINIC_INFO.name}】預約確認 - ${booking.date} ${booking.time}`,
     html: `
@@ -196,7 +202,7 @@ async function sendBookingConfirmation(to, booking) {
  */
 async function sendBookingUpdate(to, oldBooking, newBooking) {
   const mailOptions = {
-    from: `"${CLINIC_INFO.name}" <${process.env.EMAIL_USER || 'a8006300@gmail.com'}>`,
+    from: `"${CLINIC_INFO.name}" <${SENDER_EMAIL}>`,
     to: to,
     subject: `【${CLINIC_INFO.name}】預約更改通知 - ${newBooking.date} ${newBooking.time}`,
     html: `
@@ -280,7 +286,7 @@ async function sendBookingUpdate(to, oldBooking, newBooking) {
  */
 async function sendBookingCancellation(to, booking) {
   const mailOptions = {
-    from: `"${CLINIC_INFO.name}" <${process.env.EMAIL_USER || 'a8006300@gmail.com'}>`,
+    from: `"${CLINIC_INFO.name}" <${SENDER_EMAIL}>`,
     to: to,
     subject: `【${CLINIC_INFO.name}】預約取消通知 - ${booking.date} ${booking.time}`,
     html: `
@@ -361,7 +367,7 @@ async function sendBookingCancellation(to, booking) {
  */
 async function sendWelcomeEmail(to, username, name) {
   const mailOptions = {
-    from: `"${CLINIC_INFO.name}" <${process.env.EMAIL_USER || 'a8006300@gmail.com'}>`,
+    from: `"${CLINIC_INFO.name}" <${SENDER_EMAIL}>`,
     to: to,
     subject: `【${CLINIC_INFO.name}】歡迎加入！`,
     html: `

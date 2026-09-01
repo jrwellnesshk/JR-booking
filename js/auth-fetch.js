@@ -27,7 +27,7 @@
     // 登入/註冊/驗證碼等公開端點不需 token（但登出需要，故排除）
     // 注意：/api/doctors、/api/time-slots 僅「查詢（GET）」屬公開；寫入（POST/PUT/DELETE）必須帶 token，
     // 否則管理員後台嘅醫師管理／時段儲存會因缺少 Authorization 而靜默 401
-    var isPublic = /\/api\/auth\/(?!logout)|logout-all|\/api\/login|\/api\/register|\/api\/captcha|\/register\/check|\/api\/find-user-id|\/api\/reset|\/api\/send-reset-code|\/api\/server-time|\/api\/time-slots|\/api\/timeslots|\/api\/services|\/api\/doctors|\/api\/faqs|\/api\/chat|\/api\/holidays|\/api\/weather|\/api\/triage\/questions|\/api\/triage\/doctors|\/api\/notifications\/solar-terms\/upcoming|\/api\/notifications\/holidays\/upcoming|\/api\/ai\//.test(url);
+    var isPublic = /\/api\/auth\/(login|register|captcha|send-reset-code|reset-password-with-code)|\/api\/login|\/api\/register|\/api\/captcha|\/register\/check|\/api\/find-user-id|\/api\/send-reset-code|\/api\/server-time|\/api\/time-slots|\/api\/timeslots|\/api\/services|\/api\/doctors|\/api\/faqs|\/api\/chat|\/api\/holidays|\/api\/weather|\/api\/triage\/questions|\/api\/triage\/doctors|\/api\/notifications\/solar-terms\/upcoming|\/api\/notifications\/holidays\/upcoming|\/api\/ai\//.test(url);
     if (method !== 'GET' && /\/api\/(doctors|time-slots|timeslots)/.test(url)) {
       isPublic = false;
     }

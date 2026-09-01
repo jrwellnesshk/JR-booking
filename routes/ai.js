@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * AI 問診路由
  */
@@ -20,7 +21,7 @@ module.exports = (db) => {
   router.get("/categories", (req, res) => {
     const lang = req.query.lang || 'zh_hant';
     db.all("SELECT * FROM symptom_categories ORDER BY id", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       const categories = rows.map(row => ({
         id: row.id,
@@ -51,7 +52,7 @@ module.exports = (db) => {
       "SELECT * FROM ai_questions WHERE category_id=? ORDER BY question_order LIMIT 1",
       [category_id],
       (err, question) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (!question) return res.status(404).json({ error: "找不到問題" });
 
         // 取得該問題的答案選項
@@ -59,7 +60,7 @@ module.exports = (db) => {
           "SELECT * FROM ai_answer_options WHERE question_id=?",
           [question.id],
           (err, options) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
 
             res.json({
               session_id,
@@ -127,7 +128,7 @@ module.exports = (db) => {
                 "SELECT * FROM ai_questions WHERE id=?",
                 [nextQuestionId],
                 (err, nextQuestion) => {
-                  if (err) return res.status(500).json({ error: err.message });
+                  if (err) return serverError(res, err);
                   if (!nextQuestion) {
                     // 沒有下一題，返回結束狀態
                     return res.json({
@@ -142,7 +143,7 @@ module.exports = (db) => {
                     "SELECT * FROM ai_answer_options WHERE question_id=?",
                     [nextQuestionId],
                     (err, options) => {
-                      if (err) return res.status(500).json({ error: err.message });
+                      if (err) return serverError(res, err);
 
                       res.json({
                         completed: false,
@@ -196,7 +197,7 @@ module.exports = (db) => {
       "SELECT SUM(score) as total_score FROM ai_consultation_logs WHERE session_id=?",
       [session_id],
       (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
 
         const totalScore = rows[0]?.total_score || 0;
 
@@ -205,7 +206,7 @@ module.exports = (db) => {
           "SELECT * FROM ai_recommendations WHERE category_id=? AND min_score<=? AND max_score>=?",
           [category_id, totalScore, totalScore],
           (err, recommendation) => {
-            if (err) return res.status(500).json({ error: err.message });
+            if (err) return serverError(res, err);
 
             if (!recommendation) {
               return res.json({

@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 官網內容管理（管理員專用）
  * 公告 / 影片 / 社交媒體連結 / 評價審核 / 討論區管理
@@ -56,7 +57,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   router.get('/announcements', ...adminOnly, (req, res) => {
     db.all('SELECT * FROM announcements ORDER BY publish_date DESC, id DESC', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
@@ -72,7 +73,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       [title.trim().slice(0, 120), (category || '診所資訊').slice(0, 20), content.trim().slice(0, 5000),
        publish_date || null, is_active === false || is_active === 0 ? 0 : 1],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID });
       }
     );
@@ -87,7 +88,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       [title.trim().slice(0, 120), (category || '診所資訊').slice(0, 20), content.trim().slice(0, 5000),
        publish_date || null, is_active === false || is_active === 0 ? 0 : 1, id],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) return res.status(404).json({ error: '公告不存在' });
         res.json({ ok: true });
       }
@@ -98,7 +99,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.run('DELETE FROM announcements WHERE id=?', [id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '公告不存在' });
       res.json({ ok: true });
     });
@@ -108,7 +109,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   router.get('/videos', ...adminOnly, (req, res) => {
     db.all('SELECT * FROM videos ORDER BY id DESC', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
@@ -124,7 +125,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       [title.trim().slice(0, 120), src, youtube_id || null, file_path || null,
        (description || '').slice(0, 500), is_active === false || is_active === 0 ? 0 : 1],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID });
       }
     );
@@ -140,7 +141,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       [title.trim().slice(0, 120), src, youtube_id || null, file_path || null,
        (description || '').slice(0, 500), is_active === false || is_active === 0 ? 0 : 1, id],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) return res.status(404).json({ error: '影片不存在' });
         res.json({ ok: true });
       }
@@ -151,7 +152,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.run('DELETE FROM videos WHERE id=?', [id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '影片不存在' });
       res.json({ ok: true });
     });
@@ -167,7 +168,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   router.get('/social', ...adminOnly, (req, res) => {
     db.all('SELECT setting_key, setting_value FROM clinic_settings', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       const map = {};
       (rows || []).forEach(r => { map[r.setting_key] = r.setting_value; });
       const out = {};
@@ -187,7 +188,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       );
       pending.forEach(k => stmt.run(k, String(body[k]).slice(0, 300)));
       stmt.finalize((err) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true });
       });
     });
@@ -197,7 +198,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   router.get('/reviews', ...adminOnly, (req, res) => {
     db.all('SELECT * FROM reviews ORDER BY created_at DESC', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
@@ -210,7 +211,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       return res.status(400).json({ error: '無效狀態' });
     }
     db.run('UPDATE reviews SET status=? WHERE id=?', [status, id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '評價不存在' });
       res.json({ ok: true });
     });
@@ -220,7 +221,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.run('DELETE FROM reviews WHERE id=?', [id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '評價不存在' });
       res.json({ ok: true });
     });
@@ -234,7 +235,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     db.serialize(() => {
       db.run('DELETE FROM forum_replies WHERE post_id=?', [id]);
       db.run('DELETE FROM forum_posts WHERE id=?', [id], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true });
       });
     });
@@ -244,7 +245,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.get('SELECT post_id FROM forum_replies WHERE id=?', [id], (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       db.run('DELETE FROM forum_replies WHERE id=?', [id], function (err2) {
         if (err2) return res.status(500).json({ error: err2.message });
         if (row) db.run('UPDATE forum_posts SET reply_count=MAX(0,reply_count-1) WHERE id=?', [row.post_id]);
@@ -295,7 +296,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.get('/texts', ...adminOnly, (req, res) => {
     ensureDefaultTexts(() => {
       db.all('SELECT id, text_key, text_value, section FROM site_texts ORDER BY section, id', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json(rows || []);
       });
     });
@@ -312,7 +313,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) return res.status(409).json({ error: '此文字名稱已存在' });
-          return res.status(500).json({ error: err.message });
+          return serverError(res, err);
         }
         res.json({ ok: true, id: this.lastID });
       }
@@ -328,7 +329,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       'UPDATE site_texts SET text_value=?, section=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
       [(text_value || '').slice(0, 5000), (section || '一般').slice(0, 20), id],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) return res.status(404).json({ error: '文字不存在' });
         res.json({ ok: true });
       }
@@ -340,7 +341,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.run('DELETE FROM site_texts WHERE id=?', [id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '文字不存在' });
       res.json({ ok: true });
     });
@@ -351,7 +352,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 全部案例（管理員）
   router.get('/cases', ...adminOnly, (req, res) => {
     db.all('SELECT * FROM cases ORDER BY created_at DESC', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
@@ -367,7 +368,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         (summary || '').slice(0, 2000), (duration || '').slice(0, 100), (outcome || '').slice(0, 2000),
         (anonymous_name || '').slice(0, 100), is_published ? 1 : 0],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID });
       }
     );
@@ -388,7 +389,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         summary || null, duration || null, outcome || null, anonymous_name || null,
         is_published === undefined ? null : (is_published ? 1 : 0), id],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) return res.status(404).json({ error: '案例不存在' });
         res.json({ ok: true });
       }
@@ -400,7 +401,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.run('DELETE FROM cases WHERE id=?', [id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: '案例不存在' });
       res.json({ ok: true });
     });

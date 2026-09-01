@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 通知管理路由
  * 包括：通知設定、節日管理、發送記錄、測試發送
@@ -29,7 +30,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(settings);
     } catch (error) {
       console.error('獲取通知設定失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -40,7 +41,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('更新通知設定失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -53,7 +54,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(holidays);
     } catch (error) {
       console.error('獲取節日列表失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -65,7 +66,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('更新節日失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -76,7 +77,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('新增節日失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -88,7 +89,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('刪除節日失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -102,7 +103,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(logs);
     } catch (error) {
       console.error('獲取發送記錄失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -113,13 +114,13 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       db.run('DELETE FROM notification_logs WHERE id = ?', [id], function(err) {
         if (err) {
           console.error('刪除發送記錄失敗:', err);
-          return res.status(500).json({ error: err.message });
+          return serverError(res, err);
         }
         res.json({ success: true, message: '記錄已刪除' });
       });
     } catch (error) {
       console.error('刪除發送記錄失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -129,13 +130,13 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       db.run('DELETE FROM notification_logs', function(err) {
         if (err) {
           console.error('清空發送記錄失敗:', err);
-          return res.status(500).json({ error: err.message });
+          return serverError(res, err);
         }
         res.json({ success: true, message: '所有記錄已清空' });
       });
     } catch (error) {
       console.error('清空發送記錄失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -154,7 +155,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('測試發送失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -167,7 +168,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json({ success: true, message: '所有通知任務已執行' });
     } catch (error) {
       console.error('執行通知任務失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -178,7 +179,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result || { success: true, message: '節氣通知已執行' });
     } catch (error) {
       console.error('執行節氣通知失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -189,7 +190,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result || { success: true, message: '節日通知已執行' });
     } catch (error) {
       console.error('執行節日通知失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -200,7 +201,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result || { success: true, message: '天氣通知已執行' });
     } catch (error) {
       console.error('執行天氣通知失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -211,7 +212,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result || { success: true, message: '預約提醒已執行' });
     } catch (error) {
       console.error('執行預約提醒失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -224,7 +225,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(terms);
     } catch (error) {
       console.error('獲取節氣列表失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -236,7 +237,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('更新節氣訊息失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -248,7 +249,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(result);
     } catch (error) {
       console.error('重置節氣訊息失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -260,7 +261,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(terms);
     } catch (error) {
       console.error('獲取即將到來的節氣失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -275,7 +276,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       res.json(upcoming);
     } catch (error) {
       console.error('獲取即將到來的節日失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 
@@ -293,7 +294,7 @@ module.exports = (db, notificationScheduler, { requireAuth, requireRole } = {}) 
       });
     } catch (error) {
       console.error('獲取用戶統計失敗:', error);
-      res.status(500).json({ error: error.message });
+      serverError(res, error);
     }
   });
 

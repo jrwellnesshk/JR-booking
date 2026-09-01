@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 管理員路由
  * 包括：用戶管理（需二次驗證）、FAQ管理、系統狀態、審計日誌
@@ -26,7 +27,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
     
     db.get("SELECT password, role FROM users WHERE id=?", [req.user.id], (err, admin) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       if (!admin || (admin.role !== 'admin' && admin.role !== 'staff')) {
         return res.status(403).json({ error: "無權限執行此操作" });
@@ -94,7 +95,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       "SELECT id, username, phone, email FROM users WHERE username=? OR phone=?",
       [username, phone],
       (err, existing) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (existing) {
           if (existing.username === username) return res.status(400).json({ error: "用戶名已存在" });
           if (existing.phone === phone) return res.status(400).json({ error: "電話號碼已被使用" });
@@ -152,7 +153,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     
     // 檢查用戶是否存在
     db.get("SELECT * FROM users WHERE id=?", [id], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(404).json({ error: "用戶不存在" });
 
       // 🔒 提權防護：員工不得修改管理員帳戶，亦不得將任何人提升為管理員
@@ -221,7 +222,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
       const hashedPassword = hashPassword(newPassword);
       db.run("UPDATE users SET password=?, must_change_password=1 WHERE id=?", [hashedPassword, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) return res.status(404).json({ error: "用戶不存在" });
         // 自動生成時回傳臨時密碼供職員即時告知客人
         res.json({
@@ -243,7 +244,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
     
     db.run("DELETE FROM users WHERE id=?", [id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: "用戶不存在" });
       res.json({ ok: true, message: "用戶已刪除" });
     });
@@ -261,7 +262,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     
     // 先獲取用戶當前資料
     db.get("SELECT name, username FROM users WHERE id = ?", [id], (err, currentUser) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!currentUser) return res.status(404).json({ error: "用戶不存在" });
 
       // 🔒 提權防護：員工不得修改管理員帳戶資料
@@ -311,7 +312,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         `UPDATE users SET ${updateFields} WHERE id = ?`,
         params,
         function(err) {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           if (this.changes === 0) return res.status(404).json({ error: "用戶不存在" });
           
           // 同步更新預約記錄中的用戶姓名
@@ -390,7 +391,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   // 取得所有常見問題（管理員）
   router.get("/faqs", requireAuth, requireRole('admin'), (req, res) => {
     db.all("SELECT * FROM faqs ORDER BY display_order, id", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ faqs: rows });
     });
   });
@@ -407,7 +408,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       "INSERT INTO faqs (question, answer, display_order, is_active) VALUES (?, ?, ?, ?)",
       [question, answer, display_order || 0, is_active ? 1 : 0],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID });
       }
     );
@@ -422,7 +423,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       "UPDATE faqs SET question=?, answer=?, display_order=?, is_active=? WHERE id=?",
       [question, answer, display_order || 0, is_active ? 1 : 0, id],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) {
           return res.status(404).json({ error: "找不到該常見問題" });
         }
@@ -440,7 +441,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       "UPDATE faqs SET is_active=? WHERE id=?",
       [is_active ? 1 : 0, id],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) {
           return res.status(404).json({ error: "找不到該常見問題" });
         }
@@ -454,7 +455,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     const { id } = req.params;
     
     db.run("DELETE FROM faqs WHERE id=?", [id], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) {
         return res.status(404).json({ error: "找不到該常見問題" });
       }
@@ -473,7 +474,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
     // 驗證是醫師角色
     db.get("SELECT id, role, name FROM users WHERE id=? AND role='doctor'", [userId], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(403).json({ error: "無此權限" });
 
       // 優先使用 user_id 匹配 bookings，如果沒有則使用姓名（兼容舊數據）
@@ -509,7 +510,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
     // 驗證身份
     db.get("SELECT id, role, name FROM users WHERE id=?", [req.user.id], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(403).json({ error: "無此權限" });
 
       let query = "SELECT b.*, s.name as service_name FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE 1=1";
@@ -547,7 +548,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
     // 驗證是醫師或員工角色
     db.get("SELECT id, role, name FROM users WHERE id=? AND role IN ('doctor', 'staff', 'admin')", [userId], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(403).json({ error: "無此權限" });
 
       // 由 doctors 表取得醫師姓名（員工不受限，可更新任何預約）
@@ -585,7 +586,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     const userId = (req.user.role === 'admin' && req.query.userId) ? req.query.userId : req.user.id;
 
     db.get("SELECT id, username, name, name_en, phone, email, role FROM users WHERE id=? AND role='doctor'", [userId], (err, user) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!user) return res.status(404).json({ error: "醫師帳號不存在" });
 
       db.get("SELECT id, name, specialty FROM doctors WHERE user_id=? AND is_active=1", [userId], (docErr, doctor) => {
@@ -627,7 +628,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     params.push(parseInt(limit));
     
     db.all(query, params, (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows);
     });
   });
@@ -650,7 +651,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     `;
     
     db.all(query, [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows);
     });
   });
@@ -682,7 +683,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     `;
 
     db.all(sql, [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
 
       // 🔒 方案B：非訂閱收入只根據管理員匯入嘅 Excel 資料（income_adjustments）；
       // 系統預約金額只作「參考」顯示，唔會計入任何收入總數
@@ -789,7 +790,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       FROM exceptions e LEFT JOIN users u ON u.id = e.doctor_user_id
       ORDER BY e.exception_date DESC, e.id DESC
     `, [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
@@ -1010,7 +1011,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
        ORDER BY e.exception_date ASC`,
       [targetId, todayStr],
       (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, data: rows || [] });
       }
     );
@@ -1114,7 +1115,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     const id = Number(req.params.id);
     const todayStr = new Date().toLocaleDateString('sv-SE');
     db.get("SELECT * FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (err, exc) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
       // 管理員可刪任何；醫師只可刪自己
       if (req.user.role !== 'admin' && Number(exc.doctor_user_id) !== Number(req.user.id)) {
@@ -1146,7 +1147,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       LIMIT 500
     `;
     db.all(sql, [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       const statusLabel = {
         'pending': '待確認', 'confirmed': '預約中', 'in-progress': '就診中',
         'in-treatment': '治療中', 'visited': '已到訪', 'dispensing': '配藥中',
@@ -1167,7 +1168,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   // 刪除異常
   router.delete("/exceptions/:id", requireAuth, requireRole('admin'), (req, res) => {
     db.run("DELETE FROM exceptions WHERE id=?", [req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true });
     });
   });
@@ -1359,7 +1360,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   // 取得收入調整記錄（結合系統收入報表）
   router.get("/income/adjustments", requireAuth, requireRole('admin'), (req, res) => {
     db.all("SELECT * FROM income_adjustments ORDER BY adjustment_date DESC, id DESC LIMIT 500", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
@@ -1367,7 +1368,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   // 🗑️ 刪除單筆匯入紀錄（方便重複匯入前清理）
   router.delete("/income/adjustments/:id", requireAuth, requireRole('admin'), (req, res) => {
     db.run("DELETE FROM income_adjustments WHERE id=?", [Number(req.params.id)], function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (this.changes === 0) return res.status(404).json({ error: "紀錄不存在" });
       res.json({ ok: true });
     });

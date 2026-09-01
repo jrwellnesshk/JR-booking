@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 官網內容管理路由
  * 包括：診所公告、影片（YouTube/自訂上傳）、社交媒體連結、客戶評價、討論區、頭像上傳
@@ -80,7 +81,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       `SELECT id, title, category, content, publish_date, created_at
        FROM announcements WHERE is_active=1 ORDER BY publish_date DESC, id DESC LIMIT 10`,
       [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json(rows || []);
       }
     );
@@ -92,7 +93,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       `SELECT id, title, source, youtube_id, file_path, description, created_at
        FROM videos WHERE is_active=1 ORDER BY id DESC LIMIT 12`,
       [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json(rows || []);
       }
     );
@@ -103,7 +104,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   router.get('/social', (req, res) => {
     db.all('SELECT setting_key, setting_value FROM clinic_settings', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       const map = {};
       (rows || []).forEach(r => { map[r.setting_key] = r.setting_value; });
       const out = {};
@@ -115,7 +116,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 網站動態文字（管理員編輯過嘅文字）
   router.get('/texts', (req, res) => {
     db.all('SELECT text_key, text_value, section FROM site_texts', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       const map = {};
       (rows || []).forEach(r => { map[r.text_key] = r.text_value; });
       res.json(map);
@@ -128,7 +129,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       `SELECT id, user_name, avatar, rating, service, content, created_at
        FROM reviews WHERE status='approved' ORDER BY created_at DESC LIMIT 20`,
       [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json(rows || []);
       }
     );
@@ -145,7 +146,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
        VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
       [req.user.id, req.user.name, req.user.avatar || null, r, (service || '').slice(0, 50), content.trim().slice(0, 2000)],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID, message: '評價已提交，待管理員審核' });
       }
     );
@@ -164,7 +165,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
        FROM forum_posts p LEFT JOIN users u ON u.id=p.user_id
        ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT 100`,
       [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         (rows || []).forEach(r => { if (!r.avatar && r.user_avatar) r.avatar = r.user_avatar; });
         res.json(rows || []);
       }
@@ -180,7 +181,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
               p.reply_count, p.is_pinned, p.created_at
        FROM forum_posts p WHERE p.id=?`,
       [id], (err, post) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (!post) return res.status(404).json({ error: '帖子不存在' });
         db.all(
           `SELECT r.id, r.user_name, r.avatar, r.content, r.created_at,
@@ -210,7 +211,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       [req.user.id, req.user.name, avatar, title.trim().slice(0, 80), content.trim().slice(0, 5000),
        (category || '中醫問題').slice(0, 20)],
       function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID });
       }
     );
@@ -223,7 +224,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     if (isNaN(postId)) return res.status(400).json({ error: '無效帖子' });
     if (!content || !content.trim()) return res.status(400).json({ error: '請填寫回覆內容' });
     db.get('SELECT id FROM forum_posts WHERE id=?', [postId], (err, post) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       if (!post) return res.status(404).json({ error: '帖子不存在' });
       const avatar = req.user.avatar || null;
       db.run(
@@ -245,7 +246,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     if (!req.file) return res.status(400).json({ error: '請選擇圖片' });
     const url = '/uploads/avatars/' + req.file.filename;
     db.run('UPDATE users SET avatar=? WHERE id=?', [url, req.user.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true, avatar: url });
     });
   });
@@ -257,7 +258,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       return res.status(400).json({ error: '無效頭像' });
     }
     db.run('UPDATE users SET avatar=? WHERE id=?', [avatar, req.user.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ ok: true, avatar });
     });
   });
@@ -270,7 +271,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
        FROM cases WHERE is_published=1 ORDER BY created_at DESC LIMIT 100`,
       [],
       (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json(rows || []);
       }
     );

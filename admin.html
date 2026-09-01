@@ -8,7 +8,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>寶天醫館 - 管理員後台</title>
-    <link rel="icon" type="image/svg+xml" href="picture/favicon.svg" />
+    <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
@@ -5215,9 +5215,14 @@
         class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
       >
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-          <h3 class="text-xl font-semibold text-amber-600 mb-2">
-            <i class="fas fa-shield-alt mr-2"></i>更改密碼
-          </h3>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="text-xl font-semibold text-amber-600">
+              <i class="fas fa-shield-alt mr-2"></i>更改密碼
+            </h3>
+            <button @click="closeForceChangePassword" class="text-slate-400 hover:text-slate-600 text-2xl leading-none" title="取消">
+              &times;
+            </button>
+          </div>
           <p class="text-sm text-slate-600 mb-4">
             系統偵測到您的帳號為首次登入或密碼已由管理員重置，請設定新密碼以確保帳號安全。管理員密碼需至少 10 個字元，且須同時包含大寫、小寫英文字母及數字，並不可使用常見密碼。
           </p>
@@ -5251,6 +5256,12 @@
             >
               <i v-if="isUpdatingForcePassword" class="fas fa-spinner fa-spin mr-2"></i>
               確認修改
+            </button>
+            <button
+              @click="closeForceChangePassword"
+              class="w-full mt-2 bg-slate-200 text-slate-700 py-2 rounded-lg hover:bg-slate-300 transition-colors"
+            >
+              取消（稍後再改 · 下次登入會再提示）
             </button>
           </div>
         </div>
@@ -7102,6 +7113,13 @@ async handleLogin() {
               this.loginError = "連接伺服器失敗";
               this.loadCaptcha();
             }
+          },
+
+          // 取消強制改密碼彈窗（旗標未清，下次登入仍會再提示）
+          closeForceChangePassword() {
+            this.showForceChangePasswordModal = false;
+            this.isLoggedIn = true;
+            this.loadDashboard();
           },
 
           // 強制修改密碼：修改自己密碼並解除旗標

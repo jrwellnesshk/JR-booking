@@ -1,3 +1,4 @@
+const { serverError } = require("../services/httpResp");
 /**
  * 設定路由
  * 包括：診所設定、API設定、醫師管理、服務管理
@@ -16,7 +17,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 取得診所設定
   router.get("/clinic", (req, res) => {
     db.all("SELECT * FROM clinic_settings", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       const settings = {};
       rows.forEach(row => {
@@ -80,7 +81,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     });
     
     stmt.finalize(err => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ success: true, message: "診所設定已更新" });
     });
   });
@@ -90,7 +91,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 取得 API 設定
   router.get("/api", (req, res) => {
     db.all("SELECT * FROM api_settings", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       const settings = {};
       rows.forEach(row => {
@@ -128,7 +129,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     });
     
     stmt.finalize(err => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json({ success: true, message: "API 設定已更新" });
     });
   });
@@ -138,7 +139,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 取得所有醫師
   router.get("/doctors", (req, res) => {
     db.all("SELECT * FROM doctors WHERE is_active=1 ORDER BY id ASC", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows);
     });
   });
@@ -154,7 +155,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       "INSERT INTO doctors (name, specialty, is_active) VALUES (?, ?, 1)",
       [name, specialty],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true, id: this.lastID });
       }
     );
@@ -169,7 +170,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       "UPDATE doctors SET name=?, specialty=? WHERE id=?",
       [name, specialty, id],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true });
       }
     );
@@ -183,7 +184,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       "UPDATE doctors SET is_active=0 WHERE id=?",
       [id],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true });
       }
     );
@@ -194,7 +195,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 取得所有服務
   router.get("/services", (req, res) => {
     db.all("SELECT * FROM services ORDER BY id ASC", [], (err, rows) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       res.json(rows);
     });
   });
@@ -220,7 +221,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         "INSERT INTO services (id, name, duration, price) VALUES (?, ?, ?, ?)",
         [newId, name, duration, price || 0],
         function(err) {
-          if (err) return res.status(500).json({ error: err.message });
+          if (err) return serverError(res, err);
           res.json({ success: true, id: newId });
         }
       );
@@ -236,7 +237,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       "UPDATE services SET name=?, duration=?, price=? WHERE id=?",
       [name, duration, price || 0, id],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         if (this.changes === 0) {
           return res.status(404).json({ error: "服務不存在" });
         }
@@ -253,7 +254,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       "DELETE FROM services WHERE id=?",
       [id],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true });
       }
     );
@@ -267,7 +268,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const { key } = req.params;
     
     db.get("SELECT setting_value FROM clinic_settings WHERE setting_key = ?", [key], (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
+      if (err) return serverError(res, err);
       
       if (!row) {
         // 如果設定不存在，返回預設值
@@ -291,7 +292,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       `INSERT OR REPLACE INTO clinic_settings (setting_key, setting_value, updated_at) VALUES (?, ?, datetime('now', 'localtime'))`,
       [key, String(value)],
       function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return serverError(res, err);
         res.json({ success: true, key, value: String(value) });
       }
     );
