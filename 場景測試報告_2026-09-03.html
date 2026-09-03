@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>寶天醫館預約系統 — 兩輪場景測試報告</title>
+<style>
+  :root{
+    --cream:#F0E4D2; --peach:#EFD2BD; --pink-soft:#F5E5D5; --sage-soft:#E5E8D9; --sage-border:#CCD2BC;
+    --sage:#7E9476; --sage-deep:#3E5240; --cocoa:#5D4037; --ink:#3E2A1E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:var(--ink);background:var(--cream);line-height:1.7}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 28px 64px}
+  header{background:linear-gradient(135deg,var(--peach),var(--pink-soft));border-radius:22px;padding:30px 34px;box-shadow:0 10px 30px rgba(93,64,55,.12)}
+  header h1{margin:0 0 6px;font-size:26px;font-family:"Noto Serif TC",serif;color:var(--ink)}
+  .meta{display:flex;flex-wrap:wrap;gap:10px 22px;font-size:13.5px;color:var(--cocoa);margin-top:10px}
+  .meta b{color:var(--sage-deep)}
+  .score{display:flex;gap:18px;margin:22px 0 30px;flex-wrap:wrap}
+  .card{flex:1;min-width:200px;background:#fff;border:1px solid var(--sage-border);border-radius:18px;padding:18px 20px;box-shadow:0 6px 18px rgba(93,64,55,.08)}
+  .card .n{font-size:34px;font-family:"Noto Serif TC",serif;color:var(--sage)}
+  .card .l{font-size:13px;color:var(--cocoa)}
+  .badge{display:inline-block;background:var(--sage);color:#fff;border-radius:999px;padding:4px 14px;font-size:13px;font-weight:600}
+  h2{font-family:"Noto Serif TC",serif;color:var(--sage-deep);border-left:5px solid var(--sage);padding-left:12px;margin-top:38px;font-size:20px}
+  table{width:100%;border-collapse:collapse;margin-top:14px;background:#fff;border-radius:14px;overflow:hidden;font-size:13.5px;box-shadow:0 4px 14px rgba(93,64,55,.07)}
+  th{background:var(--sage-soft);color:var(--sage-deep);text-align:left;padding:10px 12px;font-weight:600}
+  td{padding:9px 12px;border-top:1px solid var(--sage-border)}
+  tr:nth-child(even) td{background:#FBF6EF}
+  .ok{color:var(--sage-deep);font-weight:700}
+  .excl{color:var(--cocoa);font-size:12px}
+  .note{background:#fff;border:1px dashed var(--sage);border-radius:14px;padding:16px 20px;margin-top:14px;font-size:14px}
+  .note b{color:var(--sage-deep)}
+  .excl-box{background:var(--pink-soft);border-radius:14px;padding:16px 20px;margin-top:14px;font-size:14px;color:var(--cocoa)}
+  footer{margin-top:40px;text-align:center;font-size:12.5px;color:var(--cocoa)}
+  code{background:var(--sage-soft);padding:2px 6px;border-radius:6px;font-size:12.5px;color:var(--sage-deep)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>寶天醫館預約系統 — 兩輪場景測試報告</h1>
+    <div class="meta">
+      <span><b>測試日期：</b>2026-09-03</span>
+      <span><b>環境：</b>沙箱 <code>http://localhost:4900</code>（scenario.db，生產庫零改動）</span>
+      <span><b>規模：</b>2 管理員 / 4 醫師 / 5 員工 / 每日 20 客（共 40）</span>
+    </div>
+    <div class="meta" style="margin-top:6px">
+      <span><b>方式：</b>自動化 E2E（scenario-seed.js + scenario-test.js）</span>
+      <span><b>斷言總數：</b>41 項</span>
+    </div>
+  </header>
+
+  <div class="score">
+    <div class="card"><div class="n">29/29</div><div class="l">場景一：標準營運</div></div>
+    <div class="card"><div class="n">12/12</div><div class="l">場景二：異常 / 邊界</div></div>
+    <div class="card"><div class="n">41/41</div><div class="l">合計 — 全過 ✅</div></div>
+  </div>
+  <p><span class="badge">故意排除：WhatsApp 通知 · 支付 / Stripe</span></p>
+
+  <h2>一、場景數據建模</h2>
+  <table>
+    <tr><th>項目</th><th>設計</th><th>說明</th></tr>
+    <tr><td>管理員</td><td>admin + sc_admin2</td><td>2 人</td></tr>
+    <tr><td>醫師</td><td>sc_doc1–4（周明/吳芳/鄭偉/林秀）</td><td>4 人，同寫入 doctors 表並 linked user_id</td></tr>
+    <tr><td>員工</td><td>sc_staff1–5</td><td>5 人</td></tr>
+    <tr><td>客戶</td><td>sc_cust01–40</td><td>40 人；sc_cust01=家庭戶主；i%4==0 為 family；sc_incomplete 故意 profile_completed=0</td></tr>
+    <tr><td>預約</td><td>40 單（前日+昨日各 20）</td><td>completed 12 / cancelled 3 / no-show 2 / confirmed 2 / in-progress 1（每日）；約半 registered 半 walk-in</td></tr>
+    <tr><td>考勤</td><td>9 人 × 2 日 = 18 筆</td><td>標記 note='SCENARIO_SEED'</td></tr>
+  </table>
+
+  <h2>二、場景一：標準營運（29/29）</h2>
+  <table>
+    <tr><th>#</th><th>測項</th><th>角色</th><th>結果</th></tr>
+    <tr><td>1</td><td>登入客戶 sc_cust01</td><td>客戶</td><td class="ok">✅ 200</td></tr>
+    <tr><td>2</td><td>登入醫師 sc_doc1</td><td>醫師</td><td class="ok">✅ 200</td></tr>
+    <tr><td>3</td><td>登入員工 sc_staff1</td><td>員工</td><td class="ok">✅ 200</td></tr>
+    <tr><td>4</td><td>登入管理員 admin</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>5</td><td>登入副管理員 sc_admin2</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>6</td><td>用戶列表</td><td>管理員</td><td class="ok">✅ 200（58）</td></tr>
+    <tr><td>7</td><td>收入統計</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>8</td><td>異常列表</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>9</td><td>系統狀態</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>10</td><td>公告新增</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>11</td><td>公告修改</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>12</td><td>公告刪除</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>13</td><td>HR 員工名單</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>14</td><td>HR 薪酬計算（2 日考勤）</td><td>管理員</td><td class="ok">✅ 200（11 人）</td></tr>
+    <tr><td>15</td><td>HR 請假審核清單</td><td>管理員</td><td class="ok">✅ 200</td></tr>
+    <tr><td>16</td><td>全預約查看</td><td>員工</td><td class="ok">✅ 200（40）</td></tr>
+    <tr><td>17</td><td>預約狀態更新 → completed</td><td>員工</td><td class="ok">✅ 200</td></tr>
+    <tr><td>18</td><td>HR 上班打卡</td><td>員工</td><td class="ok">✅ 200</td></tr>
+    <tr><td>19</td><td>HR 下班打卡</td><td>員工</td><td class="ok">✅ 200</td></tr>
+    <tr><td>20</td><td>我的考勤狀態</td><td>員工</td><td class="ok">✅ 200</td></tr>
+    <tr><td>21</td><td>我的薪資單</td><td>員工</td><td class="ok">✅ 200</td></tr>
+    <tr><td>22</td><td>我的預約</td><td>醫師</td><td class="ok">✅ 200（10）</td></tr>
+    <tr><td>23</td><td>申請請假</td><td>醫師</td><td class="ok">✅ 200</td></tr>
+    <tr><td>24</td><td>我的請假紀錄</td><td>醫師</td><td class="ok">✅ 200</td></tr>
+    <tr><td>25</td><td>我的排班（全職）</td><td>醫師</td><td class="ok">✅ 403（符合預期）</td></tr>
+    <tr><td>26</td><td>我的預約</td><td>客戶</td><td class="ok">✅ 200（1）</td></tr>
+    <tr><td>27</td><td>建立未來預約</td><td>客戶</td><td class="ok">✅ 200（#41）</td></tr>
+    <tr><td>28</td><td>取消自己可取消預約</td><td>客戶</td><td class="ok">✅ 200</td></tr>
+    <tr><td>29</td><td>取消已完成單被擋</td><td>客戶</td><td class="ok">✅ 400（設計行為）</td></tr>
+  </table>
+
+  <h2>三、場景二：異常 / 邊界（12/12）</h2>
+  <table>
+    <tr><th>#</th><th>測項</th><th>預期</th><th>結果</th><th>代碼</th></tr>
+    <tr><td>1</td><td>錯誤密碼登入</td><td>401</td><td class="ok">✅ 401</td><td>UNAUTHORIZED</td></tr>
+    <tr><td>2</td><td>用戶不存在</td><td>401</td><td class="ok">✅ 401</td><td>—</td></tr>
+    <tr><td>3</td><td>缺驗證碼被擋</td><td>400</td><td class="ok">✅ 400</td><td>—</td></tr>
+    <tr><td>4</td><td>客戶打管理員 API</td><td>403</td><td class="ok">✅ 403</td><td>—</td></tr>
+    <tr><td>5</td><td>預約缺欄位</td><td>400</td><td class="ok">✅ 400</td><td>—</td></tr>
+    <tr><td>6</td><td>過去日期預約</td><td>400</td><td class="ok">✅ 400</td><td>past_date</td></tr>
+    <tr><td>7</td><td>一般會員預約非初體驗</td><td>403</td><td class="ok">✅ 403</td><td>membership_required</td></tr>
+    <tr><td>8</td><td>訪客預約非初體驗</td><td>403</td><td class="ok">✅ 403</td><td>FORBIDDEN</td></tr>
+    <tr><td>9</td><td>醫師改他人單</td><td>403</td><td class="ok">✅ 403</td><td>—</td></tr>
+    <tr><td>10</td><td>未完成資料客戶預約</td><td>403</td><td class="ok">✅ 403</td><td>FORBIDDEN</td></tr>
+    <tr><td>11</td><td>預約時段衝突</td><td>409</td><td class="ok">✅ 409</td><td>overlap</td></tr>
+    <tr><td>12</td><td>連錯鎖定</td><td>429</td><td class="ok">✅ 429</td><td>RATE_LIMITED</td></tr>
+  </table>
+
+  <h2>四、關鍵發現</h2>
+  <div class="note">
+    <b>1. 會員分級閘門綁服務名「初體驗」，唔係 serviceId。</b><br>
+    真實 services 表中 <b>S1『初體驗（一小時）』係唯一初體驗</b>；S3 係『內科開藥』，並非初體驗。訪客只可落初體驗（S1）→ 其他 403；一般會員預約非初體驗 → 403 <code>membership_required</code>；家庭戶主可落所有。此為正確 access control，唔係 bug。
+  </div>
+  <div class="note">
+    <b>2. 所有權與狀態守衛正常：</b>醫師只可改自己單（改他人 → 403）；completed/no-show/cancelled 不可取消（→ 400）；客戶只可取消自己 confirmed/in-progress 單；過去日期、缺欄位、缺驗證碼一律擋截。
+    <br><b>3. 帳戶安全：</b>錯密碼 / 無用戶 → 401；連續約 5 次失敗觸發 application 層鎖定（429 <code>RATE_LIMITED</code>），5 分鐘後自動解鎖。
+    <br><b>4. 全職醫師無兼職時間表 → my-schedule 回 403</b> 屬預期行為，唔係缺陷。
+  </div>
+
+  <div class="excl-box">
+    <b>故意排除項：</b>① WhatsApp 通知（依賴 <code>whatsappService.isConfigured()</code>，不在測試範圍）；② 支付 / Stripe（<code>/api/membership</code> 結帳流程未調用）。
+  </div>
+
+  <h2>五、結論</h2>
+  <p>兩輪場景測試 <b>41/41 全過</b>，涵蓋四角色標準營運全功能，以及登入安全、權限隔離、會員分級、資料完整性、時段衝突、帳戶鎖定等異常邊界。系統 access control 與業務規則經實測確認正確。生產 <code>database.db</code> 全程零改動，沙箱 <code>scenario.db</code> 已清理。</p>
+
+  <footer>寶天醫館預約系統 · 兩輪場景測試報告 · 2026-09-03 · 自動化 E2E 生成</footer>
+</div>
+</body>
+</html>
