@@ -177,6 +177,18 @@
         border:1px solid rgba(139,125,107,.08)!important;
         color:var(--taupe-800)!important;
       }
+      /* 手機版（<768px）：側欄轉為全高抽屜，去除浮起圓角與 margin */
+      @media (max-width: 767px) {
+        aside.bg-slate-900{
+          margin:0!important;
+          border-radius:0!important;
+          min-height:100vh!important;
+          box-shadow:none!important;
+          transition:transform .3s ease;
+        }
+        aside.bg-slate-900.-translate-x-full{ transform:translateX(-100%)!important; }
+        aside.bg-slate-900.translate-x-0{ transform:translateX(0)!important; }
+      }
       .border-slate-700{ border-color:rgba(139,125,107,.12)!important; }
       .bg-slate-900 .text-slate-100,.bg-slate-900 .text-slate-200{ color:var(--taupe-800)!important; }
       .bg-slate-900 .text-slate-300,.bg-slate-900 .text-slate-400{ color:var(--sage-700)!important; }
@@ -314,9 +326,26 @@
 
       <!-- ==================== 主版面 ==================== -->
       <div v-else class="min-h-screen">
+        <!-- 手機版漢堡選單 + 遮罩 -->
+        <button
+          @click="sidebarOpen = !sidebarOpen"
+          class="md:hidden fixed top-3 left-3 z-[60] w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-[#5D4037] border border-[rgba(139,125,107,.25)]"
+          aria-label="開啟/關閉選單"
+        >
+          <i class="fas fa-bars text-lg"></i>
+        </button>
+        <div
+          v-show="sidebarOpen"
+          @click="sidebarOpen = false"
+          class="md:hidden fixed inset-0 bg-black/40 z-40"
+        ></div>
+
         <div class="flex">
           <!-- 左側導航欄（與管理員後台一致） -->
-          <aside class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328]">
+          <aside
+            class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328] fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:static md:translate-x-0 md:z-auto"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+          >
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
               <i class="fas fa-user-tie text-emerald-400 text-3xl"></i>
               <div class="min-w-0">
@@ -330,7 +359,7 @@
             >
               <i class="fas fa-sign-out-alt mr-2"></i>登出
             </button>
-            <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide">
+            <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide" @click="sidebarOpen=false">
               <button @click="mainTab='list'" :class="mainTab==='list' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-list mr-2"></i>預約列表
               </button>
@@ -352,8 +381,8 @@
             </div>
           </aside>
 
-          <!-- 右側主內容區 -->
-          <div class="flex-1 min-w-0 min-h-screen">
+        <!-- 右側主內容區 -->
+        <div class="flex-1 min-w-0 min-h-screen pt-14 md:pt-0">
           <main class="max-w-7xl mx-auto px-4 py-6 w-full">
 
           <!-- 頂部統計卡片 -->
@@ -1751,6 +1780,7 @@
           return {
             // 登入狀態
             isLoggedIn: false,
+            sidebarOpen: false,
             loginUsername: "",
             loginPassword: "",
             showPassword: false,

@@ -315,6 +315,25 @@
       @media (max-width:640px){
         .m-feature-cards{ grid-template-columns:1fr; }
         .m-panel{ padding:1.2rem; }
+        /* 手機版：側欄轉為 sticky 頂欄，導航橫向滑動，唔再擠佔內容 */
+        .m-sidebar{
+          position:sticky; top:0; z-index:30;
+          flex-direction:column; align-items:stretch; gap:.5rem;
+          border-radius:0; margin:0;
+          box-shadow:0 8px 24px -12px rgba(0,0,0,.35);
+        }
+        .m-side-brand{ justify-content:flex-start; }
+        .m-side-nav{
+          flex-direction:row; flex-wrap:nowrap; overflow-x:auto;
+          gap:.3rem; padding-bottom:.25rem;
+          -webkit-overflow-scrolling:touch;
+        }
+        .m-side-nav button{ white-space:nowrap; }
+        .m-side-foot{
+          flex-direction:row; align-items:center;
+          border-left:none; border-top:1px solid rgba(120,80,40,.2);
+          padding:.6rem 0 0; margin-left:0;
+        }
       }
       /* ============ 歐美風官網 ============ */
       .site{ background:#fff; color:#1a1a1a; font-family:var(--body); }
