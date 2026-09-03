@@ -2,6 +2,12 @@
  * JWT Token 工具模組
  * - 自製 HMAC-SHA256 簽名 Token（不需額外 npm 套件）
  * - Payload 包含 userId、role、username、exp、jti（唯一 ID，用於登出黑名單）
+ *
+ * 🔒 Revocation 持久化（M1 修正）：
+ *   原本 userBlacklist / tokenBlacklist 只存在記憶體，server 重啟即清空，
+ *   導致「登出所有裝置」/「登出」喺重啟後失效。
+ *   現改用 SQLite 表（revoked_tokens / user_revoked）作為真源，
+ *   記憶體 Map 只係快取（init 時載入、每次 revoke 時同步寫入）。
  */
 
 const crypto = require('crypto');
@@ -11,15 +17,64 @@ if (!process.env.SESSION_SECRET) {
   console.log('⚠️ 未設定 SESSION_SECRET 環境變數，已生成隨機密鑰（伺服器重啟後所有登入會失效）');
 }
 
+// ==================== 資料庫注入（可選） ====================
+// 由 server.js 喺 db 初始化後呼叫 jwt.init(db)。
+// 若未注入（例如獨立測試），則退回純記憶體模式（與舊行為一致）。
+let db = null;
+
+const init = (dbInstance) => {
+  if (!dbInstance) return;
+  db = dbInstance;
+
+  db.serialize(() => {
+    db.run(
+      `CREATE TABLE IF NOT EXISTS revoked_tokens (
+        jti TEXT PRIMARY KEY,
+        exp INTEGER NOT NULL
+      )`,
+      (err) => { if (err) console.error('建立 revoked_tokens 表失敗:', err.message); }
+    );
+    db.run(
+      `CREATE TABLE IF NOT EXISTS user_revoked (
+        user_id INTEGER PRIMARY KEY,
+        revoked_at INTEGER NOT NULL
+      )`,
+      (err) => { if (err) console.error('建立 user_revoked 表失敗:', err.message); }
+    );
+  });
+
+  // 載入已有記錄到記憶體快取（重啟後復原）
+  db.all('SELECT jti, exp FROM revoked_tokens', (err, rows) => {
+    if (!err && rows) rows.forEach((r) => tokenBlacklist.set(r.jti, r.exp));
+  });
+  db.all('SELECT user_id, revoked_at FROM user_revoked', (err, rows) => {
+    if (!err && rows) rows.forEach((r) => userBlacklist.set(String(r.user_id), r.revoked_at));
+  });
+
+  console.log('✅ JWT revocation 持久化已啟用（revoked_tokens / user_revoked）');
+};
+
 // Token 黑名單（登出後加入，直到原本到期時間）
 // jti -> 過期時間戳（毫秒）
 const tokenBlacklist = new Map();
+
+// 用戶級黑名單（登出所有裝置用）：userId -> 該時間前簽發嘅 token 全部失效
+const userBlacklist = new Map();
 
 // 定期清理已過期嘅黑名單項目（每 10 分鐘）
 setInterval(() => {
   const now = Date.now();
   for (const [jti, exp] of tokenBlacklist) {
     if (exp <= now) tokenBlacklist.delete(jti);
+  }
+  // 清理過期嘅「登出所有裝置」標記（30 日後自動失效，避免 Map 無限增長）
+  for (const [uid, revokedAt] of userBlacklist) {
+    if (revokedAt <= now - 30 * 24 * 60 * 60 * 1000) userBlacklist.delete(uid);
+  }
+  // 同步清理 DB（持久化層）
+  if (db) {
+    db.run('DELETE FROM revoked_tokens WHERE exp <= ?', [now]);
+    db.run('DELETE FROM user_revoked WHERE revoked_at <= ?', [now - 30 * 24 * 60 * 60 * 1000]);
   }
 }, 10 * 60 * 1000).unref();
 
@@ -92,6 +147,11 @@ const revokeToken = (token) => {
   const payload = verifyToken(token);
   if (!payload || !payload.jti || !payload.exp) return;
   tokenBlacklist.set(payload.jti, payload.exp);
+  // 持久化
+  if (db) {
+    db.run('INSERT OR REPLACE INTO revoked_tokens (jti, exp) VALUES (?, ?)', [payload.jti, payload.exp],
+      (err) => { if (err) console.error('寫入 revoked_tokens 失敗:', err.message); });
+  }
 };
 
 /**
@@ -100,11 +160,14 @@ const revokeToken = (token) => {
 const revokeAllUserTokens = (userId) => {
   // 對簡單嘅黑名單機制，用「user 層級」無法直接列舉未過期 jti。
   // 做法：加入一個永久標記到 userBlacklist，驗證時檢查。
-  userBlacklist.set(String(userId), Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const revokedAt = Date.now();
+  userBlacklist.set(String(userId), revokedAt);
+  // 持久化
+  if (db) {
+    db.run('INSERT OR REPLACE INTO user_revoked (user_id, revoked_at) VALUES (?, ?)', [String(userId), revokedAt],
+      (err) => { if (err) console.error('寫入 user_revoked 失敗:', err.message); });
+  }
 };
-
-// 用戶級黑名單（登出所有裝置用）：userId -> 該時間前簽發嘅 token 全部失效
-const userBlacklist = new Map();
 
 /**
  * 檢查用戶級登出標記（用於「登出所有裝置」）
@@ -129,6 +192,7 @@ const extractTokenFromRequest = (req) => {
 
 module.exports = {
   SESSION_SECRET,
+  init,
   signToken,
   verifyToken,
   revokeToken,

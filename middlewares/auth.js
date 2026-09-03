@@ -29,9 +29,13 @@ const createAuthMiddleware = (db) => {
     }
 
     // 載入用戶最新資料（確保角色/帳戶狀態最新）
-    db.get("SELECT id, username, name, name_en, phone, email, role, profile_completed, created_at, membership_tier, insurance_covered, family_head_id, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?", [payload.userId], (err, user) => {
+    db.get("SELECT id, username, name, name_en, phone, email, role, employment_type, profile_completed, created_at, membership_tier, insurance_covered, family_head_id, is_active, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?", [payload.userId], (err, user) => {
       if (err) return res.status(500).json({ error: '系統錯誤，請稍後再試' });
       if (!user) return res.status(401).json({ error: '帳戶不存在，請重新登入' });
+      // 停用帳戶拒絕（is_active=0）
+      if (user.is_active === 0) {
+        return res.status(403).json({ error: '帳戶已停用，請聯絡診所職員' });
+      }
 
       // 計算未完成資料用戶嘅剩餘天數
       let days_remaining = null;
@@ -64,9 +68,13 @@ const createAuthMiddleware = (db) => {
       return res.status(401).json({ error: '登入已失效，請重新登入' });
     }
 
-    db.get("SELECT id, username, name, name_en, phone, email, role, profile_completed, created_at, membership_tier, insurance_covered, family_head_id, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?", [payload.userId], (err, user) => {
+    db.get("SELECT id, username, name, name_en, phone, email, role, employment_type, profile_completed, created_at, membership_tier, insurance_covered, family_head_id, is_active, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?", [payload.userId], (err, user) => {
       if (err) return res.status(500).json({ error: '系統錯誤，請稍後再試' });
       if (!user) return res.status(401).json({ error: '帳戶不存在，請重新登入' });
+      // 停用帳戶拒絕（is_active=0）
+      if (user.is_active === 0) {
+        return res.status(403).json({ error: '帳戶已停用，請聯絡診所職員' });
+      }
 
       let days_remaining = null;
       if (user.profile_completed === 0 && user.created_at) {

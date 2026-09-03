@@ -101,6 +101,7 @@ const triageRoutes = require("./routes/triage");
 const notificationsRoutes = require("./routes/notifications");
 const contentRoutes = require("./routes/content");
 const adminContentRoutes = require("./routes/admin-content");
+const hrRoutes = require("./routes/hr");
 
 // 引入通知排程服務
 const notificationScheduler = require("./services/notification-scheduler");
@@ -179,6 +180,30 @@ app.use(bodyParser.json({
   }
 }));
 
+// 🔧 統一 API 回應格式（error-format 統一優化）：確保所有 JSON 回應都有 `ok` 旗標，
+// 錯誤回應額外補 `code`（由 HTTP status 推算）。前端現已習慣 success 用 `message`、error 用 `error`，
+// 呢度只係「加」ok / code，唔改 message / error 欄位，所以零風險、唔會整壞前端。
+const HTTP_ERROR_CODES = {
+  400: 'BAD_REQUEST', 401: 'UNAUTHORIZED', 403: 'FORBIDDEN', 404: 'NOT_FOUND',
+  409: 'CONFLICT', 422: 'UNPROCESSABLE', 429: 'RATE_LIMITED', 500: 'SERVER_ERROR',
+  502: 'BAD_GATEWAY', 503: 'SERVICE_UNAVAILABLE'
+};
+app.use((req, res, next) => {
+  if (res.__respNormalized) return next();
+  res.__respNormalized = true;
+  const _json = res.json.bind(res);
+  res.json = (body) => {
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      if (body.ok === undefined) body.ok = res.statusCode < 400;
+      if (res.statusCode >= 400 && body.code === undefined) {
+        body.code = HTTP_ERROR_CODES[res.statusCode] || ('ERR_' + res.statusCode);
+      }
+    }
+    return _json(body);
+  };
+  next();
+});
+
 // 🔒 安全：只暴露必要嘅公共靜態資源，防止 .env / 資料庫 / 源碼 / node_modules 被下載
 const PUBLIC_STATIC_DIRS = ['css', 'js', 'picture'];
 PUBLIC_STATIC_DIRS.forEach((dir) => {
@@ -203,6 +228,15 @@ app.use('/api/', globalLimiter);
 
 const db = initializeDatabase();
 
+// 🔒 JWT revocation 持久化：將登出黑名單落到 DB，重啟後仍然有效（M1 修正）
+jwt.init(db);
+
+// 🔒 家庭帳戶單一來源修復：以 family_links 為準，重算 users.family_head_id（H3 修正）
+const familyService = require('./services/family')(db);
+familyService.reconcile().then((r) => {
+  console.log(`✅ 家庭帳戶資料已校準：${r.parents} 個戶主 / ${r.children} 段連結 / 清除 ${r.orphansCleared} 個孤兒標記`);
+}).catch((e) => console.error('家庭帳戶資料校準失敗:', e.message));
+
 // ==================== 靜態頁面路由 ====================
 
 // 根路徑返回 index.html
@@ -222,6 +256,9 @@ app.get('/doctor.html', (req, res) => {
 });
 app.get('/staff.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'staff.html'));
+});
+app.get('/hr.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'hr.html'));
 });
 
 // 醫師版面
@@ -285,6 +322,34 @@ app.use("/api/medical-records", medicalRecordsRoutes(db, getLocalTimeString, { r
 // 路徑前綴: /api/content（公開+登入）、/api/admin/content（管理員）
 app.use("/api/content", contentRoutes(db, { requireAuth, requireRole }));
 app.use("/api/admin/content", adminContentRoutes(db, { requireAuth, requireRole }));
+
+// 人力資源（考勤/名冊/報表/請假）
+// 路徑前綴: /api/hr
+app.use('/api/hr', hrRoutes(db, hashPassword, { requireAuth, requireRole }));
+
+// 員工 HR 文件：只允許文件擁有者或管理員存取（需登入）
+app.use("/uploads/hr_documents", requireAuth, requireRole('staff', 'doctor', 'admin'), (req, res) => {
+  const user = req.user;
+  const relativePath = req.path.replace(/^\/+/, '');
+  if (!relativePath || relativePath.includes('..')) {
+    return res.status(400).json({ error: '非法檔案路徑' });
+  }
+  const filePath = path.join(__dirname, 'uploads', 'hr_documents', relativePath);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: '檔案不存在' });
+  }
+  const dbFileName = '/uploads/hr_documents/' + relativePath;
+  db.get("SELECT user_id FROM hr_documents WHERE file_path=?", [dbFileName], (err, ownerRow) => {
+    if (err) return res.status(500).json({ error: '系統錯誤' });
+    if (!ownerRow) return res.status(404).json({ error: '檔案不存在' });
+    // 只有擁有者或管理員可以存取
+    if (user.role !== 'admin' && ownerRow.user_id !== user.id) {
+      return res.status(403).json({ error: '無權限存取此檔案' });
+    }
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.sendFile(filePath);
+  });
+});
 
 // 靜態檔案：提供上傳嘅頭像與影片（只允許白名單檔案類型，blocked 清單已阻擋 .env/.db 等）
 app.use("/uploads", (req, res, next) => {
@@ -470,199 +535,8 @@ app.post("/api/find-user-id", legacyFindUserLimiter, (req, res) => {
   );
 });
 
-// 註冊（向後兼容 /api/register）
-app.post("/api/register", async (req, res) => {
-  const { username, password, name, name_en, phone, email, captchaAnswer } = req.body;
 
-  // 🔒 公眾註冊閘門：預設關閉，註冊必須由診所工作人員於後台進行
-  const allowPublic = await new Promise((resolve) => {
-    db.get("SELECT setting_value FROM clinic_settings WHERE setting_key='allow_public_registration'", (e, r) => resolve(r ? r.setting_value : 'false'));
-  });
-  if (String(allowPublic) !== 'true') {
-    return res.status(403).json({
-      error: "本診所暫不接受網上自行註冊，請聯絡診所職員為您開戶（電話 2555-1136）。",
-      code: "registration_closed"
-    });
-  }
 
-  // 🔒 驗證 CAPTCHA（防機械人註冊）
-  const captchaId = getCaptchaIdFromRequest(req);
-  const captchaResult = captchaService.verifyCaptcha(captchaId, captchaAnswer);
-  if (!captchaResult.ok) {
-    return res.status(400).json({ error: captchaResult.error || '驗證碼錯誤', field: 'captcha' });
-  }
-  
-  // 驗證必填欄位（電話必填，電郵選填）
-  if (!username || !password || !name || !phone) {
-    return res.status(400).json({ error: "缺少必要欄位（用戶名、密碼、姓名、電話為必填）" });
-  }
-
-  // 驗證會員ID格式（1-6個英文字母或數字）
-  if (!/^[A-Za-z0-9]{1,6}$/.test(username)) {
-    return res.status(400).json({ error: "會員ID必須為1-6個字元，只能包含英文字母和數字" });
-  }
-
-  // 驗證中文姓名
-  if (!/[\u4E00-\u9FFF]/.test(name)) {
-    return res.status(400).json({ error: "姓名必須包含中文字符" });
-  }
-
-  // 驗證電話格式
-  if (!/^\d{8}$/.test(phone)) {
-    return res.status(400).json({ error: "請輸入有效的 8 位電話號碼" });
-  }
-
-  // 驗證電郵格式（選填，如有填寫則需有效）
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: "請輸入有效的電子郵件地址" });
-  }
-
-  // 驗證帳戶名和密碼不能相同（大小寫不敏感）
-  if (username.toLowerCase() === password.toLowerCase()) {
-    return res.status(400).json({ error: "帳戶名和密碼不能相同", field: "password" });
-  }
-
-  // 🔒 密碼強度檢查（公開註冊一律為客人層級）
-  const registerPwResult = validatePassword(password, 'customer');
-  if (!registerPwResult.ok) {
-    return res.status(400).json({ error: registerPwResult.error, field: "password" });
-  }
-
-  // 檢查重複 - 根據有無電郵調整查詢（用戶名大小寫不敏感）
-  let checkQuery, checkParams;
-  if (email) {
-    checkQuery = "SELECT id, username, password, phone, email FROM users WHERE username=? COLLATE NOCASE OR phone=? OR email=?";
-    checkParams = [username, phone, email];
-  } else {
-    checkQuery = "SELECT id, username, password, phone FROM users WHERE username=? COLLATE NOCASE OR phone=?";
-    checkParams = [username, phone];
-  }
-
-  db.get(checkQuery, checkParams, (err, row) => {
-      if (err) return serverError(res, err);
-      
-      if (row) {
-        if (row.username.toLowerCase() === username.toLowerCase()) {
-          // 若密碼也相同，視為該用戶名及密碼組合已被使用
-          if (password && verifyPassword(password, row.password)) {
-            return res.status(400).json({ error: "已經有人使用", field: "username" });
-          }
-          return res.status(400).json({ error: "用戶名已存在", field: "username" });
-        }
-        if (row.phone === phone) return res.status(400).json({ error: "電話號碼已被使用", field: "phone" });
-        if (email && row.email === email) return res.status(400).json({ error: "電子郵件已被使用", field: "email" });
-      }
-
-      const hashedPassword = hashPassword(password);
-      db.run(
-        "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [username, hashedPassword, name, name_en || "", phone, email || "", "customer", 0],
-        function (err) {
-          if (err) return serverError(res, err);
-          res.json({ ok: true, userId: this.lastID });
-        }
-      );
-    }
-  );
-});
-
-// 從 cookie 取得 captchaId（與 auth router 一致）
-const getCaptchaIdFromRequest = (req) => {
-  const header = req.headers.cookie || '';
-  const match = header.match(/(?:^|;\s*)captcha_id=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-};
-
-// 登入（向後兼容 /api/login，需驗證碼）
-app.post("/api/login", (req, res) => {
-  const { username, password, captchaAnswer } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: "請提供用戶名和密碼" });
-  }
-
-  // 🔒 驗證 CAPTCHA（防機械人繞過新登入保護）
-  const captchaId = getCaptchaIdFromRequest(req);
-  const captchaResult = captchaService.verifyCaptcha(captchaId, captchaAnswer);
-  if (!captchaResult.ok) {
-    return res.status(400).json({ error: captchaResult.error || '驗證碼錯誤', field: 'captcha' });
-  }
-
-  db.get(
-    "SELECT id, username, name, name_en, phone, email, role, profile_completed, must_change_password, created_at, password FROM users WHERE username=?",
-    [username],
-    (err, user) => {
-      if (err) return res.status(500).json({ error: "系統錯誤" });
-      if (!user) return res.status(401).json({ error: "登入失敗，請檢查用戶名和密碼" });
-
-      const isPasswordValid = verifyPassword(password, user.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ error: "登入失敗，請檢查用戶名和密碼" });
-      }
-
-      // 🆕 檢查未完成資料的用戶是否已過期（3天）
-      if (user.profile_completed === 0 && user.created_at) {
-        const createdAt = new Date(user.created_at);
-        const now = new Date();
-        const daysPassed = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
-        
-        if (daysPassed >= 3) {
-          // 自動刪除過期用戶
-          db.run("DELETE FROM users WHERE id=?", [user.id], (deleteErr) => {
-            if (deleteErr) console.error("刪除過期用戶失敗:", deleteErr);
-            else console.log(`🗑️ 已自動刪除過期用戶: ${user.username} (ID: ${user.id})`);
-          });
-          return res.status(401).json({ 
-            error: "您的賬戶因未在 3 天內完成個人資料而被自動取消，請重新註冊。",
-            expired: true
-          });
-        }
-        
-        // 計算剩餘天數
-        const daysRemaining = 3 - daysPassed;
-        const { password: _pwd1, must_change_password: _mcp1, ...userWithoutPassword1 } = user;
-        // 設定 Session Cookie（保護病歷檔案上傳區）
-        if (signSession) {
-          res.cookie('clinic_session', signSession(user.id), {
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-          });
-        }
-        // 🔑 發行 JWT Token
-        const token = jwt.signToken({
-          userId: user.id,
-          role: user.role,
-          username: user.username,
-        });
-        return res.json({ 
-          ok: true, 
-          user: { ...userWithoutPassword1, days_remaining: daysRemaining },
-          token,
-          mustChangePassword: _mcp1 === 1,
-        });
-      }
-
-      const { password: _pwd2, must_change_password: _mcp2, ...userWithoutPassword2 } = user;
-      // 設定 Session Cookie
-      if (signSession) {
-        res.cookie('clinic_session', signSession(user.id), {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 30 * 24 * 60 * 60 * 1000,
-        });
-      }
-      // 🔑 發行 JWT Token
-      const token2 = jwt.signToken({
-        userId: user.id,
-        role: user.role,
-        username: user.username,
-      });
-      res.json({ ok: true, user: userWithoutPassword2, token: token2, mustChangePassword: _mcp2 === 1 });
-    }
-  );
-});
 
 // 已登入用戶更改密碼（向後兼容 /api/reset-password-authenticated）
 // 已登入用戶修改密碼（需登入，只准改自己的密碼）
@@ -701,24 +575,10 @@ app.post("/api/reset-password-authenticated", requireAuth, (req, res) => {
   });
 });
 
-// 註冊可用性檢查（即時顯示「已經有人使用」）
-// 注意：必須在 miscRoutes 之前定義，以確保正確匹配
-app.get("/api/register/check", (req, res) => {
-  const { username } = req.query;
-  if (!username) return res.json({ available: true });
-
-  db.get("SELECT username FROM users WHERE username=? COLLATE NOCASE", [username], (err, row) => {
-    if (err) return serverError(res, err);
-
-    if (!row) return res.json({ available: true });
-
-    return res.json({ available: false, reason: "username_taken" });
-  });
-});
 
 // 雜項路由（聊天、時間、FAQ、假期等）
 // 路徑前綴: /api
-// 注意：這個必須在向後兼容路由之後，以避免路由衝突
+// 注意：misc 路由掛載喺各業務路由之後，避免優先匹配衝突
 app.use('/api', miscRoutes(db, getLocalTimeString, { requireAuth, requireRole }));
 
 // 取得所有用戶（向後兼容 /api/users，限管理員）— 含會員層級 / 保險 / 遲到統計

@@ -52,6 +52,9 @@ function getStripe() {
 module.exports = (db, { requireAuth, requireRole } = {}) => {
   const router = express.Router();
 
+  // 🔒 H3：家庭帳戶單一來源服務（family_links 為真源，family_head_id 為同步鏡像）
+  const familyService = require('../services/family')(db);
+
   const q = (sql, params) => new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
   });
@@ -133,13 +136,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const oldTier = user.membership_tier || 'general';
     let detached = 0;
     if (oldTier === 'family') {
-      const kids = await q("SELECT child_user_id FROM family_links WHERE parent_user_id=?", [user.id]);
-      await run("DELETE FROM family_links WHERE parent_user_id=?", [user.id]);
-      for (const k of kids) {
-        await run("UPDATE users SET family_head_id=NULL, membership_tier='general' WHERE id=? AND membership_tier='family'", [k.child_user_id]);
-        detached++;
-      }
-      await run("UPDATE users SET family_head_id=NULL WHERE id=?", [user.id]);
+      detached = await familyService.detachAllChildren(user.id);
     }
     await run("UPDATE subscriptions SET status='cancelled' WHERE user_id=? AND status='active'", [user.id]);
     await run("UPDATE users SET membership_tier='general', stripe_subscription_id=NULL, subscription_status='canceled' WHERE id=?", [user.id]);
@@ -315,7 +312,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       return res.status(403).json({ error: '請先升級至家庭會員，即可申請家庭帳戶', code: 'needs_family_tier' });
     }
     try {
-      await run("UPDATE users SET family_head_id=? WHERE id=?", [user.id, user.id]);
+      await familyService.enableHead(user.id);
       res.json({ ok: true, message: '已啟用家庭帳戶，可以開始加入子帳戶' });
     } catch (e) {
       res.status(500).json({ error: '啟用失敗' });
@@ -345,11 +342,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         return res.status(409).json({ error: `「${child.username}」已連結咗另一個家庭帳戶，請先由該家庭移除後再連結` });
       }
       // 👨‍👩‍👧 連結入家庭：general 級自動升做 family 級（premium 保持不變，永不降級）
-      const fullChild = await q1("SELECT membership_tier FROM users WHERE id=?", [child.id]);
-      const newTier = (fullChild && fullChild.membership_tier === 'general') ? 'family' : (fullChild && fullChild.membership_tier) || 'family';
-      await run("UPDATE users SET birth_date=?, family_head_id=?, membership_tier=? WHERE id=?", [childBirthDate, head.id, newTier, child.id]);
-      await run("INSERT OR IGNORE INTO family_links (parent_user_id, child_user_id, relation) VALUES (?,?,?)",
-        [head.id, child.id, relation || 'parent']);
+      await run("UPDATE users SET birth_date=? WHERE id=?", [childBirthDate, child.id]);
+      await familyService.addChild(head.id, child.id, relation || 'parent');
       res.json({ ok: true, message: '已加入子帳戶', child: { id: child.id, username: child.username } });
     } catch (e) {
       console.error('加入子帳戶失敗:', e);
@@ -416,7 +410,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
           error: `「${head.name}」目前係「${head.membership_tier || 'general'}」會員（非家庭會員）。照樣啟用家庭帳戶？費用差額按現行安排處理。`
         };
       }
-      await run("UPDATE users SET family_head_id=? WHERE id=?", [head.id, head.id]);
+      await familyService.enableHead(head.id);
     }
     return { ok: true, user: head };
   };
@@ -487,13 +481,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       // 👨‍👩‍👧 子帳戶自動跟戶主做 family 級：家庭計劃保障全家，仔女即時可以預約所有服務
       const inserted = await run(
         `INSERT INTO users (username, password, name, name_en, phone, email, id_card, address, birth_date,
-          role, membership_tier, profile_completed, must_change_password, insurance_covered, family_head_id)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          role, membership_tier, profile_completed, must_change_password, insurance_covered)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [username, hashed, name, name_en || '', childPhone, null, id_card || null, address || null, birth_date,
-          'customer', 'family', 1, 1, 1, head.id]);
+          'customer', 'family', 1, 1, 1]);
       const childId = inserted.lastID;
-      await run("INSERT OR IGNORE INTO family_links (parent_user_id, child_user_id, relation) VALUES (?,?,?)",
-        [head.id, childId, relation || 'parent']);
+      await familyService.addChild(head.id, childId, relation || 'parent');
 
       // 📲 自動經 WhatsApp 將登入帳戶 + 暫時密碼發送給家長
       const notified = await sendChildCredentials(childPhone, '家庭成員子帳戶已建立', name, username, tempPassword);
@@ -674,11 +667,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.delete('/admin/link/:childUserId', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     try {
       const childId = Number(req.params.childUserId);
-      const link = await q1("SELECT * FROM family_links WHERE child_user_id=? LIMIT 1", [childId]);
-      if (!link) return res.status(404).json({ error: '該成員沒有家庭連結' });
-      await run("DELETE FROM family_links WHERE child_user_id=?", [childId]);
-      // 💰 移除連結：跟家庭嘅 family 級成員返做 general（premium 不變）
-      await run("UPDATE users SET family_head_id=NULL, membership_tier='general' WHERE id=? AND membership_tier='family'", [childId]);
+      const removed = await familyService.removeChildLink(childId);
+      if (!removed) return res.status(404).json({ error: '該成員沒有家庭連結' });
       res.json({ ok: true });
     } catch (e) {
       console.error('移除家庭成員失敗:', e);
@@ -727,13 +717,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       // 由家庭離開：解除戶主身分＋全部子女連結（子帳戶保留，日後可再連結）
       let detached = 0;
       if (oldTier === 'family') {
-        const kids = await q("SELECT child_user_id FROM family_links WHERE parent_user_id=?", [user.id]);
-        await run("DELETE FROM family_links WHERE parent_user_id=?", [user.id]);
-        for (const k of kids) {
-          await run("UPDATE users SET family_head_id=NULL, membership_tier='general' WHERE id=? AND membership_tier='family'", [k.child_user_id]);
-          detached++;
-        }
-        await run("UPDATE users SET family_head_id=NULL WHERE id=?", [user.id]);
+        detached = await familyService.detachAllChildren(user.id);
       }
 
       await run("UPDATE subscriptions SET status='changed' WHERE user_id=? AND status='active'", [user.id]);

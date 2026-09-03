@@ -3,6 +3,288 @@ const sqlite3 = require('sqlite3').verbose();
 
 function runMigrations(db) {
   db.serialize(() => {
+    // ==================================================================
+    // 🕘 HR 考勤表 (Attendance)
+    // 每位 staff/doctor 每日以 (attendance_date, user_id) 唯一定義一次出勤。
+    // clock_in  / clock_out 儲存 "HH:MM" 時間；late/early_leave/absent 自動標記；
+    // work_minutes 以下班打卡時間減上班打卡時間計（跨日唔支援，深夜收工視為當日）。
+    // 管理員可手動補打卡 (source='manual') 或修改記錄。
+    // ==================================================================
+    db.run(`
+      CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT,
+        role TEXT,
+        attendance_date TEXT NOT NULL,
+        clock_in TEXT,
+        clock_out TEXT,
+        work_minutes INTEGER DEFAULT 0,
+        is_late INTEGER DEFAULT 0,
+        is_early_leave INTEGER DEFAULT 0,
+        is_absent INTEGER DEFAULT 0,
+        note TEXT,
+        source TEXT DEFAULT 'self',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(attendance_date, user_id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 attendance 表失敗:", err.message);
+      else console.log("✅ attendance 考勤表已準備就緒");
+    });
+
+    // 為 attendance 表建立索引
+    db.run("CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(attendance_date)", (err) => {
+      if (err) console.error("建立 attendance 索引失敗:", err.message);
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id)", (err) => {
+      if (err) console.error("建立 attendance 索引失敗:", err.message);
+    });
+
+    // ==================================================================
+    // 🏖️ 請假申請表 (Leave Requests)
+    // 員工/醫生遞交請假申請 → 管理員審批(pending/approved/rejected)。
+    // 類別：annual(年假)/sick(病假)/personal(事假)/statutory(勞工假期補假)/personal_other(個人原因)
+    // 批準後日期唔會當缺席 (attendance 會標記為請假)。
+    // ==================================================================
+    db.run(`
+      CREATE TABLE IF NOT EXISTS leave_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT,
+        role TEXT,
+        leave_type TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        reason TEXT,
+        status TEXT DEFAULT 'pending',
+        reviewed_by INTEGER,
+        reviewed_at TEXT,
+        reviewed_note TEXT,
+        leave_balance JSON,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 leave_requests 表失敗:", err.message);
+      else console.log("✅ leave_requests 請假表已準備就緒");
+    });
+
+    db.run("CREATE INDEX IF NOT EXISTS idx_leave_user ON leave_requests(user_id)", (err) => {
+      if (err) console.error("建立 leave_requests 索引失敗:", err.message);
+    });
+
+    // HR 名冊：users 表加入 is_active 欄位（1=在職可用，0=停用唔准打卡）
+    db.all("PRAGMA table_info(users)", (aErr, aCols) => {
+      if (aErr || !aCols) return;
+      if (!aCols.some(c => c.name === 'is_active')) {
+        db.run("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1", (e) => {
+          if (e) console.error("加入 users.is_active 欄位失敗:", e.message);
+          else console.log("✅ users.is_active 已就緒（HR 名冊停用）");
+        });
+      }
+      // HR 假額：存 JSON，例 {"annual":12,"sick":12,"personal":2,"statutory":-1,"personal_other":-1}
+      if (!aCols.some(c => c.name === 'leave_balance')) {
+        db.run("ALTER TABLE users ADD COLUMN leave_balance TEXT", (e) => {
+          if (e) console.error("加入 users.leave_balance 欄位失敗:", e.message);
+          else console.log("✅ users.leave_balance 已就緒（HR 假額）");
+        });
+      }
+      // ================= 階段一：詳細 HR 個人檔案（出糧/私隱） =================
+      // 注意：users 已有 id_card / address / birth_date / emergency_contact / emergency_phone，
+      // 故此處只加真正新增嘅欄位，其餘重用現有 column。
+      const HR_COLS = {
+        hire_date: "TEXT",       // 入職日期
+        hourly_rate: "REAL",     // 時薪 (HKD)
+        basic_salary: "REAL",    // 月薪（可選，優先於時薪）
+        bank_account: "TEXT",    // 銀行戶口
+      };
+      Object.keys(HR_COLS).forEach((col) => {
+        if (!aCols.some(c => c.name === col)) {
+          db.run(`ALTER TABLE users ADD COLUMN ${col} ${HR_COLS[col]}`, (e) => {
+            if (e) console.error(`加入 users.${col} 欄位失敗:`, e.message);
+            else console.log(`✅ users.${col} 已就緒`);
+          });
+        }
+      });
+      // attendance 加「出勤類型」：full=全日 / half=半日 / fieldwork=外勤 / training=培訓（階段一③）
+      db.all("PRAGMA table_info(attendance)", (atErr, atCols) => {
+        if (!atErr && atCols && !atCols.some(c => c.name === 'attendance_type')) {
+          db.run("ALTER TABLE attendance ADD COLUMN attendance_type TEXT DEFAULT 'full'", (e) => {
+            if (e) console.error("加入 attendance.attendance_type 欄位失敗:", e.message);
+            else console.log("✅ attendance.attendance_type 已就緒（出勤類型）");
+          });
+        }
+      });
+    });
+
+    // ==================================================================
+    // 🗓️ 階段一：排班 / 營業日曆
+    // 員工個人預設返工時間 + 逐日例外覆寫 + 診所休診日/公眾假期
+    // ==================================================================
+    db.run(`
+      CREATE TABLE IF NOT EXISTS hr_user_schedules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        work_start TEXT DEFAULT '10:00',
+        work_end TEXT DEFAULT '19:00',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        updated_at TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 hr_user_schedules 表失敗:", err.message);
+      else console.log("✅ hr_user_schedules 排班表已就緒");
+    });
+    db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_hr_schedule_user ON hr_user_schedules(user_id)", (err) => {
+      if (err) console.error("建立 hr_schedule_user 索引失敗:", err.message);
+    });
+    // 每週更表模式（階段三）：is_weekly=1 時用 hours JSON（key=星期幾 getDay() 0-6，
+    // val="HH:MM-HH:MM"，冇列出=嗰日唔返工）。預設一至五 10:00-19:00、六 10:00-13:00。
+    db.all("PRAGMA table_info(hr_user_schedules)", (wsErr, wsCols) => {
+      if (wsErr || !wsCols) return;
+      if (!wsCols.some(c => c.name === 'is_weekly')) {
+        db.run("ALTER TABLE hr_user_schedules ADD COLUMN is_weekly INTEGER DEFAULT 0", (e) => {
+          if (e && !/duplicate column/i.test(e.message)) console.error("加入 is_weekly 失敗:", e.message);
+          else console.log("✅ hr_user_schedules.is_weekly 已就緒（每週更表模式）");
+        });
+      }
+      if (!wsCols.some(c => c.name === 'hours')) {
+        // 每週時段 JSON，key=星期幾(getDay 0-6)，val="HH:MM-HH:MM"
+        db.run(
+          `ALTER TABLE hr_user_schedules ADD COLUMN hours TEXT DEFAULT '{"1":"10:00-19:00","2":"10:00-19:00","3":"10:00-19:00","4":"10:00-19:00","5":"10:00-19:00","6":"10:00-13:00"}'`,
+          (e) => {
+            if (e && !/duplicate column/i.test(e.message)) console.error("加入 hours 失敗:", e.message);
+            else console.log("✅ hr_user_schedules.hours 已就緒（每週時段）");
+          }
+        );
+      }
+    });
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS hr_schedule_exceptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        exc_date TEXT NOT NULL,
+        work_start TEXT,
+        work_end TEXT,
+        is_off INTEGER DEFAULT 0,
+        note TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        UNIQUE(user_id, exc_date)
+      )
+    `, (err) => {
+      if (err) console.error("創建 hr_schedule_exceptions 表失敗:", err.message);
+      else console.log("✅ hr_schedule_exceptions 排班例外已就緒");
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_hr_exc_date ON hr_schedule_exceptions(exc_date)", (err) => {
+      if (err) console.error("建立 hr_exc_date 索引失敗:", err.message);
+    });
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS hr_clinic_offdays (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        off_date TEXT UNIQUE NOT NULL,
+        name TEXT,
+        is_annual INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+      )
+    `, (err) => {
+      if (err) console.error("創建 hr_clinic_offdays 表失敗:", err.message);
+      else console.log("✅ hr_clinic_offdays 診所休診/公眾假期已就緒");
+    });
+
+    // ==================================================================
+    // 📄 階段三：員工文件管理 (hr_documents)
+    // 員工/醫生上傳自己嘅文件（合約/證書/醫療證明/其他），管理員可視。
+    // file_path 存相對於 server.js mount 上傳目錄嘅靜態路徑。
+    // ==================================================================
+    db.run(`
+      CREATE TABLE IF NOT EXISTS hr_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        doc_type TEXT DEFAULT 'other',
+        file_path TEXT NOT NULL,
+        original_name TEXT,
+        note TEXT,
+        uploaded_at TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 hr_documents 表失敗:", err.message);
+      else console.log("✅ hr_documents 文件表已就緒");
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_hr_doc_user ON hr_documents(user_id)", (err) => {
+      if (err) console.error("建立 hr_documents 索引失敗:", err.message);
+    });
+
+    // ==================================================================
+    // 🕐 階段三：全職 / 兼職 (employment_type) + 兼職報更
+    // employment_type：'full'（全職，用每週更表）/ 'part'（兼職，自己揀更後管理員審批）
+    // ==================================================================
+    db.all("PRAGMA table_info(users)", (etErr, etCols) => {
+      if (!etErr && etCols && !etCols.some(c => c.name === 'employment_type')) {
+        db.run("ALTER TABLE users ADD COLUMN employment_type TEXT DEFAULT 'full'", (e) => {
+          if (e && !/duplicate column/i.test(e.message)) console.error("加入 users.employment_type 失敗:", e.message);
+          else console.log("✅ users.employment_type 已就緒（full/part）");
+        });
+      }
+    });
+
+    // 兼職報更表：一份報更 = 某兼職同事為某工作週提交嘅更表，管理員審批。
+    // roster_start 記錄該工作週嘅星期一日期（作唯一定義一週）。
+    db.run(`
+      CREATE TABLE IF NOT EXISTS hr_shift_rosters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        roster_start TEXT NOT NULL,           -- 工作週星期一
+        status TEXT DEFAULT 'pending',        -- pending / approved / rejected
+        submitted_at TEXT DEFAULT (datetime('now','localtime')),
+        approved_by INTEGER,
+        approved_at TEXT,
+        note TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(user_id, roster_start)
+      )
+    `, (err) => {
+      if (err) console.error("創建 hr_shift_rosters 表失敗:", err.message);
+      else console.log("✅ hr_shift_rosters 兼職報更表已就緒");
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_roster_user ON hr_shift_rosters(user_id)", (err) => {
+      if (err) console.error("建立 hr_shift_rosters 索引失敗:", err.message);
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_roster_start ON hr_shift_rosters(roster_start)", (err) => {
+      if (err) console.error("建立 hr_shift_rosters 索引失敗:", err.message);
+    });
+
+    // 兼職報更細項：每項 = 某一日返工嘅時段（來自兼職同事揀嘅更 或 管理員代排）。
+    // 管理員審批後，已批細項會作為當日應返工時間窗（供打卡/出糧）。
+    db.run(`
+      CREATE TABLE IF NOT EXISTS hr_shift_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        roster_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        shift_date TEXT NOT NULL,
+        time_start TEXT,
+        time_end TEXT,
+        FOREIGN KEY (roster_id) REFERENCES hr_shift_rosters(id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 hr_shift_items 表失敗:", err.message);
+      else console.log("✅ hr_shift_items 兼職報更細項已就緒");
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_shiftitem_user ON hr_shift_items(user_id)", (err) => {
+      if (err) console.error("建立 hr_shift_items 索引失敗:", err.message);
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_shiftitem_date ON hr_shift_items(shift_date)", (err) => {
+      if (err) console.error("建立 hr_shift_items 索引失敗:", err.message);
+    });
+
     // 創建 medical_records 表
     db.run(`
       CREATE TABLE IF NOT EXISTS medical_records (

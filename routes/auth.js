@@ -7,7 +7,7 @@ const { serverError } = require("../services/httpResp");
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const emailService = require('../services/email');
 const captchaService = require('../services/captcha');
 const jwt = require('../services/jwt');
@@ -27,9 +27,17 @@ if (whatsappProvider === 'android') {
 }
 
 // 速率限制配置（保留作為額外保護）
+// 🔧 修正：原本預設按 IP 計，內網多員工共用 IP 時會互相鎖死。
+//    改為按「帳號 + IP」組合計，每個 (帳號,IP) 各有 20 次配額，
+//    既防暴力破解，又唔會令同一 IP 下其他同事登唔到。
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // 每 15 分鐘最多 20 次登入嘗試（防暴力破解）
+  max: 20, // 每 (帳號+IP) 組合 15 分鐘最多 20 次登入嘗試
+  keyGenerator: (req) => {
+    const u = (req.body && req.body.username) ? String(req.body.username) : 'anonymous';
+    const ip = ipKeyGenerator(req.ip || (req.socket && req.socket.remoteAddress) || 'unknown');
+    return `${u}@${ip}`;
+  },
   message: { error: "請求過於頻繁，請稍後再試" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -343,7 +351,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
       }
 
       db.get(
-        "SELECT id, username, name, name_en, phone, email, role, profile_completed, must_change_password, password FROM users WHERE username=?",
+        "SELECT id, username, name, name_en, phone, email, role, employment_type, profile_completed, must_change_password, is_active, password FROM users WHERE username=?",
         [username],
         async (err, user) => {
           if (err) return res.status(500).json({ error: "系統錯誤，請稍後再試" });
@@ -380,6 +388,11 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
               error: `登入失敗，請檢查您的用戶名和密碼。剩餘 ${remainingAttempts} 次嘗試機會`,
               remainingAttempts: remainingAttempts
             });
+          }
+
+          // 🔒 停用帳戶拒絕登入
+          if (user.is_active === 0) {
+            return res.status(403).json({ error: '帳戶已停用，請聯絡診所職員' });
           }
 
           // 🆕 入口角色驗證：按登入 tab 限制可登入嘅角色（嚴格分隔）

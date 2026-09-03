@@ -111,44 +111,45 @@
       /* 全站去除白字（改為深棕，避免淺底上睇唔到） */
       .text-white{ color:var(--taupe-800)!important; }
 
-      /* 實色按鈕 → 粉彩柔和按鈕 */
-      .bg-emerald-600,.bg-purple-600,.bg-cyan-600{ background-color:var(--pink-soft)!important; }
-      .bg-emerald-600.text-white,.bg-purple-600.text-white,.bg-cyan-600.text-white{ color:var(--pink-700)!important; border:1px solid var(--pink-border)!important; }
-      .hover\:bg-emerald-700:hover,.hover\:bg-purple-700:hover,.hover\:bg-cyan-700:hover{ background-color:var(--pink-border)!important; color:var(--pink-700)!important; }
+      /* 實色按鈕 → HR 風格：實色漸變 + 白字（與人力資源系統一致） */
+      .bg-emerald-600,.bg-purple-600,.bg-cyan-600{ background:linear-gradient(135deg,#7e5140,#a06853)!important; color:#fff!important; border:none!important; box-shadow:0 10px 22px -14px rgba(122,81,64,.7)!important; }
+      .bg-emerald-600.text-white,.bg-purple-600.text-white,.bg-cyan-600.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-emerald-700:hover,.hover\:bg-purple-700:hover,.hover\:bg-cyan-700:hover{ background:linear-gradient(135deg,#6a4638,#8a5a48)!important; color:#fff!important; }
 
-      .bg-green-600,.bg-green-500{ background-color:var(--green-soft)!important; }
-      .bg-green-600.text-white,.bg-green-500.text-white{ color:var(--green-700)!important; border:1px solid var(--green-border)!important; }
-      .hover\:bg-green-700:hover{ background-color:var(--sage-border)!important; color:var(--green-700)!important; }
+      .bg-green-600,.bg-green-500{ background:linear-gradient(135deg,#637c5d,#86997c)!important; color:#fff!important; border:none!important; box-shadow:0 12px 24px -14px rgba(99,124,93,.6)!important; }
+      .bg-green-600.text-white,.bg-green-500.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-green-700:hover{ background:linear-gradient(135deg,#546b4f,#74876b)!important; color:#fff!important; }
 
-      .bg-blue-600,.bg-blue-500{ background-color:var(--blue-soft)!important; }
-      .bg-blue-600.text-white,.bg-blue-500.text-white{ color:var(--blue-700)!important; border:1px solid var(--blue-border)!important; }
-      .hover\:bg-blue-700:hover{ background-color:var(--blue-border)!important; color:var(--blue-700)!important; }
+      .bg-blue-600,.bg-blue-500{ background:linear-gradient(135deg,#5a7391,#7f95b1)!important; color:#fff!important; border:none!important; box-shadow:0 12px 24px -14px rgba(62,99,144,.55)!important; }
+      .bg-blue-600.text-white,.bg-blue-500.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-blue-700:hover{ background:linear-gradient(135deg,#4d637d,#6c7f99)!important; color:#fff!important; }
 
-      .bg-orange-500,.bg-orange-600{ background-color:var(--orange-soft)!important; }
-      .bg-orange-500.text-white,.bg-orange-600.text-white{ color:var(--orange-700)!important; border:1px solid var(--orange-border)!important; }
-      .hover\:bg-orange-600:hover,.hover\:bg-orange-700:hover{ background-color:var(--orange-border)!important; color:var(--orange-700)!important; }
+      .bg-orange-500,.bg-orange-600{ background:linear-gradient(135deg,#c97d52,#e0a166)!important; color:#fff!important; border:none!important; box-shadow:0 12px 24px -14px rgba(184,107,77,.55)!important; }
+      .bg-orange-500.text-white,.bg-orange-600.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-orange-600:hover,.hover\:bg-orange-700:hover{ background:linear-gradient(135deg,#b06b46,#cf8c58)!important; color:#fff!important; }
 
-      .bg-red-600,.bg-red-500{ background-color:var(--red-soft)!important; }
-      .bg-red-600.text-white,.bg-red-500.text-white{ color:var(--red-700)!important; border:1px solid var(--red-border)!important; }
-      .hover\:bg-red-700:hover{ background-color:var(--red-border)!important; color:var(--red-700)!important; }
+      .bg-red-600,.bg-red-500{ background:linear-gradient(135deg,#b87560,#c98a6f)!important; color:#fff!important; border:none!important; box-shadow:0 12px 24px -14px rgba(184,112,92,.55)!important; }
+      .bg-red-600.text-white,.bg-red-500.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-red-700:hover{ background:linear-gradient(135deg,#a2654f,#b87560)!important; color:#fff!important; }
 
-      .bg-rose-500,.bg-rose-600{ background-color:var(--rose-soft)!important; }
-      .bg-rose-500.text-white,.bg-rose-600.text-white{ color:var(--rose-700)!important; border:1px solid var(--rose-border)!important; }
-      .hover\:bg-rose-600:hover{ background-color:var(--rose-border)!important; color:var(--rose-700)!important; }
+      .bg-rose-500,.bg-rose-600{ background:linear-gradient(135deg,#a05a48,#bf7c63)!important; color:#fff!important; border:none!important; box-shadow:0 12px 24px -14px rgba(160,90,72,.55)!important; }
+      .bg-rose-500.text-white,.bg-rose-600.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-rose-600:hover{ background:linear-gradient(135deg,#8b4e3e,#a5644f)!important; color:#fff!important; }
 
-      .bg-teal-600,.bg-teal-500{ background-color:var(--teal-soft)!important; }
-      .bg-teal-600.text-white,.bg-teal-500.text-white{ color:var(--teal-700)!important; border:1px solid var(--teal-border)!important; }
-      .hover\:bg-teal-700:hover{ background-color:var(--teal-border)!important; color:var(--teal-700)!important; }
+      .bg-teal-600,.bg-teal-500{ background:linear-gradient(135deg,#5f8f88,#86b0a6)!important; color:#fff!important; border:none!important; box-shadow:0 12px 24px -14px rgba(61,122,117,.55)!important; }
+      .bg-teal-600.text-white,.bg-teal-500.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-teal-700:hover{ background:linear-gradient(135deg,#4f7b75,#6f9a90)!important; color:#fff!important; }
 
-      .bg-slate-600{ background-color:var(--slate-soft)!important; }
-      .bg-slate-600.text-white{ color:var(--slate-700)!important; border:1px solid var(--slate-border)!important; }
+      .bg-slate-600,.bg-slate-700,.bg-slate-800{ background:linear-gradient(135deg,#6B5D4D,#8B7D6B)!important; color:#fff!important; border:none!important; }
+      .bg-slate-600.text-white,.bg-slate-700.text-white,.bg-slate-800.text-white{ color:#fff!important; border:none!important; }
+      .hover\:bg-slate-700:hover{ background:linear-gradient(135deg,#57493c,#72604e)!important; color:#fff!important; }
 
-      .bg-amber-500{ background-color:var(--amber-soft)!important; }
-      .bg-amber-500.text-white{ color:var(--amber-700)!important; border:1px solid var(--amber-border)!important; }
+      .bg-amber-500{ background:linear-gradient(135deg,#b87333,#d99a52)!important; color:#fff!important; border:none!important; }
+      .bg-amber-500.text-white{ color:#fff!important; border:none!important; }
       .feedback-notification-bar .text-white{ color:var(--amber-700)!important; }
 
-      .bg-pink-600{ background-color:var(--pink-soft)!important; }
-      .bg-pink-600.text-white{ color:var(--pink-700)!important; border:1px solid var(--pink-border)!important; }
+      .bg-pink-600{ background:linear-gradient(135deg,#a05a48,#bf7c63)!important; color:#fff!important; border:none!important; }
+      .bg-pink-600.text-white{ color:#fff!important; border:none!important; }
 
       /* 側邊欄 → 浮起圓角粉彩面板（無白字） */
       .bg-slate-900{
@@ -164,7 +165,13 @@
       .bg-slate-900 .text-slate-100,.bg-slate-900 .text-slate-200{ color:var(--taupe-800)!important; }
       .bg-slate-900 .text-slate-300,.bg-slate-900 .text-slate-400{ color:var(--sage-700)!important; }
       .bg-slate-900 .text-emerald-400{ color:var(--pink-600)!important; }
+      .bg-slate-900 nav button{ font-size:.875rem!important; font-weight:500!important; }
       .bg-slate-900 nav button:hover{ color:var(--taupe-800)!important; background:var(--sage-soft)!important; }
+
+      /* 內容字體 → 與 HR 一致（CSS 統一微調） */
+      #app table, #app table th, #app table td{ font-size:.85rem!important; }
+      #app input, #app select, #app textarea{ font-size:.85rem!important; }
+      #app label{ font-size:.72rem!important; }
       .hover\:bg-slate-800:hover{ background-color:var(--sage-soft)!important; }
     </style>
   </head>
@@ -286,7 +293,7 @@
       <div v-else class="min-h-screen">
         <div class="flex">
           <!-- 左側導航欄（與管理員後台一致） -->
-          <aside class="w-60 bg-slate-900 text-white min-h-screen flex flex-col shadow-lg flex-shrink-0">
+          <aside class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328]">
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
               <i class="fas fa-user-md text-emerald-400 text-3xl"></i>
               <div class="min-w-0">
@@ -312,6 +319,12 @@
               </button>
               <button @click="docTab='schedule'; loadMyLeaves()" :class="docTab==='schedule' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-calendar-xmark mr-2"></i>排程／請假
+              </button>
+              <button @click="docTab='attendance'; loadMyHr()" :class="docTab==='attendance' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-clock mr-2"></i>打卡考勤
+              </button>
+              <button @click="docTab='ess'; loadEss()" :class="docTab==='ess' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-user-cog mr-2"></i>我的自助
               </button>
             </nav>
             <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
@@ -653,6 +666,455 @@
               </div>
             </div>
           </div>
+
+          <!-- 🕐 打卡考勤（自助） -->
+          <div v-if="docTab==='attendance'" class="space-y-6">
+            <!-- 今日狀態卡 -->
+            <div class="bg-white rounded-xl shadow p-5">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-clock text-emerald-600 mr-2"></i>今日考勤</h3>
+                  <p class="text-sm text-slate-500">{{ hrStatus.date || '—' }}{{ hrStatus.schedule && hrStatus.schedule.off ? '（休息日）' : '' }}</p>
+                </div>
+                <div v-if="hrStatus.schedule && !hrStatus.schedule.off" class="text-sm text-slate-600">
+                  返工時間：<b class="text-slate-800">{{ hrStatus.schedule.work_start || '—' }} – {{ hrStatus.schedule.work_end || '—' }}</b>
+                </div>
+              </div>
+
+              <div v-if="hrStatus.schedule && hrStatus.schedule.off" class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                <p class="text-amber-700"><i class="fas fa-moon mr-1"></i>今日為休息日，無需打卡</p>
+              </div>
+
+              <div v-else class="flex flex-col md:flex-row md:items-center gap-4">
+                <div class="flex-1 grid grid-cols-2 gap-3 text-sm">
+                  <div class="bg-slate-50 rounded-lg p-3 text-center">
+                    <p class="text-xs text-slate-500 mb-1">上班打卡</p>
+                    <p class="text-lg font-bold" :class="hrStatus.attendance && hrStatus.attendance.clock_in ? 'text-emerald-600' : 'text-slate-400'">
+                      {{ hrStatus.attendance && hrStatus.attendance.clock_in ? hrStatus.attendance.clock_in : '未打卡' }}
+                    </p>
+                    <p v-if="hrStatus.attendance && hrStatus.attendance.is_late" class="text-xs text-rose-600 mt-1">（遲到）</p>
+                  </div>
+                  <div class="bg-slate-50 rounded-lg p-3 text-center">
+                    <p class="text-xs text-slate-500 mb-1">下班打卡</p>
+                    <p class="text-lg font-bold" :class="hrStatus.attendance && hrStatus.attendance.clock_out ? 'text-emerald-600' : 'text-slate-400'">
+                      {{ hrStatus.attendance && hrStatus.attendance.clock_out ? hrStatus.attendance.clock_out : '未打卡' }}
+                    </p>
+                    <p v-if="hrStatus.attendance && hrStatus.attendance.is_early_leave" class="text-xs text-rose-600 mt-1">（早退）</p>
+                  </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <button
+                    @click="hrClockIn"
+                    :disabled="hrBusy || (hrStatus.attendance && hrStatus.attendance.clock_in) || hrStatus.schedule.off"
+                    class="px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <i class="fas fa-right-to-bracket mr-2"></i>上班打卡
+                  </button>
+                  <button
+                    @click="hrClockOut"
+                    :disabled="hrBusy || !(hrStatus.attendance && hrStatus.attendance.clock_in) || (hrStatus.attendance && hrStatus.attendance.clock_out) || hrStatus.schedule.off"
+                    class="px-5 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <i class="fas fa-right-from-bracket mr-2"></i>下班打卡
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="hrMsg" class="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <p class="text-emerald-700 text-sm"><i class="fas fa-circle-check mr-1"></i>{{ hrMsg }}</p>
+              </div>
+              <div v-if="hrErr" class="mt-3 bg-rose-50 border border-rose-200 rounded-lg p-3">
+                <p class="text-rose-700 text-sm"><i class="fas fa-circle-exclamation mr-1"></i>{{ hrErr }}</p>
+              </div>
+            </div>
+
+            <!-- 假額卡 -->
+            <div class="bg-white rounded-xl shadow p-5">
+              <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fas fa-umbrella-beach text-sky-600 mr-2"></i>我的假期</h3>
+              <div v-if="!hrStatus || !hrStatus.available" class="text-sm text-slate-400">載入中...</div>
+              <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                <div class="bg-sky-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500 mb-1">年假</p>
+                  <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.annual === -1 ? '不限' : (hrStatus.available.annual ?? 0) }}</p>
+                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.annual || 0 }}</p>
+                </div>
+                <div class="bg-rose-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500 mb-1">病假</p>
+                  <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.sick === -1 ? '不限' : (hrStatus.available.sick ?? 0) }}</p>
+                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.sick || 0 }}</p>
+                </div>
+                <div class="bg-amber-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500 mb-1">事假</p>
+                  <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal === -1 ? '不限' : (hrStatus.available.personal ?? 0) }}</p>
+                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal || 0 }}</p>
+                </div>
+                <div class="bg-violet-50 rounded-lg p-3">
+                  <p class="text-xs text-slate-500 mb-1">其他</p>
+                  <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal_other === -1 ? '不限' : (hrStatus.available.personal_other ?? 0) }}</p>
+                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal_other || 0 }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 申請請假（HR 假期） -->
+            <div class="bg-white rounded-xl shadow p-5">
+              <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fas fa-file-circle-plus text-emerald-600 mr-2"></i>申請請假（假期）</h3>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">假別</label>
+                  <select v-model="hrLeaveForm.leave_type" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                    <option value="annual">年假</option>
+                    <option value="sick">病假</option>
+                    <option value="personal">事假</option>
+                    <option value="personal_other">其他</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">開始日期</label>
+                  <input type="date" v-model="hrLeaveForm.start_date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">結束日期</label>
+                  <input type="date" v-model="hrLeaveForm.end_date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">原因</label>
+                  <input type="text" v-model="hrLeaveForm.reason" placeholder="請填寫原因" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="col-span-1 md:col-span-4 flex items-end">
+                  <button @click="submitHrLeave" :disabled="hrBusy || !hrLeaveForm.leave_type || !hrLeaveForm.start_date || !hrLeaveForm.end_date" class="w-full md:w-auto px-6 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 font-medium text-sm">
+                    <i class="fas fa-paper-plane mr-1"></i>提交假期申請
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 我的請假紀錄 -->
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+              <div class="px-5 py-4 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-list-check text-slate-600 mr-2"></i>我的請假紀錄</h3>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead class="bg-slate-50 text-slate-500 text-xs">
+                    <tr>
+                      <th class="px-4 py-3 text-left">假別</th>
+                      <th class="px-4 py-3 text-left">日期</th>
+                      <th class="px-4 py-3 text-left">天數</th>
+                      <th class="px-4 py-3 text-left">原因</th>
+                      <th class="px-4 py-3 text-left">狀態</th>
+                      <th class="px-4 py-3 text-left">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr v-if="hrLeaves.length === 0">
+                      <td colspan="6" class="px-4 py-6 text-center text-slate-400">暫無請假紀錄</td>
+                    </tr>
+                    <tr v-for="l in hrLeaves" :key="l.id">
+                      <td class="px-4 py-3">{{ l.leave_type_label || l.leave_type }}</td>
+                      <td class="px-4 py-3">{{ l.start_date }} ~ {{ l.end_date }}</td>
+                      <td class="px-4 py-3">{{ l.days }} 日</td>
+                      <td class="px-4 py-3 text-slate-600">{{ l.reason || '—' }}</td>
+                      <td class="px-4 py-3">
+                        <span v-if="l.status==='approved'" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">已批准</span>
+                        <span v-else-if="l.status==='rejected'" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">已拒絕</span>
+                        <span v-else class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">待審批</span>
+                      </td>
+                      <td class="px-4 py-3">
+                        <button v-if="l.status==='pending'" @click="cancelHrLeave(l.id)" class="text-rose-600 hover:underline text-xs">取消</button>
+                        <span v-else class="text-slate-300 text-xs">—</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 我的考勤紀錄 -->
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+              <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-calendar-check text-slate-600 mr-2"></i>我的考勤紀錄</h3>
+                <button @click="loadMyHrRecords()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-rotate mr-1"></i>重新整理</button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead class="bg-slate-50 text-slate-500 text-xs">
+                    <tr>
+                      <th class="px-4 py-3 text-left">日期</th>
+                      <th class="px-4 py-3 text-left">上班</th>
+                      <th class="px-4 py-3 text-left">下班</th>
+                      <th class="px-4 py-3 text-left">工時</th>
+                      <th class="px-4 py-3 text-left">狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr v-if="hrRecords.length === 0">
+                      <td colspan="5" class="px-4 py-6 text-center text-slate-400">暫無考勤紀錄</td>
+                    </tr>
+                    <tr v-for="r in hrRecords" :key="r.id">
+                      <td class="px-4 py-3">{{ r.attendance_date }}</td>
+                      <td class="px-4 py-3">{{ r.clock_in || '—' }}</td>
+                      <td class="px-4 py-3">{{ r.clock_out || '—' }}</td>
+                      <td class="px-4 py-3">{{ r.work_label || '—' }}</td>
+                      <td class="px-4 py-3">
+                        <span v-if="r.is_absent" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">缺席</span>
+                        <span v-else-if="r.is_late" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">遲到</span>
+                        <span v-else-if="r.is_early_leave" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">早退</span>
+                        <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">正常</span>
+                        <span v-if="r.attendance_type && r.attendance_type!=='full'" class="ml-1 px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full text-xs">{{ r.attendance_type_label || r.attendance_type }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==== 醫師自助 ESS（階段三）==== -->
+          <div v-if="docTab==='ess'" class="space-y-6">
+            <div class="bg-white rounded-xl shadow p-5">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-user-cog mr-2 text-emerald-600"></i>我的自助</h2>
+                  <p class="text-sm text-slate-500">查看個人資料、返工更表、出糧單與文件</p>
+                </div>
+                <button @click="loadEss()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-sync mr-1"></i>重新整理</button>
+              </div>
+              <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                <button @click="essTab='profile'" :class="essTab==='profile' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fas fa-id-card mr-2"></i>個人資料
+                </button>
+                <button v-if="isPartTime" @click="essTab='roster'; loadRosterWeek()" :class="essTab==='roster' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fas fa-calendar-check mr-2"></i>報更
+                </button>
+                <button v-if="isPartTime" @click="essTab='schedule'; loadMyScheduleView()" :class="essTab==='schedule' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fas fa-calendar-alt mr-2"></i>返工更表
+                </button>
+                <button @click="essTab='payslip'; loadMyPayslip()" :class="essTab==='payslip' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fas fa-money-bill-wave mr-2"></i>出糧單
+                </button>
+                <button @click="essTab='documents'; loadMyDocuments()" :class="essTab==='documents' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fas fa-folder-open mr-2"></i>文件
+                </button>
+              </div>
+
+              <!-- 報更（兼職） -->
+              <div v-if="essTab==='roster'" class="pt-5">
+                <div v-if="!essRosterWeek" class="text-sm text-slate-400">載入中...</div>
+                <template v-else>
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div>
+                      <div class="text-sm font-semibold text-emerald-800">報更週：{{ essRosterWeek.week_start }}（一）至 {{ essRosterWeek.week_end }}（六）</div>
+                      <div class="text-xs text-emerald-600 mt-1">截止：{{ essRosterWeek.deadline }}（星期日）前</div>
+                      <div class="text-xs text-amber-600 mt-1" v-if="!essRosterWeek.canModify">此週報更已截止或已提交，需要修改請聯絡管理員</div>
+                    </div>
+                    <button v-if="essRosterWeek.canModify" @click="submitRoster()" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700">
+                      <i class="fas fa-paper-plane mr-1"></i>提交報更
+                    </button>
+                  </div>
+                  <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-sm">
+                      <thead><tr class="bg-slate-100 text-slate-600"><th class="px-3 py-2 text-left">日期</th><th class="px-3 py-2 text-left">返工時段</th></tr></thead>
+                      <tbody>
+                        <tr v-for="d in essRosterWeek.dates" :key="d.date">
+                          <td class="px-3 py-2 border-t border-slate-100 font-medium text-slate-700">{{ d.date }}（{{ d.day }}）</td>
+                          <td class="px-3 py-2 border-t border-slate-100">
+                            <template v-if="essRosterWeek.canModify">
+                              <input type="time" class="border border-slate-300 rounded-lg px-2 py-1 text-sm" v-model="essRosterSelection[d.date + '_start']" />
+                              <span class="text-slate-400 mx-1">至</span>
+                              <input type="time" class="border border-slate-300 rounded-lg px-2 py-1 text-sm" v-model="essRosterSelection[d.date + '_end']" />
+                            </template>
+                            <span v-else class="text-slate-600">{{ rosterItemLabel(d.date) }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+              </div>
+
+              <!-- 個人資料 -->
+              <div v-if="essTab==='profile'" class="pt-5">
+                <div v-if="!essProfile" class="text-sm text-slate-400">載入中...</div>
+                <div v-else>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-xs text-slate-500">姓名</label>
+                      <div class="font-medium text-slate-800">{{ essProfile.name }}</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">英文名</label>
+                      <div class="font-medium text-slate-800">{{ essProfile.name_en || '—' }}</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">用戶名</label>
+                      <div class="font-medium text-slate-800">{{ essProfile.username }}</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">入職日期</label>
+                      <div class="font-medium text-slate-800">{{ essProfile.hire_date || '—' }}</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">角色</label>
+                      <div class="font-medium text-slate-800">醫生</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">身份證</label>
+                      <div class="font-medium text-slate-800">{{ essProfile.id_card_masked || '—' }}</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">銀行戶口</label>
+                      <div class="font-medium text-slate-800">{{ essProfile.bank_account_masked || '—' }}</div>
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">時薪 / 月薪</label>
+                      <div class="font-medium text-slate-800">
+                        <span v-if="essProfile.hourly_rate">${{ Number(essProfile.hourly_rate).toFixed(0) }}/小時</span>
+                        <span v-else-if="essProfile.basic_salary">${{ Number(essProfile.basic_salary).toFixed(0) }}/月</span>
+                        <span v-else>—</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="h-px bg-slate-200 my-5"></div>
+                  <p class="text-sm font-semibold text-slate-700 mb-3">可修改資料</p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="text-xs text-slate-500">電話</label>
+                      <input v-model="essEdit.phone" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">電郵</label>
+                      <input v-model="essEdit.email" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label class="text-xs text-slate-500">地址</label>
+                      <input v-model="essEdit.address" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">緊急聯絡人</label>
+                      <input v-model="essEdit.emergency_contact" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    <div>
+                      <label class="text-xs text-slate-500">緊急聯絡電話</label>
+                      <input v-model="essEdit.emergency_phone" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                  </div>
+                  <div class="mt-5 text-right">
+                    <button @click="saveMyProfile()" :disabled="essBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-50">
+                      <i class="fas fa-save mr-2"></i>儲存
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 返工更表 -->
+              <div v-if="essTab==='schedule'" class="pt-5">
+                <div class="flex flex-wrap items-end gap-3 mb-4">
+                  <div>
+                    <label class="text-xs text-slate-500">由</label>
+                    <input v-model="essSchFrom" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" @change="loadMyScheduleView" />
+                  </div>
+                  <div>
+                    <label class="text-xs text-slate-500">至</label>
+                    <input v-model="essSchTo" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" @change="loadMyScheduleView" />
+                  </div>
+                  <button @click="essSchFrom=''; essSchTo=''; loadMyScheduleView()" class="px-3 py-2 text-xs text-emerald-600 hover:underline">預設本月</button>
+                </div>
+                <div v-if="essBusy" class="text-sm text-slate-400">載入中...</div>
+                <div v-else-if="!essSchedule || !essSchedule.days || essSchedule.days.length===0" class="text-sm text-slate-400">尚無更表資料</div>
+                <div v-else class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead>
+                      <tr class="text-slate-500 border-b border-slate-200">
+                        <th class="text-left py-2 pr-4">日期</th>
+                        <th class="text-left py-2 pr-4">星期</th>
+                        <th class="text-left py-2 pr-4">狀態</th>
+                        <th class="text-left py-2">返工時間</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="d in essSchedule.days" :key="d.date" class="border-b border-slate-100">
+                        <td class="py-2 pr-4 text-slate-700">{{ d.date }}</td>
+                        <td class="py-2 pr-4 text-slate-600">{{ essWeekday(d.date) }}</td>
+                        <td class="py-2 pr-4">
+                          <span v-if="d.off" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">休息</span>
+                          <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">上班</span>
+                        </td>
+                        <td class="py-2 text-slate-700">{{ d.off ? '—' : (d.work_start + ' – ' + d.work_end) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 出糧單 -->
+              <div v-if="essTab==='payslip'" class="pt-5">
+                <div v-if="essBusy" class="text-sm text-slate-400">載入中...</div>
+                <div v-else-if="!essPayslip || !essPayslip.row" class="text-sm text-slate-400">該月份尚無出糧紀錄（需已設定時薪或月薪）</div>
+                <div v-else class="max-w-md">
+                  <div class="bg-slate-50 rounded-xl border border-slate-200 p-5">
+                    <div class="text-center pb-4 border-b border-slate-200">
+                      <div class="text-xs text-slate-500">出糧單</div>
+                      <div class="text-xl font-bold text-slate-800">{{ essPayslip.from }} 至 {{ essPayslip.to }}</div>
+                      <div class="text-sm text-slate-500">{{ essPayslip.row.name }}（醫生）</div>
+                    </div>
+                    <div class="space-y-3 pt-4 text-sm">
+                      <div class="flex justify-between"><span class="text-slate-500">應返工作天</span><span class="font-medium">{{ essPayslip.workdays }} 日</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">出勤日數</span><span class="font-medium">{{ essPayslip.row.worked_days }} 日</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">總工時</span><span class="font-medium">{{ essPayslip.row.total_label }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">OT 小時</span><span class="font-medium">{{ essPayslip.row.ot_hours || 0 }}</span></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-5 pt-4 border-t border-slate-200">
+                      <span class="text-slate-500 text-sm">應發薪金</span>
+                      <span class="text-2xl font-extrabold text-emerald-600">${{ Number(essPayslip.row.gross).toFixed(2) }}</span>
+                    </div>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-3">薪金按時薪或月薪自動計算，如需查詢細節請聯絡管理員。</p>
+                </div>
+              </div>
+
+              <!-- 文件 -->
+              <div v-if="essTab==='documents'" class="pt-5">
+                <p class="text-sm text-slate-500 mb-3">上傳你嘅文件（合約、證書、醫療證明等），管理員同你都可以查看。</p>
+                <div class="flex flex-wrap items-end gap-3 mb-5">
+                  <div>
+                    <label class="text-xs text-slate-500">類型</label>
+                    <select v-model="essDocType" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white">
+                      <option value="contract">合約</option>
+                      <option value="certificate">證書/資格</option>
+                      <option value="medical">醫療證明</option>
+                      <option value="other">其他</option>
+                    </select>
+                  </div>
+                  <div class="flex-1 min-w-[200px]">
+                    <label class="text-xs text-slate-500">備註（可選）</label>
+                    <input v-model="essDocNote" placeholder="例：醫師證書" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div class="flex-1 min-w-[200px]">
+                    <label class="text-xs text-slate-500">檔案</label>
+                    <input type="file" ref="essFileInput" class="w-full block text-sm text-slate-600 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:text-emerald-700 file:font-medium" />
+                  </div>
+                  <button @click="uploadMyDocument()" :disabled="essBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
+                    <i class="fas fa-upload mr-2"></i>上傳
+                  </button>
+                </div>
+                <div v-if="essBusy" class="text-sm text-slate-400">處理中...</div>
+                <div v-else-if="!essDocuments || essDocuments.length===0" class="text-sm text-slate-400">尚未上傳任何文件</div>
+                <div v-else class="space-y-2">
+                  <div v-for="d in essDocuments" :key="d.id" class="flex flex-wrap items-center gap-3 border border-slate-200 rounded-lg px-4 py-3">
+                    <i class="fas fa-file-alt text-emerald-600"></i>
+                    <div class="flex-1 min-w-[150px]">
+                      <div class="font-medium text-slate-800">{{ d.original_name }}</div>
+                      <div class="text-xs text-slate-500">{{ essDocTypeLabel(d.doc_type) }} · {{ d.uploaded_at }}</div>
+                      <div v-if="d.note" class="text-xs text-slate-500">{{ d.note }}</div>
+                    </div>
+                    <a :href="d.file_path" target="_blank" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-eye mr-1"></i>查看</a>
+                    <button @click="deleteMyDocument(d)" class="text-sm text-rose-500 hover:underline"><i class="fas fa-trash mr-1"></i>刪除</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </main>
           </div>
         </div>
@@ -987,6 +1449,30 @@
             myLeaves: [],
             leaveListLoading: false,
 
+            // 🕐 打卡考勤（自助）
+            hrStatus: null,
+            hrRecords: [],
+            hrLeaves: [],
+            hrLeaveForm: { leave_type: "annual", start_date: "", end_date: "", reason: "" },
+            hrMsg: "",
+            hrErr: "",
+            hrBusy: false,
+
+            // 👤 醫師自助 ESS（階段三）
+            essTab: "profile",
+            essBusy: false,
+            essProfile: null,
+            essEdit: { phone: "", email: "", address: "", emergency_contact: "", emergency_phone: "" },
+            essSchFrom: "",
+            essSchTo: "",
+            essSchedule: null,
+            essPayslip: null,
+            essDocuments: [],
+            essDocType: "contract",
+            essDocNote: "",
+            essRosterWeek: null,
+            essRosterSelection: {},
+
             // 預約列表
             bookings: [],
             isLoading: false,
@@ -1015,6 +1501,9 @@
         },
 
         computed: {
+          isPartTime() {
+            return !!(this.doctorUser && this.doctorUser.employment_type === 'part');
+          },
           currentDateStr() {
             return new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
           },
@@ -1623,6 +2112,232 @@
             } finally {
               this.isSubmittingRecord = false;
             }
+          },
+
+          // ==================== 🕐 打卡考勤（自助） ====================
+          async loadMyHr() {
+            await Promise.all([this.loadMyHrStatus(), this.loadMyHrRecords(), this.loadMyHrLeaves()]);
+          },
+          async loadMyHrStatus() {
+            try {
+              const res = await fetch("/api/hr/my-status", {
+                headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+              });
+              const data = await res.json();
+              if (!res.ok) { this.hrErr = data.error || "載入考勤狀態失敗"; return; }
+              this.hrStatus = data;
+              this.hrErr = "";
+            } catch (e) { this.hrErr = "載入考勤狀態失敗"; }
+          },
+          async hrClockIn() {
+            this.hrBusy = true; this.hrMsg = ""; this.hrErr = "";
+            try {
+              const res = await fetch("/api/hr/clock-in", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: "{}",
+              });
+              const data = await res.json();
+              if (!res.ok) { this.hrErr = data.error || "打卡失敗"; }
+              else { this.hrMsg = data.message || "上班打卡成功"; }
+              await this.loadMyHrStatus();
+              await this.loadMyHrRecords();
+            } catch (e) { this.hrErr = "打卡失敗，請稍後再試"; }
+            finally { this.hrBusy = false; }
+          },
+          async hrClockOut() {
+            this.hrBusy = true; this.hrMsg = ""; this.hrErr = "";
+            try {
+              const res = await fetch("/api/hr/clock-out", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: "{}",
+              });
+              const data = await res.json();
+              if (!res.ok) { this.hrErr = data.error || "打卡失敗"; }
+              else { this.hrMsg = data.message || "下班打卡成功"; }
+              await this.loadMyHrStatus();
+              await this.loadMyHrRecords();
+            } catch (e) { this.hrErr = "打卡失敗，請稍後再試"; }
+            finally { this.hrBusy = false; }
+          },
+          async loadMyHrRecords() {
+            try {
+              const res = await fetch("/api/hr/my-records", {
+                headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+              });
+              const data = await res.json();
+              if (res.ok) this.hrRecords = data.records || [];
+            } catch (e) { /* ignore */ }
+          },
+          async loadMyHrLeaves() {
+            try {
+              const res = await fetch("/api/hr/my-leaves", {
+                headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+              });
+              const data = await res.json();
+              if (res.ok) this.hrLeaves = data || [];
+            } catch (e) { /* ignore */ }
+          },
+          async submitHrLeave() {
+            const f = this.hrLeaveForm;
+            if (!f.leave_type || !f.start_date || !f.end_date) { this.hrErr = "請選擇假別及起止日期"; return; }
+            this.hrBusy = true; this.hrMsg = ""; this.hrErr = "";
+            try {
+              const res = await fetch("/api/hr/leaves", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: JSON.stringify({ leave_type: f.leave_type, start_date: f.start_date, end_date: f.end_date, reason: f.reason }),
+              });
+              const data = await res.json();
+              if (!res.ok) { this.hrErr = data.error || "申請失敗"; }
+              else {
+                this.hrMsg = data.message || "請假申請已提交";
+                this.hrLeaveForm = { leave_type: "annual", start_date: "", end_date: "", reason: "" };
+                await this.loadMyHrLeaves();
+                await this.loadMyHrStatus();
+              }
+            } catch (e) { this.hrErr = "申請失敗，請稍後再試"; }
+            finally { this.hrBusy = false; }
+          },
+          async cancelHrLeave(id) {
+            if (!confirm("確定要取消此請假申請嗎？")) return;
+            this.hrBusy = true; this.hrMsg = ""; this.hrErr = "";
+            try {
+              const res = await fetch(`/api/hr/leaves/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+              });
+              const data = await res.json();
+              if (!res.ok) { this.hrErr = data.error || "取消失敗"; }
+              else { this.hrMsg = data.message || "已取消請假申請"; }
+              await this.loadMyHrLeaves();
+              await this.loadMyHrStatus();
+            } catch (e) { this.hrErr = "取消失敗，請稍後再試"; }
+            finally { this.hrBusy = false; }
+          },
+
+          // —— 醫師自助 ESS（階段三）——
+          async loadEss() {
+            this.essBusy = true;
+            try {
+              const tasks = [this.loadMyProfile(), this.loadMyPayslip(), this.loadMyDocuments()];
+              if (this.isPartTime) tasks.push(this.loadMyScheduleView(), this.loadRosterWeek());
+              await Promise.all(tasks);
+            } finally { this.essBusy = false; }
+          },
+          async loadMyProfile() {
+            const r = await fetch("/api/hr/my-profile", { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+            const data = await r.json();
+            if (r.ok) {
+              this.essProfile = data;
+              this.essEdit = { phone: data.phone || "", email: data.email || "", address: data.address || "", emergency_contact: data.emergency_contact || "", emergency_phone: data.emergency_phone || "" };
+            }
+          },
+          async saveMyProfile() {
+            if (!this.essProfile) return;
+            const r = await fetch("/api/hr/my-profile", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+              body: JSON.stringify(this.essEdit),
+            });
+            const data = await r.json();
+            if (r.ok) { alert(data.message || "個人資料已更新"); await this.loadMyProfile(); }
+            else alert(data.error || "更新失敗");
+          },
+          async loadMyScheduleView() {
+            if (!this.essSchFrom) {
+              const now = new Date();
+              this.essSchFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+              const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+              this.essSchTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+            }
+            const r = await fetch(`/api/hr/my-schedule?from=${this.essSchFrom}&to=${this.essSchTo}`, { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+            const data = await r.json();
+            if (r.ok) this.essSchedule = data;
+          },
+          async loadMyPayslip() {
+            const now = new Date();
+            const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+            const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+            const r = await fetch(`/api/hr/my-payslip?from=${from}&to=${to}`, { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+            const data = await r.json();
+            if (r.ok) this.essPayslip = data;
+          },
+          async loadMyDocuments() {
+            const r = await fetch("/api/hr/my-documents", { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+            const data = await r.json();
+            if (r.ok) this.essDocuments = data;
+          },
+          async uploadMyDocument() {
+            const input = this.$refs.essFileInput;
+            if (!input || !input.files || !input.files[0]) { alert("請選擇檔案"); return; }
+            const fd = new FormData();
+            fd.append("file", input.files[0]);
+            fd.append("doc_type", this.essDocType || "other");
+            fd.append("note", this.essDocNote || "");
+            this.essBusy = true;
+            try {
+              const r = await fetch("/api/hr/my-documents", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: fd,
+              });
+              const data = await r.json();
+              if (r.ok) { input.value = ""; this.essDocNote = ""; await this.loadMyDocuments(); }
+              else alert(data.error || "上傳失敗");
+            } finally { this.essBusy = false; }
+          },
+          async deleteMyDocument(d) {
+            if (!confirm("確定刪除「" + d.original_name + "」？")) return;
+            const r = await fetch(`/api/hr/my-documents/${d.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+            const data = await r.json();
+            if (r.ok) await this.loadMyDocuments();
+            else alert(data.error || "刪除失敗");
+          },
+          essWeekday(date) {
+            const w = ["日", "一", "二", "三", "四", "五", "六"];
+            return "星期" + w[new Date(date + "T12:00:00").getDay()];
+          },
+          async loadRosterWeek() {
+            const r = await fetch("/api/hr/my-roster/week", { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+            const data = await r.json();
+            if (r.ok && data) {
+              this.essRosterWeek = data;
+              const sel = {};
+              (data.existing && data.existing.items || []).forEach(it => {
+                sel[it.shift_date + "_start"] = it.time_start || "";
+                sel[it.shift_date + "_end"] = it.time_end || "";
+              });
+              this.essRosterSelection = sel;
+            } else if (!r.ok) alert(data.error || "無法載入報更週");
+          },
+          async submitRoster() {
+            if (!this.essRosterWeek) return;
+            const shifts = [];
+            (this.essRosterWeek.dates || []).forEach(d => {
+              const start = this.essRosterSelection[d.date + "_start"];
+              const end = this.essRosterSelection[d.date + "_end"];
+              if (start && end) shifts.push({ date: d.date, time_start: start, time_end: end });
+            });
+            if (!shifts.length) { alert("請至少揀一日返工時段"); return; }
+            const r = await fetch("/api/hr/my-roster", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+              body: JSON.stringify({ week_start: this.essRosterWeek.week_start, note: "", shifts }),
+            });
+            const data = await r.json();
+            if (r.ok) { alert(data.message || "報更已提交"); await this.loadRosterWeek(); }
+            else alert(data.error || "提交失敗");
+          },
+          rosterItemLabel(date) {
+            const ex = this.essRosterWeek && this.essRosterWeek.existing ? (this.essRosterWeek.existing.items || []) : [];
+            const it = ex.find(x => x.shift_date === date);
+            return it ? (it.time_start + " — " + it.time_end) : "—";
+          },
+          essDocTypeLabel(t) {
+            return { contract: "合約", certificate: "證書/資格", medical: "醫療證明", other: "其他" }[t] || t || "其他";
           },
         },
 

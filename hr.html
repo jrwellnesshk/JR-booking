@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>寶天醫館 · 人力資源管理</title>
+    <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+    <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
+    <script src="js/auth-fetch.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: '#3e2a1e',
+              cream: '#f0e4d2',
+              sand: '#f6efe7',
+              taupe: '#9a7d52',
+              moss: { 100: '#e3edd9', 300: '#c2d2b4', 400: '#b8cba9', 500: '#a3b394', 600: '#86997c', 700: '#637c5d' },
+              clay: { 300: '#e7b89c', 400: '#d99c80', 500: '#c08268', 600: '#a06853', 700: '#7e5140', 800: '#5a3a2c' },
+            },
+            fontFamily: {
+              head: ['"Noto Serif TC"', '"Noto Sans TC"', 'serif'],
+              body: ['"Noto Sans TC"', '"Inter"', 'sans-serif'],
+            },
+            borderRadius: { xl: '1.1rem', '2xl': '1.5rem', '3xl': '1.75rem' },
+          },
+        },
+      };
+    </script>
+    <style>
+      [v-cloak]{ display:none !important; }
+      *{ -webkit-tap-highlight-color:transparent; }
+      html,body{ height:100%; }
+      body{
+        font-family:"Noto Sans TC","Inter",sans-serif; letter-spacing:.005em;
+        color:#4F4438;
+        -webkit-font-smoothing:antialiased;
+        background:
+          radial-gradient(1100px 620px at 92% -12%, rgba(192,130,104,.08), transparent 60%),
+          radial-gradient(1000px 600px at -10% 110%, rgba(157,170,133,.13), transparent 58%),
+          radial-gradient(800px 460px at 50% 125%, rgba(192,130,104,.05), transparent 60%),
+          #F0E4D2 !important;
+        background-attachment:fixed;
+      }
+      h1,h2,h3,h4,h5,h6{ font-family:"Noto Serif TC","Noto Sans TC",serif; letter-spacing:.01em; color:#3E3328; font-weight:600; }
+      ::-webkit-scrollbar{ width:10px; height:10px; }
+      ::-webkit-scrollbar-track{ background:transparent; }
+      ::-webkit-scrollbar-thumb{ background:#e7b89c; border-radius:999px; border:2px solid transparent; background-clip:content-box; }
+      .card{ background:rgba(255,255,255,.86); backdrop-filter:blur(10px); border:1px solid rgba(139,125,107,.14); border-radius:1.3rem; box-shadow:0 24px 60px -22px rgba(62,51,40,.22); }
+      .navbtn{ display:flex; align-items:center; gap:.7rem; width:100%; text-align:left; padding:.62rem .9rem; border-radius:.75rem; font-size:.875rem; font-weight:500; transition:all .15s; border:none; cursor:pointer; color:#d9d3c8; }
+      .navbtn:hover{ background:rgba(255,255,255,.08); color:#fff; }
+      .navbtn.active{ background:linear-gradient(135deg,#7e5140,#a06853); color:#fff; box-shadow:0 10px 22px -12px rgba(122,81,64,.7); }
+      .th{ padding:.62rem .8rem; text-align:left; font-size:.7rem; font-weight:700; letter-spacing:.06em; color:#8B7D6B; text-transform:uppercase; white-space:nowrap; }
+      .td{ padding:.62rem .8rem; font-size:.85rem; border-top:1px solid rgba(139,125,107,.12); white-space:nowrap; }
+      .pill{ display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px; font-size:.7rem; font-weight:700; }
+      .modal-mask{ position:fixed; inset:0; background:rgba(62,51,40,.4); backdrop-filter:blur(3px); z-index:60; display:flex; align-items:center; justify-content:center; padding:1rem; }
+      .input{ width:100%; border:1px solid rgba(139,125,107,.3); border-radius:.7rem; padding:.55rem .7rem; font-size:.85rem; background:#fff; color:#3E3328; outline:none; transition:border-color .15s, box-shadow .15s; }
+      .input:focus{ border-color:#a06853; box-shadow:0 0 0 3px rgba(160,104,83,.15); }
+      .lbl{ display:block; font-size:.72rem; font-weight:700; color:#8B7D6B; margin-bottom:.3rem; letter-spacing:.03em; }
+      .btn{ display:inline-flex; align-items:center; gap:.5rem; border:none; cursor:pointer; border-radius:.75rem; padding:.55rem 1rem; font-size:.85rem; font-weight:500; transition:transform .12s, box-shadow .2s; }
+      .btn:hover{ transform:translateY(-1px); }
+      .btn-solid{ background:linear-gradient(135deg,#7e5140,#a06853); color:#fff; box-shadow:0 12px 24px -14px rgba(122,81,64,.6); }
+      .btn-sage{ background:linear-gradient(135deg,#637c5d,#86997c); color:#fff; box-shadow:0 12px 24px -14px rgba(99,124,93,.6); }
+      .btn-ghost{ background:rgba(255,255,255,.6); border:1px solid rgba(139,125,107,.3); color:#7e5140; }
+      .btn-danger{ background:#b87560; color:#fff; }
+
+      /* === 側欄 → 浮起圓角粉彩（與員工/醫生/管理員一致） === */
+      .bg-slate-900{
+        background:linear-gradient(170deg,#FDF6FA 0%,#EEF4E9 55%,#EBF1E6 100%)!important;
+        border-radius:1.7rem!important;
+        margin:1rem!important;
+        min-height:calc(100vh - 2rem)!important;
+        box-shadow:0 24px 60px -22px rgba(62,51,40,.22)!important;
+        border:1px solid rgba(139,125,107,.1)!important;
+        color:#3E3328!important;
+      }
+      .bg-slate-900 .navbtn{ color:#6B5D4D; }
+      .bg-slate-900 .navbtn:hover{ background:#E5E8D9; color:#3E3328; }
+      .bg-slate-900 .navbtn.active{ background:linear-gradient(135deg,#7e5140,#a06853); color:#fff; }
+      .bg-slate-900 .brand-title{ font-family:"Noto Serif TC",serif; }
+      .bg-slate-900 .muted{ color:#8B7D6B; }
+    </style>
+  </head>
+  <body class="h-screen overflow-hidden">
+    <div id="app" v-cloak class="h-screen flex">
+
+      <!-- ================= 左側欄 ================= -->
+      <aside class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328]">
+        <!-- 品牌 -->
+        <div class="p-5 border-b border-[rgba(139,125,107,.12)] flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-lg" style="background:linear-gradient(135deg,#7e5140,#a06853);">
+            <i class="fas fa-users text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="brand-title font-bold text-[#3E3328] tracking-wide leading-tight">人力資源系統</div>
+            <div class="muted text-xs mt-0.5 truncate">寶天醫館 · JR</div>
+          </div>
+        </div>
+        <!-- 使用者 + 登出 -->
+        <div class="px-4 py-3 border-b border-[rgba(139,125,107,.12)]">
+          <div class="flex items-center gap-2 text-xs bg-white/70 rounded-xl px-3 py-2">
+            <i class="fas fa-user-shield text-[#637c5d]"></i>
+            <span class="truncate text-[#3E3328]">{{ adminUser.name || '管理員' }}</span>
+            <button @click="handleLogout" class="ml-auto text-[#b4453a] hover:text-[#8f3429]" title="登出">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+            <a href="admin.html" class="text-[#637c5d] hover:text-[#3E5240]" title="返回後台"><i class="fas fa-arrow-left"></i></a>
+          </div>
+        </div>
+        <!-- 導航 -->
+        <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+          <button class="navbtn" :class="{active:view==='overview'}" @click="switchView('overview')"><i class="fas fa-chart-pie w-4"></i>考勤總覽</button>
+          <button class="navbtn" :class="{active:view==='report'}" @click="switchView('report')"><i class="fas fa-file-alt w-4"></i>統計報表</button>
+          <button class="navbtn" :class="{active:view==='history'}" @click="switchView('history')"><i class="fas fa-clock w-4"></i>歷史考勤</button>
+          <button class="navbtn" :class="{active:view==='exceptions'}" @click="switchView('exceptions')"><i class="fas fa-exclamation-triangle w-4"></i>出勤異常</button>
+          <button class="navbtn" :class="{active:view==='leaves'}" @click="switchView('leaves')"><i class="fas fa-calendar-plus w-4"></i>請假管理<span v-if="pendingLeaveCount>0" class="ml-auto bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pendingLeaveCount }}</span></button>
+          <button class="navbtn" :class="{active:view==='roster'}" @click="switchView('roster')"><i class="fas fa-id-badge w-4"></i>員工名冊</button>
+          <button class="navbtn" :class="{active:view==='schedule'}" @click="switchView('schedule')"><i class="fas fa-calendar-check w-4"></i>排班管理</button>
+          <button class="navbtn" :class="{active:view==='payroll'}" @click="switchView('payroll')"><i class="fas fa-money-bill-wave w-4"></i>出糧</button>
+          <button class="navbtn" :class="{active:view==='manual'}" @click="switchView('manual')"><i class="fas fa-edit w-4"></i>補打卡</button>
+        </nav>
+        <div class="p-4 border-t border-[rgba(139,125,107,.12)] text-[11px] text-[#8B7D6B] flex justify-between items-center">
+          <span>今日 {{ todayStr }}</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-[#637c5d]"></span>HR 系統</span>
+        </div>
+      </aside>
+
+      <!-- ================= 主內容 ================= -->
+      <main class="flex-1 min-w-0 overflow-y-auto p-6 md:p-8">
+
+        <!-- 考勤總覽 -->
+        <section v-if="view==='overview'">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">考勤總覽</h1>
+              <p class="text-sm text-taupe mt-1">今日即時出勤狀況</p>
+            </div>
+            <button class="btn btn-ghost" @click="loadToday"><i class="fas fa-sync-alt"></i>刷新</button>
+          </div>
+
+          <!-- 統計卡 -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">總員工</p><i class="fas fa-users text-lg text-moss-600 opacity-70"></i></div>
+              <p class="text-3xl font-bold mt-2 text-ink">{{ stats.total }}</p>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">返工中</p><i class="fas fa-stopwatch text-lg text-clay-500 opacity-70"></i></div>
+              <p class="text-3xl font-bold mt-2 text-ink">{{ stats.working }}</p>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">已收工</p><i class="fas fa-house-user text-lg text-moss-600 opacity-70"></i></div>
+              <p class="text-3xl font-bold mt-2 text-ink">{{ stats.completed }}</p>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">請假</p><i class="fas fa-umbrella-beach text-lg text-rose-400 opacity-70"></i></div>
+              <p class="text-3xl font-bold mt-2 text-ink">{{ stats.onLeave }}</p>
+            </div>
+          </div>
+
+          <!-- 今日員工表 -->
+          <div class="card overflow-hidden">
+            <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)] flex items-center justify-between">
+              <h2 class="font-bold text-ink">今日出勤（{{ todayStr }}）</h2>
+              <span class="text-xs text-taupe">營業時間 10:00 – 19:00</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">角色</th><th class="th">狀態</th><th class="th">上班</th><th class="th">下班</th><th class="th">工時</th><th class="th">備註</th></tr></thead>
+                <tbody>
+                  <tr v-for="e in todayEmployees" :key="e.id">
+                    <td class="td font-semibold text-ink">{{ e.name }}</td>
+                    <td class="td">{{ roleLabel(e.role) }}</td>
+                    <td class="td"><span class="pill" :class="statusPill(e.status)"><i :class="statusIcon(e.status)"></i>{{ statusLabel(e.status) }}</span></td>
+                    <td class="td">{{ e.attendance ? e.attendance.clock_in : '—' }}</td>
+                    <td class="td">{{ e.attendance ? e.attendance.clock_out : '—' }}</td>
+                    <td class="td">{{ e.work_label || '—' }}</td>
+                    <td class="td text-xs text-taupe">{{ e.leave_type_label || '' }}</td>
+                  </tr>
+                  <tr v-if="todayEmployees.length===0"><td class="td text-center text-taupe" colspan="7">暫無員工資料</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 統計報表 -->
+        <section v-if="view==='report'">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">統計報表</h1>
+              <p class="text-sm text-taupe mt-1">每員工：出勤日 / 遲到 / 早退 / 請假 / 缺席 / 工時</p>
+            </div>
+            <div class="flex items-end gap-2">
+              <div><label class="lbl">開始日期</label><input type="date" class="input" v-model="repFrom" /></div>
+              <div><label class="lbl">結束日期</label><input type="date" class="input" v-model="repTo" /></div>
+              <button class="btn btn-solid" @click="loadReport"><i class="fas fa-search"></i>查詢</button>
+            </div>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">角色</th><th class="th">出勤日</th><th class="th">遲到</th><th class="th">早退</th><th class="th">請假</th><th class="th">缺席</th><th class="th">總工時</th><th class="th">平均/日</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in reportRows" :key="r.id">
+                    <td class="td font-semibold text-ink">{{ r.name }}</td>
+                    <td class="td">{{ roleLabel(r.role) }}</td>
+                    <td class="td text-center font-semibold">{{ r.work_days }}</td>
+                    <td class="td text-center"><span class="pill" :class="r.late>0?'bg-amber-100 text-amber-700':'bg-gray-100 text-gray-400'">{{ r.late }}</span></td>
+                    <td class="td text-center"><span class="pill" :class="r.early>0?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-400'">{{ r.early }}</span></td>
+                    <td class="td text-center"><span class="pill" :class="r.on_leave>0?'bg-sky-100 text-sky-700':'bg-gray-100 text-gray-400'">{{ r.on_leave }}</span></td>
+                    <td class="td text-center"><span class="pill" :class="r.absent>0?'bg-rose-100 text-rose-700':'bg-gray-100 text-gray-400'">{{ r.absent }}</span></td>
+                    <td class="td text-center font-semibold text-ink">{{ r.total_label }}</td>
+                    <td class="td text-center text-taupe">{{ r.avg_label || '—' }}</td>
+                  </tr>
+                  <tr v-if="reportRows.length===0"><td class="td text-center text-taupe" colspan="9">請選擇日期範圍查詢</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="px-5 py-3 text-xs text-taupe border-t border-[rgba(199,180,166,.3)]">共 {{ reportWorkdays }} 個工作日（不計星期六/日）</div>
+          </div>
+        </section>
+
+        <!-- 歷史考勤 -->
+        <section v-if="view==='history'">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">歷史考勤</h1>
+              <p class="text-sm text-taupe mt-1">查閱每日打卡紀錄</p>
+            </div>
+            <div class="flex items-end gap-2 flex-wrap">
+              <div><label class="lbl">員工</label><select class="input" v-model="histUserId"><option value="">全部員工</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}（{{ roleLabel(e.role) }}）</option></select></div>
+              <div><label class="lbl">開始</label><input type="date" class="input" v-model="histFrom" /></div>
+              <div><label class="lbl">結束</label><input type="date" class="input" v-model="histTo" /></div>
+              <button class="btn btn-solid" @click="loadHistory"><i class="fas fa-search"></i>查詢</button>
+            </div>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">日期</th><th class="th">員工</th><th class="th">角色</th><th class="th">上班</th><th class="th">下班</th><th class="th">類型</th><th class="th">遲到</th><th class="th">早退</th><th class="th">工時</th><th class="th">來源</th></tr></thead>
+                <tbody>
+                  <tr v-for="h in historyRows" :key="h.id">
+                    <td class="td font-semibold text-ink">{{ h.attendance_date }}</td>
+                    <td class="td">{{ h.u_name }}</td>
+                    <td class="td">{{ roleLabel(h.u_role) }}</td>
+                    <td class="td">{{ h.clock_in || '—' }}</td>
+                    <td class="td">{{ h.clock_out || '—' }}</td>
+                    <td class="td"><span class="pill" :class="attTypePill(h.attendance_type)">{{ attTypeLabel(h.attendance_type) }}</span></td>
+                    <td class="td">{{ h.is_late ? '✓' : '' }}</td>
+                    <td class="td">{{ h.is_early_leave ? '✓' : '' }}</td>
+                    <td class="td">{{ fmtMin(h.work_minutes) }}</td>
+                    <td class="td text-xs text-taupe">{{ h.source==='manual' ? '手動' : '自助' }}</td>
+                  </tr>
+                  <tr v-if="historyRows.length===0"><td class="td text-center text-taupe" colspan="10">暫無紀錄</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 出勤異常 -->
+        <section v-if="view==='exceptions'">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">出勤異常</h1>
+              <p class="text-sm text-taupe mt-1">遲到 / 早退 / 缺席 / 請假 標記</p>
+            </div>
+            <div class="flex items-end gap-2">
+              <div><label class="lbl">日期</label><input type="date" class="input" v-model="excDate" /></div>
+              <button class="btn btn-solid" @click="loadExceptions"><i class="fas fa-search"></i>查詢</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-user-clock text-2xl text-amber-500"></i><div><div class="text-2xl font-bold">{{ excCount.late }}</div><div class="text-xs text-taupe">遲到</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-sign-out-alt text-2xl text-orange-500"></i><div><div class="text-2xl font-bold">{{ excCount.early }}</div><div class="text-xs text-taupe">早退</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-user-slash text-2xl text-rose-500"></i><div><div class="text-2xl font-bold">{{ excCount.absent }}</div><div class="text-xs text-taupe">缺席</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-umbrella-beach text-2xl text-sky-500"></i><div><div class="text-2xl font-bold">{{ excCount.onLeave }}</div><div class="text-xs text-taupe">請假</div></div></div>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">類型</th><th class="th">上班</th><th class="th">下班</th></tr></thead>
+                <tbody>
+                  <tr v-for="(a,i) in exceptions" :key="i">
+                    <td class="td font-semibold text-ink">{{ a.name }}</td>
+                    <td class="td"><span class="pill" :class="excPill(a.type)">{{ a.label }}</span></td>
+                    <td class="td">{{ a.attendance && a.attendance.clock_in ? a.attendance.clock_in : '—' }}</td>
+                    <td class="td">{{ a.attendance && a.attendance.clock_out ? a.attendance.clock_out : '—' }}</td>
+                  </tr>
+                  <tr v-if="exceptions.length===0"><td class="td text-center text-taupe" colspan="4">今日冇出勤異常</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 請假管理 -->
+        <section v-if="view==='leaves'">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">請假管理</h1>
+              <p class="text-sm text-taupe mt-1">審批員工 / 醫生嘅請假申請</p>
+            </div>
+            <div class="flex gap-2">
+              <button v-for="t in leaveTabs" :key="t.key" class="btn" :class="leaveTab===t.key?'btn-sage':'btn-ghost'" @click="leaveTab=t.key;loadLeaves()">{{ t.label }}{{ t.key==='pending'&&pendingLeaveCount>0?' ('+pendingLeaveCount+')':'' }}</button>
+            </div>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">假別</th><th class="th">期間</th><th class="th">日數</th><th class="th">原因</th><th class="th">狀態</th><th class="th">提交時間</th><th class="th">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="l in leaves" :key="l.id">
+                    <td class="td font-semibold text-ink">{{ l.user_name }}</td>
+                    <td class="td">{{ l.leave_type_label }}</td>
+                    <td class="td">{{ l.start_date }} ~ {{ l.end_date }}</td>
+                    <td class="td text-center">{{ leaveDays(l) }}</td>
+                    <td class="td text-xs text-taupe max-w-[180px] truncate">{{ l.reason || '—' }}</td>
+                    <td class="td"><span class="pill" :class="leavePill(l.status)">{{ leaveStatusLabel(l.status) }}</span></td>
+                    <td class="td text-xs text-taupe">{{ (l.created_at||'').slice(0,16) }}</td>
+                    <td class="td">
+                      <template v-if="l.status==='pending'">
+                        <button class="btn btn-sage !px-3 !py-1 text-xs" @click="reviewLeave(l,'approved')"><i class="fas fa-check"></i>批准</button>
+                        <button class="btn btn-danger !px-3 !py-1 text-xs ml-1" @click="reviewLeave(l,'rejected')"><i class="fas fa-times"></i>拒絕</button>
+                      </template>
+                      <span v-else class="text-xs text-taupe">{{ l.reviewed_note || '' }}</span>
+                    </td>
+                  </tr>
+                  <tr v-if="leaves.length===0"><td class="td text-center text-taupe" colspan="8">暫無請假申請</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 員工名冊 -->
+        <section v-if="view==='roster'">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">員工名冊</h1>
+              <p class="text-sm text-taupe mt-1">管理員工 / 醫生帳戶、在職狀態與假額</p>
+            </div>
+            <button class="btn btn-solid" @click="openAddEmp"><i class="fas fa-user-plus"></i>新增員工</button>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">姓名</th><th class="th">用戶名</th><th class="th">電話</th><th class="th">角色</th><th class="th">全/兼職</th><th class="th">狀態</th><th class="th">年假額</th><th class="th">病假額</th><th class="th">事假額</th><th class="th">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="e in roster" :key="e.id">
+                    <td class="td font-semibold text-ink">{{ e.name }}</td>
+                    <td class="td">{{ e.username }}</td>
+                    <td class="td">{{ e.phone }}</td>
+                    <td class="td">{{ roleLabel(e.role) }}</td>
+                    <td class="td"><span class="pill" :class="e.employment_type==='part'?'bg-amber-100 text-amber-700':'bg-sky-100 text-sky-700'">{{ empTypeLabel(e.role, e.employment_type) }}</span></td>
+                    <td class="td"><span class="pill" :class="e.is_active ? 'bg-moss-100 text-moss-700' : 'bg-gray-100 text-gray-500'">{{ e.is_active ? '在職' : '停用' }}</span></td>
+                    <td class="td text-center">{{ e.leave_balance_obj ? e.leave_balance_obj.annual : '—' }}</td>
+                    <td class="td text-center">{{ e.leave_balance_obj ? e.leave_balance_obj.sick : '—' }}</td>
+                    <td class="td text-center">{{ e.leave_balance_obj ? e.leave_balance_obj.personal : '—' }}</td>
+                    <td class="td">
+                      <button class="btn btn-ghost !px-2.5 !py-1 text-xs" @click="openEditEmp(e)"><i class="fas fa-pen"></i></button>
+                      <button class="btn btn-ghost !px-2.5 !py-1 text-xs ml-1" @click="openHrModal(e)"><i class="fas fa-id-card"></i></button>
+                      <button class="btn btn-ghost !px-2.5 !py-1 text-xs ml-1" @click="openResetPwd(e)"><i class="fas fa-key"></i></button>
+                      <button class="btn btn-ghost !px-2.5 !py-1 text-xs ml-1" @click="toggleActive(e)"><i class="fas" :class="e.is_active?'fa-user-slash':'fa-user-check'"></i></button>
+                    </td>
+                  </tr>
+                  <tr v-if="roster.length===0"><td class="td text-center text-taupe" colspan="10">暫無員工資料，請先新增</td></tr>
+                </tbody>
+              </table>
+          </div>
+        </div>
+        </section>
+        <!-- 排班管理 -->
+        <section v-if="view==='schedule'">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">排班管理</h1>
+              <p class="text-sm text-taupe mt-1">全職用系統預設返工時間（一至五 10:00-19:00、六 10:00-13:00）；星期日及香港公眾假期休息；兼職每星期報更審批</p>
+            </div>
+          </div>
+
+          <!-- 兼職報更（審批） -->
+          <div class="card mb-4">
+            <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)] flex items-center justify-between">
+              <h2 class="font-bold text-ink">兼職報更（待審批）</h2>
+              <select class="input !w-40" v-model="rosterStatus"><option value="pending">待審批</option><option value="approved">已批准</option><option value="rejected">已拒絕</option><option value="all">全部</option></select>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">工作週</th><th class="th">報更細項</th><th class="th">狀態</th><th class="th">操作</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in filteredRosters" :key="r.id">
+                    <td class="td font-semibold text-ink">{{ r.user_name }}</td>
+                    <td class="td">{{ r.roster_start }} ~ {{ addDaysStr(r.roster_start, 5) }}</td>
+                    <td class="td">
+                      <div v-for="it in r.items" :key="it.id" class="text-xs text-taupe">
+                        {{ it.shift_date }} {{ it.time_start || '—' }} – {{ it.time_end || '—' }}
+                      </div>
+                      <span v-if="!r.items || r.items.length===0" class="text-xs text-taupe">未揀更</span>
+                    </td>
+                    <td class="td"><span class="pill" :class="r.status==='pending'?'bg-amber-100 text-amber-700':(r.status==='approved'?'bg-moss-100 text-moss-700':'bg-rose-100 text-rose-700')">{{ r.status==='pending'?'待審批':(r.status==='approved'?'已批准':'已拒絕') }}</span></td>
+                    <td class="td">
+                      <template v-if="r.status==='pending'">
+                        <button class="btn btn-sage !px-3 !py-1 text-xs" @click="approveRoster(r)"><i class="fas fa-check"></i>批准</button>
+                        <button class="btn btn-danger !px-3 !py-1 text-xs ml-1" @click="rejectRoster(r)"><i class="fas fa-xmark"></i>拒絕</button>
+                      </template>
+                      <span v-else class="text-xs text-taupe">—</span>
+                    </td>
+                  </tr>
+                  <tr v-if="filteredRosters.length===0"><td class="td text-center text-taupe" colspan="5">暫無報更</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 出糧 -->
+        <section v-if="view==='payroll'">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">出糧</h1>
+              <p class="text-sm text-taupe mt-1">按月結算上一個月（逢 7 號出糧）：出勤日 / 總工時 / OT / 應發薪金</p>
+            </div>
+            <div class="flex items-end gap-2">
+              <div><label class="lbl">月份</label><input type="month" class="input" v-model="payMonth" /></div>
+              <button class="btn btn-solid" @click="loadPayroll"><i class="fas fa-search"></i>結算</button>
+              <button class="btn btn-sage" :disabled="payrollRows.length===0" @click="exportPayroll"><i class="fas fa-file-csv"></i>匯出 CSV</button>
+            </div>
+          </div>
+          <div v-if="payMsg" class="mb-4 px-4 py-3 rounded-xl text-sm font-semibold" :class="payMsgOk?'bg-moss-100 text-moss-800':'bg-rose-100 text-rose-800'">{{ payMsg }}</div>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">時薪/月薪</th><th class="th">出勤日</th><th class="th">總工時</th><th class="th">OT小時</th><th class="th">應發薪金</th><th class="th">狀態</th></tr></thead>
+                <tbody>
+                  <tr v-for="r in payrollRows" :key="r.id">
+                    <td class="td font-semibold text-ink">{{ r.name }}</td>
+                    <td class="td">{{ rateLabel(r) }}</td>
+                    <td class="td text-center font-semibold">{{ r.worked_days }}</td>
+                    <td class="td text-center">{{ r.total_label }}</td>
+                    <td class="td text-center">{{ r.ot_hours }}</td>
+                    <td class="td text-center font-semibold text-ink">{{ r.gross.toFixed(2) }}</td>
+                    <td class="td"><span class="pill" :class="r.has_rate?'bg-moss-100 text-moss-700':'bg-amber-100 text-amber-700'">{{ r.has_rate?'已計算':'未設薪金' }}</span></td>
+                  </tr>
+                  <tr v-if="payrollRows.length===0"><td class="td text-center text-taupe" colspan="7">請選擇月份後結算</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="payrollRows.length" class="px-5 py-3 text-xs text-taupe border-t border-[rgba(199,180,166,.3)]">共 {{ payWorkdays }} 個工作日（一至五及星期六半日）· 逢 7 號出糧</div>
+          </div>
+        </section>
+
+        <section v-if="view==='manual'">
+          <div class="mb-5">
+            <h1 class="text-2xl font-bold text-ink">手動補打卡</h1>
+            <p class="text-sm text-taupe mt-1">為員工補記 / 修改某日嘅上班、下班時間</p>
+          </div>
+          <div class="card p-6 max-w-xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label class="lbl">員工</label><select class="input" v-model="mEmp"><option value="">請選擇</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}（{{ roleLabel(e.role) }}）</option></select></div>
+              <div><label class="lbl">日期</label><input type="date" class="input" v-model="mDate" /></div>
+              <div><label class="lbl">上班時間</label><input type="time" class="input" v-model="mIn" /></div>
+              <div><label class="lbl">下班時間</label><input type="time" class="input" v-model="mOut" /></div>
+              <div class="sm:col-span-2"><label class="lbl">出勤類型</label><select class="input" v-model="mType"><option value="full">全日</option><option value="half">半日</option><option value="fieldwork">外勤</option><option value="training">培訓</option></select></div>
+              <div class="sm:col-span-2"><label class="lbl">備註</label><input class="input" v-model="mNote" placeholder="例如：外出復診補打卡" /></div>
+              <div class="sm:col-span-2 flex gap-2">
+                <button class="btn btn-solid" @click="submitManual"><i class="fas fa-save"></i>儲存打卡</button>
+                <button class="btn btn-ghost" @click="resetManual"><i class="fas fa-undo"></i>重設</button>
+              </div>
+            </div>
+            <div v-if="manualMsg" class="mt-3 text-sm font-semibold" :class="manualOk?'text-moss-700':'text-rose-600'">{{ manualMsg }}</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- 新增 / 編輯員工 Modal -->
+      <div v-if="showEmpModal" class="modal-mask" @click.self="showEmpModal=false">
+        <div class="card w-full max-w-lg p-6" style="background:#fffdf8;">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-ink">{{ empModalMode==='add'?'新增員工':'編輯員工' }}</h2>
+            <button class="text-taupe hover:text-ink" @click="showEmpModal=false"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label class="lbl">姓名 *</label><input class="input" v-model="empForm.name" /></div>
+            <div><label class="lbl">英文名</label><input class="input" v-model="empForm.name_en" /></div>
+            <div v-if="empModalMode==='add'"><label class="lbl">用戶名 *</label><input class="input" v-model="empForm.username" /></div>
+            <div><label class="lbl">電話 *</label><input class="input" v-model="empForm.phone" /></div>
+            <div><label class="lbl">電郵</label><input class="input" v-model="empForm.email" /></div>
+            <div><label class="lbl">角色</label><select class="input" v-model="empForm.role"><option value="staff">員工</option><option value="doctor">醫生</option></select></div>
+            <div v-if="empForm.role==='staff'"><label class="lbl">全職 / 兼職</label><select class="input" v-model="empForm.employment_type"><option value="full">全職</option><option value="part">兼職</option></select></div>
+            <div v-if="empModalMode!=='add'"><label class="lbl">帳戶狀態</label><select class="input" v-model="empForm.is_active"><option :value="1">在職</option><option :value="0">停用</option></select></div>
+            <div><label class="lbl">年假額（日）</label><input type="number" class="input" v-model="empForm.balance_annual" /></div>
+            <div><label class="lbl">病假額（日）</label><input type="number" class="input" v-model="empForm.balance_sick" /></div>
+            <div><label class="lbl">事假額（日）</label><input type="number" class="input" v-model="empForm.balance_personal" /></div>
+            <div><label class="lbl">其他假（法定/其他，-1=不限）</label><input type="number" class="input" v-model="empForm.balance_statutory" placeholder="-1" /></div>
+          </div>
+          <div v-if="empMsg" class="mt-3 text-sm font-semibold" :class="empOk?'text-moss-700':'text-rose-600'">{{ empMsg }}</div>
+          <div v-if="empCredentials" class="mt-3 p-3 rounded-xl bg-moss-100 text-moss-800 text-sm">
+            <b>臨時帳號</b> 用戶名：{{ empCredentials.username }}<br/>密碼：<b>{{ empCredentials.tempPassword }}</b><br/>
+            <button class="btn btn-sage !py-1 text-xs mt-2" @click="copyCreds"><i class="fas fa-copy"></i>複製憑據</button>
+          </div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-ghost" @click="showEmpModal=false">取消</button>
+            <button class="btn btn-solid" @click="saveEmp" :disabled="empBusy"><i class="fas" :class="empBusy?'fa-spinner fa-spin':'fa-save'"></i>{{ empModalMode==='add'?'建立':'儲存' }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 重設密碼 Modal -->
+      <div v-if="showPwdModal" class="modal-mask" @click.self="showPwdModal=false">
+        <div class="card w-full max-w-sm p-6" style="background:#fffdf8;">
+          <h2 class="text-lg font-bold text-ink mb-4">重設密碼 — {{ pwdEmp.name }}</h2>
+          <label class="lbl">新密碼</label>
+          <input type="text" class="input" v-model="pwdNew" placeholder="至少 6 位" />
+          <div v-if="pwdMsg" class="mt-3 text-sm font-semibold" :class="pwdOk?'text-moss-700':'text-rose-600'">{{ pwdMsg }}</div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-ghost" @click="showPwdModal=false">取消</button>
+            <button class="btn btn-solid" @click="savePwd"><i class="fas fa-key"></i>重設</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HR 詳細檔案 Modal -->
+      <div v-if="showHrModal" class="modal-mask" @click.self="showHrModal=false">
+        <div class="card w-full max-w-lg p-6" style="background:#fffdf8;">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-ink">HR 檔案 — {{ hrForm.name }}</h2>
+            <button class="text-taupe hover:text-ink" @click="showHrModal=false"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label class="lbl">入職日期</label><input type="date" class="input" v-model="hrForm.hire_date" /></div>
+            <div><label class="lbl">時薪（HKD/小時）</label><input type="number" step="0.01" class="input" v-model="hrForm.hourly_rate" placeholder="0" /></div>
+            <div><label class="lbl">月薪（HKD，可選）</label><input type="number" step="0.01" class="input" v-model="hrForm.basic_salary" placeholder="0" /></div>
+            <div><label class="lbl">身份證（已遮罩）</label><input class="input" v-model="hrForm.id_card" placeholder="A***3(4)" /></div>
+            <div class="sm:col-span-2"><label class="lbl">地址</label><input class="input" v-model="hrForm.address" /></div>
+            <div class="sm:col-span-2"><label class="lbl">銀行戶口</label><input class="input" v-model="hrForm.bank_account" /></div>
+            <div><label class="lbl">緊急聯絡人</label><input class="input" v-model="hrForm.emergency_contact" /></div>
+            <div><label class="lbl">緊急聯絡電話</label><input class="input" v-model="hrForm.emergency_phone" /></div>
+          </div>
+          <div v-if="hrMsg" class="mt-3 text-sm font-semibold" :class="hrOk?'text-moss-700':'text-rose-600'">{{ hrMsg }}</div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-ghost" @click="showHrModal=false">取消</button>
+            <button class="btn btn-solid" @click="saveHr" :disabled="hrBusy"><i class="fas" :class="hrBusy?'fa-spinner fa-spin':'fa-save'"></i>儲存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { createApp } = Vue;
+      createApp({
+        data() {
+          return {
+            adminUser: {},
+            token: '',
+            todayStr: '',
+            view: 'overview',
+            // overview
+            todayEmployees: [], stats: { total:0, working:0, completed:0, onLeave:0, absent:0 },
+            // report
+            repFrom: '', repTo: '', reportRows: [], reportWorkdays: 0,
+            // history
+            histUserId: '', histFrom: '', histTo: '', historyRows: [],
+            // exceptions
+            excDate: '', exceptions: [], excCount: { late:0, early:0, absent:0, onLeave:0 },
+            // leaves
+            leaveTab: 'pending', leaves: [], pendingLeaveCount: 0,
+            leaveTabs: [
+              { key:'pending', label:'待審批' },
+              { key:'approved', label:'已批准' },
+              { key:'rejected', label:'已拒絕' },
+              { key:'all', label:'全部' },
+            ],
+            // roster
+            roster: [],
+            showEmpModal: false, empModalMode: 'add', empBusy: false, empForm: {}, empMsg:'', empOk:false, empCredentials:null,
+            showPwdModal: false, pwdEmp: {}, pwdNew: '', pwdMsg:'', pwdOk:false,
+            // schedule
+            rosters: [], rosterStatus: 'pending',
+            // payroll
+            payMonth: '', payrollRows: [], payWorkdays: 0, payMsg:'', payMsgOk:false,
+            // HR 詳細檔案
+            showHrModal: false, hrBusy: false, hrForm: {}, hrMsg:'', hrOk:false,
+            // manual
+            mEmp:'', mDate:'', mIn:'', mOut:'', mType:'full', mNote:'', manualMsg:'', manualOk:false,
+          };
+        },
+        computed: {
+          filteredRosters(){ return (this.rosters||[]).filter(r => this.rosterStatus==='all' ? true : r.status===this.rosterStatus); },
+          roleLabel(){ return (r)=>({staff:'員工',doctor:'醫生',admin:'管理員',customer:'客戶'}[r]||r); },
+          empTypeLabel(){ return (role,et)=>(role==='doctor' ? '全職' : ({full:'全職',part:'兼職'}[et]||'全職')); },
+          statusLabel(){ return (s)=>({working:'返工中',completed:'已收工',absent:'未返工',on_leave:'請假'}[s]||s); },
+          statusPill(){ return (s)=>({working:'bg-moss-100 text-moss-700',completed:'bg-sky-100 text-sky-700',absent:'bg-rose-100 text-rose-700',on_leave:'bg-purple-100 text-purple-700'}[s]||'bg-gray-100 text-gray-600'); },
+          statusIcon(){ return (s)=>({working:'fa-stopwatch',completed:'fa-check-circle',absent:'fa-user-slash',on_leave:'fa-umbrella-beach'}[s]||'fa-circle'); },
+          excPill(){ return (t)=>({late:'bg-amber-100 text-amber-700',early_leave:'bg-orange-100 text-orange-700',absent:'bg-rose-100 text-rose-700',on_leave:'bg-sky-100 text-sky-700'}[t]||'bg-gray-100 text-gray-600'); },
+          leavePill(){ return (s)=>({pending:'bg-amber-100 text-amber-700',approved:'bg-moss-100 text-moss-700',rejected:'bg-rose-100 text-rose-700'}[s]||'bg-gray-100 text-gray-600'); },
+          leaveStatusLabel(){ return (s)=>({pending:'待審批',approved:'已批准',rejected:'已拒絕'}[s]||s); },
+          leaveDays(){ return (l)=>{ const s=new Date(l.start_date), e=new Date(l.end_date); return Math.round((e-s)/(86400000))+1; }; },
+          fmtMin(){ return (m)=> (m==null||isNaN(m))?'—':(Math.floor(m/60)+'h'+(m%60?' '+Math.round(m%60)+'m':'')); },
+          attTypeLabel(){ return (t)=>({full:'全日',half:'半日',fieldwork:'外勤',training:'培訓'}[t]||'全日'); },
+          attTypePill(){ return (t)=>({full:'bg-moss-100 text-moss-700',half:'bg-sky-100 text-sky-700',fieldwork:'bg-orange-100 text-orange-700',training:'bg-purple-100 text-purple-700'}[t]||'bg-gray-100 text-gray-600'); },
+          rateLabel(){ return (r)=> (r.hourly_rate&&r.hourly_rate>0)?('時薪 $'+r.hourly_rate):(r.basic_salary&&r.basic_salary>0)?('月薪 $'+r.basic_salary):'—'; },
+        },
+        methods: {
+          today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; },
+          prevMonth(){ const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; },
+          switchView(v){ this.view=v; if(v==='overview')this.loadToday(); if(v==='report'){ if(!this.repFrom){const d=new Date();this.repFrom=this.today().slice(0,8)+'01';this.repTo=this.today();} this.loadReport(); } if(v==='history'){ if(!this.histFrom){ this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today(); } this.loadHistory(); } if(v==='exceptions')this.loadExceptions(); if(v==='leaves')this.loadLeaves(true); if(v==='roster')this.loadRoster(); if(v==='schedule')this.loadSchedule(); if(v==='payroll'){ if(!this.payMonth)this.payMonth=this.prevMonth(); this.loadPayroll(); } },
+          async api(url, opts={}){
+            const r = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers||{}) } });
+            const j = await r.json().catch(()=>({}));
+            if (!r.ok) throw new Error(j.error || '請求失敗');
+            return j;
+          },
+          async loadToday(){
+            try { const j = await this.api('/api/hr/today'); this.todayEmployees = j.employees; const s={total:0,working:0,completed:0,onLeave:0,absent:0}; j.employees.forEach(e=>{ s.total++; s[e.status]=(s[e.status]||0)+1; }); this.stats=s; } catch(e){ this.toastErr(e); }
+          },
+          async loadReport(){
+            try { const j = await this.api(`/api/hr/report?from=${this.repFrom}&to=${this.repTo}`); this.reportRows=j.report; this.reportWorkdays=j.workdays; } catch(e){ this.toastErr(e); }
+          },
+          async loadHistory(){
+            try { const q = `/api/hr/history?from=${this.histFrom||''}&to=${this.histTo||''}`+(this.histUserId?`&userId=${this.histUserId}`:''); const j = await this.api(q); this.historyRows=j.records; } catch(e){ this.toastErr(e); }
+          },
+          async loadExceptions(){
+            try { const j = await this.api(`/api/hr/exceptions?date=${this.excDate||this.today()}`); this.exceptions=j.anomalies; const c={late:0,early:0,absent:0,onLeave:0}; j.anomalies.forEach(a=>{ if(a.type==='late')c.late++; if(a.type==='early_leave')c.early++; if(a.type==='absent')c.absent++; if(a.type==='on_leave')c.onLeave++; }); this.excCount=c; } catch(e){ this.toastErr(e); }
+          },
+          async loadLeaves(updateBadge){
+            try { const j = await this.api(`/api/hr/leaves/all${this.leaveTab!=='all'?`?status=${this.leaveTab}`:''}`); this.leaves=j; if(updateBadge){ const p=await this.api('/api/hr/leaves/all?status=pending'); this.pendingLeaveCount=p.length; } } catch(e){ this.toastErr(e); }
+          },
+          async reviewLeave(l, action){
+            if(!confirm(`確定要${action==='approved'?'批准':'拒絕'}「${l.user_name}」嘅${l.leave_type_label}假？`)) return;
+            try { const j = await this.api(`/api/hr/leaves/${l.id}/review`, { method:'PUT', body: JSON.stringify({ action }) }); alert(j.message); this.loadLeaves(true); } catch(e){ this.toastErr(e); }
+          },
+          async loadRoster(cb){
+            try { const j = await this.api('/api/hr/employees'); this.roster=j; if(cb)cb(); } catch(e){ this.toastErr(e); if(cb)cb(); }
+          },
+          openAddEmp(){
+            this.empModalMode='add'; this.empForm={ name:'', name_en:'', username:'', phone:'', email:'', role:'staff', employment_type:'full', is_active:1, balance_annual:12, balance_sick:12, balance_personal:2, balance_statutory:-1 }; this.empMsg=''; this.empCredentials=null; this.showEmpModal=true;
+          },
+          openEditEmp(e){
+            this.empModalMode='edit'; this.empForm={ id:e.id, name:e.name, name_en:e.name_en, phone:e.phone, email:e.email, role:e.role, employment_type:(e.employment_type||'full'), is_active:e.is_active, balance_annual:(e.leave_balance_obj&&e.leave_balance_obj.annual!=null?e.leave_balance_obj.annual:12), balance_sick:(e.leave_balance_obj&&e.leave_balance_obj.sick!=null?e.leave_balance_obj.sick:12), balance_personal:(e.leave_balance_obj&&e.leave_balance_obj.personal!=null?e.leave_balance_obj.personal:2), balance_statutory:(e.leave_balance_obj&&e.leave_balance_obj.statutory!=null?e.leave_balance_obj.statutory:-1) }; this.empMsg=''; this.empCredentials=null; this.showEmpModal=true;
+          },
+          async saveEmp(){
+            this.empBusy=true; this.empMsg=''; this.empOk=false; this.empCredentials=null;
+            try {
+              if(this.empModalMode==='add'){
+                if(!this.empForm.name||!this.empForm.username||!this.empForm.phone){ this.empMsg='請填寫姓名、用戶名、電話'; this.empBusy=false; return; }
+                const j = await this.api('/api/hr/employees', { method:'POST', body: JSON.stringify({ username:this.empForm.username, name:this.empForm.name, name_en:this.empForm.name_en, phone:this.empForm.phone, email:this.empForm.email, role:this.empForm.role, employment_type:(this.empForm.role==='doctor'?'full':(this.empForm.employment_type||'full')), leave_balance:{ annual:Number(this.empForm.balance_annual), sick:Number(this.empForm.balance_sick), personal:Number(this.empForm.balance_personal), statutory:Number(this.empForm.balance_statutory) } }) });
+                this.empMsg=j.message; this.empOk=true; this.empCredentials=j.credentials;
+              } else {
+                const j = await this.api(`/api/hr/employees/${this.empForm.id}`, { method:'PUT', body: JSON.stringify({ name:this.empForm.name, name_en:this.empForm.name_en, phone:this.empForm.phone, email:this.empForm.email, role:this.empForm.role, employment_type:(this.empForm.role==='doctor'?'full':(this.empForm.employment_type||'full')), is_active:Number(this.empForm.is_active), leave_balance:{ annual:Number(this.empForm.balance_annual), sick:Number(this.empForm.balance_sick), personal:Number(this.empForm.balance_personal), statutory:Number(this.empForm.balance_statutory) } }) });
+                this.empMsg=j.message; this.empOk=true;
+              }
+              this.loadRoster();
+              setTimeout(()=>{ if(!this.empCredentials){ this.showEmpModal=false; } }, 1200);
+            } catch(e){ this.empOk=false; this.empMsg=e.message; }
+            this.empBusy=false;
+          },
+          async toggleActive(e){
+            if(!confirm(`確定要${e.is_active?'停用':'恢復'}「${e.name}」？`)) return;
+            try { await this.api(`/api/hr/employees/${e.id}`, { method:'PUT', body: JSON.stringify({ is_active: e.is_active?0:1 }) }); this.loadRoster(); } catch(err){ this.toastErr(err); }
+          },
+          openResetPwd(e){ this.pwdEmp=e; this.pwdNew=''; this.pwdMsg=''; this.pwdOk=false; this.showPwdModal=true; },
+          async savePwd(){
+            try { const j = await this.api(`/api/hr/employees/${this.pwdEmp.id}/password`, { method:'PUT', body: JSON.stringify({ password:this.pwdNew }) }); this.pwdOk=true; this.pwdMsg=j.message; setTimeout(()=>{ this.showPwdModal=false; }, 1000); } catch(e){ this.pwdOk=false; this.pwdMsg=e.message; }
+          },
+          copyCreds(){
+            const t = `用戶名：${this.empCredentials.username}\n密碼：${this.empCredentials.tempPassword}`;
+            navigator.clipboard.writeText(t).then(()=>this.empMsg+='（已複製）');
+          },
+          // 排班管理
+          async loadSchedule(){
+            try {
+              await this.loadRosters();
+            } catch(e){ this.toastErr(e); }
+          },
+          async loadRosters(){
+            try {
+              const today = this.today();
+              const from = today.slice(0,8)+'01';
+              const to = this.addDaysStr(today, 60);
+              this.rosters = await this.api(`/api/hr/rosters?from=${from}&to=${to}`);
+            } catch(e){ this.toastErr(e); }
+          },
+          async approveRoster(r){
+            if(!confirm(`確定批准 ${r.user_name} ${r.roster_start} 嗰週更表？`)) return;
+            try { await this.api(`/api/hr/rosters/${r.id}/approve`, { method:'POST', body:'{}' }); this.loadRosters(); } catch(e){ this.toastErr(e); }
+          },
+          async rejectRoster(r){
+            if(!confirm(`確定拒絕 ${r.user_name} ${r.roster_start} 嗰週更表？`)) return;
+            try { await this.api(`/api/hr/rosters/${r.id}/reject`, { method:'POST', body:'{}' }); this.loadRosters(); } catch(e){ this.toastErr(e); }
+          },
+          addDaysStr(ds, n){
+            const d = new Date(ds + "T00:00:00");
+            d.setDate(d.getDate() + n);
+            const m = String(d.getMonth()+1).padStart(2,"0");
+            return `${d.getFullYear()}-${m}-${String(d.getDate()).padStart(2,"0")}`;
+          },
+          // 出糧
+          async loadPayroll(){
+            if(!this.payMonth){ alert('請選擇月份'); return; }
+            const from = this.payMonth+'-01';
+            const lastDay = new Date(new Date(from).getFullYear(), new Date(from).getMonth()+1, 0).getDate();
+            const to = this.payMonth+'-'+String(lastDay).padStart(2,'0');
+            try { const j = await this.api(`/api/hr/payroll?from=${from}&to=${to}`); this.payrollRows=j.report; this.payWorkdays=j.workdays; this.payMsg=''; } catch(e){ this.payMsg=e.message; this.payMsgOk=false; }
+          },
+          async exportPayroll(){
+            if(!this.payMonth){ alert('請選擇月份'); return; }
+            const from = this.payMonth+'-01';
+            const lastDay = new Date(new Date(from).getFullYear(), new Date(from).getMonth()+1, 0).getDate();
+            const to = this.payMonth+'-'+String(lastDay).padStart(2,'0');
+            try {
+              const token = localStorage.getItem('jwtToken');
+              const r = await fetch(`/api/hr/payroll/export?from=${from}&to=${to}`, { headers:{ Authorization:'Bearer '+token } });
+              if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.error||'匯出失敗'); }
+              const blob = await r.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href=url; a.download=`payroll_${from}_${to}.csv`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            } catch(e){ this.toastErr(e); }
+          },
+          // HR 詳細檔案
+          openHrModal(e){
+            this.hrForm = { id:e.id, name:e.name, hire_date:e.hire_date||'', hourly_rate:(e.hourly_rate!=null?e.hourly_rate:''), basic_salary:(e.basic_salary!=null?e.basic_salary:''), id_card:e.id_card||'', address:e.address||'', bank_account:e.bank_account||'', emergency_contact:e.emergency_contact||'', emergency_phone:e.emergency_phone||'' };
+            this.hrMsg=''; this.hrOk=false; this.showHrModal=true;
+          },
+          async saveHr(){
+            this.hrBusy=true; this.hrMsg=''; this.hrOk=false;
+            try {
+              const j = await this.api(`/api/hr/employees/${this.hrForm.id}`, { method:'PUT', body: JSON.stringify({ hire_date:this.hrForm.hire_date||null, hourly_rate:this.hrForm.hourly_rate===''||this.hrForm.hourly_rate==null?null:Number(this.hrForm.hourly_rate), basic_salary:this.hrForm.basic_salary===''||this.hrForm.basic_salary==null?null:Number(this.hrForm.basic_salary), id_card:this.hrForm.id_card||null, address:this.hrForm.address||null, bank_account:this.hrForm.bank_account||null, emergency_contact:this.hrForm.emergency_contact||null, emergency_phone:this.hrForm.emergency_phone||null }) });
+              this.hrOk=true; this.hrMsg=j.message; this.loadRoster(); setTimeout(()=>{ this.showHrModal=false; }, 1000);
+            } catch(e){ this.hrOk=false; this.hrMsg=e.message; }
+            this.hrBusy=false;
+          },
+          resetManual(){ this.mEmp=''; this.mDate=this.today(); this.mIn=''; this.mOut=''; this.mType='full'; this.mNote=''; this.manualMsg=''; },
+          async submitManual(){
+            if(!this.mEmp||!this.mDate){ this.manualMsg='請選擇員工及日期'; this.manualOk=false; return; }
+            try { const j = await this.api('/api/hr/attendance', { method:'POST', body: JSON.stringify({ user_id:Number(this.mEmp), attendance_date:this.mDate, clock_in:this.mIn||null, clock_out:this.mOut||null, attendance_type:this.mType, note:this.mNote }) }); this.manualMsg=j.message; this.manualOk=true; } catch(e){ this.manualMsg=e.message; this.manualOk=false; }
+          },
+          toastErr(e){ console.error(e); alert(e.message); },
+          handleLogout(){ localStorage.removeItem('jwtToken'); localStorage.removeItem('adminUser'); window.location.href='admin.html'; },
+        },
+        mounted(){
+          const u = localStorage.getItem('adminUser');
+          const tok = localStorage.getItem('jwtToken');
+          try { if(u) this.adminUser = JSON.parse(u); } catch(e){}
+          if(!u || !tok){ window.location.href = 'admin.html'; return; }
+          this.todayStr = this.today();
+          this.excDate = this.today();
+          this.mDate = this.today();
+          const d=new Date(); this.repFrom=this.today().slice(0,8)+'01'; this.repTo=this.today();
+          this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today();
+          this.loadToday();
+          this.loadRoster();
+          this.loadLeaves(true);
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>
