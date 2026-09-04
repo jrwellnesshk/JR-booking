@@ -278,20 +278,7 @@
   #app main table:not(.no-card) td:first-child::before{ display:none!important; }
   #app main table:not(.no-card) td[colspan]{ justify-content:center!important; text-align:center!important; color:#9a8c7a; font-size:.85rem!important; }
   #app main table:not(.no-card) td[colspan]::before{ display:none!important; }
-
-  /* Option 1: FAB 浮動新增鈕（只在有目標時顯示） */
-  .m-fab{ display:none; }
-  .m-fab.m-fab--active{
-    display:flex!important; position:fixed; right:16px;
-    bottom:calc(76px + env(safe-area-inset-bottom));
-    z-index:55; width:56px; height:56px; border-radius:50%;
-    align-items:center; justify-content:center;
-    background:linear-gradient(135deg,#7E9476,#5D4037); color:#fff;
-    box-shadow:0 10px 22px -8px rgba(62,42,30,.55); border:none; font-size:22px; cursor:pointer;
-  }
-  .m-fab.m-fab--active:active{ transform:scale(.93); }
 }
-.m-fab{ display:none; }
 </style>
 </head>
   <body class="text-slate-800 min-h-screen">
@@ -2497,7 +2484,6 @@
         },
       }).mount("#app");
     </script>
-  <button id="m-fab" type="button" aria-label="新增" class="m-fab"><i class="fas fa-plus"></i></button>
 <script>
 (function(){
   var mq = window.matchMedia('(max-width:767px)');
@@ -2518,33 +2504,12 @@
       }
     }
   }
-  var fab = document.getElementById('m-fab');
-  function findCreate(){
-    var btns = document.querySelectorAll('#app main button');
-    for(var i=0;i<btns.length;i++){
-      var b=btns[i];
-      if(b.offsetParent===null) continue;
-      if(getComputedStyle(b).visibility==='hidden') continue;
-      var txt=(b.getAttribute('aria-label')||b.innerText||b.textContent||'').replace(/\s+/g,'');
-      if(/^(新增|建立)/.test(txt) || /新增(問題|服務|醫師|公告|節日|帳號|病歷|案例|子帳戶)/.test(txt)) return b;
-    }
-    return null;
-  }
-  function refreshFab(){
-    if(!fab) return;
-    if(!isMobile()){ fab.classList.remove('m-fab--active'); return; }
-    var b=findCreate();
-    if(b){ fab.classList.add('m-fab--active'); fab._t=b; } else { fab.classList.remove('m-fab--active'); fab._t=null; }
-  }
-  function run(){ injectLabels(); refreshFab(); }
+  function run(){ injectLabels(); }
   var pending=false;
   function schedule(){ if(pending) return; pending=true; setTimeout(function(){ pending=false; run(); }, 200); }
-  if(fab){
-    fab.addEventListener('click', function(){ var b=fab._t||findCreate(); if(b) b.click(); });
-    if(window.MutationObserver){ try{ new MutationObserver(schedule).observe(document.getElementById('app'), {childList:true, subtree:true, attributes:true, attributeFilter:['style','class','hidden']}); }catch(e){} }
-    setInterval(schedule, 1000);
-    window.addEventListener('resize', schedule);
-  }
+  if(window.MutationObserver){ try{ new MutationObserver(schedule).observe(document.getElementById('app'), {childList:true, subtree:true, attributes:true, attributeFilter:['style','class','hidden']}); }catch(e){} }
+  setInterval(schedule, 1000);
+  window.addEventListener('resize', schedule);
   run();
 })();
 </script>
