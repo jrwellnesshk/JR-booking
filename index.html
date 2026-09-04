@@ -318,7 +318,7 @@
         /* 手機版：側欄轉為 sticky 頂欄，導航橫向滑動，唔再擠佔內容 */
         .m-sidebar{
           position:sticky; top:0; z-index:30;
-          flex-direction:column; align-items:stretch; gap:.5rem;
+          flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:.5rem;
           border-radius:0; margin:0;
           box-shadow:0 8px 24px -12px rgba(0,0,0,.35);
         }

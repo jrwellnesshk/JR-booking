@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build:css": "tailwindcss -i css/tailwind.src.css -o css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i css/tailwind.src.css -o css/tailwind.css --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -27,5 +29,8 @@
     "svg-captcha": "^1.4.0",
     "twilio": "^5.11.2",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
   }
 }
