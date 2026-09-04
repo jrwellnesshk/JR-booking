@@ -269,7 +269,71 @@
         transform: translateY(0);
       }
     </style>
-  </head>
+  <style>
+/* ===== 手機版深度優化 2026-09-04：表格轉卡片 / sticky 篩選 / 字階留白 / FAB ===== */
+@media (max-width: 767px) {
+  /* Option 4: 字型階層 + 卡片留白（更「呼吸」） */
+  #app main h2, #app main h3{ font-size:1.15rem!important; line-height:1.4!important; }
+  #app main h4{ font-size:1rem!important; }
+  #app main p, #app main .text-sm{ font-size:.9rem!important; line-height:1.6!important; }
+  #app main .text-xs{ font-size:.8rem!important; line-height:1.45!important; }
+  #app main .bg-white.rounded-xl, #app main .bg-white.rounded-2xl{ padding:1.1rem!important; }
+  #app main .space-y-6 > * + *{ margin-top:1.25rem!important; }
+
+  /* Option 3: sticky 搜尋/篩選條 */
+  .m-sticky{
+    position:sticky; top:calc(56px + env(safe-area-inset-top));
+    z-index:30;
+    background:rgba(253,246,250,.96); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    padding:.55rem 0 .65rem; margin:0 0 .75rem;
+    border-bottom:1px solid rgba(139,125,107,.15);
+    box-shadow:0 6px 14px -10px rgba(62,42,30,.35);
+  }
+
+  /* Option 2: 密表 → 卡片清單（免橫向捲動） */
+  #app main table:not(.no-card){ display:block; width:100%; border:0!important; }
+  #app main table:not(.no-card) thead{ display:none!important; }
+  #app main table:not(.no-card) tbody{ display:block; width:100%; }
+  #app main table:not(.no-card) tr{
+    display:block!important; background:#fff;
+    border:1px solid rgba(139,125,107,.20)!important;
+    border-radius:14px!important; padding:.7rem .9rem!important; margin-bottom:.85rem!important;
+    box-shadow:0 3px 12px -7px rgba(62,42,30,.28);
+  }
+  #app main table:not(.no-card) tr:hover{ background:#fff!important; }
+  #app main table:not(.no-card) td{
+    display:flex!important; justify-content:space-between; align-items:flex-start; gap:.75rem;
+    padding:5px 0!important; border:0!important; text-align:right!important;
+    font-size:.875rem!important; line-height:1.45!important; background:transparent!important; box-shadow:none!important;
+  }
+  #app main table:not(.no-card) td::before{
+    content:attr(data-label); flex:0 0 auto; max-width:45%;
+    text-align:left!important; font-weight:600; color:#5D4037; font-size:.78rem!important; opacity:.92;
+  }
+  #app main table:not(.no-card) td:first-child{
+    font-weight:700!important; font-size:.98rem!important; color:#3E2A1E!important;
+    border-bottom:1px solid rgba(139,125,107,.14)!important;
+    padding-bottom:.5rem!important; margin-bottom:.3rem!important;
+  }
+  #app main table:not(.no-card) td:first-child::before{ display:none!important; }
+  #app main table:not(.no-card) td[colspan]{ justify-content:center!important; text-align:center!important; color:#9a8c7a; font-size:.85rem!important; }
+  #app main table:not(.no-card) td[colspan]::before{ display:none!important; }
+
+  /* Option 1: FAB 浮動新增鈕（只在有目標時顯示） */
+  .m-fab{ display:none; }
+  .m-fab.m-fab--active{
+    display:flex!important; position:fixed; right:16px;
+    bottom:calc(76px + env(safe-area-inset-bottom));
+    z-index:55; width:56px; height:56px; border-radius:50%;
+    align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#7E9476,#5D4037); color:#fff;
+    box-shadow:0 10px 22px -8px rgba(62,42,30,.55); border:none; font-size:22px; cursor:pointer;
+  }
+  .m-fab.m-fab--active:active{ transform:scale(.93); }
+}
+.m-fab{ display:none; }
+</style>
+</head>
   <body>
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
@@ -2149,7 +2213,7 @@
             </div>
 
             <div class="bg-white rounded-xl shadow p-4">
-              <div class="flex flex-wrap items-end gap-3 mb-4">
+              <div class="flex flex-wrap items-end gap-3 mb-4 m-sticky">
                 <div>
                   <label class="block text-xs text-slate-500 mb-1">搜尋（客戶姓名／會員ID／診斷／治療）</label>
                   <input v-model="amrQuery" @keyup.enter="loadAdminMedicalRecords" placeholder="例如：陳大文 / NAN000 / 針灸"
@@ -3443,7 +3507,7 @@
               <h3 class="text-lg font-semibold text-slate-800 mb-4">
                 <i class="fas fa-clock-rotate-left mr-2 text-emerald-600"></i>密碼重設審計日誌
               </h3>
-              <div class="flex flex-wrap items-end gap-3 mb-4">
+              <div class="flex flex-wrap items-end gap-3 mb-4 m-sticky">
                 <div>
                   <label class="block text-xs text-slate-500 mb-1">帳戶搜尋</label>
                   <input v-model="auditFilter.username" @keyup.enter="loadAuditLogs" placeholder="會員ID"
@@ -10674,5 +10738,56 @@ phone: this.addUserForm.phone,
         },
       }).mount("#app");
     </script>
-  </body>
+  <button id="m-fab" type="button" aria-label="新增" class="m-fab"><i class="fas fa-plus"></i></button>
+<script>
+(function(){
+  var mq = window.matchMedia('(max-width:767px)');
+  function isMobile(){ return mq.matches; }
+  function injectLabels(){
+    if(!isMobile()) return;
+    var tables = document.querySelectorAll('#app main table:not(.no-card)');
+    for(var t=0;t<tables.length;t++){
+      var tbl=tables[t];
+      var ths = tbl.querySelectorAll('thead th');
+      if(!ths.length) continue;
+      var labels=[];
+      for(var i=0;i<ths.length;i++){ labels.push((ths[i].innerText||ths[i].textContent||'').replace(/\s+/g,' ').trim()); }
+      var rows = tbl.querySelectorAll('tbody tr');
+      for(var r=0;r<rows.length;r++){
+        var tds = rows[r].querySelectorAll('td');
+        for(var c=0;c<tds.length;c++){ if(c<labels.length) tds[c].setAttribute('data-label', labels[c]); }
+      }
+    }
+  }
+  var fab = document.getElementById('m-fab');
+  function findCreate(){
+    var btns = document.querySelectorAll('#app main button');
+    for(var i=0;i<btns.length;i++){
+      var b=btns[i];
+      if(b.offsetParent===null) continue;
+      if(getComputedStyle(b).visibility==='hidden') continue;
+      var txt=(b.getAttribute('aria-label')||b.innerText||b.textContent||'').replace(/\s+/g,'');
+      if(/^(新增|建立)/.test(txt) || /新增(問題|服務|醫師|公告|節日|帳號|病歷|案例|子帳戶)/.test(txt)) return b;
+    }
+    return null;
+  }
+  function refreshFab(){
+    if(!fab) return;
+    if(!isMobile()){ fab.classList.remove('m-fab--active'); return; }
+    var b=findCreate();
+    if(b){ fab.classList.add('m-fab--active'); fab._t=b; } else { fab.classList.remove('m-fab--active'); fab._t=null; }
+  }
+  function run(){ injectLabels(); refreshFab(); }
+  var pending=false;
+  function schedule(){ if(pending) return; pending=true; setTimeout(function(){ pending=false; run(); }, 200); }
+  if(fab){
+    fab.addEventListener('click', function(){ var b=fab._t||findCreate(); if(b) b.click(); });
+    if(window.MutationObserver){ try{ new MutationObserver(schedule).observe(document.getElementById('app'), {childList:true, subtree:true, attributes:true, attributeFilter:['style','class','hidden']}); }catch(e){} }
+    setInterval(schedule, 1000);
+    window.addEventListener('resize', schedule);
+  }
+  run();
+})();
+</script>
+</body>
 </html>
