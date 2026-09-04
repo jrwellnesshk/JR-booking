@@ -201,6 +201,40 @@
       #app input, #app select, #app textarea{ font-size:.85rem!important; }
       #app label{ font-size:.72rem!important; }
       .hover\:bg-slate-800:hover{ background-color:var(--sage-soft)!important; }
+
+      /* ===== 手機版字體/觸控修正（必須置於基礎規則之後才生效） ===== */
+      @media (max-width: 767px) {
+        #app main{ padding-top:72px!important; }
+        #app main input, #app main select, #app main textarea{ font-size:16px!important; }
+        #app main label{ font-size:.8125rem!important; }
+        #app main table, #app main table th, #app main table td{ font-size:.875rem!important; line-height:1.45!important; }
+        #app .text-xs{ font-size:.8125rem!important; line-height:1.4!important; }
+        #app main button{ min-height:44px; white-space:nowrap; }
+        #app main .overflow-x-auto{ position:relative; }
+        #app main table{ border-collapse:separate; border-spacing:0; }
+        #app main table thead th{ position:sticky; top:0; z-index:5; background:#f8fafc; }
+        #app main table th:first-child, #app main table td:first-child{ position:sticky; left:0; z-index:4; background:#ffffff; box-shadow:2px 0 0 rgba(139,125,107,.12); }
+        #app main table th, #app main table td{ padding:10px 12px!important; }
+        #app main .grid-cols-3, #app main .grid-cols-4, #app main .grid-cols-5, #app main .grid-cols-6{ grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+      }
+
+      /* ===== 手機版頂部列 / 底部導航（自定 class，避免依賴預建 tailwind 缺少的 utility/arbitrary value） ===== */
+      .m-topbar{ display:none; }
+      .m-overlay{ display:none; }
+      .m-bnav{ display:none; }
+      @media (max-width:767px){
+        .m-topbar{ display:flex; position:fixed; top:0; left:0; right:0; height:56px; z-index:60; align-items:center; gap:4px; padding:0 8px; background:rgba(253,246,250,.95); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid rgba(139,125,107,.15); }
+        .m-topbar button{ width:40px; height:40px; margin-left:-4px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#5D4037; background:transparent; border:none; }
+        .m-topbar button:active{ background:rgba(139,125,107,.12); }
+        .m-topbar i{ font-size:18px; }
+        .m-topbar span{ font-weight:700; color:#5D4037; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .m-overlay{ display:block; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:40; }
+        .m-bnav{ display:flex; position:fixed; bottom:0; left:0; right:0; z-index:45; height:64px; align-items:stretch; background:rgba(253,246,250,.97); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-top:1px solid rgba(139,125,107,.18); }
+        .m-bnav button{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; font-weight:500; color:#9a8c7a; background:transparent; border:none; }
+        .m-bnav button:active{ background:rgba(139,125,107,.08); }
+        .m-bnav i{ font-size:20px; }
+        .m-bnav button.on{ color:#7E9476; }
+      }
     </style>
   
 <style>
@@ -326,19 +360,12 @@
 
       <!-- ==================== 主版面 ==================== -->
       <div v-else class="min-h-screen">
-        <!-- 手機版漢堡選單 + 遮罩 -->
-        <button
-          @click="sidebarOpen = !sidebarOpen"
-          class="md:hidden fixed top-3 left-3 z-[60] w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-[#5D4037] border border-[rgba(139,125,107,.25)]"
-          aria-label="開啟/關閉選單"
-        >
-          <i class="fas fa-bars text-lg"></i>
-        </button>
-        <div
-          v-show="sidebarOpen"
-          @click="sidebarOpen = false"
-          class="md:hidden fixed inset-0 bg-black/40 z-40"
-        ></div>
+        <!-- 手機版頂部列 + 抽屜遮罩 -->
+        <header class="m-topbar">
+          <button @click="sidebarOpen = !sidebarOpen" aria-label="開啟/關閉選單"><i class="fas fa-bars"></i></button>
+          <span>寶天醫館 · 員工</span>
+        </header>
+        <div v-show="sidebarOpen" @click="sidebarOpen = false" class="m-overlay"></div>
 
         <div class="flex">
           <!-- 左側導航欄（與管理員後台一致） -->
@@ -383,7 +410,7 @@
 
         <!-- 右側主內容區 -->
         <div class="flex-1 min-w-0 min-h-screen pt-14 md:pt-0">
-          <main class="max-w-7xl mx-auto px-4 py-6 w-full">
+          <main class="max-w-7xl mx-auto px-4 py-6 w-full pb-24 md:pb-6">
 
           <!-- 頂部統計卡片 -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -1285,7 +1312,7 @@
                 </details>
 
                 <!-- 搜尋 -->
-                <div class="flex gap-2 pt-2">
+                <div class="flex gap-2 pt-2" style="flex-wrap:wrap;">
                   <input v-model="acctQuery" @keyup.enter="loadAccounts" placeholder="輸入姓名／電話／帳號搜尋，留空列出全部" class="border border-slate-300 rounded-lg px-3 py-2 text-sm flex-1">
                   <button @click="loadAccounts" :disabled="acctBusy" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50"><i class="fas fa-search mr-1"></i>搜尋</button>
                 </div>
@@ -1519,6 +1546,15 @@
             </div>
           </div>
         </main>
+
+        <!-- 手機版底部導航列 -->
+        <nav class="m-bnav">
+          <button @click="mainTab='list'; sidebarOpen=false" :class="mainTab==='list' ? 'on' : ''"><i class="fas fa-list"></i><span>列表</span></button>
+          <button @click="mainTab='calendar'; loadCalHolidays(); sidebarOpen=false" :class="mainTab==='calendar' ? 'on' : ''"><i class="fas fa-calendar-days"></i><span>日曆</span></button>
+          <button @click="mainTab='records'; loadAllMedicalRecords(); sidebarOpen=false" :class="mainTab==='records' ? 'on' : ''"><i class="fas fa-folder-open"></i><span>病歷</span></button>
+          <button @click="mainTab='hr'; loadMyHr(); sidebarOpen=false" :class="mainTab==='hr' ? 'on' : ''"><i class="fas fa-clock"></i><span>考勤</span></button>
+          <button @click="mainTab='ess'; loadEss(); sidebarOpen=false" :class="mainTab==='ess' ? 'on' : ''"><i class="fas fa-user-cog"></i><span>自助</span></button>
+        </nav>
           </div>
         </div>
       </div>
