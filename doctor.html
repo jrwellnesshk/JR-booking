@@ -187,8 +187,11 @@
       .hover\:bg-slate-800:hover{ background-color:var(--sage-soft)!important; }
       /* ===== 手機版字體/觸控修正（必須置於基礎規則之後才生效） ===== */
       @media (max-width: 767px) {
-        #app main{ padding-top:72px!important; }
-        #app main input, #app main select, #app main textarea{ font-size:16px!important; }
+        #app main{
+          padding-top: calc(56px + env(safe-area-inset-top)) !important;
+          padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+        }
+        #app main input, #app main select, #app main textarea{ font-size:16px!important; min-height:44px; }
         #app main label{ font-size:.8125rem!important; }
         #app main table, #app main table th, #app main table td{ font-size:.875rem!important; line-height:1.45!important; }
         #app .text-xs{ font-size:.8125rem!important; line-height:1.4!important; }
@@ -199,19 +202,27 @@
         #app main table th:first-child, #app main table td:first-child{ position:sticky; left:0; z-index:4; background:#ffffff; box-shadow:2px 0 0 rgba(139,125,107,.12); }
         #app main table th, #app main table td{ padding:10px 12px!important; }
         #app main .grid-cols-3, #app main .grid-cols-4, #app main .grid-cols-5, #app main .grid-cols-6{ grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+        /* 建立/搜尋表單：手機改單列全闊，輸入框夠大易撳 */
+        #app main .flex.flex-wrap.items-end{ flex-direction:column; align-items:stretch; gap:.75rem; }
+        #app main .flex.flex-wrap.items-end > div{ width:100%!important; }
+        #app main .flex.flex-wrap.items-end input{ width:100%!important; min-height:46px; }
+        #app main .flex.flex-wrap.items-end button{ width:100%!important; min-height:48px; }
+        #app main .flex.gap-2.pt-2{ flex-wrap:wrap; }
+        #app main .flex.gap-2.pt-2 input{ flex:1 1 100%; min-height:46px; }
+        #app main .flex.gap-2.pt-2 button{ flex:1 1 100%; min-height:48px; }
       }
       /* ===== 手機版頂部列 / 底部導航（自定 class，避免依賴預建 tailwind 缺少的 utility/arbitrary value） ===== */
       .m-topbar{ display:none; }
       .m-overlay{ display:none; }
       .m-bnav{ display:none; }
       @media (max-width:767px){
-        .m-topbar{ display:flex; position:fixed; top:0; left:0; right:0; height:56px; z-index:60; align-items:center; gap:4px; padding:0 8px; background:rgba(253,246,250,.95); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid rgba(139,125,107,.15); }
-        .m-topbar button{ width:40px; height:40px; margin-left:-4px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#5D4037; background:transparent; border:none; }
+        .m-topbar{ display:flex; position:fixed; top:0; left:0; right:0; height:calc(56px + env(safe-area-inset-top)); padding-top:env(safe-area-inset-top); z-index:60; align-items:center; gap:4px; padding-left:8px; padding-right:8px; background:rgba(253,246,250,.95); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid rgba(139,125,107,.15); }
+        .m-topbar button{ width:44px; height:44px; margin-left:-4px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#5D4037; background:transparent; border:none; }
         .m-topbar button:active{ background:rgba(139,125,107,.12); }
         .m-topbar i{ font-size:18px; }
         .m-topbar span{ font-weight:700; color:#5D4037; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .m-overlay{ display:block; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:40; }
-        .m-bnav{ display:flex; position:fixed; bottom:0; left:0; right:0; z-index:45; height:64px; align-items:stretch; background:rgba(253,246,250,.97); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-top:1px solid rgba(139,125,107,.18); }
+        .m-bnav{ display:flex; position:fixed; bottom:0; left:0; right:0; z-index:45; height:calc(64px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom); align-items:stretch; background:rgba(253,246,250,.97); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-top:1px solid rgba(139,125,107,.18); }
         .m-bnav button{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; font-weight:500; color:#9a8c7a; background:transparent; border:none; }
         .m-bnav button:active{ background:rgba(139,125,107,.08); }
         .m-bnav i{ font-size:20px; }
