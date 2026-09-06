@@ -2286,7 +2286,7 @@
                   <button
                     v-for="head in filteredHeads"
                     :key="head.id"
-                    @click="selectedFamilyHead = head"
+                    @click="selectFamilyHead(head)"
                     class="text-left bg-white rounded-xl shadow p-4 hover:shadow-md hover:ring-2 hover:ring-indigo-300 transition"
                   >
                     <div class="flex items-center gap-3">
@@ -2370,6 +2370,28 @@
                   </div>
                 </div>
 
+                <!-- 🆕 其他連結（親戚／同輩） -->
+                <div v-if="headLinks.length" class="ftree-level ftree-level-children" style="margin-top:2.4rem;">
+                  <div class="w-full text-center text-xs text-slate-400 mb-1">其他連結（親戚／同輩）</div>
+                  <div
+                    v-for="lk in headLinks"
+                    :key="lk.id"
+                    class="ftree-node"
+                    data-role="child"
+                  >
+                    <div class="ftree-avatar-wrap">
+                      <div class="ftree-avatar">
+                        <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                        <i v-else class="fas fa-user"></i>
+                      </div>
+                    </div>
+                    <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
+                    <div class="ftree-meta">{{ lk.other.username }}</div>
+                    <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
+                    <button @click="removeHeadLink(lk)" class="ftree-unlink" title="解除連結"><i class="fas fa-unlink"></i></button>
+                  </div>
+                </div>
+
                 <div class="ftree-actions">
                   <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>加子女</button>
                   <button @click="changeFamilyTier(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 text-sm hover:bg-slate-50"><i class="fas fa-exchange-alt mr-1"></i>更改級別</button>
@@ -2379,6 +2401,52 @@
                 <div class="ftree-note">
                   <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 頂部「上一代」為預留入口，未來可擴展祖父母層
                 </div>
+              </div>
+            </div>
+
+            <!-- 🆕 連結帳戶管理（親戚／同輩／朋友，管理員可代任何兩個帳戶連結） -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 class="text-xl font-bold text-slate-800"><i class="fas fa-link text-emerald-600 mr-2"></i>連結帳戶管理</h2>
+                <button @click="loadAdminAccountLinks" :disabled="adminLinkLoading" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm hover:bg-slate-200">
+                  <i v-if="adminLinkLoading" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-sync-alt mr-1"></i>重新整理
+                </button>
+              </div>
+
+              <!-- 連結清單 -->
+              <div v-if="adminLinkLoading" class="text-slate-400 text-sm py-3">載入中...</div>
+              <div v-else-if="adminAccountLinks.length === 0" class="text-sm text-slate-400 py-2">暫無任何連結帳戶。</div>
+              <div v-else class="space-y-2 mb-5">
+                <div v-for="lk in adminAccountLinks" :key="lk.id" class="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm">
+                  <div>
+                    <b>{{ lk.a_name || lk.a_username }}</b> <span class="text-gray-400">({{ lk.a_username }})</span>
+                    <i class="fas fa-exchange-alt mx-2 text-gray-300"></i>
+                    <b>{{ lk.b_name || lk.b_username }}</b> <span class="text-gray-400">({{ lk.b_username }})</span>
+                    <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">{{ lk.customRelation || lk.relation }}</span>
+                  </div>
+                  <button class="text-xs px-3 py-1 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" @click="removeAdminAccountLink(lk)">
+                    <i class="fas fa-unlink mr-1"></i>解除
+                  </button>
+                </div>
+              </div>
+
+              <!-- 新增連結 -->
+              <div class="rounded-lg bg-slate-50 p-4">
+                <b class="text-sm">連結兩個帳戶</b>
+                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <input v-model="adminLinkForm.fromUsername" placeholder="帳戶 A 用戶名" class="rounded border border-gray-300 p-2 text-sm">
+                  <input v-model="adminLinkForm.targetUsername" placeholder="帳戶 B 用戶名" class="rounded border border-gray-300 p-2 text-sm">
+                </div>
+                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <select v-model="adminLinkForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
+                    <option v-for="r in ['父母','子女','配偶','兄弟','姐妹','親戚','朋友','其他']" :key="r" :value="r">{{ r }}</option>
+                  </select>
+                  <input v-if="adminLinkForm.relation === '其他'" v-model="adminLinkForm.customRelation" placeholder="請輸入關係說明" class="rounded border border-gray-300 p-2 text-sm">
+                </div>
+                <p v-if="adminLinkError" class="text-red-500 text-xs mt-2">{{ adminLinkError }}</p>
+                <button class="mt-3 px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 disabled:opacity-60" :disabled="adminLinkBusy" @click="createAdminAccountLink">
+                  <i class="fas fa-plus mr-1"></i>{{ adminLinkBusy ? '連結中...' : '連結帳戶' }}
+                </button>
               </div>
             </div>
           </div>
@@ -6703,6 +6771,14 @@
             },
             familySearch: '',
             selectedFamilyHead: null,
+            // 🆕 戶主嘅通用連結（親戚／同輩）
+            headLinks: [],
+            // 🆕 管理員連結帳戶管理
+            adminAccountLinks: [],
+            adminLinkLoading: false,
+            adminLinkBusy: false,
+            adminLinkError: '',
+            adminLinkForm: { fromUsername: '', targetUsername: '', relation: '朋友', customRelation: '' },
             // 病歴管理（管理員）
             showMedicalRecordModal: false,
             selectedBooking: null,
@@ -8092,6 +8168,7 @@ async handleLogin() {
               const data = await response.json();
               this.familyTree.tree = data.tree || [];
               this.selectedFamilyHead = null;
+              this.loadAdminAccountLinks();
             } catch (error) {
               console.error("載入家庭帳戶失敗:", error);
               this.familyTree.tree = [];
@@ -8186,6 +8263,106 @@ async handleLogin() {
               if (res.ok && data.ok) this.loadFamilyTree();
               else alert(data.error || "移除失敗");
             } catch (e) { alert("服務暫時不可用"); }
+          },
+
+          // 🆕 選擇戶主並載入佢嘅通用連結（親戚／同輩）
+          selectFamilyHead(head) {
+            this.selectedFamilyHead = head;
+            this.headLinks = [];
+            this.loadHeadLinks(head.id);
+          },
+
+          // 🆕 載入戶主嘅 account_links（過濾家庭子女，只顯示親戚／同輩）
+          async loadHeadLinks(headId) {
+            try {
+              const res = await fetch(`/api/membership/account-links?userId=${encodeURIComponent(headId)}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({ links: [] }));
+              const childIds = new Set((this.selectedFamilyHead.members || []).map(m => m.id));
+              this.headLinks = (data.links || []).filter(lk => !childIds.has(lk.other.id));
+            } catch (e) {
+              this.headLinks = [];
+            }
+          },
+
+          // 🆕 解除戶主嘅通用連結
+          async removeHeadLink(lk) {
+            if (!confirm(`確定解除「${lk.other.name || lk.other.username}」嘅連結？`)) return;
+            try {
+              const res = await fetch(`/api/membership/account-links/${lk.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) this.loadHeadLinks(this.selectedFamilyHead.id);
+              else alert(data.error || '解除失敗');
+            } catch (e) { alert('服務暫時不可用'); }
+          },
+
+          // 🆕 管理員：載入全部連結
+          async loadAdminAccountLinks() {
+            this.adminLinkLoading = true;
+            try {
+              const res = await fetch('/api/membership/admin/account-links', {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({ links: [] }));
+              this.adminAccountLinks = data.links || [];
+            } catch (e) {
+              this.adminAccountLinks = [];
+            } finally {
+              this.adminLinkLoading = false;
+            }
+          },
+
+          // 🆕 管理員：連結任意兩個帳戶（帳戶 A = fromUsername，帳戶 B = targetUsername）
+          async createAdminAccountLink() {
+            this.adminLinkError = '';
+            const fromU = (this.adminLinkForm.fromUsername || '').trim();
+            const targetU = (this.adminLinkForm.targetUsername || '').trim();
+            if (!fromU || !targetU) { this.adminLinkError = '請填寫帳戶 A 同 B 嘅用戶名'; return; }
+            if (this.adminLinkForm.relation === '其他' && !(this.adminLinkForm.customRelation || '').trim()) {
+              this.adminLinkError = '請輸入關係說明'; return;
+            }
+            this.adminLinkBusy = true;
+            try {
+              const res = await fetch('/api/membership/account-links', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                body: JSON.stringify({
+                  fromUsername: fromU,
+                  targetUsername: targetU,
+                  relation: this.adminLinkForm.relation,
+                  customRelation: this.adminLinkForm.relation === '其他' ? this.adminLinkForm.customRelation.trim() : undefined
+                })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) {
+                this.adminLinkForm = { fromUsername: '', targetUsername: '', relation: '朋友', customRelation: '' };
+                this.loadAdminAccountLinks();
+              } else {
+                this.adminLinkError = data.error || '連結失敗';
+              }
+            } catch (e) {
+              this.adminLinkError = '連結服務暫時不可用';
+            } finally {
+              this.adminLinkBusy = false;
+            }
+          },
+
+          // 🆕 管理員：解除連結
+          async removeAdminAccountLink(lk) {
+            if (!confirm(`確定解除「${lk.a_name || lk.a_username}」同「${lk.b_name || lk.b_username}」嘅連結？`)) return;
+            try {
+              const res = await fetch(`/api/membership/account-links/${lk.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) this.loadAdminAccountLinks();
+              else alert(data.error || '解除失敗');
+            } catch (e) { alert('服務暫時不可用'); }
           },
 
           // ==================== 病歴管理（管理員） ====================

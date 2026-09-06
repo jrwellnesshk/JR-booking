@@ -120,6 +120,16 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const cancellingSub = ref(false);
           const familyList = ref({ children: [] });
           const selectedChildBookings = ref(null);
+          // 🆕 通用帳戶連結（親戚／同輩／朋友，客人自助連結）
+          const accountLinks = ref([]);
+          const linkLoading = ref(false);
+          const linkBusy = ref(false);
+          const linkError = ref('');
+          const linkForm = ref({ targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null });
+          const linkRelationOptions = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
+          const currentMemberId = computed(() => (currentMember.value && (currentMember.value.dbId || currentMember.value.id)) || null);
+          const currentMemberName = computed(() => (currentMember.value && (currentMember.value.name || currentMember.value.id)) || '');
+          const myFamilyChildren = computed(() => (membership.value && membership.value.isFamilyHead) ? (familyList.value.children || []) : []);
           const familyHint = computed(() => {
             if (membership.value.tier !== 'family') return '家庭會員可集中查看子女狀況及病歷、管理家庭預約。請先升級至家庭會員。';
             if (!membership.value.isFamilyHead) return '殷請先「啟用家庭帳戶」，即可查看子女狀況及病歷。';
@@ -1660,10 +1670,81 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               membership.value.loading = false;
               familyList.value = { children: data.children || [] };
               realTier.value = data.tier || 'general';
+              loadAccountLinks();
             } catch (e) {
               console.warn('無法載入會員資料', e);
               membership.value.loading = false;
               realTier.value = (currentMember.value && currentMember.value.tier) || 'general';
+            }
+          };
+
+          // 🆕 載入「我的連結帳戶」
+          const loadAccountLinks = async () => {
+            if (!currentMember.value?.dbId) return;
+            linkLoading.value = true;
+            try {
+              const res = await fetch(`${API_URL}/membership/account-links`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              if (!res.ok) throw new Error('status');
+              const data = await res.json();
+              accountLinks.value = data.links || [];
+            } catch (e) {
+              console.warn('無法載入連結帳戶', e);
+              accountLinks.value = [];
+            } finally {
+              linkLoading.value = false;
+            }
+          };
+
+          // 🆕 連結新帳戶（客人自助；家庭戶主可代子女）
+          const createAccountLink = async () => {
+            linkError.value = '';
+            const target = (linkForm.value.targetUsername || '').trim();
+            if (!target) { linkError.value = '請輸入對方用戶名'; return; }
+            if (linkForm.value.relation === '其他' && !(linkForm.value.customRelation || '').trim()) {
+              linkError.value = '請輸入關係說明'; return;
+            }
+            linkBusy.value = true;
+            try {
+              const body = {
+                targetUsername: target,
+                relation: linkForm.value.relation,
+                customRelation: linkForm.value.relation === '其他' ? linkForm.value.customRelation.trim() : undefined
+              };
+              if (linkForm.value.fromUserId) body.fromUserId = linkForm.value.fromUserId;
+              const res = await fetch(`${API_URL}/membership/account-links`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                body: JSON.stringify(body)
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) {
+                linkForm.value = { targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null };
+                await loadAccountLinks();
+              } else {
+                linkError.value = data.error || '連結失敗';
+              }
+            } catch (e) {
+              linkError.value = '連結服務暫時不可用';
+            } finally {
+              linkBusy.value = false;
+            }
+          };
+
+          // 🆕 解除連結
+          const removeAccountLink = async (lk) => {
+            if (!confirm(`確定解除與「${lk.other.name || lk.other.username}」嘅連結？`)) return;
+            try {
+              const res = await fetch(`${API_URL}/membership/account-links/${lk.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) await loadAccountLinks();
+              else alert(data.error || '解除失敗');
+            } catch (e) {
+              alert('解除服務暫時不可用');
             }
           };
 
@@ -4214,6 +4295,19 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             cancelSubscription,
             activateFamily,
             loadChildBookings,
+            // 🆕 通用帳戶連結
+            accountLinks,
+            linkLoading,
+            linkBusy,
+            linkError,
+            linkForm,
+            linkRelationOptions,
+            currentMemberId,
+            currentMemberName,
+            myFamilyChildren,
+            loadAccountLinks,
+            createAccountLink,
+            removeAccountLink,
           };
         },
       }).mount("#app");

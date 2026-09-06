@@ -396,6 +396,26 @@ function runMigrations(db) {
       else console.log("✅ family_links 表已準備就緒");
     });
 
+    // 通用帳戶連結表（親戚／同輩／朋友，客人自助連結，與 family_links 家庭訂閱分開）
+    // user_a / user_b 為無序 pair（細 id 存 user_a），relation 為關係標籤，custom_relation 為「其他」自填
+    db.run(`
+      CREATE TABLE IF NOT EXISTS account_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_a INTEGER NOT NULL,
+        user_b INTEGER NOT NULL,
+        relation TEXT NOT NULL,
+        custom_relation TEXT,
+        initiated_by INTEGER,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_a, user_b),
+        FOREIGN KEY (user_a) REFERENCES users(id),
+        FOREIGN KEY (user_b) REFERENCES users(id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 account_links 表失敗:", err.message);
+      else console.log("✅ account_links 表已準備就緒");
+    });
+
     // 異常管理表 (紅字日 / 全日照停 / 特別營業時段)
     db.run(`
       CREATE TABLE IF NOT EXISTS exceptions (

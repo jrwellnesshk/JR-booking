@@ -676,6 +676,148 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
+  // ==================== 通用帳戶連結（親戚／同輩／朋友，客人自助連結）====================
+  // 與 family_links（家庭訂閱父→子）分開：account_links 係純關係圖，唔影響會員級別／保險。
+  const RELATION_PRESETS = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
+  // 無序 pair：細 id → user_a，大 id → user_b，保證 (A,B) 唯一
+  const normalizePair = (x, y) => (Number(x) < Number(y) ? [Number(x), Number(y)] : [Number(y), Number(x)]);
+  // 判斷 caller 能否以 fromUserId 身份連結（admin 任意；家庭戶主可代自己或子女）
+  const canLinkAs = async (user, fromUserId) => {
+    if (user.role === 'admin') return true;
+    if (Number(fromUserId) === Number(user.id)) return true;
+    const isHead = Number(user.family_head_id) === Number(user.id);
+    if (isHead) {
+      const child = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, Number(fromUserId)]);
+      return !!child;
+    }
+    return false;
+  };
+
+  // POST /api/membership/account-links — 連結兩個帳戶（客人自助 / 管理員 / 家庭戶主代連結）
+  router.post('/account-links', requireAuth, async (req, res) => {
+    try {
+      const user = req.user;
+      const { targetUsername, targetPhone, relation, customRelation, fromUserId, fromUsername } = req.body || {};
+      if (!relation || !RELATION_PRESETS.includes(relation)) return res.status(400).json({ error: '請選擇有效的關係類型' });
+      const displayRelation = relation === '其他' ? String(customRelation || '').trim() : null;
+      if (relation === '其他' && !displayRelation) return res.status(400).json({ error: '請輸入關係說明' });
+
+      // 決定連結來源帳戶 fromId（fromUserId 數字 或 fromUsername 文字；管理員可用 fromUsername 代指 A）
+      let fromId = user.id;
+      if (fromUserId || fromUsername) {
+        let candidateId = Number(fromUserId) || null;
+        if (!candidateId && fromUsername) {
+          const fu = await q1("SELECT id FROM users WHERE username=? COLLATE NOCASE", [String(fromUsername).trim()]);
+          if (!fu) return res.status(404).json({ error: '找不到帳戶 A（fromUsername）' });
+          candidateId = fu.id;
+        }
+        if (candidateId && Number(candidateId) !== Number(user.id)) {
+          const allowed = await canLinkAs(user, candidateId);
+          if (!allowed) return res.status(403).json({ error: '你沒有權限以該帳戶身份連結' });
+          fromId = candidateId;
+        }
+      }
+
+      // 解析目標帳戶
+      let target = null;
+      if (targetUsername) target = await q1("SELECT id, username, name, role FROM users WHERE username=? COLLATE NOCASE", [String(targetUsername).trim()]);
+      else if (targetPhone) target = await q1("SELECT id, username, name, role FROM users WHERE phone=?", [String(targetPhone).trim()]);
+      if (!target) return res.status(404).json({ error: '找不到該帳戶（請檢查用戶名或電話）' });
+      if (target.role !== 'customer') return res.status(400).json({ error: '只能連結客戶帳戶' });
+      if (Number(target.id) === Number(fromId)) return res.status(400).json({ error: '唔可以連結自己' });
+
+      const [a, b] = normalizePair(fromId, target.id);
+      const existing = await q1("SELECT id FROM account_links WHERE user_a=? AND user_b=?", [a, b]);
+      if (existing) return res.status(409).json({ error: '呢兩個帳戶已經連結咗' });
+
+      const ins = await run(
+        "INSERT INTO account_links (user_a, user_b, relation, custom_relation, initiated_by, created_at) VALUES (?,?,?,?,?,?)",
+        [a, b, relation, displayRelation, user.id, new Date().toISOString()]);
+      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id });
+    } catch (e) {
+      console.error('連結帳戶失敗:', e);
+      res.status(500).json({ error: '連結失敗' });
+    }
+  });
+
+  // GET /api/membership/account-links — 列出與自己有關嘅連結（admin / 家庭戶主可指定 userId）
+  router.get('/account-links', requireAuth, async (req, res) => {
+    try {
+      const user = req.user;
+      let viewId = user.id;
+      if (req.query.userId && Number(req.query.userId) !== Number(user.id)) {
+        const allowed = await canLinkAs(user, req.query.userId);
+        if (!allowed) return res.status(403).json({ error: '沒有權限檢視該帳戶的連結' });
+        viewId = Number(req.query.userId);
+      }
+      const rows = await q(
+        `        SELECT l.id, l.relation, l.custom_relation, l.initiated_by,
+                CASE WHEN l.user_a=? THEN l.user_b ELSE l.user_a END AS other_id,
+                u.name, u.username, u.membership_tier, u.role
+         FROM account_links l
+         JOIN users u ON u.id = (CASE WHEN l.user_a=? THEN l.user_b ELSE l.user_a END)
+         WHERE l.user_a=? OR l.user_b=?
+         ORDER BY l.created_at DESC`,
+        [viewId, viewId, viewId, viewId]);
+      const links = rows.map(r => ({
+        id: r.id,
+        relation: r.relation,
+        customRelation: r.customRelation,
+        other: { id: r.other_id, name: r.name, username: r.username, avatar_url: r.avatar_url, membership_tier: r.membership_tier, role: r.role },
+        isSelfInitiated: Number(r.initiated_by) === Number(viewId)
+      }));
+      res.json({ links });
+    } catch (e) {
+      console.error('讀取連結失敗:', e);
+      res.status(500).json({ error: '系統錯誤' });
+    }
+  });
+
+  // DELETE /api/membership/account-links/:id — 移除連結（本人／對方／管理員／家庭戶主可移除）
+  router.delete('/account-links/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user;
+      const linkId = Number(req.params.id);
+      const link = await q1("SELECT * FROM account_links WHERE id=?", [linkId]);
+      if (!link) return res.status(404).json({ error: '找不到該連結' });
+      const involvesSelf = Number(link.user_a) === Number(user.id) || Number(link.user_b) === Number(user.id);
+      let allowed = user.role === 'admin' || involvesSelf;
+      if (!allowed) {
+        const isHead = Number(user.family_head_id) === Number(user.id);
+        if (isHead) {
+          const child = await q1(
+            "SELECT 1 FROM family_links WHERE parent_user_id=? AND (child_user_id=? OR child_user_id=?)",
+            [user.id, link.user_a, link.user_b]);
+          allowed = !!child;
+        }
+      }
+      if (!allowed) return res.status(403).json({ error: '沒有權限移除該連結' });
+      await run("DELETE FROM account_links WHERE id=?", [linkId]);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('移除連結失敗:', e);
+      res.status(500).json({ error: '移除失敗' });
+    }
+  });
+
+  // GET /api/membership/admin/account-links — 管理員檢視全部連結
+  router.get('/admin/account-links', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const rows = await q(
+        `SELECT l.id, l.relation, l.custom_relation, l.initiated_by, l.created_at,
+                a.id AS a_id, a.name AS a_name, a.username AS a_username,
+                b.id AS b_id, b.name AS b_name, b.username AS b_username
+         FROM account_links l
+         JOIN users a ON a.id = l.user_a
+         JOIN users b ON b.id = l.user_b
+         ORDER BY l.created_at DESC`);
+      res.json({ links: rows });
+    } catch (e) {
+      console.error('讀取連結列表失敗:', e);
+      res.status(500).json({ error: '系統錯誤' });
+    }
+  });
+
   // 🔧 POST /api/membership/confirm — 職員/管理員代客啟動會員（電話收款／現金後手動開通）
   // 客戶自助升級一律經 Stripe；呢個端點只係補返離線收款嘅通道
   router.post('/confirm', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
