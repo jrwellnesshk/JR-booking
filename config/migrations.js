@@ -500,7 +500,9 @@ function runMigrations(db) {
       ['sms_notification_enabled', 'false'],
       ['email_notification_enabled', 'false'],
       ['whatsapp_notification_enabled', 'true'],
-      ['allow_public_registration', 'false']
+      ['allow_public_registration', 'false'],
+      ['vip_rooms', '5'],
+      ['vip_bed_names', '[]']
     ];
     defaultSettings.forEach(([key, value]) => {
       db.get("SELECT id FROM clinic_settings WHERE setting_key=?", [key], (e, row) => {

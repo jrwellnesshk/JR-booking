@@ -1,29 +1,29 @@
 {
-  "at": "2026-08-27T17:00:07.129Z",
+  "at": "2026-09-06T08:23:23.002Z",
   "failed": 0,
   "out": [
     {
       "page": "http://localhost:4000/index.html",
       "status": 200,
-      "htmlLen": 29628,
+      "htmlLen": 25954,
       "errors": []
     },
     {
       "page": "http://localhost:4000/staff.html",
       "status": 200,
-      "htmlLen": 43136,
+      "htmlLen": 57105,
       "errors": []
     },
     {
       "page": "http://localhost:4000/doctor.html",
       "status": 200,
-      "htmlLen": 27866,
+      "htmlLen": 50069,
       "errors": []
     },
     {
       "page": "http://localhost:4000/admin.html",
       "status": 200,
-      "htmlLen": 2929,
+      "htmlLen": 4217,
       "errors": []
     }
   ]

@@ -74,7 +74,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
   // 床位置檢查（針對需要床位嘅服務）
   const checkBedAvailable = (bookings, startMin, durationMin, bedCapacity, bedType) => {
-    if (bedType !== 'tuina' && bedType !== 'acup' && bedType !== 'mixed') return { ok: true };
+    if (bedType !== 'tuina' && bedType !== 'acup' && bedType !== 'mixed' && bedType !== 'vip') return { ok: true };
     const cap = bedCapacity || 5;
     let used = 0;
     for (const b of bookings || []) {
@@ -92,13 +92,30 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     return { ok: used < cap, used, cap };
   };
 
-  // 由服務名稱推斷床位類型
+  // 由服務名稱推斷床位類型：手法床(tuina) / VIP房(vip) / 針灸床(acup, legacy) / 混合(mixed, legacy)
   const serviceBedType = (name) => {
     const n = name || '';
     if (n.includes('推拿') && n.includes('針灸')) return 'mixed';
-    if (n.includes('推拿')) return 'tuina';
+    if (n.includes('VIP') || n.includes('貴賓') || n.includes('房')) return 'vip';
+    if (n.includes('推拿') || n.includes('手法')) return 'tuina';
     if (n.includes('針灸')) return 'acup';
     return 'none';
+  };
+
+  // 床位類型 → clinic_settings 容量鍵
+  const bedCapacityKey = (bt) => {
+    if (bt === 'vip') return 'vip_rooms';
+    if (bt === 'tuina') return 'tuina_beds';
+    return 'acupuncture_beds'; // legacy
+  };
+
+  // 床位類型 → 中文顯示名
+  const bedTypeLabel = (bt) => {
+    if (bt === 'tuina') return '手法床';
+    if (bt === 'vip') return 'VIP房';
+    if (bt === 'acup') return '針灸床';
+    if (bt === 'mixed') return '混合床';
+    return '床位';
   };
 
   // ==================== 診所開診日檢查（閉診日/公眾假期/紅字日/特別時段）====================
@@ -208,7 +225,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   // 建立預約（可選登入：已登入用戶記錄 userId；訪客以 isGuest / 無 token 建立，只可預約「初體驗」）
   router.post("/", optionalAuth, async (req, res) => {
     const userId = req.userId; // 訪客時為 undefined
-    const { isGuest, customerName, customerNameEn, customerPhone, customerEmail, customerAge, serviceId, doctorName, appointmentDate, appointmentTime, notes, sendEmailNotification, bedNumber } = req.body;
+    const { isGuest, customerName, customerNameEn, customerPhone, customerEmail, customerAge, serviceId, doctorName, appointmentDate, appointmentTime, notes, sendEmailNotification, bedNumber, bedType: reqBedType } = req.body;
     const guestMode = !userId; // 訪客模式：以是否持有有效 token 為準（isGuest 僅供前端標示）
     
     if (!customerName || !customerPhone || !serviceId || !appointmentDate || !appointmentTime) {
@@ -315,10 +332,12 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         }
 
         // 🆕 床位資源檢查（需床位嘅服務）—— 床位係全院共享資源，需跨醫師統計
-        const bedType = needsBed ? serviceBedType(serviceName) : null;
+        const bedType = needsBed
+          ? (['tuina', 'vip', 'acup', 'mixed'].includes(reqBedType) ? reqBedType : serviceBedType(serviceName))
+          : null;
         let assignedBedNumber = null;
-        if (needsBed) {
-          const bedKey = bedType === 'tuina' ? 'tuina_beds' : 'acupuncture_beds';
+          if (needsBed) {
+            const bedKey = bedCapacityKey(bedType);
           const bedCapRow = await new Promise((resolve, reject) => {
             db.get("SELECT setting_value FROM clinic_settings WHERE setting_key=?", [bedKey], (err, row) => err ? reject(err) : resolve(row));
           });
@@ -355,7 +374,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
               return res.status(400).json({ error: `床號無效（只可 1-${bedCap}）`, code: 'bed' });
             }
             if (occupied.has(n)) {
-              return res.status(409).json({ error: `${bedType === 'tuina' ? '推拿床' : '針灸床'} #${n} 該時段已被預約，請揀其他床位`, code: 'bed_taken' });
+              return res.status(409).json({ error: `${bedTypeLabel(bedType)} #${n} 該時段已被預約，請揀其他床位`, code: 'bed_taken' });
             }
             assignedBedNumber = n;
           } else {
@@ -529,19 +548,19 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const userId = isStaff ? (req.query.userId || null) : req.userId;
     const queryUsername = isStaff ? (username || null) : (req.user.username || null);
     
-    let query = "SELECT * FROM bookings";
+    let query = "SELECT b.*, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status='completed') = 0 END AS is_new FROM bookings b";
     let params = [];
-    
+
     // 支持同時用 userId (數據庫ID) 和 username 查詢，以兼容新舊數據
     if (userId || queryUsername) {
       if (userId && queryUsername) {
-        query += " WHERE (user_id = ? OR user_id = ?)";
+        query += " WHERE (b.user_id = ? OR b.user_id = ?)";
         params.push(userId, queryUsername);
       } else if (userId) {
-        query += " WHERE user_id = ?";
+        query += " WHERE b.user_id = ?";
         params.push(userId);
       } else if (queryUsername) {
-        query += " WHERE user_id = ?";
+        query += " WHERE b.user_id = ?";
         params.push(queryUsername);
       }
     }
@@ -721,8 +740,8 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
           // 床位資源（全院共享）
           if (svc.requires_bed === 1) {
-            const bedType = serviceBedType(svc.name);
-            const bedKey = bedType === 'tuina' ? 'tuina_beds' : 'acupuncture_beds';
+            const bedType = oldBooking.bed_type || serviceBedType(svc.name);
+            const bedKey = bedCapacityKey(bedType);
             const bedCapRow = await new Promise((resolve) => db.get("SELECT setting_value FROM clinic_settings WHERE setting_key=?", [bedKey], (e, r) => resolve(r)));
             const bedCap = bedCapRow ? parseInt(bedCapRow.setting_value, 10) : 5;
             const bedRows = await new Promise((resolve) => {
@@ -1128,9 +1147,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     db.get("SELECT name, duration, requires_bed FROM services WHERE id=?", [serviceId], async (err, svc) => {
       if (err || !svc) return res.status(404).json({ error: "找不到服務" });
       if (svc.requires_bed !== 1) return res.json({ bedType: 'none', cap: 0, beds: [] });
-      const bedType = serviceBedType(svc.name);
-      if (bedType !== 'tuina' && bedType !== 'acup' && bedType !== 'mixed') return res.json({ bedType: 'none', cap: 0, beds: [] });
-      const bedKey = bedType === 'tuina' ? 'tuina_beds' : 'acupuncture_beds';
+      let bedType = (req.query.bedType && ['tuina', 'vip'].includes(req.query.bedType)) ? req.query.bedType : serviceBedType(svc.name);
+      if (bedType !== 'tuina' && bedType !== 'acup' && bedType !== 'mixed' && bedType !== 'vip') return res.json({ bedType: 'none', cap: 0, beds: [] });
+      const bedKey = bedCapacityKey(bedType);
       const capRow = await new Promise((resolve) => db.get("SELECT setting_value FROM clinic_settings WHERE setting_key=?", [bedKey], (e, r) => resolve(r)));
       const cap = capRow ? parseInt(capRow.setting_value, 10) : 5;
       const startMin = timeToMinutes(time);
@@ -1233,9 +1252,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
             const so = timeToMinutes(specialOpen), sc = timeToMinutes(specialClose);
             filtered = slots.filter(t => { const m = timeToMinutes(t); return m >= so && m < sc; });
           }
-          const bedCapRows = needsBed ? await new Promise((resolve) => db.get("SELECT setting_value FROM clinic_settings WHERE setting_key=?", [serviceBedType(svc.name) === 'tuina' ? 'tuina_beds' : 'acupuncture_beds'], (e, r) => resolve(r ? r.setting_value : null))) : null;
+          const bedCapRows = needsBed ? await new Promise((resolve) => db.get("SELECT setting_value FROM clinic_settings WHERE setting_key=?", [bedCapacityKey((req.query.bedType && ['tuina','vip'].includes(req.query.bedType)) ? req.query.bedType : serviceBedType(svc.name))], (e, r) => resolve(r ? r.setting_value : null))) : null;
           const bedCap = bedCapRows ? parseInt(bedCapRows, 10) : 5;
-          const bedType = needsBed ? serviceBedType(svc.name) : null;
+          const bedType = needsBed ? ((req.query.bedType && ['tuina','vip'].includes(req.query.bedType)) ? req.query.bedType : serviceBedType(svc.name)) : null;
 
           const result = filtered.map((t) => {
             if (dayClosed) return { time: t, available: false, reason: dayClosedReason };
@@ -1245,7 +1264,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
             if (!conflict.ok) return { time: t, available: false, reason: conflict.reason };
             if (needsBed) {
               const bedCheck = checkBedAvailable(rows, startMin, duration, bedCap, bedType);
-              const bedLabel = bedType === 'tuina' ? '推拿床' : '針灸床';
+              const bedLabel = bedTypeLabel(bedType);
               // 🛏️ 透明化：每個時段回傳剩餘床位，等客人揀之前就見到
               if (!bedCheck.ok) return { time: t, available: false, reason: `${bedLabel}已滿（${bedCap} 張全被預約）`, bedLeft: 0, bedCap };
               return { time: t, available: true, bedLeft: bedCap - bedCheck.used, bedCap };
@@ -1454,6 +1473,47 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     });
   });
   
+  // 查詢某範圍內各醫師嘅返工日（月曆用，TimeTree 風格）
+  router.get("/doctor-time-slots/range", async (req, res) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "缺少開始或結束日期" });
+    db.all("SELECT id, name FROM doctors WHERE is_active=1 ORDER BY id", (err, doctors) => {
+      if (err) return serverError(res, err);
+      const docList = (doctors && doctors.length) ? doctors : [{ id: 1, name: '張醫師' }, { id: 2, name: '李醫師' }];
+      db.all(
+        `SELECT doctor_id, date, COUNT(*) as total,
+                SUM(CASE WHEN is_available=1 THEN 1 ELSE 0 END) as avail
+         FROM doctor_time_slots WHERE date>=? AND date<=? GROUP BY doctor_id, date`,
+        [start, end],
+        (err2, rows) => {
+          if (err2) return serverError(res, err2);
+          db.all(
+            `SELECT e.exception_date, u.name FROM exceptions e
+             LEFT JOIN users u ON u.id=e.doctor_user_id
+             WHERE e.type='doctor_leave' AND e.exception_date>=? AND e.exception_date<=?`,
+            [start, end],
+            (err3, leaves) => {
+              if (err3) return serverError(res, err3);
+              const days = {};
+              (rows || []).forEach(r => {
+                if (!days[r.date]) days[r.date] = {};
+                days[r.date][r.doctor_id] = { totalSlots: r.total, availableSlots: r.avail, working: r.avail > 0 };
+              });
+              (leaves || []).forEach(l => {
+                const did = (docList.find(d => d.name === l.name) || {}).id;
+                if (did) {
+                  if (!days[l.exception_date]) days[l.exception_date] = {};
+                  days[l.exception_date][did] = Object.assign(days[l.exception_date][did] || {}, { leave: true, working: false });
+                }
+              });
+              res.json({ doctors: docList, days });
+            }
+          );
+        }
+      );
+    });
+  });
+
   // 更新醫師時段狀態（限管理員）
   router.put("/doctor-time-slots", requireAuth, requireRole('admin'), (req, res) => {
     const { date, time, doctor_id, is_available, max_capacity, notes } = req.body;

@@ -59,7 +59,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             return SERVICES.value.filter(s => !/初體驗/.test(s.name || ""));
           });
 
-          const TOTAL_BEDS = ref({ tuina: 5, acup: 5 });
+          const TOTAL_BEDS = ref({ tuina: 5, vip: 5, acup: 5 });
           const totalDoctors = ref(3);
           const closedDays = ref([0]); // 休息日陣列，預設星期日 (0=星期日, 1=星期一, ..., 6=星期六)
           const holidaysEnabled = ref(true); // 公眾假期是否啟用
@@ -88,6 +88,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const selectedTime = ref(null);
       // 🛏️ 床位揀選狀態
       const selectedBed = ref(null);
+      const selectedBedType = ref('tuina'); // 'tuina'=手法床, 'vip'=VIP房
       const bedOptions = ref([]);
       const bedLoading = ref(false);
           const customerName = ref("");
@@ -2435,7 +2436,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (!svc || !svc.requires_bed || !selectedDate.value) return;
             try {
               const res = await fetch(
-                `${API_URL}/bookings/timeslots/available?date=${selectedDate.value}&serviceId=${svc.id}`
+                `${API_URL}/bookings/timeslots/available?date=${selectedDate.value}&serviceId=${svc.id}&bedType=${selectedBedType.value}`
               );
               if (!res.ok) return;
               const data = await res.json();
@@ -2741,6 +2742,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               if (response.ok) {
                 const data = await response.json();
                 TOTAL_BEDS.value.tuina = parseInt(data.tuina_beds || 5);
+                TOTAL_BEDS.value.vip = parseInt(data.vip_rooms || data.vip_beds || 5);
                 TOTAL_BEDS.value.acup = parseInt(data.acupuncture_beds || 5);
                 totalDoctors.value = parseInt(data.total_doctors || 3);
                 // 載入休息日設定
@@ -2871,18 +2873,14 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             step.value = 2;
           };
 
-          // 設定選擇時間
-          const setSelectedTime = async (slot) => {
-            selectedTime.value = slot;
-            // 🛏️ 需要床位嘅服務：攞該時段每張床嘅空閒狀態
-            selectedBed.value = null;
-            bedOptions.value = [];
+          // 🛏️ 載入所選床位類型嘅空閒床位（手法床 / VIP房）
+          const loadBedOptions = async () => {
             const svc = SERVICES.value.find((s) => s.id === selectedService.value);
-            if (!svc || !svc.requires_bed || !selectedTime.value) return;
+            if (!svc || !svc.requires_bed || !selectedTime.value) { bedOptions.value = []; return; }
             bedLoading.value = true;
             try {
               const res = await fetch(
-                `${API_URL}/bookings/beds/available?date=${selectedDate.value}&serviceId=${svc.id}&time=${getTime24(slot.startIso)}`
+                `${API_URL}/bookings/beds/available?date=${selectedDate.value}&serviceId=${svc.id}&time=${getTime24(selectedTime.value.startIso)}&bedType=${selectedBedType.value}`
               );
               if (res.ok) bedOptions.value = (await res.json()).beds || [];
             } catch (e) {
@@ -2892,8 +2890,27 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
 
+          // 設定選擇時間
+          const setSelectedTime = async (slot) => {
+            selectedTime.value = slot;
+            // 🛏️ 需要床位嘅服務：攞該時段每張床嘅空閒狀態
+            selectedBed.value = null;
+            bedOptions.value = [];
+            await loadBedOptions();
+          };
+
           // 揀床位
           const pickBed = (n) => { selectedBed.value = n; };
+
+          // 切換床位類型（手法床 / VIP房），重載可選床位
+          const selectBedType = async (type) => {
+            if (selectedBedType.value === type) return;
+            selectedBedType.value = type;
+            selectedBed.value = null;
+            bedOptions.value = [];
+            await loadBedOptions();
+            loadBedSlotInfo();
+          };
 
           // 驗證並繼續
           const validateAndProceed = () => {
@@ -3030,8 +3047,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 notes: customerNotes.value,
                 sendEmailNotification: true,
               };
-              // 🛏️ 需要床位嘅服務：帶客人揀嘅床號
+              // 🛏️ 需要床位嘅服務：帶客人揀嘅床位類型 + 床號
               if (svc.requires_bed && selectedBed.value) {
+                bodyPayload.bedType = selectedBedType.value;
                 bodyPayload.bedNumber = selectedBed.value;
               }
               if (!currentMember.value) {
@@ -4112,6 +4130,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             selectService,
             setSelectedTime,
             selectedBed,
+            selectedBedType,
+            selectBedType,
             bedOptions,
             bedLoading,
             pickBed,

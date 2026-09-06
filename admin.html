@@ -567,7 +567,7 @@
                 <i class="fas fa-folder-open mr-2"></i>病歷記錄
               </button>
               <button
-                @click="currentView = 'timeslots'; loadTimeSlots();"
+                @click="currentView = 'timeslots'; loadTimeSlots(); loadSlotCalendar();"
                 :class="currentView === 'timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
                 class="w-full text-left px-4 py-2 rounded-lg transition-colors"
               >
@@ -1145,10 +1145,10 @@
                   <i class="fas fa-bed mr-2"></i>今日床位佔用
                 </h3>
                 <span class="text-sm" :class="bedOccupancyToday.tuinaUsed >= (Number(clinicSettings.tuina_beds) || 5) ? 'text-red-600 font-bold' : 'text-cyan-800'">
-                  推拿床 <b>{{ bedOccupancyToday.tuinaUsed }}/{{ clinicSettings.tuina_beds || 5 }}</b> 張
+                  手法床 <b>{{ bedOccupancyToday.tuinaUsed }}/{{ clinicSettings.tuina_beds || 5 }}</b> 張
                 </span>
-                <span class="text-sm" :class="bedOccupancyToday.acupUsed >= (Number(clinicSettings.acupuncture_beds) || 5) ? 'text-red-600 font-bold' : 'text-cyan-800'">
-                  針灸床 <b>{{ bedOccupancyToday.acupUsed }}/{{ clinicSettings.acupuncture_beds || 5 }}</b> 張
+                <span class="text-sm" :class="bedOccupancyToday.vipUsed >= (Number(clinicSettings.vip_rooms) || 5) ? 'text-red-600 font-bold' : 'text-cyan-800'">
+                  VIP房 <b>{{ bedOccupancyToday.vipUsed }}/{{ clinicSettings.vip_rooms || 5 }}</b> 間
                 </span>
                 <span class="text-xs text-cyan-600">峰值＝同時段最多佔用張數</span>
               </div>
@@ -1260,7 +1260,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }}
+                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1401,7 +1401,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }}
+                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1514,7 +1514,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }}
+                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1631,7 +1631,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }}
+                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -2116,9 +2116,6 @@
           <div v-if="currentView === 'familytree'" class="space-y-6">
             <div class="flex justify-between items-center">
               <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-people-roof text-indigo-600 mr-2"></i>家庭帳戶結構</h2>
-              <button @click="loadFamilyTree" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-                <i class="fas fa-sync mr-2"></i>重新整理
-              </button>
             </div>
 
             <div v-if="familyTree.loading" class="text-slate-500 py-10 text-center">載入中...</div>
@@ -2126,64 +2123,96 @@
               <i class="fas fa-people-roof text-4xl mb-3 block"></i>暫時沒有已建立家庭帳戶的用戶
             </div>
             <div v-else class="space-y-6">
-              <div
-                v-for="head in familyTree.tree"
-                :key="head.id"
-                class="bg-white rounded-xl shadow-lg p-5"
-              >
-                <div class="flex items-center justify-between mb-3">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
-                      <i class="fas fa-user"></i>
+              <!-- 搜尋列 -->
+              <div class="bg-white rounded-xl shadow-lg p-4">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <div class="relative flex-1 min-w-[200px]">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input v-model="familySearch" type="text" placeholder="搜尋主帳戶（姓名 / 帳號）..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                  </div>
+                  <button v-if="selectedFamilyHead" @click="selectedFamilyHead = null" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 text-sm"><i class="fas fa-arrow-left mr-1"></i>返全部主帳戶</button>
+                  <button @click="loadFamilyTree" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm"><i class="fas fa-sync mr-1"></i>重新整理</button>
+                </div>
+              </div>
+
+              <!-- 主帳戶列表（未選中時） -->
+              <template v-if="!selectedFamilyHead">
+                <p class="text-sm text-slate-500 px-1">共 {{ filteredHeads.length }} 個主帳戶（點擊查看家庭樹）</p>
+                <div v-if="filteredHeads.length === 0" class="bg-white rounded-xl shadow p-8 text-center text-slate-400 text-sm">無符合「{{ familySearch }}」嘅主帳戶</div>
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <button
+                    v-for="head in filteredHeads"
+                    :key="head.id"
+                    @click="selectedFamilyHead = head"
+                    class="text-left bg-white rounded-xl shadow p-4 hover:shadow-md hover:ring-2 hover:ring-indigo-300 transition"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600"><i class="fas fa-user"></i></div>
+                      <div class="min-w-0">
+                        <p class="font-bold text-slate-800 truncate">{{ head.name }} <span class="text-xs text-slate-400">({{ head.username }})</span></p>
+                        <p class="text-xs text-slate-500 truncate">
+                          {{ head.members.length }} 位成員
+                          <template v-if="head.membership_tier === 'family'"> · 家庭會員</template>
+                          <span v-else class="text-red-500"> · 非 family 級</span>
+                        </p>
+                      </div>
                     </div>
+                  </button>
+                </div>
+              </template>
+
+              <!-- 樹狀圖（選中主帳戶時） -->
+              <div v-else class="bg-white rounded-xl shadow-lg p-6">
+                <!-- 戶主（根節點） -->
+                <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg"><i class="fas fa-user"></i></div>
                     <div>
-                      <p class="font-bold text-slate-800">{{ head.name }} <span class="text-xs text-slate-400">({{ head.username }})</span></p>
+                      <p class="font-bold text-slate-800 text-lg">{{ selectedFamilyHead.name }} <span class="text-xs text-slate-400">({{ selectedFamilyHead.username }})</span></p>
                       <p class="text-xs text-slate-500">
                         <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">家庭戶主</span>
-                        <template v-if="head.membership_tier === 'family'"><span class="ml-1">家庭會員</span></template>
-                        <span v-else class="ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold" title="戶主唔係家庭會員，可能係員工確認後照開，留意費用差額">
-                          ⚠️ 非 family 級（{{ head.membership_tier || 'general' }}）
-                        </span>
+                        <span class="ml-1">{{ selectedFamilyHead.members.length }} 位成員</span>
+                        <template v-if="selectedFamilyHead.membership_tier === 'family'"><span class="ml-1">· 家庭會員</span></template>
+                        <span v-else class="ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">非 family 級（{{ selectedFamilyHead.membership_tier || 'general' }}）</span>
                       </p>
                     </div>
                   </div>
-                  <span class="text-xs text-slate-400">{{ head.members.length }} 位成員</span>
+                  <div class="flex items-center gap-2">
+                    <button @click="addAdminFamilyChild(selectedFamilyHead)" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium"><i class="fas fa-user-plus mr-1"></i>加子女</button>
+                    <button @click="changeFamilyTier(selectedFamilyHead)" class="text-blue-600 hover:text-blue-800 text-sm font-medium"><i class="fas fa-exchange-alt mr-1"></i>更改級別</button>
+                  </div>
                 </div>
 
-                <div v-if="head.members.length === 0" class="text-sm text-slate-400">沒有家庭成員</div>
-                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div
-                    v-for="m in head.members"
-                    :key="m.id"
-                    class="flex items-center justify-between rounded-lg border border-slate-200 p-3"
-                  >
-                    <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs">
-                        <i class="fas fa-child" v-if="!m.isAdult"></i><i class="fas fa-user" v-else></i>
+                <!-- 子節點（家庭成員） -->
+                <div v-if="selectedFamilyHead.members.length === 0" class="text-sm text-slate-400 pl-6">沒有家庭成員</div>
+                <div v-else class="pl-6">
+                  <div class="relative">
+                    <div class="absolute left-0 top-2 bottom-2 w-px bg-slate-300"></div>
+                    <div v-for="m in selectedFamilyHead.members" :key="m.id" class="relative pl-6 pb-3">
+                      <div class="absolute left-0 top-5 w-5 h-px bg-slate-300"></div>
+                      <div class="flex items-center justify-between rounded-lg border border-slate-200 p-3 bg-slate-50">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs shrink-0">
+                            <i class="fas fa-child" v-if="!m.isAdult"></i><i class="fas fa-user" v-else></i>
+                          </div>
+                          <div class="min-w-0">
+                            <p class="text-sm font-semibold text-slate-700 truncate">{{ m.name }} <span class="text-xs font-normal text-slate-400">{{ m.username }}</span></p>
+                            <p class="text-xs text-slate-400 truncate">{{ m.age }} 歲<template v-if="m.phone"> · {{ m.phone }}</template> · 預約 {{ m.booking_count || 0 }} 次</p>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold" :class="m.isAdult ? 'bg-rose-100 text-rose-700' : (m.turning18Soon ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-600')">
+                            {{ m.isAdult ? '已成年·跟進' : (m.turning18Soon ? `快將成年(${m.days_to_18}日)` : '18歲以下') }}
+                          </span>
+                          <button @click="removeFamilyMember(selectedFamilyHead, m)" class="text-red-500 hover:text-red-700 text-xs" title="移除家庭連結（帳戶保留）"><i class="fas fa-unlink"></i></button>
+                        </div>
                       </div>
-                      <div>
-                        <p class="text-sm font-semibold text-slate-700">{{ m.name }} <span class="text-xs font-normal text-slate-400">{{ m.username }}</span></p>
-                        <p class="text-xs text-slate-400">{{ m.age }} 歲<template v-if="m.phone"> · {{ m.phone }}</template> · 預約 {{ m.booking_count || 0 }} 次</p>
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span
-                        class="text-[10px] px-2 py-0.5 rounded-full font-bold"
-                        :class="m.isAdult ? 'bg-rose-100 text-rose-700' : (m.turning18Soon ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-600')"
-                      >
-                        {{ m.isAdult ? '已成年·跟進' : (m.turning18Soon ? `快將成年(${m.days_to_18}日)` : '18歲以下') }}
-                      </span>
-                      <button @click="removeFamilyMember(head, m)" class="text-red-500 hover:text-red-700 text-xs" title="移除家庭連結（帳戶保留）">
-                        <i class="fas fa-unlink"></i>
-                      </button>
                     </div>
                   </div>
                 </div>
 
-                <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                  <span><i class="fas fa-calendar-check mr-1"></i>共 {{ head.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約</span>
-                  <button @click="addAdminFamilyChild(head)" class="text-emerald-600 hover:text-emerald-800 font-medium"><i class="fas fa-user-plus mr-1"></i>加子女（18歲以下，自動開戶）</button>
-                  <button @click="changeFamilyTier(head)" class="text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-exchange-alt mr-1"></i>更改會員級別</button>
+                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
+                  <i class="fas fa-calendar-check mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約
                 </div>
               </div>
             </div>
@@ -2338,6 +2367,69 @@
           <div v-if="currentView === 'timeslots'" class="space-y-6">
             <h2 class="text-2xl font-bold text-slate-800">預約時段管理</h2>
 
+            <!-- 🩺 醫師選擇列 -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+              <p class="text-sm font-medium text-slate-700 mb-2"><i class="fas fa-user-md text-emerald-600 mr-2"></i>選擇醫師（空白＝顯示全部）</p>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  @click="selectedDoctors = []"
+                  :class="selectedDoctors.length === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                >全部醫師</button>
+                <button
+                  v-for="doc in doctors"
+                  :key="doc.id"
+                  type="button"
+                  @click="toggleDoctorFilter(doc.id)"
+                  :class="selectedDoctors.includes(doc.id) ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  :style="selectedDoctors.includes(doc.id) ? { backgroundColor: doctorColor(doc.id) } : {}"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                >
+                  <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: doctorColor(doc.id) }"></span>{{ doc.name }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 📅 月曆：所有醫師返工日（TimeTree 風格） -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-alt text-emerald-600 mr-2"></i>醫師返工月曆</h3>
+                <div class="flex items-center gap-2">
+                  <button @click="prevMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-left"></i></button>
+                  <span class="font-semibold text-slate-700 w-28 text-center">{{ calendarMonth }}</span>
+                  <button @click="nextMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-right"></i></button>
+                </div>
+              </div>
+              <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+              </div>
+              <div class="grid grid-cols-7 gap-1">
+                <template v-for="(cell, idx) in calendarDays()" :key="idx">
+                  <div v-if="!cell" class="aspect-square"></div>
+                  <button
+                    v-else
+                    type="button"
+                    @click="selectSlotDay(cell.date)"
+                    class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative"
+                    :class="selectedSlotDate === cell.date ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'"
+                  >
+                    <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
+                    <div class="flex flex-col gap-0.5 mt-0.5 w-full">
+                      <span
+                        v-for="bar in cell.bars"
+                        :key="bar.id"
+                        class="h-1.5 rounded-full"
+                        :style="{ backgroundColor: bar.color }"
+                        :title="(doctors.find(d=>d.id===bar.id)||{}).name + (bar.leave ? '（休假）' : `：${bar.count} 個開放時段`)"
+                      ></span>
+                    </div>
+                  </button>
+                </template>
+              </div>
+              <p class="text-xs text-slate-400 mt-2">撳日曆中嘅日子，下方會載入嗰日嘅時段管理；有顏色橫條＝該醫師當日有開放時段（灰色＝休假）。</p>
+            </div>
+
             <div class="bg-white rounded-xl shadow-lg p-6">
               <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-700 mb-2"
@@ -2359,7 +2451,7 @@
               </div>
 
               <!-- 時段醫師矩陣 -->
-              <div v-if="timeSlotMatrix && Object.keys(timeSlotMatrix).length > 0" class="space-y-4">
+              <div v-if="timeSlotMatrix && Object.keys(timeSlotMatrix).length > 0" id="slotMatrix" class="space-y-4">
                 <!-- 表格標題 -->
                 <div class="overflow-x-auto">
                   <table class="w-full border-collapse">
@@ -2369,7 +2461,7 @@
                           時段
                         </th>
                         <th 
-                          v-for="doctor in doctors" 
+                          v-for="doctor in doctorsToShow()" 
                           :key="doctor.id"
                           class="border border-slate-300 px-3 py-3 text-center font-semibold text-slate-700 min-w-[120px]"
                         >
@@ -2394,7 +2486,7 @@
                         
                         <!-- 每位醫師的狀態 -->
                         <td 
-                          v-for="doctor in doctors" 
+                          v-for="doctor in doctorsToShow()" 
                           :key="doctor.id + time"
                           class="border border-slate-300 px-2 py-2 text-center"
                           :class="getDoctorSlotClass(slotData.doctors[doctor.id])"
@@ -2502,7 +2594,7 @@
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-2">
-                    <i class="fas fa-bed text-blue-600 mr-2"></i>推拿治療床數量
+                    <i class="fas fa-bed text-blue-600 mr-2"></i>手法床數量（推拿治療床）
                   </label>
                   <input
                     type="number"
@@ -2515,12 +2607,11 @@
 
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-2">
-                    <i class="fas fa-procedures text-green-600 mr-2"></i
-                    >針灸治療床數量
+                    <i class="fas fa-star text-amber-500 mr-2"></i>VIP房數量
                   </label>
                   <input
                     type="number"
-                    v-model.number="clinicSettings.acupuncture_beds"
+                    v-model.number="clinicSettings.vip_rooms"
                     min="1"
                     max="20"
                     class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -2534,7 +2625,7 @@
                   <p class="text-xs text-slate-400 mb-3">每行一張床，順序對應床號 #1、#2…（留空則顯示預設「類型 #編號」）</p>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-xs font-medium text-slate-500 mb-1">推拿床名稱</label>
+                      <label class="block text-xs font-medium text-slate-500 mb-1">手法床名稱</label>
                       <textarea
                         v-model="tuinaBedNamesText"
                         rows="5"
@@ -2543,11 +2634,11 @@
                       ></textarea>
                     </div>
                     <div>
-                      <label class="block text-xs font-medium text-slate-500 mb-1">針灸床名稱</label>
+                      <label class="block text-xs font-medium text-slate-500 mb-1">VIP房名稱</label>
                       <textarea
-                        v-model="acuBedNamesText"
+                        v-model="vipBedNamesText"
                         rows="5"
-                        placeholder="例如：&#10;安神房&#10;調氣房&#10;活絡房"
+                        placeholder="例如：&#10;尊尚房&#10;花園房&#10;觀景房"
                         class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       ></textarea>
                     </div>
@@ -6157,7 +6248,7 @@
                   />
                   <div class="flex-1">
                     <div class="flex items-center gap-2">
-                      <span class="font-medium">{{ booking.customer_name }}</span>
+                      <span class="font-medium">{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></span>
                       <span
                         :class="{
                           'bg-green-100 text-green-700': booking.status === 'completed',
@@ -6410,9 +6501,9 @@
             loginCaptchaAnswer: "",
             captchaUrl: "",
             loginError: "",
-            // 🛏️ 床位自訂名稱（針灸/推拿）
-            bedLabels: { tuina: [], acupuncture: [] },
-            acuBedNamesText: "",
+            // 🛏️ 床位自訂名稱（手法床/VIP房）
+            bedLabels: { tuina: [], vip: [] },
+            vipBedNamesText: "",
             tuinaBedNamesText: "",
             adminUser: null,
             currentView: "dashboard",
@@ -6445,6 +6536,8 @@
               loading: false,
               tree: [],
             },
+            familySearch: '',
+            selectedFamilyHead: null,
             // 病歴管理（管理員）
             showMedicalRecordModal: false,
             selectedBooking: null,
@@ -6501,6 +6594,10 @@
 
             // 時段管理
             timeSlots: [],
+            selectedDoctors: [], // 空白＝全部醫師
+            slotCalendar: {}, // { 'YYYY-MM-DD': { doctorId: { availableSlots, totalSlots, working, leave } } }
+            calendarMonth: new Date().toISOString().slice(0, 7), // 'YYYY-MM'
+            doctorColors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'],
             timeSlotMatrix: {}, // 時段-醫師矩陣
             selectedSlotDate: new Date().toISOString().split("T")[0],
 
@@ -6508,6 +6605,7 @@
             clinicSettings: {
               tuina_beds: 5,
               acupuncture_beds: 5,
+              vip_rooms: 5,
               total_doctors: 3,
             },
             clinicSettingsMessage: "",
@@ -6774,6 +6872,16 @@ addUserForm: {
         },
 
         computed: {
+          // 🌳 家庭帳戶：搜尋過濾主帳戶
+          filteredHeads() {
+            const q = (this.familySearch || '').trim().toLowerCase();
+            const tree = this.familyTree.tree || [];
+            if (!q) return tree;
+            return tree.filter(h =>
+              (h.name || '').toLowerCase().includes(q) ||
+              (h.username || '').toLowerCase().includes(q)
+            );
+          },
           // 🔒 分層密碼政策提示（跟隨新增帳號所選角色）
           passwordRuleHint() {
             const r = this.addUserForm.role;
@@ -6930,7 +7038,7 @@ addUserForm: {
             };
             return {
               tuinaUsed: peakFor('tuina'),
-              acupUsed: peakFor('acup'),
+              vipUsed: peakFor('vip'),
               list: bedBookings.slice().sort((a, b) => String(a.appointment_time).localeCompare(String(b.appointment_time)))
             };
           },
@@ -7818,6 +7926,7 @@ async handleLogin() {
               const response = await fetch("/api/membership/admin/tree");
               const data = await response.json();
               this.familyTree.tree = data.tree || [];
+              this.selectedFamilyHead = null;
             } catch (error) {
               console.error("載入家庭帳戶失敗:", error);
               this.familyTree.tree = [];
@@ -8705,7 +8814,74 @@ phone: this.addUserForm.phone,
             
             this.timeSlotMatrix = matrix;
           },
-          
+
+          // ============ 月曆 + 醫師選擇列（TimeTree 風格） ============
+          doctorColor(id) {
+            const idx = this.doctors.findIndex(d => d.id === id);
+            return this.doctorColors[(idx >= 0 ? idx : 0) % this.doctorColors.length];
+          },
+          async loadSlotCalendar() {
+            try {
+              const [y, m] = this.calendarMonth.split('-').map(Number);
+              const start = `${this.calendarMonth}-01`;
+              const lastDay = new Date(y, m, 0).getDate();
+              const end = `${this.calendarMonth}-${String(lastDay).padStart(2, '0')}`;
+              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${start}&end=${end}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.doctors && data.doctors.length) this.doctors = data.doctors;
+                this.slotCalendar = data.days || {};
+              }
+            } catch (e) { console.error('載入月曆失敗', e); }
+          },
+          prevMonth() {
+            const [y, m] = this.calendarMonth.split('-').map(Number);
+            const d = new Date(y, m - 2, 1);
+            this.calendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            this.loadSlotCalendar();
+          },
+          nextMonth() {
+            const [y, m] = this.calendarMonth.split('-').map(Number);
+            const d = new Date(y, m, 1);
+            this.calendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            this.loadSlotCalendar();
+          },
+          toggleDoctorFilter(id) {
+            const i = this.selectedDoctors.indexOf(id);
+            if (i >= 0) this.selectedDoctors.splice(i, 1);
+            else this.selectedDoctors.push(id);
+          },
+          selectSlotDay(date) {
+            this.selectedSlotDate = date;
+            this.loadTimeSlots();
+            this.$nextTick(() => { const el = document.getElementById('slotMatrix'); if (el) el.scrollIntoView({ behavior: 'smooth' }); });
+          },
+          calendarDays() {
+            const [y, m] = this.calendarMonth.split('-').map(Number);
+            const first = new Date(y, m - 1, 1);
+            const startDow = first.getDay();
+            const daysInMonth = new Date(y, m, 0).getDate();
+            const cells = [];
+            for (let i = 0; i < startDow; i++) cells.push(null);
+            const showDocs = this.selectedDoctors.length ? this.selectedDoctors : this.doctors.map(x => x.id);
+            for (let d = 1; d <= daysInMonth; d++) {
+              const date = `${this.calendarMonth}-${String(d).padStart(2, '0')}`;
+              const dayInfo = this.slotCalendar[date] || {};
+              const bars = showDocs.map(id => {
+                const info = dayInfo[id];
+                if (info && (info.working || info.leave)) {
+                  return { id, color: info.leave ? '#9ca3af' : this.doctorColor(id), leave: !!info.leave, count: info.availableSlots };
+                }
+                return null;
+              }).filter(Boolean);
+              cells.push({ date, day: d, bars });
+            }
+            return cells;
+          },
+          doctorsToShow() {
+            return this.selectedDoctors.length ? this.doctors.filter(d => this.selectedDoctors.includes(d.id)) : this.doctors;
+          },
+
           // 取得醫師時段的樣式類
           getDoctorSlotClass(doctorSlot) {
             if (!doctorSlot || doctorSlot.is_available === false) {
@@ -8894,9 +9070,9 @@ phone: this.addUserForm.phone,
           // 🛏️ 床位自訂名稱顯示：有自訂名就顯示「名稱 (#編號)」，否則退回「類型 #編號」
           bedLabel(bedType, bedNumber) {
             if (!bedType || !bedNumber) return "";
-            const names = (bedType === 'tuina' ? this.bedLabels.tuina : this.bedLabels.acupuncture) || [];
+            const names = (bedType === 'tuina' ? this.bedLabels.tuina : this.bedLabels.vip) || [];
             const nm = names[Number(bedNumber) - 1];
-            const base = bedType === 'tuina' ? '推拿床' : bedType === 'acup' ? '針灸床' : '混合床';
+            const base = bedType === 'tuina' ? '手法床' : bedType === 'vip' ? 'VIP房' : (bedType === 'acup' ? '針灸床' : '混合床');
             return nm ? `${nm} (#${bedNumber})` : `${base} #${bedNumber}`;
           },
           async loadBedLabels() {
@@ -8918,6 +9094,7 @@ phone: this.addUserForm.phone,
                 this.clinicSettings.acupuncture_beds = parseInt(
                   data.acupuncture_beds || 5
                 );
+                this.clinicSettings.vip_rooms = parseInt(data.vip_rooms || 5);
                 this.clinicSettings.total_doctors = parseInt(
                   data.total_doctors || 3
                 );
@@ -8966,8 +9143,8 @@ phone: this.addUserForm.phone,
                     return Array.isArray(a) ? a.join("\n") : "";
                   };
                   this.tuinaBedNamesText = parseNames(data.tuina_bed_names);
-                  this.acuBedNamesText = parseNames(data.acupuncture_bed_names);
-                } catch (e) { this.tuinaBedNamesText = ""; this.acuBedNamesText = ""; }
+                  this.vipBedNamesText = parseNames(data.vip_bed_names);
+                } catch (e) { this.tuinaBedNamesText = ""; this.vipBedNamesText = ""; }
                 this.loadBedLabels();
               }
             } catch (error) {
@@ -8996,8 +9173,8 @@ phone: this.addUserForm.phone,
                 tuina_bed_names: JSON.stringify(
                   this.tuinaBedNamesText.split("\n").map(s => s.trim()).filter(s => s)
                 ),
-                acupuncture_bed_names: JSON.stringify(
-                  this.acuBedNamesText.split("\n").map(s => s.trim()).filter(s => s)
+                vip_bed_names: JSON.stringify(
+                  this.vipBedNamesText.split("\n").map(s => s.trim()).filter(s => s)
                 )
               };
               

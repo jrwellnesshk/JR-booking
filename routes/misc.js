@@ -67,14 +67,14 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
 
   // 取得床位自訂名稱（公開）
   router.get("/beds/labels", (req, res) => {
-    db.all("SELECT setting_key, setting_value FROM clinic_settings WHERE setting_key IN ('tuina_bed_names','acupuncture_bed_names')", [], (err, rows) => {
+    db.all("SELECT setting_key, setting_value FROM clinic_settings WHERE setting_key IN ('tuina_bed_names','acupuncture_bed_names','vip_bed_names')", [], (err, rows) => {
       if (err) return serverError(res, err);
       const parse = (k) => {
         const r = rows.find(x => x.setting_key === k);
         if (!r || !r.setting_value) return [];
         try { const a = JSON.parse(r.setting_value); return Array.isArray(a) ? a : []; } catch (e) { return []; }
       };
-      res.json({ tuina: parse('tuina_bed_names'), acupuncture: parse('acupuncture_bed_names') });
+      res.json({ tuina: parse('tuina_bed_names'), vip: parse('vip_bed_names'), acupuncture: parse('acupuncture_bed_names') });
     });
   });
 

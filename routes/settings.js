@@ -30,15 +30,16 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // 更新診所設定
   router.put("/clinic", (req, res) => {
-    const { tuina_beds, acupuncture_beds, total_doctors, closed_days, holidays_enabled, working_holidays, open_months,
+    const { tuina_beds, acupuncture_beds, vip_rooms, total_doctors, closed_days, holidays_enabled, working_holidays, open_months,
             custom_closed_dates, custom_open_dates,
             morning_start, morning_end, afternoon_start, afternoon_end, slot_interval,
-            tuina_bed_names, acupuncture_bed_names,
+            tuina_bed_names, acupuncture_bed_names, vip_bed_names,
             sms_notification_enabled, whatsapp_notification_enabled, email_notification_enabled } = req.body;
     
     const updates = [];
     if (tuina_beds !== undefined) updates.push({ key: 'tuina_beds', value: tuina_beds });
     if (acupuncture_beds !== undefined) updates.push({ key: 'acupuncture_beds', value: acupuncture_beds });
+    if (vip_rooms !== undefined) updates.push({ key: 'vip_rooms', value: vip_rooms });
     if (total_doctors !== undefined) updates.push({ key: 'total_doctors', value: total_doctors });
     // 床位自訂名稱（陣列 → JSON 字串）
     if (tuina_bed_names !== undefined) {
@@ -48,6 +49,10 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     if (acupuncture_bed_names !== undefined) {
       const v = Array.isArray(acupuncture_bed_names) ? JSON.stringify(acupuncture_bed_names) : String(acupuncture_bed_names);
       updates.push({ key: 'acupuncture_bed_names', value: v });
+    }
+    if (vip_bed_names !== undefined) {
+      const v = Array.isArray(vip_bed_names) ? JSON.stringify(vip_bed_names) : String(vip_bed_names);
+      updates.push({ key: 'vip_bed_names', value: v });
     }
     if (closed_days !== undefined) updates.push({ key: 'closed_days', value: closed_days });
     if (holidays_enabled !== undefined) updates.push({ key: 'holidays_enabled', value: holidays_enabled });

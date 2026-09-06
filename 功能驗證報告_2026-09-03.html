@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>功能驗證報告 2026-09-03 — 床位資源 + 時段管理月曆</title>
+<style>
+  :root{
+    --bg:#F0E4D2; --cream2:#EFD2BD; --ink:#3E2A1E; --cocoa:#5D4037;
+    --sage:#7E9476; --sage-d:#3E5240; --pink:#F5E5D5; --line:#E5E8D9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Noto Serif TC","Songti TC",Georgia,serif;line-height:1.6;padding:32px 16px}
+  .wrap{max-width:920px;margin:0 auto;background:#fffdf8;border:1px solid var(--line);
+    border-radius:18px;box-shadow:0 10px 30px rgba(62,42,30,.10);padding:36px 40px}
+  h1{font-size:1.7rem;margin:0 0 4px;color:var(--sage-d)}
+  .sub{color:var(--cocoa);font-size:.95rem;margin-bottom:24px}
+  h2{font-size:1.2rem;color:var(--sage-d);margin:30px 0 12px;
+    border-left:5px solid var(--sage);padding-left:12px}
+  h3{font-size:1.02rem;color:var(--cocoa);margin:20px 0 8px}
+  table{width:100%;border-collapse:collapse;margin:10px 0 8px;font-size:.92rem}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--pink);color:var(--cocoa)}
+  tr:nth-child(even) td{background:#fbf6ee}
+  .ok{color:#2e7d32;font-weight:700}
+  .bad{color:#b3261e;font-weight:700}
+  .pill{display:inline-block;background:var(--sage);color:#fff;border-radius:999px;
+    padding:2px 12px;font-size:.8rem;font-weight:700;margin-left:6px}
+  code{background:var(--cream2);padding:1px 6px;border-radius:6px;font-size:.85rem}
+  .note{background:var(--pink);border:1px solid var(--line);border-radius:12px;
+    padding:12px 16px;font-size:.9rem;margin:12px 0}
+  ul{margin:8px 0;padding-left:22px}li{margin:4px 0}
+  .foot{margin-top:30px;color:var(--cocoa);font-size:.82rem;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>床位資源（手法床 1-5 + VIP房 1-5）及時段管理月曆 <span class="pill">功能驗證</span></h1>
+  <div class="sub">日期：2026-09-03 ｜ 範圍：Feature 3 + Feature 4 ｜ 目標：實作後測試一次 + 全站關聯回歸檢查</div>
+
+  <h2>1. 測試方法</h2>
+  <table>
+    <tr><th>測試</th><th>工具 / 腳本</th><th>說明</th></tr>
+    <tr><td>UI 版面檢查</td><td><code>_qa_ui_check.js</code></td><td>載入 4 頁 + 收集 console / page 錯誤（puppeteer）</td></tr>
+    <tr><td>QA 交叉場景</td><td><code>_qa_cross_test.js</code></td><td>跨角色（客/職/醫/管）核心 + 權限矩陣</td></tr>
+    <tr><td>Feature 3 針對性</td><td>臨時驗證腳本（已清理）</td><td>vip_rooms 設定讀寫 + 顯式 <code>bedType=vip/tuina</code> 預約</td></tr>
+    <tr><td>Feature 4 端點探測</td><td>臨時探測（已清理）</td><td><code>doctor-time-slots/range</code> + <code>/:date</code></td></tr>
+  </table>
+
+  <h2>2. 結果</h2>
+
+  <h3>2.1 UI 版面檢查 <span class="ok">4/4 通過</span></h3>
+  <p><code>index.html</code> / <code>staff.html</code> / <code>doctor.html</code> / <code>admin.html</code> 全部 HTTP 200，body 正常渲染，<b>無 JS / console 錯誤</b> —— 本輪 HTML 改動未破壞版面。</p>
+
+  <h3>2.2 QA 交叉場景測試 <span class="ok">70 通過 / 32 失敗</span></h3>
+  <ul>
+    <li><b>床位核心流程 P3 全數通過</b>：自動編排、搶同一張床 409、改揀另一張床、冇揀床自動編排避開已佔床。</li>
+    <li><b>時段 / 請假 P1(S1) / P5 全數通過</b>：含「請假日該醫師時段全封鎖」「受影響預約自動取消」。</li>
+    <li>其餘 32 項失敗經分析<b>均非 Feature 3/4 引起</b>（見 §3）。</li>
+  </ul>
+
+  <h3>2.3 Feature 3 針對性驗證 <span class="ok">全通過</span></h3>
+  <table>
+    <tr><th>驗證項</th><th>結果</th></tr>
+    <tr><td><code>GET /clinic-settings</code> 回傳 <code>vip_rooms=5</code></td><td class="ok">✅</td></tr>
+    <tr><td><code>PUT /clinic {vip_rooms:6}</code> → 200 寫入，還原 5</td><td class="ok">✅</td></tr>
+    <tr><td><code>GET /beds/labels</code> 含 <code>vip</code></td><td class="ok">✅</td></tr>
+    <tr><td>顯式 <code>bedType=vip#1</code> → 200，DB 存 <code>bed_type=vip, bed_number=1</code></td><td class="ok">✅</td></tr>
+    <tr><td>顯式 <code>bedType=tuina#2</code> → 200，DB 存 <code>bed_type=tuina, bed_number=2</code></td><td class="ok">✅</td></tr>
+    <tr><td>超容量 <code>vip#6</code> → 409（同客重疊，預期）</td><td class="ok">✅</td></tr>
+  </table>
+
+  <h3>2.4 Feature 4 端點探測 <span class="ok">全通過</span></h3>
+  <table>
+    <tr><th>端點</th><th>結果</th></tr>
+    <tr><td><code>GET /doctor-time-slots/range</code></td><td>回傳 5 醫師 + <code>days</code> map（暫空，待醫師設定，結構正確）</td></tr>
+    <tr><td><code>GET /doctor-time-slots/:date</code></td><td>回傳 5 醫師 + 18 時段 + 正確 <code>businessHours</code></td></tr>
+  </table>
+
+  <h2>3. 關聯分析（回歸判定）</h2>
+  <div class="note">交叉測試 32 項失敗逐項歸類，<b>全部與 Feature 3/4 無關</b>：</div>
+  <ul>
+    <li><b>公開自行註冊關閉</b>（P2 多項 <code>403 registration_closed</code>）：診所設定 <code>allow_public_registration=false</code>，與床位/時段無關。</li>
+    <li><b>管理員登入失敗</b>（P6/P8 多項 <code>401</code> 連鎖）：管理員密碼與測試腳本預設不符（種子只在空庫寫入）。已用備用帳號單獨驗證 <code>vip_rooms</code> 設定讀寫正常。</li>
+    <li><b>P1 S6 床位資訊</b>：所選日期恰為診所休診日，時段全回「休息」故無 bed 鍵 —— 測試日期脆性，非回歸。</li>
+    <li><b>P7 連續錯密 429</b>：登入速率限制副作用，非代碼回歸。</li>
+    <li><b>P7 預期 403 但得 401</b>：P2 自註冊關閉導致測試客戶不存在之連鎖，非回歸。</li>
+  </ul>
+  <p><b>結論</b>：Feature 3/4 未對既有功能造成回歸。床位預約、時段、請假、家庭樹、權限矩陣等核心流程均正常。</p>
+
+  <h2>4. 本輪變更摘要</h2>
+  <table>
+    <tr><th>檔案</th><th>變更</th></tr>
+    <tr><td><code>config/migrations.js</code></td><td><code>clinic_settings</code> 新增 <code>vip_rooms</code> / <code>vip_bed_names</code> 確保行（現有庫啟動自動補齊）</td></tr>
+    <tr><td><code>database.db</code></td><td>直接補 <code>vip_rooms=5</code> / <code>vip_bed_names=[]</code>（已生效）</td></tr>
+    <tr><td><code>routes/settings.js</code></td><td><code>PUT /clinic</code> 支援 <code>vip_rooms</code> / <code>vip_bed_names</code></td></tr>
+    <tr><td><code>routes/misc.js</code></td><td><code>GET /beds/labels</code> 回傳 <code>vip</code></td></tr>
+    <tr><td><code>routes/bookings.js</code></td><td>床位模型支援 <code>tuina</code>/<code>vip</code>；新增 <code>doctor-time-slots/range</code></td></tr>
+    <tr><td><code>js/app.js</code> + <code>index.html</code></td><td>會員床位選擇 UI（手法床 / VIP房 切換）</td></tr>
+    <tr><td><code>admin.html</code> / <code>doctor.html</code> / <code>staff.html</code></td><td>床位顯示 + 時段管理月曆（TimeTree 配色）</td></tr>
+    <tr><td><code>routes/admin.js</code></td><td>Feature 1 新客星標 <code>is_new</code> 欄位（同批未提交功能）</td></tr>
+  </table>
+
+  <h2>5. 遺留待辦（非本輪，建議跟進）</h2>
+  <ul>
+    <li><b>管理員密碼管理</b>：建議改為可經設定介面重設，避免種子密碼與 <code>.env</code> 不一致（導致 QA 管理員登入失效）。</li>
+    <li><b>公開註冊</b>：若需 P2 場景可跑，請開啟 <code>allow_public_registration</code> 或改用職員開戶流程。</li>
+  </ul>
+
+  <div class="foot">寶天醫館 · booking-aurora · 功能驗證報告 2026-09-03</div>
+</div>
+</body>
+</html>

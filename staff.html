@@ -582,7 +582,7 @@
                   <tbody class="divide-y divide-gray-100">
                     <tr v-for="b in calSelectedBookings" :key="'s'+b.id">
                       <td class="py-1.5 pr-3 font-semibold">{{ b.appointment_time }}</td>
-                      <td class="py-1.5 pr-3">{{ b.customer_name }}</td>
+                      <td class="py-1.5 pr-3">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.customer_phone }}</td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.service_name }}</td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.doctor_name }}</td>
@@ -1461,7 +1461,7 @@
                 <tbody>
                   <tr v-for="b in filteredBookings" :key="'p'+b.id">
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.appointment_time }}</td>
-                    <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_name }}</td>
+                    <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_phone }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.service_name }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.doctor_name }}</td>
@@ -1512,7 +1512,7 @@
                     <!-- 客戶資料 -->
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-semibold text-slate-800">{{ booking.customer_name }}</span>
+                        <span class="font-semibold text-slate-800">{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></span>
                         <span
                           :class="statusClass(booking.status)"
                           class="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -1884,8 +1884,8 @@
             showPassword: false,
             loginError: "",
             isLoggingIn: false,
-            // 🛏️ 床位自訂名稱（針灸/推拿）
-            bedLabels: { tuina: [], acupuncture: [] },
+            // 🛏️ 床位自訂名稱（手法床/VIP房）
+            bedLabels: { tuina: [], vip: [] },
             // 🔒 驗證碼
             captchaUrl: "",
             loginCaptchaAnswer: "",
@@ -2353,9 +2353,9 @@
           // 🛏️ 床位自訂名稱顯示：有自訂名就顯示「名稱 (#編號)」，否則退回「類型 #編號」
           bedLabel(bedType, bedNumber) {
             if (!bedType || !bedNumber) return "";
-            const names = (bedType === 'tuina' ? this.bedLabels.tuina : this.bedLabels.acupuncture) || [];
+            const names = (bedType === 'tuina' ? this.bedLabels.tuina : this.bedLabels.vip) || [];
             const nm = names[Number(bedNumber) - 1];
-            const base = bedType === 'tuina' ? '推拿床' : bedType === 'acup' ? '針灸床' : '混合床';
+            const base = bedType === 'tuina' ? '手法床' : bedType === 'vip' ? 'VIP房' : (bedType === 'acup' ? '針灸床' : '混合床');
             return nm ? `${nm} (#${bedNumber})` : `${base} #${bedNumber}`;
           },
           async loadBedLabels() {

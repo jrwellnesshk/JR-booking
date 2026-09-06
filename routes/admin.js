@@ -481,7 +481,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       db.get("SELECT name FROM doctors WHERE user_id=? AND is_active=1", [userId], (docErr, doctor) => {
         const doctorName = doctor ? doctor.name : user.name;
 
-        let query = "SELECT b.*, s.name as service_name FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE (b.doctor_user_id=? OR b.doctor_name=?)";
+        let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status='completed') = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE (b.doctor_user_id=? OR b.doctor_name=?)";
         let params = [userId, doctorName];
 
         if (date) {
@@ -513,7 +513,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (err) return serverError(res, err);
       if (!user) return res.status(403).json({ error: "無此權限" });
 
-      let query = "SELECT b.*, s.name as service_name FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE 1=1";
+      let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status='completed') = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE 1=1";
       let params = [];
 
       if (date) {

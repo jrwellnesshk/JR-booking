@@ -624,6 +624,7 @@ CREATE TABLE IF NOT EXISTS bookings (
         const stmt = db.prepare("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)");
         stmt.run("tuina_beds", "5");
         stmt.run("acupuncture_beds", "5");
+        stmt.run("vip_rooms", "5");
         stmt.run("total_doctors", "3");
         stmt.run("closed_days", "0"); // 預設星期日休息 (0=星期日, 1=星期一, ..., 6=星期六，多個用逗號分隔)
         stmt.finalize();
