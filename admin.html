@@ -687,6 +687,13 @@
               >
                 <i class="fas fa-users mr-2"></i>用戶管理
               </button>
+              <button
+                @click="currentView = 'member-payments'; loadMemberPayments();"
+                :class="currentView === 'member-payments' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+                class="w-full text-left px-4 py-2 rounded-lg transition-colors"
+              >
+                <i class="fas fa-file-invoice-dollar mr-2"></i>會員付款管理
+              </button>
               <a
                 href="hr.html"
                 class="w-full flex items-center px-4 py-2 rounded-lg transition-colors text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -2251,6 +2258,197 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 會員付款管理 -->
+          <div v-if="currentView === 'member-payments'" class="space-y-6">
+            <div class="flex justify-between items-center flex-wrap gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-file-invoice-dollar text-emerald-600 mr-2"></i>會員付款管理</h2>
+              <div class="flex gap-2 items-center">
+                <div class="relative">
+                  <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                  <input
+                    v-model="mpSearch"
+                    type="text"
+                    placeholder="搜尋 姓名 / 會員編號 / 單號"
+                    class="pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                </div>
+                <button
+                  @click="loadMemberPayments"
+                  class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                >
+                  <i class="fas fa-sync mr-2"></i>重新整理
+                </button>
+              </div>
+            </div>
+
+            <!-- 摘要卡 -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-slate-300">
+                <p class="text-sm text-slate-500"><i class="fas fa-users mr-1 text-slate-400"></i>會員總數</p>
+                <p class="text-2xl font-bold text-slate-700 mt-1">{{ mpSummary.total || 0 }}</p>
+              </div>
+              <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-emerald-400">
+                <p class="text-sm text-slate-500"><i class="fas fa-circle-check mr-1 text-emerald-500"></i>生效中</p>
+                <p class="text-2xl font-bold text-emerald-600 mt-1">{{ mpSummary.active || 0 }}</p>
+              </div>
+              <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-amber-400">
+                <p class="text-sm text-slate-500"><i class="fas fa-hourglass-half mr-1 text-amber-500"></i>快到期</p>
+                <p class="text-2xl font-bold text-amber-600 mt-1">{{ mpSummary.expiring || 0 }}</p>
+              </div>
+              <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-red-400">
+                <p class="text-sm text-slate-500"><i class="fas fa-triangle-exclamation mr-1 text-red-500"></i>逾期待繳</p>
+                <p class="text-2xl font-bold text-red-600 mt-1">{{ mpSummary.overdue || 0 }}</p>
+              </div>
+              <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-4 text-white">
+                <p class="text-sm text-emerald-100"><i class="fas fa-coins mr-1"></i>每月經常性收入</p>
+                <p class="text-2xl font-bold mt-1">HK${{ (mpSummary.monthlyRecurring || 0).toLocaleString() }}</p>
+              </div>
+            </div>
+
+            <!-- 篩選 chips -->
+            <div class="flex flex-wrap gap-2 items-center">
+              <span class="text-sm text-slate-500">狀態：</span>
+              <button v-for="f in mpStatusFilters" :key="f.v"
+                @click="mpStatusFilter = (mpStatusFilter === f.v ? '' : f.v)"
+                :class="mpStatusFilter === f.v ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'"
+                class="px-3 py-1 rounded-full text-xs transition-colors">{{ f.l }} ({{ mpStatusCount(f.v) }})</button>
+              <span class="text-sm text-slate-500 ml-3">級別：</span>
+              <button v-for="t in mpTierFilters" :key="t.v"
+                @click="mpTierFilter = (mpTierFilter === t.v ? '' : t.v)"
+                :class="mpTierFilter === t.v ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'"
+                class="px-3 py-1 rounded-full text-xs transition-colors">{{ t.l }}</button>
+            </div>
+
+            <!-- 表格 -->
+            <div class="bg-white rounded-xl shadow-lg overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">會員編號</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">姓名</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">級別</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">帳戶狀況</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">付款方式</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">上次付款</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">到期日</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">單號</th>
+                    <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="m in mpFiltered" :key="m.id" class="hover:bg-slate-50 cursor-pointer" @click="openMpDetail(m.id)">
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-800">{{ m.memberNo || '—' }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-700">{{ m.name }}<span class="text-xs text-slate-400 ml-1">@{{ m.username }}</span></td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                      <span :class="m.tier === 'family' ? 'text-purple-600' : (m.tier === 'premium' ? 'text-blue-600' : 'text-slate-500')">{{ m.tierName }}</span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">
+                      <span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(m.accountStatus)">{{ m.accountStatusLabel }}</span>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{{ m.paymentMethodLabel }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{{ m.lastPaidAt ? m.lastPaidAt.slice(0,10) : '—' }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{{ m.subscriptionEnd || '—' }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-slate-700">{{ m.invoiceNo || '—' }}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right text-sm" @click.stop>
+                      <button @click="openMpDetail(m.id)" class="text-emerald-600 hover:text-emerald-800 font-medium">檢視</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!mpFiltered.length">
+                    <td colspan="9" class="px-4 py-10 text-center text-sm text-slate-500">暫無符合條件嘅會員</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 會員付款詳情抽屜 -->
+          <div v-if="mpDetail" class="fixed inset-0 z-50 flex justify-end" style="background:rgba(15,23,42,.45)" @click.self="closeMpDetail">
+            <div class="bg-slate-50 w-full max-w-md h-full overflow-y-auto shadow-2xl">
+              <div class="sticky top-0 bg-white px-6 py-4 border-b flex justify-between items-center">
+                <div>
+                  <h3 class="text-lg font-bold text-slate-800">{{ mpDetail.user.name }}</h3>
+                  <p class="text-xs text-slate-500">會員編號 {{ mpDetail.user.memberNo }} ・ @{{ mpDetail.user.username }}</p>
+                </div>
+                <button @click="closeMpDetail" class="text-slate-400 hover:text-slate-700 text-xl"><i class="fas fa-times"></i></button>
+              </div>
+
+              <div class="p-6 space-y-5">
+                <!-- 狀態卡 -->
+                <div class="bg-white rounded-xl shadow p-4 grid grid-cols-2 gap-3 text-sm">
+                  <div><p class="text-slate-400 text-xs">帳戶狀況</p><span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(mpDetail.user.accountStatus)">{{ mpDetail.user.accountStatusLabel }}</span></div>
+                  <div><p class="text-slate-400 text-xs">會員級別</p><p class="font-medium text-slate-700">{{ mpDetail.user.tierName }}</p></div>
+                  <div><p class="text-slate-400 text-xs">付款方式</p><p class="font-medium text-slate-700">{{ mpDetail.user.paymentMethodLabel }}</p></div>
+                  <div><p class="text-slate-400 text-xs">上次付款</p><p class="font-medium text-slate-700">{{ mpDetail.user.lastPaidAt ? mpDetail.user.lastPaidAt.slice(0,10) : '—' }}</p></div>
+                  <div><p class="text-slate-400 text-xs">下次／到期日</p><p class="font-medium text-slate-700">{{ mpDetail.user.subscriptionEnd || '—' }}</p></div>
+                  <div><p class="text-slate-400 text-xs">單號</p><p class="font-mono font-medium text-slate-700">{{ mpDetail.user.invoiceNo || '—' }}</p></div>
+                </div>
+
+                <!-- 記錄付款表單 -->
+                <div class="bg-white rounded-xl shadow p-4">
+                  <h4 class="font-semibold text-slate-800 mb-3"><i class="fas fa-cash-register text-emerald-600 mr-2"></i>記錄付款（離線收款）</h4>
+                  <div class="space-y-3 text-sm">
+                    <div>
+                      <label class="block text-slate-500 mb-1">開通／續費級別</label>
+                      <select v-model="mpRecordForm.tier" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <option value="premium">高級會員（HK$8,800／月）</option>
+                        <option value="family">家庭會員（HK$16,800／月）</option>
+                        <option value="general">一般會員（免費）</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-slate-500 mb-1">付款方式</label>
+                      <select v-model="mpRecordForm.method" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <option v-for="o in mpDetail.payMethodOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-slate-500 mb-1">金額（HK$，留空按級別預設）</label>
+                      <input v-model="mpRecordForm.amount" type="number" placeholder="例如 8800" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                    </div>
+                    <div>
+                      <label class="block text-slate-500 mb-1">備註</label>
+                      <input v-model="mpRecordForm.note" type="text" placeholder="例如 櫃台現金／FPS 轉數快" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                    </div>
+                    <button @click="recordMpPayment" :disabled="mpRecordBusy"
+                      class="w-full bg-emerald-600 text-white rounded-lg py-2 hover:bg-emerald-700 disabled:opacity-50">
+                      <i class="fas fa-check mr-2"></i>{{ mpRecordBusy ? '處理中…' : '確認記錄付款' }}
+                    </button>
+                    <p v-if="mpRecordMsg" class="text-xs rounded p-2" :class="mpRecordMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'">
+                      {{ mpRecordMsg.ok ? '✅ ' : '❌ ' }}{{ mpRecordMsg.text }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- 訂閱紀錄 -->
+                <div class="bg-white rounded-xl shadow p-4">
+                  <h4 class="font-semibold text-slate-800 mb-2"><i class="fas fa-receipt text-slate-500 mr-2"></i>訂閱紀錄</h4>
+                  <div v-if="mpDetail.subscriptions.length" class="space-y-2">
+                    <div v-for="s in mpDetail.subscriptions" :key="s.id" class="text-xs border rounded-lg p-2 flex justify-between">
+                      <span>{{ s.tier }} ・ {{ s.status }}</span>
+                      <span class="text-slate-400">{{ s.start_date }} → {{ s.end_date }}</span>
+                    </div>
+                  </div>
+                  <p v-else class="text-xs text-slate-400">暫無訂閱紀錄</p>
+                </div>
+
+                <!-- 付款歷史 -->
+                <div class="bg-white rounded-xl shadow p-4">
+                  <h4 class="font-semibold text-slate-800 mb-2"><i class="fas fa-clock-rotate-left text-slate-500 mr-2"></i>付款歷史</h4>
+                  <div v-if="mpDetail.payments.length" class="space-y-2">
+                    <div v-for="p in mpDetail.payments" :key="p.id" class="text-xs border rounded-lg p-2">
+                      <div class="flex justify-between">
+                        <span class="font-medium">{{ p.payment_method }} ・ HK${{ (p.amount||0).toLocaleString() }}</span>
+                        <span class="text-slate-400">{{ p.paid_at ? p.paid_at.slice(0,10) : '—' }}</span>
+                      </div>
+                      <p v-if="p.note" class="text-slate-400 mt-1">📝 {{ p.note }}</p>
+                    </div>
+                  </div>
+                  <p v-else class="text-xs text-slate-400">暫無付款紀錄</p>
+                </div>
               </div>
             </div>
           </div>
@@ -6786,6 +6984,25 @@
             incomeQueryDate: "",
             incomeQueryRows: [],
 
+            // 💳 會員付款管理
+            memberPayments: [],
+            mpSummary: {},
+            mpSearch: "",
+            mpStatusFilter: "",
+            mpTierFilter: "",
+            mpLoading: false,
+            mpDetail: null,
+            mpRecordForm: { tier: 'premium', method: 'cash', amount: '', note: '' },
+            mpRecordMsg: null,
+            mpRecordBusy: false,
+            mpStatusFilters: [
+              { v: '', l: '全部' }, { v: 'active', l: '生效中' }, { v: 'expiring', l: '快到期' },
+              { v: 'overdue', l: '逾期待繳' }, { v: 'cancelled', l: '已取消' }, { v: 'pending', l: '未開通' }, { v: 'free', l: '免費' }
+            ],
+            mpTierFilters: [
+              { v: '', l: '全部' }, { v: 'general', l: '一般' }, { v: 'premium', l: '高級' }, { v: 'family', l: '家庭' }
+            ],
+
             stats: {
               totalUsers: 0,
               totalBookings: 0,
@@ -7203,6 +7420,19 @@ addUserForm: {
               hasData: true
             };
           },
+          // 💳 會員付款管理：搜尋 + 狀態/級別篩選後嘅清單
+          mpFiltered() {
+            const q = (this.mpSearch || '').trim().toLowerCase();
+            return (this.memberPayments || []).filter(m => {
+              if (this.mpStatusFilter && m.accountStatus !== this.mpStatusFilter) return false;
+              if (this.mpTierFilter && m.tier !== this.mpTierFilter) return false;
+              if (q) {
+                const hay = (m.name + (m.memberNo || '') + m.username + (m.phone || '') + (m.invoiceNo || '')).toLowerCase();
+                if (!hay.includes(q)) return false;
+              }
+              return true;
+            });
+          },
           // 🔍 日期查詢：嗰年收入（Excel + 訂閱；預約參考另列）
           incomeQueryYear() {
             const out = { excel: 0, sub: 0, total: 0, ref: 0 };
@@ -7400,6 +7630,83 @@ addUserForm: {
           },
 
         methods: {
+          // ==================== 會員付款管理 ====================
+          async loadMemberPayments() {
+            this.mpLoading = true;
+            try {
+              const r = await fetch('/api/admin/member-payments', { headers: this.adminAuthHeaders() });
+              const data = await r.json();
+              if (data.ok) {
+                this.memberPayments = data.members || [];
+                this.mpSummary = data.summary || {};
+              } else {
+                console.error('載入會員付款失敗:', data.error);
+              }
+            } catch (e) {
+              console.error('載入會員付款失敗:', e);
+            } finally {
+              this.mpLoading = false;
+            }
+          },
+          mpStatusBadge(code) {
+            return ({
+              active: 'bg-emerald-100 text-emerald-700',
+              expiring: 'bg-amber-100 text-amber-700',
+              overdue: 'bg-red-100 text-red-700',
+              cancelled: 'bg-slate-100 text-slate-500',
+              pending: 'bg-orange-100 text-orange-700',
+              free: 'bg-slate-100 text-slate-500'
+            })[code] || 'bg-slate-100 text-slate-500';
+          },
+          mpStatusCount(code) {
+            if (!code) return (this.memberPayments || []).length;
+            return (this.memberPayments || []).filter(m => m.accountStatus === code).length;
+          },
+          async openMpDetail(id) {
+            try {
+              const r = await fetch('/api/admin/member-payments/' + id, { headers: this.adminAuthHeaders() });
+              const data = await r.json();
+              if (data.ok) {
+                this.mpDetail = data;
+                const t = (data.user.tier === 'general') ? 'premium' : data.user.tier;
+                this.mpRecordForm = { tier: t, method: data.user.paymentMethod || 'cash', amount: '', note: '' };
+                this.mpRecordMsg = null;
+              } else {
+                console.error('載入會員詳情失敗:', data.error);
+              }
+            } catch (e) {
+              console.error('載入會員詳情失敗:', e);
+            }
+          },
+          closeMpDetail() {
+            this.mpDetail = null;
+            this.mpRecordMsg = null;
+          },
+          async recordMpPayment() {
+            if (!this.mpDetail) return;
+            this.mpRecordBusy = true;
+            this.mpRecordMsg = null;
+            try {
+              const r = await fetch('/api/admin/member-payments/' + this.mpDetail.user.id + '/record', {
+                method: 'POST',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify(this.mpRecordForm)
+              });
+              const data = await r.json();
+              if (data.ok) {
+                this.mpRecordMsg = { ok: true, text: '已記錄付款（單號 ' + (data.invoiceNo || '—') + '）' };
+                await this.openMpDetail(this.mpDetail.user.id);
+                await this.loadMemberPayments();
+              } else {
+                this.mpRecordMsg = { ok: false, text: data.error || '記錄失敗' };
+              }
+            } catch (e) {
+              this.mpRecordMsg = { ok: false, text: '記錄失敗：' + e.message };
+            } finally {
+              this.mpRecordBusy = false;
+            }
+          },
+
           adminAuthHeaders(contentType) {
             // 注意：Authorization 已由 js/auth-fetch.js 全域自動補（所有非公開 API 都會加 Bearer），
             // 呢度唔使再加，避免重複帶 token；只負責 Content-Type。

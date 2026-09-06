@@ -707,7 +707,9 @@ function runMigrations(db) {
       { name: 'family_head_id', ddl: "ALTER TABLE users ADD COLUMN family_head_id INTEGER" },
       { name: 'whatsapp_weather', ddl: "ALTER TABLE users ADD COLUMN whatsapp_weather INTEGER DEFAULT 1" },
       { name: 'whatsapp_confirm', ddl: "ALTER TABLE users ADD COLUMN whatsapp_confirm INTEGER DEFAULT 1" },
-      { name: 'whatsapp_health', ddl: "ALTER TABLE users ADD COLUMN whatsapp_health INTEGER DEFAULT 1" }
+      { name: 'whatsapp_health', ddl: "ALTER TABLE users ADD COLUMN whatsapp_health INTEGER DEFAULT 1" },
+      { name: 'member_invoice_no', ddl: "ALTER TABLE users ADD COLUMN member_invoice_no TEXT" },
+      { name: 'payment_method', ddl: "ALTER TABLE users ADD COLUMN payment_method TEXT" }
     ];
     db.all("PRAGMA table_info(users)", (err, cols) => {
       if (err || !cols) return;
@@ -716,6 +718,22 @@ function runMigrations(db) {
           db.run(c.ddl, (e) => {
             if (e) console.error(`添加 users.${c.name} 欄位失敗:`, e.message);
             else console.log(`✅ 已添加 users.${c.name} 欄位`);
+          });
+        }
+      });
+    });
+
+    // payments 欄位擴展：管理員備註（離線收款記錄用）
+    db.all("PRAGMA table_info(payments)", (err, cols) => {
+      if (err || !cols) return;
+      const pCols = [
+        { name: 'note', ddl: "ALTER TABLE payments ADD COLUMN note TEXT" }
+      ];
+      pCols.forEach((c) => {
+        if (!cols.some(col => col.name === c.name)) {
+          db.run(c.ddl, (e) => {
+            if (e) console.error(`添加 payments.${c.name} 欄位失敗:`, e.message);
+            else console.log(`✅ 已添加 payments.${c.name} 欄位`);
           });
         }
       });

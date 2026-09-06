@@ -1374,5 +1374,241 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     });
   });
 
+  // ============================================================
+  // 💳 會員付款管理（管理員）：集中檢視 + 管理全部會員帳戶嘅
+  //    付款方式 / 付款日 / 單號 / 帳戶狀況，並可手動記錄離線付款
+  // ============================================================
+  const mq = (sql, params = []) => new Promise((res, rej) => {
+    db.all(sql, params, (e, rows) => e ? rej(e) : res(rows || []));
+  });
+  const mq1 = (sql, params = []) => new Promise((res, rej) => {
+    db.get(sql, params, (e, row) => e ? rej(e) : res(row));
+  });
+  const mrun = (sql, params = []) => new Promise((res, rej) => {
+    db.run(sql, params, function (e) { e ? rej(e) : res(this); });
+  });
+
+  const TIER_PRICE = { general: 0, premium: 8800, family: 16800 };
+  const TIER_NAME = { general: '一般會員', premium: '高級會員', family: '家庭會員' };
+  // 付款方式代碼 → 中文標籤
+  const PAY_METHOD_LABEL = {
+    cash: '現金', card: '信用卡', transfer: '銀行轉帳', fps: '轉數快 (FPS)', other: '其他'
+  };
+  const PAY_METHODS = Object.keys(PAY_METHOD_LABEL);
+
+  // 計算會員嘅「帳戶狀況」顯示碼（familyCovered = 由家庭戶主訂閱覆蓋）
+  function deriveAccountStatus(user, sub, familyCovered) {
+    const tier = user.membership_tier || 'general';
+    if (tier === 'general') return { code: 'free', label: '一般會員（免費）' };
+    if ((user.subscription_status || '') === 'past_due') return { code: 'overdue', label: '扣款失敗・逾期待繳' };
+    if (sub) {
+      const end = sub.end_date ? new Date(sub.end_date) : null;
+      const now = new Date();
+      if (end && end < now) return { code: 'overdue', label: '會籍過期・待續費' };
+      const daysLeft = end ? Math.ceil((end - now) / 86400000) : 999;
+      if (daysLeft <= 7) return { code: 'expiring', label: `快到期（${daysLeft} 日內）` };
+      return { code: 'active', label: familyCovered ? '家庭計劃生效中' : '生效中' };
+    }
+    if ((user.subscription_status || '') === 'canceled') return { code: 'cancelled', label: '已取消' };
+    return { code: 'pending', label: '未開通・待繳費' };
+  }
+
+  // 取得會員單號（家庭用 FAM-xxxx；個人 premium 用 MEM-xxxx）
+  async function resolveInvoiceNo(user) {
+    const isFamily = (user.membership_tier || 'general') === 'family';
+    if (isFamily) {
+      const headId = (Number(user.family_head_id) === Number(user.id)) ? user.id : (user.family_head_id || user.id);
+      let inv = await mq1("SELECT invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
+      if (!inv) {
+        const maxRow = await mq1("SELECT COALESCE(MAX(CAST(SUBSTR(invoice_no,5) AS INTEGER)),1000) AS m FROM family_invoices");
+        const nextNo = 'FAM-' + (maxRow.m + 1);
+        await mrun("INSERT INTO family_invoices (invoice_no, family_head_id, plan) VALUES (?,?,?)", [nextNo, headId, user.family_plan || 'A']);
+        inv = { invoice_no: nextNo };
+      }
+      return inv.invoice_no;
+    }
+    if ((user.membership_tier || 'general') === 'premium') {
+      if (user.member_invoice_no) return user.member_invoice_no;
+      const maxRow = await mq1("SELECT COALESCE(MAX(CAST(SUBSTR(member_invoice_no,5) AS INTEGER)),1000) AS m FROM users WHERE member_invoice_no LIKE 'MEM-%'");
+      const nextNo = 'MEM-' + (maxRow.m + 1);
+      await mrun("UPDATE users SET member_invoice_no=? WHERE id=?", [nextNo, user.id]);
+      return nextNo;
+    }
+    return null;
+  }
+
+  // 組裝單一會員嘅付款摘要（需要預先載入嘅 lookup map）
+  async function buildMemberSummary(user, lookups) {
+    const tier = user.membership_tier || 'general';
+    // 最新生效訂閱（家庭成員冇自己訂閱時，改看戶主訂閱）
+    const subs = lookups.subsByUser[user.id] || [];
+    let activeSub = subs.find(s => s.status === 'active') || subs[0] || null;
+    let familyCovered = false;
+    const headId = (Number(user.family_head_id) === Number(user.id)) ? null : (user.family_head_id || null);
+    if (!activeSub && headId && lookups.subsByUser[headId]) {
+      const headSub = lookups.subsByUser[headId].find(s => s.status === 'active');
+      if (headSub) { activeSub = headSub; familyCovered = true; }
+    }
+    // 最新成功付款
+    const pays = lookups.paysByUser[user.id] || [];
+    const lastPaid = pays[0] || null;
+    const status = deriveAccountStatus(user, activeSub, familyCovered);
+    const invoiceNo = await resolveInvoiceNo(user);
+    // 付款方式：優先用用戶欄位，其次最新付款紀錄
+    const method = user.payment_method || (lastPaid ? lastPaid.payment_method : null);
+    return {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      memberNo: user.member_no || (user.phone || ''),
+      phone: user.phone,
+      tier,
+      tierName: TIER_NAME[tier] || tier,
+      amount: TIER_PRICE[tier] || 0,
+      accountStatus: status.code,
+      accountStatusLabel: status.label,
+      paymentMethod: method || null,
+      paymentMethodLabel: method ? (PAY_METHOD_LABEL[method] || method) : '—',
+      lastPaidAt: lastPaid ? lastPaid.paid_at : null,
+      subscriptionEnd: activeSub ? activeSub.end_date : null,
+      subscriptionStart: activeSub ? activeSub.start_date : null,
+      invoiceNo,
+      familyHeadId: user.family_head_id || null,
+      isFamilyHead: Number(user.family_head_id) === Number(user.id)
+    };
+  }
+
+  // GET /api/admin/member-payments — 全部會員付款總覽（搜尋 + 狀態篩選）
+  router.get('/member-payments', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const q = (req.query.q || '').toString().trim();
+      const statusFilter = (req.query.status || '').toString().trim();
+      const tierFilter = (req.query.tier || '').toString().trim();
+      const users = await mq(
+        `SELECT id, username, name, phone, member_no, membership_tier, subscription_status,
+                family_head_id, family_plan, payment_method, member_invoice_no
+         FROM users WHERE role='customer' ORDER BY id`
+      );
+      const allSubs = await mq("SELECT * FROM subscriptions ORDER BY id");
+      const allPays = await mq("SELECT id, user_id, payment_method, amount, status, paid_at, note FROM payments WHERE status IN ('paid','completed') ORDER BY paid_at DESC, id DESC");
+      const lookups = {
+        subsByUser: {},
+        paysByUser: {}
+      };
+      allSubs.forEach(s => { (lookups.subsByUser[s.user_id] = lookups.subsByUser[s.user_id] || []).push(s); });
+      allPays.forEach(p => { if (!(lookups.paysByUser[p.user_id] || []).length) lookups.paysByUser[p.user_id] = [p]; });
+
+      const members = [];
+      for (const u of users) {
+        const m = await buildMemberSummary(u, lookups);
+        if (q) {
+          const hay = (m.name + m.memberNo + m.username + (m.phone || '') + (m.invoiceNo || '')).toLowerCase();
+          if (!hay.includes(q.toLowerCase())) continue;
+        }
+        if (statusFilter && m.accountStatus !== statusFilter) continue;
+        if (tierFilter && m.tier !== tierFilter) continue;
+        members.push(m);
+      }
+
+      const summary = {
+        total: members.length,
+        active: members.filter(m => m.accountStatus === 'active').length,
+        expiring: members.filter(m => m.accountStatus === 'expiring').length,
+        overdue: members.filter(m => m.accountStatus === 'overdue').length,
+        cancelled: members.filter(m => m.accountStatus === 'cancelled').length,
+        free: members.filter(m => m.accountStatus === 'free').length,
+        monthlyRecurring: members.filter(m => m.accountStatus === 'active' || m.accountStatus === 'expiring')
+          .reduce((s, m) => s + (m.amount || 0), 0)
+      };
+      res.json({ ok: true, members, summary });
+    } catch (e) {
+      console.error('載入會員付款總覽失敗:', e);
+      res.status(500).json({ error: '系統錯誤' });
+    }
+  });
+
+  // GET /api/admin/member-payments/:id — 單一會員詳情（訂閱 + 付款歷史 + 單號）
+  router.get('/member-payments/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const uid = Number(req.params.id);
+      const user = await mq1(
+        `SELECT id, username, name, phone, member_no, membership_tier, subscription_status,
+                family_head_id, family_plan, payment_method, member_invoice_no, created_at
+         FROM users WHERE id=? AND role='customer'`, [uid]);
+      if (!user) return res.status(404).json({ error: '找不到該會員帳戶' });
+      const lookups = { subsByUser: {}, paysByUser: {} };
+      const subs = await mq("SELECT * FROM subscriptions WHERE user_id=? ORDER BY id DESC", [uid]);
+      const pays = await mq("SELECT id, user_id, payment_method, amount, status, paid_at, transaction_id, note FROM payments WHERE user_id=? ORDER BY paid_at DESC, id DESC", [uid]);
+      lookups.subsByUser[uid] = subs;
+      lookups.paysByUser[uid] = pays.filter(p => p.status === 'paid' || p.status === 'completed');
+      const summary = await buildMemberSummary(user, lookups);
+      res.json({
+        ok: true,
+        user: summary,
+        subscriptions: subs,
+        payments: pays,
+        payMethodOptions: PAY_METHODS.map(k => ({ value: k, label: PAY_METHOD_LABEL[k] }))
+      });
+    } catch (e) {
+      console.error('載入會員付款詳情失敗:', e);
+      res.status(500).json({ error: '系統錯誤' });
+    }
+  });
+
+  // POST /api/admin/member-payments/:id/record — 管理員手動記錄離線付款（現金／轉帳等）
+  router.post('/member-payments/:id/record', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const uid = Number(req.params.id);
+      const { method, amount, note, tier } = req.body || {};
+      if (!method || !PAY_METHODS.includes(method)) {
+        return res.status(400).json({ error: '請選擇有效嘅付款方式', code: 'invalid_method' });
+      }
+      if (!tier || !['general', 'premium', 'family'].includes(tier)) {
+        return res.status(400).json({ error: '請選擇要開通／續費嘅會員級別', code: 'invalid_tier' });
+      }
+      const user = await mq1("SELECT id, membership_tier, family_head_id, subscription_status FROM users WHERE id=? AND role='customer'", [uid]);
+      if (!user) return res.status(404).json({ error: '找不到該會員帳戶' });
+
+      const now = new Date();
+      const paidAt = now.toISOString().slice(0, 19).replace('T', ' ');
+      const txn = 'MAN-' + now.getTime();
+      const payAmount = (amount !== undefined && amount !== null && amount !== '') ? Number(amount) : (TIER_PRICE[tier] || 0);
+
+      // 1) 寫入付款紀錄
+      await mrun(
+        "INSERT INTO payments (user_id, amount, payment_method, status, transaction_id, paid_at, note, created_at) VALUES (?,?,?,?,?,?,?,?)",
+        [uid, payAmount, method, 'paid', txn, paidAt, note || null, paidAt]
+      );
+      // 2) 更新/建立生效訂閱（30 日週期）
+      const start = paidAt.slice(0, 10);
+      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const existing = await mq1("SELECT id FROM subscriptions WHERE user_id=? AND status='active' ORDER BY id DESC LIMIT 1", [uid]);
+      if (existing) {
+        await mrun("UPDATE subscriptions SET start_date=?, end_date=?, tier=?, payment_id=(SELECT id FROM payments WHERE transaction_id=?) WHERE id=?",
+          [start, end, tier, txn, existing.id]);
+      } else {
+        await mrun("INSERT INTO subscriptions (user_id, tier, status, start_date, end_date, payment_id) VALUES (?,?,?,?,?,(SELECT id FROM payments WHERE transaction_id=?))",
+          [uid, tier, 'active', start, end, txn]);
+      }
+      // 3) 更新用戶狀態
+      await mrun("UPDATE users SET subscription_status='active', payment_method=? WHERE id=?", [method, uid]);
+      // 4) 若指定咗級別且不同，套用（家庭會自動建 FAM 單號）
+      if (tier && ['general', 'premium', 'family'].includes(tier) && tier !== user.membership_tier) {
+        await mrun("UPDATE users SET membership_tier=? WHERE id=?", [tier, uid]);
+        if (tier === 'family' && Number(user.family_head_id) !== Number(uid)) {
+          await mrun("UPDATE users SET family_head_id=? WHERE id=?", [uid, uid]);
+        }
+      }
+      // 5) 確保單號存在（家庭→FAM，個人 premium→MEM）
+      const updatedUser = await mq1("SELECT * FROM users WHERE id=?", [uid]);
+      const invoiceNo = await resolveInvoiceNo(updatedUser);
+
+      res.json({ ok: true, message: '已記錄付款並開通會籍', transactionId: txn, invoiceNo, method });
+    } catch (e) {
+      console.error('記錄會員付款失敗:', e);
+      res.status(500).json({ error: '記錄失敗：' + (e.message || '') });
+    }
+  });
+
   return router;
 };
