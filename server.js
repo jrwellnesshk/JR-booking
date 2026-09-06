@@ -301,6 +301,10 @@ app.use('/api/bookings', bookingsRoutes(db, emailService, getLocalTimeString, { 
 const membershipRoutes = require("./routes/memberships");
 app.use('/api/membership', membershipRoutes(db, { requireAuth, requireRole }));
 
+// 優惠券路由（買券 → 免費診症）
+const couponRoutes = require("./routes/coupons");
+app.use('/api/coupons', couponRoutes(db, { requireAuth, requireRole }));
+
 // 管理員路由（包含二次驗證）
 // 路徑前綴: /api/admin
 app.use('/api/admin', adminRoutes(db, hashPassword, verifyPassword, { requireAuth, requireRole }));

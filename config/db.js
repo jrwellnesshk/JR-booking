@@ -34,6 +34,10 @@ function initializeDatabase() {
     }
   });
 
+  // 🔧 WAL 模式 + busy timeout：提升並發讀寫（測試/後台同時開 DB 唔易鎖死）
+  db.run("PRAGMA journal_mode=WAL");
+  db.run("PRAGMA busy_timeout=8000");
+
   db.serialize(() => {
     // 先檢查並遷移舊數據庫結構
     db.all("PRAGMA table_info(users)", (err, columns) => {
@@ -203,6 +207,7 @@ CREATE TABLE IF NOT EXISTS bookings (
         time TEXT NOT NULL,
         doctor_id INTEGER NOT NULL,
         is_available INTEGER DEFAULT 1,
+        status TEXT DEFAULT 'open',
         max_capacity INTEGER DEFAULT 1,
         notes TEXT,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,

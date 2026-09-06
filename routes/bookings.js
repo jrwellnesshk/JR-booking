@@ -384,8 +384,22 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
         const endTime = minutesToTime(startMin + durationMin);
 
+        // 🎟️ 免費診症扣減：客戶有剩餘免費次數就標 is_free 並扣 1（優惠券購買嘅免費診症）
+        let isFreeBooking = 0;
+        if (!guestMode && userId) {
+          const uc = await new Promise((resolve) => {
+            db.get(`SELECT id, free_total, free_used FROM user_coupons
+                    WHERE user_id=? AND status='active' AND (free_total - free_used) > 0
+                    ORDER BY id ASC LIMIT 1`, [userId], (e, r) => resolve(r || null));
+          });
+          if (uc) {
+            isFreeBooking = 1;
+            await new Promise((resolve) => db.run('UPDATE user_coupons SET free_used = free_used + 1 WHERE id=?', [uc.id], () => resolve()));
+          }
+        }
+
         const stmt = db.prepare(
-          "INSERT INTO bookings (user_id, customer_name, customer_name_en, customer_phone, customer_email, customer_age, service_id, doctor_name, appointment_date, appointment_time, end_time, notes, doctor_user_id, bed_type, bed_number, created_at, is_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+          "INSERT INTO bookings (user_id, customer_name, customer_name_en, customer_phone, customer_email, customer_age, service_id, doctor_name, appointment_date, appointment_time, end_time, notes, doctor_user_id, bed_type, bed_number, is_free, created_at, is_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         );
         
         stmt.run(
@@ -404,6 +418,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
           doctorUserId,
           bedType || null,
           assignedBedNumber,
+          isFreeBooking,
           localTime,
           1, // is_locked 預設為 1 (true)
           async function (err) {
@@ -668,7 +683,8 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   });
 
   // 獲取單一預約（需登入，只限本人或管理員/醫師/員工）
-  router.get("/:id", requireAuth, (req, res) => {
+  router.get("/:id", requireAuth, (req, res, next) => {
+    if (req.params.id === 'doctor-time-slots') return next();
     const { id } = req.params;
     
     db.get("SELECT * FROM bookings WHERE id=?", [id], (err, row) => {
@@ -682,7 +698,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   });
 
   // 修改預約（需登入，只限本人或管理員/醫師/員工）
-  router.put("/:id", requireAuth, async (req, res) => {
+  router.put("/:id", requireAuth, async (req, res, next) => {
+    // 🔧 避免與 /doctor-time-slots 路由衝突：該路徑交由專用 handler 處理
+    if (req.params.id === 'doctor-time-slots') return next();
     const { id } = req.params;
     const { customerName, customerNameEn, customerPhone, customerEmail, customerAge, serviceId, doctorName, appointmentDate, appointmentTime, notes } = req.body;
 
@@ -1516,49 +1534,56 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
   // 更新醫師時段狀態（限管理員）
   router.put("/doctor-time-slots", requireAuth, requireRole('admin'), (req, res) => {
-    const { date, time, doctor_id, is_available, max_capacity, notes } = req.body;
-    
+    const { date, time, doctor_id, is_available, status, max_capacity, notes } = req.body;
+
     if (!date || !time || !doctor_id) {
       return res.status(400).json({ error: "缺少必要參數" });
     }
-    
+
+    // status 優先：open=開放 / rest=休息 / waiting=候診 / blank=空白關閉
+    let finalStatus = status || (is_available ? 'open' : 'blank');
+    let finalAvail = (status === 'rest' || status === 'blank') ? 0 : 1;
+
     db.run(
-      `INSERT OR REPLACE INTO doctor_time_slots (date, time, doctor_id, is_available, max_capacity, notes, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-      [date, time, doctor_id, is_available ? 1 : 0, max_capacity || 1, notes || ''],
-      function(err) {
+      `INSERT OR REPLACE INTO doctor_time_slots (date, time, doctor_id, is_available, status, max_capacity, notes, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [date, time, doctor_id, finalAvail, finalStatus, max_capacity || 1, notes || ''],
+      function (err) {
         if (err) return serverError(res, err);
-        res.json({ success: true, message: "醫師時段狀態已更新" });
+        res.json({ success: true, message: "醫師時段狀態已更新", status: finalStatus });
       }
     );
   });
-  
-  // 批量更新醫師時段狀態（限管理員）
-  router.post("/doctor-time-slots/batch", requireAuth, requireRole('admin'), (req, res) => {
+
+  // 批量更新醫師時段狀態（限管理員 / 醫師 / 員工）
+  router.post("/doctor-time-slots/batch", requireAuth, requireRole('admin', 'doctor', 'staff'), (req, res) => {
     const { slots } = req.body;
-    
+
     if (!slots || !Array.isArray(slots)) {
       return res.status(400).json({ error: "無效的資料格式" });
     }
-    
+
     const stmt = db.prepare(
-      `INSERT OR REPLACE INTO doctor_time_slots (date, time, doctor_id, is_available, max_capacity, notes, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      `INSERT OR REPLACE INTO doctor_time_slots (date, time, doctor_id, is_available, status, max_capacity, notes, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     );
-    
+
     let successCount = 0;
     slots.forEach(slot => {
+      const st = slot.status || (slot.is_available ? 'open' : 'blank');
+      const avail = (st === 'rest' || st === 'blank') ? 0 : 1;
       stmt.run(
         slot.date,
         slot.time,
         slot.doctor_id,
-        slot.is_available ? 1 : 0,
+        avail,
+        st,
         slot.max_capacity || 1,
         slot.notes || ''
       );
       successCount++;
     });
-    
+
     stmt.finalize(err => {
       if (err) return serverError(res, err);
       res.json({ success: true, message: `已更新 ${successCount} 個醫師時段` });

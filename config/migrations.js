@@ -416,6 +416,91 @@ function runMigrations(db) {
       else console.log("✅ account_links 表已準備就緒");
     });
 
+    // ==================================================================
+    // 🎟️ 優惠券 / 家庭單號 / 會員編號 / 時段狀態（2026-09 新功能）
+    // ==================================================================
+    // 優惠券定義表（管理員建立，每張 code 對應 N 次免費診症）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        title TEXT,
+        free_count INTEGER NOT NULL DEFAULT 1,
+        price_hkd REAL DEFAULT 0,
+        active INTEGER DEFAULT 1,
+        created_by INTEGER,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => { if (err) console.error("創建 coupons 表失敗:", err.message); else console.log("✅ coupons 表已準備就緒"); });
+
+    // 客戶已購/已啟用優惠券（free_total 總次數，free_used 已用次數）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS user_coupons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        coupon_code TEXT NOT NULL,
+        free_total INTEGER NOT NULL DEFAULT 0,
+        free_used INTEGER NOT NULL DEFAULT 0,
+        status TEXT DEFAULT 'active',
+        purchased_at TEXT,
+        redeemed_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      )
+    `, (err) => { if (err) console.error("創建 user_coupons 表失敗:", err.message); else console.log("✅ user_coupons 表已準備就緒"); });
+
+    // 家庭單號（每個主帳戶一張，跟死全家所有帳戶）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS family_invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_no TEXT UNIQUE NOT NULL,
+        family_head_id INTEGER NOT NULL,
+        plan TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(family_head_id) REFERENCES users(id)
+      )
+    `, (err) => { if (err) console.error("創建 family_invoices 表失敗:", err.message); else console.log("✅ family_invoices 表已準備就緒"); });
+
+    // users 欄位：會員編號 / 家庭私隱開關 / 家庭計劃
+    db.all("PRAGMA table_info(users)", (err, cols) => {
+      if (err || !cols) return;
+      const uAdd = [
+        { name: 'member_no', ddl: "ALTER TABLE users ADD COLUMN member_no TEXT" },
+        { name: 'hide_from_head', ddl: "ALTER TABLE users ADD COLUMN hide_from_head INTEGER DEFAULT 0" },
+        { name: 'family_plan', ddl: "ALTER TABLE users ADD COLUMN family_plan TEXT" }
+      ];
+      uAdd.forEach((c) => {
+        if (!cols.some(col => col.name === c.name)) {
+          db.run(c.ddl, (e) => {
+            if (e) console.error(`添加 users.${c.name} 失敗:`, e.message);
+            else console.log(`✅ 已添加 users.${c.name} 欄位`);
+          });
+        }
+      });
+      // 回填：會員編號 = 電話（客戶 / 家庭成員）
+      db.run("UPDATE users SET member_no = phone WHERE (member_no IS NULL OR member_no='') AND phone IS NOT NULL AND phone<>''", (e) => {
+        if (!e) console.log("✅ 已回填 member_no = phone");
+      });
+    });
+
+    // doctor_time_slots.status 回填（open=開放 / rest=休息 / waiting=候診 / blank=空白關閉）
+    db.all("PRAGMA table_info(doctor_time_slots)", (err, cols) => {
+      if (err || !cols) return;
+      if (!cols.some(col => col.name === 'status')) {
+        db.run("ALTER TABLE doctor_time_slots ADD COLUMN status TEXT DEFAULT 'open'", (e) => {
+          if (e) console.error("添加 doctor_time_slots.status 失敗:", e.message);
+          else console.log("✅ 已添加 doctor_time_slots.status 欄位");
+        });
+      }
+      db.run("UPDATE doctor_time_slots SET status='open' WHERE status IS NULL AND is_available=1", () => {});
+      db.run("UPDATE doctor_time_slots SET status='blank' WHERE status IS NULL AND (is_available=0 OR is_available IS NULL)", () => {});
+    });
+
+    // 預約時段改 15 分鐘（slot_interval 預設）
+    db.run("UPDATE clinic_settings SET setting_value='15' WHERE setting_key='slot_interval'", (e) => {
+      if (!e) console.log("✅ slot_interval 已設為 15 分鐘");
+    });
+
     // 異常管理表 (紅字日 / 全日照停 / 特別營業時段)
     db.run(`
       CREATE TABLE IF NOT EXISTS exceptions (
@@ -516,7 +601,7 @@ function runMigrations(db) {
       ['morning_end', '14:00'],
       ['afternoon_start', '14:00'],
       ['afternoon_end', '19:00'],
-      ['slot_interval', '30'],
+      ['slot_interval', '15'],
       ['sms_notification_enabled', 'false'],
       ['email_notification_enabled', 'false'],
       ['whatsapp_notification_enabled', 'true'],
@@ -653,6 +738,7 @@ function runMigrations(db) {
       bAdd('bed_number', "ALTER TABLE bookings ADD COLUMN bed_number INTEGER");
       bAdd('customer_age', "ALTER TABLE bookings ADD COLUMN customer_age INTEGER");
       bAdd('customer_name_en', "ALTER TABLE bookings ADD COLUMN customer_name_en TEXT");
+      bAdd('is_free', "ALTER TABLE bookings ADD COLUMN is_free INTEGER DEFAULT 0");
     });
 
     // services 欄位擴展：床位需求

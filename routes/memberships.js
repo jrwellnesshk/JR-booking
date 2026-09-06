@@ -65,6 +65,24 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     db.run(sql, params, function (err) { err ? reject(err) : resolve(this); });
   });
 
+  // 🏠 家庭計劃 A/B/C + 跟死全家嘅單號（FAM-1001 順序）
+  // 總人數 = 戶主 + 子女：A(1-2) / B(3-6) / C(7 人以上)
+  async function syncFamilyPlan(headId) {
+    const children = await q1("SELECT COUNT(*) AS c FROM family_links WHERE parent_user_id=?", [headId]);
+    const total = 1 + (children ? children.c : 0);
+    const plan = total <= 2 ? 'A' : (total <= 6 ? 'B' : 'C');
+    await run("UPDATE users SET family_plan=? WHERE id=?", [plan, headId]);
+    const exist = await q1("SELECT id, invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
+    if (!exist) {
+      const maxRow = await q1("SELECT COALESCE(MAX(CAST(SUBSTR(invoice_no,5) AS INTEGER)),1000) AS m FROM family_invoices");
+      const nextNo = 'FAM-' + (maxRow.m + 1);
+      await run("INSERT INTO family_invoices (invoice_no, family_head_id, plan) VALUES (?,?,?)", [nextNo, headId, plan]);
+    } else if (exist.invoice_no) {
+      await run("UPDATE family_invoices SET plan=? WHERE family_head_id=?", [plan, headId]);
+    }
+    return plan;
+  }
+
   const activateSubscription = async (userId, tier, paymentId) => {
     const now = new Date();
     const start = now.toISOString().slice(0, 10);
@@ -344,6 +362,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       // 👨‍👩‍👧 連結入家庭：general 級自動升做 family 級（premium 保持不變，永不降級）
       await run("UPDATE users SET birth_date=? WHERE id=?", [childBirthDate, child.id]);
       await familyService.addChild(head.id, child.id, relation || 'parent');
+      await syncFamilyPlan(head.id);
       res.json({ ok: true, message: '已加入子帳戶', child: { id: child.id, username: child.username } });
     } catch (e) {
       console.error('加入子帳戶失敗:', e);
@@ -487,6 +506,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
           'customer', 'family', 1, 1, 1]);
       const childId = inserted.lastID;
       await familyService.addChild(head.id, childId, relation || 'parent');
+      await syncFamilyPlan(head.id);
 
       // 📲 自動經 WhatsApp 將登入帳戶 + 暫時密碼發送給家長
       const notified = await sendChildCredentials(childPhone, '家庭成員子帳戶已建立', name, username, tempPassword);
@@ -570,7 +590,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         parentName = p.name;
       }
       const children = await q(
-        `SELECT u.id, u.name, u.username, u.birth_date, u.created_at, fl.relation, fl.created_at AS linked_at
+        `SELECT u.id, u.name, u.username, u.birth_date, u.member_no, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
          FROM family_links fl JOIN users u ON u.id = fl.child_user_id
          WHERE fl.parent_user_id=? ORDER BY u.id`, [parentId]);
       const withPerm = children.map((c) => {
@@ -579,16 +599,51 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
           ...c,
           age,
           isAdult: age >= 18,
+          hiddenFromHead: (c.hide_from_head === 1 && age >= 18),
           canManage: age < 18,
-          canViewBookings: true,
-          canViewMedical: age < 18,
-          canViewLateness: age < 18
+          canViewBookings: !(c.hide_from_head === 1 && age >= 18),
+          canViewMedical: !(c.hide_from_head === 1 && age >= 18),
+          canViewLateness: !(c.hide_from_head === 1 && age >= 18)
         };
       });
-      res.json({ children: withPerm, parentName, parentUsername: req.query.parentUsername || user.username });
+      const inv = await q1("SELECT invoice_no, plan FROM family_invoices WHERE family_head_id=?", [parentId]);
+      const headRow = await q1("SELECT member_no, family_plan FROM users WHERE id=?", [parentId]);
+      res.json({ children: withPerm, parentName, parentUsername: req.query.parentUsername || user.username,
+        plan: inv ? inv.plan : (headRow ? headRow.family_plan : null),
+        invoiceNo: inv ? inv.invoice_no : null,
+        headMemberNo: headRow ? headRow.member_no : null });
     } catch (e) {
       res.status(500).json({ error: '系統錯誤' });
     }
+  });
+
+  // GET /api/membership/family-invoice — 全家共用嘅單號 + 計劃（戶主或任何成員都可查）
+  router.get('/family-invoice', requireAuth, async (req, res) => {
+    try {
+      const user = req.user;
+      const headId = (Number(user.family_head_id) === Number(user.id)) ? user.id : (user.family_head_id || user.id);
+      const inv = await q1("SELECT invoice_no, plan FROM family_invoices WHERE family_head_id=?", [headId]);
+      const head = await q1("SELECT name, member_no, family_plan FROM users WHERE id=?", [headId]);
+      res.json({
+        ok: true,
+        invoiceNo: inv ? inv.invoice_no : null,
+        plan: inv ? inv.plan : (head ? head.family_plan : null),
+        headId,
+        headName: head ? head.name : null,
+        headMemberNo: head ? head.member_no : null
+      });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/membership/privacy — 子帳戶開關「唔俾主帳戶睇我資料」（只影響 18 歲以上自己）
+  router.post('/privacy', requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== 'customer') return res.status(403).json({ error: '只限客戶' });
+      const { hide } = req.body || {};
+      const v = hide ? 1 : 0;
+      await run("UPDATE users SET hide_from_head=? WHERE id=?", [v, req.user.id]);
+      res.json({ ok: true, hide_from_head: v });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // PUT /api/membership/family/:id — 修改子帳戶（僅 18 歲以下）
@@ -667,8 +722,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.delete('/admin/link/:childUserId', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     try {
       const childId = Number(req.params.childUserId);
+      const child = await q1("SELECT family_head_id FROM users WHERE id=?", [childId]);
       const removed = await familyService.removeChildLink(childId);
       if (!removed) return res.status(404).json({ error: '該成員沒有家庭連結' });
+      const headId = child ? (child.family_head_id || childId) : childId;
+      await syncFamilyPlan(headId);
       res.json({ ok: true });
     } catch (e) {
       console.error('移除家庭成員失敗:', e);

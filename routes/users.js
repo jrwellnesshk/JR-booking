@@ -22,7 +22,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     const staffOnlyCustomers = req.user && req.user.role === 'staff';
     db.all(
       `SELECT u.id, u.username, u.name, u.name_en, u.phone, u.email, u.role, u.profile_completed, u.created_at,
-          u.membership_tier, u.insurance_covered, u.family_head_id, u.staff_note,
+          u.membership_tier, u.insurance_covered, u.family_head_id, u.member_no, u.hide_from_head, u.family_plan, u.staff_note,
           u.subscription_status, u.stripe_subscription_id,
           CASE WHEN u.family_head_id IS NULL THEN NULL
                WHEN u.family_head_id = u.id THEN 'head'
@@ -220,6 +220,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           params.push(val);
         }
       });
+      // 會員編號 = 電話（改電話即同步 member_no）
+      if (phone !== undefined) { sets.push('member_no=?'); params.push(phone); }
       if (sets.length === 0) {
         return res.status(400).json({ error: "沒有提供任何可更新的欄位" });
       }

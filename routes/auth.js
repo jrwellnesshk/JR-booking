@@ -294,8 +294,8 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
         // 進行註冊
         const hashedPassword = hashPassword(password);
         db.run(
-          "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-          [username, hashedPassword, name, name_en || "", phone, email || "", "customer", 0],
+          "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed, member_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [username, hashedPassword, name, name_en || "", phone, email || "", "customer", 0, phone],
           function (err) {
             if (err) {
               if (err.message.includes("UNIQUE")) {

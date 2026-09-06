@@ -709,6 +709,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       const records = await new Promise((resolve, reject) => {
         db.all(
           `SELECT mr.*, cu.name AS customer_name, cu.username AS customer_username,
+                  cu.hide_from_head, cu.birth_date,
                   du.name AS doctor_user_name, b.appointment_date, b.appointment_time,
                   b.doctor_name AS booking_doctor_name, s.name AS service_name
              FROM medical_records mr
@@ -736,7 +737,10 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       }));
 
       const withPhotos = await attachPhotos(withProgress);
-      res.json({ ok: true, total: withPhotos.length, data: withPhotos });
+      // 🔒 私隱：子帳戶已開「唔俾主帳戶睇」且成年 → 醫護列表亦過濾（尊重病人選擇）
+      const ageOf = (bd) => { if (!bd) return 0; const b = new Date(bd); if (isNaN(b.getTime())) return 0; const n = new Date(); let a = n.getFullYear() - b.getFullYear(); const m = n.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--; return a; };
+      const visible = withPhotos.filter(r => !(r.hide_from_head === 1 && ageOf(r.birth_date) >= 18));
+      res.json({ ok: true, total: visible.length, data: visible });
     } catch (error) {
       console.error('取得全部病歷失敗:', error.message);
       res.status(500).json({ error: '取得病歷失敗' }); console.error('❌ medicalRecords 錯誤:', error);
