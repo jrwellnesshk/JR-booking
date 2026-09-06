@@ -439,7 +439,7 @@
               <button @click="docTab='attendance'; loadMyHr()" :class="docTab==='attendance' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-clock mr-2"></i>打卡考勤
               </button>
-              <button @click="docTab='timeslots'; loadMySlotCalendar()" :class="docTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>時段管理</button>
+              <button @click="docTab='timeslots'; openMySlots()" :class="docTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>時段管理</button>
               <button @click="docTab='ess'; loadEss()" :class="docTab==='ess' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-user-cog mr-2"></i>我的自助
               </button>
@@ -987,73 +987,104 @@
             </div>
           </div>
 
-          <!-- ==== 醫師時段管理 ==== -->
+          <!-- ==== 醫師時段管理（Google 日曆式拖掃）==== -->
           <div v-if="docTab==='timeslots'" class="space-y-6">
-            <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>我的時段管理</h2>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>我的時段管理</h2>
+              <div class="flex items-center gap-2">
+                <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>週（一至日）</button>
+                <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>日</button>
+              </div>
+            </div>
 
             <!-- 📅 月曆 -->
             <div class="bg-white rounded-xl shadow-lg p-6">
               <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-alt text-emerald-600 mr-2"></i>我的返工月曆</h3>
+                <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-alt text-emerald-600 mr-2"></i>選擇日期</h3>
                 <div class="flex items-center gap-2">
-                  <button @click="prevMyMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-left"></i></button>
-                  <span class="font-semibold text-slate-700 w-28 text-center">{{ myCalendarMonth }}</span>
-                  <button @click="nextMyMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-right"></i></button>
+                  <button @click="prevSlotMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-left"></i></button>
+                  <span class="font-semibold text-slate-700 w-28 text-center">{{ slotCalendarMonth }}</span>
+                  <button @click="nextSlotMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-right"></i></button>
                 </div>
               </div>
               <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
-                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+                <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
               </div>
               <div class="grid grid-cols-7 gap-1">
-                <template v-for="(cell, idx) in myCalendarDays()" :key="idx">
+                <template v-for="(cell, idx) in slotCalendarDays()" :key="idx">
                   <div v-if="!cell" class="aspect-square"></div>
-                  <button
-                    v-else
-                    type="button"
-                    @click="selectMySlotDay(cell.date)"
-                    class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative"
-                    :class="mySlotDate === cell.date ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'"
-                  >
+                  <button v-else type="button" @click="pickSlotDay(cell.date)" class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative" :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'">
                     <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
                     <span v-if="cell.working" class="mt-0.5 w-6 h-1.5 rounded-full bg-emerald-500"></span>
                     <span v-else-if="cell.leave" class="mt-0.5 w-6 h-1.5 rounded-full bg-slate-300"></span>
                   </button>
                 </template>
               </div>
-              <p class="text-xs text-slate-400 mt-2">綠色橫條＝當日有開放時段；灰色＝休假。撳日子載入嗰日嘅時段管理。</p>
+              <p class="text-xs text-slate-400 mt-2">撳日曆中嘅日子 → 下方網格會顯示嗰段日期嘅時段；撳住拖掃多個方格可批量選取。</p>
             </div>
 
-            <!-- 當日時段管理 -->
+            <!-- 日期範圍 -->
+            <div class="bg-white rounded-xl shadow-lg p-4 flex flex-wrap items-end gap-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">由（年／月／日）</label>
+                <input type="date" v-model="slotRangeStart" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-500 mb-1">至（年／月／日）</label>
+                <input type="date" v-model="slotRangeEnd" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+              </div>
+              <p class="text-xs text-slate-400 self-center">目前顯示：{{ slotView==='week' ? '該週（一至日）' : '所揀範圍' }} · 每格 15 分鐘</p>
+            </div>
+
+            <!-- 拖掃網格 + 操作掣 -->
             <div class="bg-white rounded-xl shadow-lg p-6">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>{{ mySlotDate }} 時段</h3>
-                <input type="date" v-model="mySlotDate" @change="loadMyDaySlots" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格（拖掃選取）</h3>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>加入</button>
+                  <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
+                  <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
+                  <button @click="applySlotStatus('blank')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>取消（空白）</button>
+                  <button v-if="slotDirtyCount" @click="confirmSlotChanges" :disabled="slotBusy" class="px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-blue-600 disabled:opacity-40"><i class="fas fa-check mr-1"></i>確認儲存（{{ slotDirtyCount }}）</button>
+                </div>
               </div>
 
-              <div v-if="mySlotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
-              <div v-else-if="!mySlotMatrix.length" class="text-center py-8 text-slate-500">
-                <i class="fas fa-calendar-times text-4xl mb-3"></i>
-                <p>呢一日暫無時段資料</p>
-                <button @click="loadMyDaySlots" class="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm"><i class="fas fa-magic mr-1"></i>生成今日時段</button>
+              <div v-if="slotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
+              <div v-else-if="!slotDays.length" class="text-center py-10 text-slate-500">
+                <i class="fas fa-calendar-times text-4xl mb-3"></i><p>暫無時段資料，請揀選日期。</p>
               </div>
-
-              <div v-else class="space-y-3">
-                <div class="flex flex-wrap gap-2 items-center mb-2">
-                  <button @click="setAllMySlots(true)" class="px-3 py-1.5 bg-green-600 text-white rounded text-sm">全部開放</button>
-                  <button @click="setAllMySlots(false)" class="px-3 py-1.5 bg-red-600 text-white rounded text-sm">全部關閉</button>
-                  <button @click="saveMySlots" class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm">儲存</button>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  <div v-for="slot in mySlotMatrix" :key="slot.time" class="border rounded-lg p-2 flex items-center justify-between" :class="slot.is_available ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'">
-                    <span class="font-mono font-bold text-emerald-700">{{ slot.time }}</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" :checked="slot.is_available" @change="slot.is_available = $event.target.checked" class="sr-only peer" />
-                      <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                    </label>
-                  </div>
-                </div>
-                <p class="text-xs text-slate-400">綠色＝開放可約；灰色＝關閉。改完撳「儲存」寫入。</p>
+              <div v-else class="overflow-x-auto" @mouseleave="endSlotSelect" @mouseup="endSlotSelect">
+                <table class="border-collapse select-none" style="user-select:none">
+                  <thead>
+                    <tr class="bg-slate-100">
+                      <th class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 sticky left-0 bg-slate-100 z-10">時間</th>
+                      <th v-for="d in slotDays" :key="d.date" class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 min-w-[92px]">
+                        <div>{{ d.label }}</div><div class="text-[10px] text-slate-400">{{ d.dow }}</div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(time, ti) in slotTimeList" :key="time">
+                      <td class="border border-slate-200 px-2 py-1 font-mono text-xs font-bold text-slate-500 sticky left-0 bg-white z-10">{{ time }}</td>
+                      <td v-for="(d, di) in slotDays" :key="d.date + time"
+                          @mousedown.prevent="startSlotSelect(di, ti)"
+                          @mouseenter="enterSlotCell(di, ti)"
+                          class="border border-slate-200 px-1 py-1 text-center cursor-pointer transition-colors"
+                          :class="slotCellClass(di, ti, d.cells[ti])">
+                        <span class="text-[10px] leading-none block">{{ slotCellText(d.cells[ti]) }}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
+              <div class="flex flex-wrap gap-3 mt-3 text-xs text-slate-500">
+                <span><span class="inline-block w-3 h-3 rounded bg-emerald-200 align-middle"></span> 加入（開放）</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-rose-200 align-middle"></span> 休息</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-amber-200 align-middle"></span> 候診</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-slate-200 align-middle"></span> 取消（空白）</span>
+                <span><span class="inline-block w-3 h-3 rounded ring-2 ring-blue-500 bg-blue-100 align-middle"></span> 已選取</span>
+              </div>
+              <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mt-2"><i class="fas fa-check-circle mr-1"></i>已儲存！</p>
             </div>
           </div>
 
@@ -1309,7 +1340,7 @@
           <button @click="docTab='bookings'; sidebarOpen=false" :class="docTab==='bookings' ? 'on' : ''"><i class="fas fa-list"></i><span>預約</span></button>
           <button @click="docTab='schedule'; loadMyLeaves(); sidebarOpen=false" :class="docTab==='schedule' ? 'on' : ''"><i class="fas fa-calendar-xmark"></i><span>排程</span></button>
           <button @click="docTab='attendance'; loadMyHr(); sidebarOpen=false" :class="docTab==='attendance' ? 'on' : ''"><i class="fas fa-clock"></i><span>考勤</span></button>
-          <button @click="docTab='timeslots'; loadMySlotCalendar(); sidebarOpen=false" :class="docTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>時段</span></button>
+          <button @click="docTab='timeslots'; openMySlots(); sidebarOpen=false" :class="docTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>時段</span></button>
           <button @click="docTab='ess'; loadEss(); sidebarOpen=false" :class="docTab==='ess' ? 'on' : ''"><i class="fas fa-user-cog"></i><span>自助</span></button>
           <button @click="sidebarOpen=true" :class="sidebarOpen ? 'on' : ''"><i class="fas fa-ellipsis-h"></i><span>更多</span></button>
         </nav>
@@ -1640,12 +1671,23 @@
             // 分頁：bookings=預約列表 / schedule=排程請假
             docTab: "bookings",
 
-            // 🗓️ 時段管理（醫師自己）
-            mySlotDate: new Date().toISOString().slice(0, 10),
-            mySlotMatrix: [], // [{ time, is_available, booked, maxCapacity }]
-            mySlotCalendar: {}, // { 'YYYY-MM-DD': { doctorId: { availableSlots, totalSlots, working, leave } } }
-            myCalendarMonth: new Date().toISOString().slice(0, 7),
-            mySlotBusy: false,
+            // 🗓️ 時段管理（Google 日曆式拖掃）
+            slotView: 'week', // 'week' = 一至日；'day' = 所揀範圍
+            slotRangeStart: new Date().toISOString().slice(0, 10),
+            slotRangeEnd: new Date().toISOString().slice(0, 10),
+            slotCalendarMonth: new Date().toISOString().slice(0, 7),
+            slotCalendar: {}, // { 'YYYY-MM-DD': { doctorId: { availableSlots, totalSlots, working, leave } } }
+            slotDays: [], // [{ date, label, dow, cells:[{time,status,booked,capacity}] }]
+            slotTimeList: [], // ['10:30', ...]
+            slotBusy: false,
+            slotSelecting: false,
+            slotAnchor: null,
+            slotHead: null,
+            slotSel: new Set(),
+            slotDirty: new Set(),
+            slotSelCount: 0,
+            slotDirtyCount: 0,
+            slotSavedFlash: false,
 
             // 排程／請假
             leaveForm: { date: "", reason: "", notify: true, cancel: false },
@@ -1905,109 +1947,177 @@
           },
 
           // ==================== 醫師時段管理 ====================
-          async loadMySlotCalendar() {
-            if (!this.doctorInfo) return;
-            try {
-              const [y, m] = this.myCalendarMonth.split('-').map(Number);
-              const start = `${this.myCalendarMonth}-01`;
-              const lastDay = new Date(y, m, 0).getDate();
-              const end = `${this.myCalendarMonth}-${String(lastDay).padStart(2, '0')}`;
-              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${start}&end=${end}`);
-              if (res.ok) {
-                const data = await res.json();
-                this.mySlotCalendar = data.days || {};
-              }
-            } catch (e) { console.error('載入月曆失敗', e); }
+          // ==================== 時段管理（Google 日曆式拖掃）====================
+          openMySlots() {
+            this.loadSlotCalendar();
+            this.loadSlotGrid();
           },
-          prevMyMonth() {
-            const [y, m] = this.myCalendarMonth.split('-').map(Number);
-            const d = new Date(y, m - 2, 1);
-            this.myCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            this.loadMySlotCalendar();
-          },
-          nextMyMonth() {
-            const [y, m] = this.myCalendarMonth.split('-').map(Number);
-            const d = new Date(y, m, 1);
-            this.myCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            this.loadMySlotCalendar();
-          },
-          myCalendarDays() {
-            const [y, m] = this.myCalendarMonth.split('-').map(Number);
+          slotCalendarDays() {
+            const [y, m] = this.slotCalendarMonth.split('-').map(Number);
             const first = new Date(y, m - 1, 1);
-            const startDow = first.getDay();
+            const startDow = (first.getDay() + 6) % 7; // 週一為首
             const daysInMonth = new Date(y, m, 0).getDate();
             const cells = [];
             for (let i = 0; i < startDow; i++) cells.push(null);
             const myId = this.doctorInfo ? this.doctorInfo.id : null;
-            for (let d = 1; d <= daysInMonth; d++) {
-              const date = `${this.myCalendarMonth}-${String(d).padStart(2, '0')}`;
-              const info = (this.mySlotCalendar[date] || {})[myId];
-              cells.push({ date, day: d, working: !!(info && info.working && !info.leave), leave: !!(info && info.leave) });
+            for (let dN = 1; dN <= daysInMonth; dN++) {
+              const date = `${this.slotCalendarMonth}-${String(dN).padStart(2, '0')}`;
+              const info = (this.slotCalendar || {})[date];
+              const myInfo = myId != null ? (info || {})[myId] : null;
+              cells.push({ date, day: dN, working: !!(myInfo && myInfo.working && !myInfo.leave), leave: !!(myInfo && myInfo.leave) });
             }
             return cells;
           },
-          selectMySlotDay(date) {
-            this.mySlotDate = date;
-            this.loadMyDaySlots();
+          prevSlotMonth() {
+            const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+            const d = new Date(y, m - 2, 1);
+            this.slotCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            this.loadSlotCalendar();
           },
-          async loadMyDaySlots() {
+          nextSlotMonth() {
+            const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+            const d = new Date(y, m, 1);
+            this.slotCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            this.loadSlotCalendar();
+          },
+          async loadSlotCalendar() {
             if (!this.doctorInfo) return;
-            this.mySlotBusy = true;
             try {
-              const res = await fetch(`/api/bookings/doctor-time-slots/${this.mySlotDate}`);
-              if (res.ok) {
-                const data = await res.json();
-                const myId = this.doctorInfo.id;
-                const allTimeSlots = [...(data.morningSlots || []), ...(data.afternoonSlots || [])];
-                const matrix = allTimeSlots.map(time => {
-                  const dSlot = (data.slots[time] || {})[myId] || {};
-                  return {
-                    time,
-                    is_available: dSlot.is_available !== false,
-                    booked: dSlot.current_bookings || 0,
-                    maxCapacity: dSlot.max_capacity || 1
-                  };
-                });
-                this.mySlotMatrix = matrix;
-              } else {
-                this.mySlotMatrix = [];
-              }
-            } catch (e) {
-              console.error('載入當日時段失敗', e);
-              this.mySlotMatrix = [];
-            } finally {
-              this.mySlotBusy = false;
+              const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+              const start = `${this.slotCalendarMonth}-01`;
+              const lastDay = new Date(y, m, 0).getDate();
+              const end = `${this.slotCalendarMonth}-${String(lastDay).padStart(2, '0')}`;
+              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${start}&end=${end}`);
+              if (res.ok) { const data = await res.json(); this.slotCalendar = data.days || {}; }
+            } catch (e) { console.error('載入月曆失敗', e); }
+          },
+          pickSlotDay(date) {
+            this.slotRangeStart = date;
+            this.slotRangeEnd = date;
+            this.loadSlotGrid();
+          },
+          onSlotRangeChange() {
+            if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart;
+            this.loadSlotGrid();
+          },
+          slotDaysInRange() {
+            const start = new Date(this.slotRangeStart + 'T00:00:00');
+            if (this.slotView === 'week') {
+              const dow = (start.getDay() + 6) % 7;
+              const mon = new Date(start); mon.setDate(start.getDate() - dow);
+              const arr = [];
+              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(dd.toISOString().slice(0, 10)); }
+              return arr;
             }
+            const end = new Date(this.slotRangeEnd + 'T00:00:00');
+            const arr = []; let cur = new Date(start);
+            while (cur <= end && arr.length < 31) { arr.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+            return arr;
           },
-          setAllMySlots(available) {
-            this.mySlotMatrix.forEach(s => { s.is_available = available; });
-          },
-          async saveMySlots() {
+          async loadSlotGrid() {
             if (!this.doctorInfo) return;
+            this.slotBusy = true;
+            this.slotSel = new Set(); this.slotDirty = new Set();
+            this.slotSelCount = 0; this.slotDirtyCount = 0;
             try {
-              const slots = this.mySlotMatrix.map(s => ({
-                date: this.mySlotDate,
-                time: s.time,
-                doctor_id: this.doctorInfo.id,
-                is_available: s.is_available,
-                max_capacity: 1
-              }));
+              const days = this.slotDaysInRange();
+              if (!days.length) { this.slotDays = []; this.slotTimeList = []; this.slotBusy = false; return; }
+              const firstJson = await (await fetch(`/api/bookings/doctor-time-slots/${days[0]}`)).json();
+              const timeList = [...(firstJson.morningSlots || []), ...(firstJson.afternoonSlots || [])];
+              this.slotTimeList = timeList;
+              const myId = this.doctorInfo.id;
+              const wn = ['日', '一', '二', '三', '四', '五', '六'];
+              const out = [];
+              for (let i = 0; i < days.length; i++) {
+                const date = days[i];
+                let djson;
+                if (i === 0) djson = firstJson;
+                else { const r = await fetch(`/api/bookings/doctor-time-slots/${date}`); djson = r.ok ? await r.json() : { slots: {} }; }
+                const cells = timeList.map(time => {
+                  const ds = ((djson.slots || {})[time] || {})[myId] || {};
+                  const status = ds.status || (ds.is_available === false ? 'blank' : 'open');
+                  return { time, status, booked: ds.current_bookings || 0, capacity: ds.max_capacity || 1 };
+                });
+                const dt = new Date(date + 'T00:00:00');
+                out.push({ date, label: date.slice(5), dow: '週' + wn[dt.getDay()], cells });
+              }
+              this.slotDays = out;
+            } catch (e) { console.error('載入時段網格失敗', e); }
+            finally { this.slotBusy = false; }
+          },
+          startSlotSelect(di, ti) {
+            this.slotSelecting = true;
+            this.slotAnchor = { di, ti };
+            this.slotHead = { di, ti };
+            this.slotSel = new Set([di + '-' + ti]);
+            this.slotSelCount = 1;
+          },
+          enterSlotCell(di, ti) {
+            if (!this.slotSelecting) return;
+            this.slotHead = { di, ti };
+            this.computeSel();
+          },
+          endSlotSelect() { this.slotSelecting = false; },
+          computeSel() {
+            if (!this.slotAnchor || !this.slotHead) return;
+            const a = this.slotAnchor, b = this.slotHead;
+            const d0 = Math.min(a.di, b.di), d1 = Math.max(a.di, b.di);
+            const t0 = Math.min(a.ti, b.ti), t1 = Math.max(a.ti, b.ti);
+            const set = new Set();
+            for (let di = d0; di <= d1; di++) for (let ti = t0; ti <= t1; ti++) set.add(di + '-' + ti);
+            this.slotSel = set;
+            this.slotSelCount = set.size;
+          },
+          applySlotStatus(status) {
+            if (!this.slotSel.size) return;
+            this.slotSel.forEach(key => {
+              const [di, ti] = key.split('-').map(Number);
+              const cell = this.slotDays[di] && this.slotDays[di].cells[ti];
+              if (cell) { cell.status = status; this.slotDirty.add(key); }
+            });
+            this.slotSel = new Set(); this.slotSelecting = false;
+            this.slotSelCount = 0; this.slotDirtyCount = this.slotDirty.size;
+          },
+          slotCellClass(di, ti, cell) {
+            if (!cell) return 'bg-slate-50';
+            const sel = this.slotSel.has(di + '-' + ti);
+            let base = 'bg-slate-100 border-slate-200';
+            if (cell.status === 'open') base = 'bg-emerald-100 border-emerald-300';
+            else if (cell.status === 'rest') base = 'bg-rose-100 border-rose-300';
+            else if (cell.status === 'waiting') base = 'bg-amber-100 border-amber-300';
+            return sel ? (base + ' ring-2 ring-blue-500 bg-blue-100') : base;
+          },
+          slotCellText(cell) {
+            if (!cell) return '';
+            if (cell.booked > 0) return '約' + cell.booked;
+            if (cell.status === 'open') return '開';
+            if (cell.status === 'rest') return '休';
+            if (cell.status === 'waiting') return '候';
+            return '×';
+          },
+          async confirmSlotChanges() {
+            if (!this.doctorInfo) return;
+            this.slotBusy = true;
+            try {
+              const slots = [];
+              this.slotDirty.forEach(key => {
+                const [di, ti] = key.split('-').map(Number);
+                const day = this.slotDays[di]; if (!day) return;
+                const cell = day.cells[ti]; if (!cell) return;
+                slots.push({ date: day.date, time: cell.time, doctor_id: this.doctorInfo.id, status: cell.status, max_capacity: cell.capacity });
+              });
               const res = await fetch('/api/bookings/doctor-time-slots/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slots })
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slots })
               });
               if (res.ok) {
-                alert('✅ 時段設定已儲存');
-                this.loadMyDaySlots();
-                this.loadMySlotCalendar();
-              } else {
-                alert('儲存失敗');
-              }
-            } catch (e) {
-              console.error('儲存失敗', e);
-              alert('儲存失敗：' + e.message);
-            }
+                this.slotDirty = new Set();
+                this.slotDirtyCount = 0;
+                this.slotSavedFlash = true;
+                setTimeout(() => { this.slotSavedFlash = false; }, 2000);
+                this.loadSlotCalendar();
+              } else { alert('儲存失敗'); }
+            } catch (e) { alert('儲存失敗：' + e.message); }
+            finally { this.slotBusy = false; }
           },
 
           // ==================== 排程／請假 ====================

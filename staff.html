@@ -462,6 +462,7 @@
                 <i class="fas fa-clock mr-2"></i>打卡考勤
               </button>
               <button @click="mainTab='ess'; loadEss()" :class="mainTab==='ess' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+              <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>時段管理</button>
                 <i class="fas fa-user-cog mr-2"></i>我的自助
               </button>
             </nav>
@@ -1199,6 +1200,121 @@
             </div>
           </div>
 
+          <!-- ==== 員工時段管理（Google 日曆式拖掃）==== -->
+          <div v-if="mainTab==='timeslots'" class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>預約時段管理</h2>
+              <div class="flex items-center gap-2">
+                <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>週（一至日）</button>
+                <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>日</button>
+              </div>
+            </div>
+
+            <!-- 🩺 醫師選擇 -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+              <label class="block text-sm font-medium text-slate-700 mb-2"><i class="fas fa-user-md text-emerald-600 mr-2"></i>選擇醫師</label>
+              <select v-model="slotDoctorId" @change="openSlotManager()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full sm:w-64">
+                <option value="">請選擇醫師</option>
+                <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
+              </select>
+            </div>
+
+            <template v-if="slotDoctorId">
+              <!-- 📅 月曆 -->
+              <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-alt text-emerald-600 mr-2"></i>選擇日期</h3>
+                  <div class="flex items-center gap-2">
+                    <button @click="prevSlotMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-left"></i></button>
+                    <span class="font-semibold text-slate-700 w-28 text-center">{{ slotCalendarMonth }}</span>
+                    <button @click="nextSlotMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-right"></i></button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
+                  <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+                </div>
+                <div class="grid grid-cols-7 gap-1">
+                  <template v-for="(cell, idx) in slotCalendarDays()" :key="idx">
+                    <div v-if="!cell" class="aspect-square"></div>
+                    <button v-else type="button" @click="pickSlotDay(cell.date)" class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative" :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'">
+                      <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
+                      <span v-if="cell.working" class="mt-0.5 w-6 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span v-else-if="cell.leave" class="mt-0.5 w-6 h-1.5 rounded-full bg-slate-300"></span>
+                    </button>
+                  </template>
+                </div>
+                <p class="text-xs text-slate-400 mt-2">撳日曆中嘅日子 → 下方網格會顯示嗰段日期嘅時段；撳住拖掃多個方格可批量選取。</p>
+              </div>
+
+              <!-- 日期範圍 -->
+              <div class="bg-white rounded-xl shadow-lg p-4 flex flex-wrap items-end gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">由（年／月／日）</label>
+                  <input type="date" v-model="slotRangeStart" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">至（年／月／日）</label>
+                  <input type="date" v-model="slotRangeEnd" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                </div>
+                <p class="text-xs text-slate-400 self-center">目前顯示：{{ slotView==='week' ? '該週（一至日）' : '所揀範圍' }} · 每格 15 分鐘</p>
+              </div>
+
+              <!-- 拖掃網格 + 操作掣 -->
+              <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格（拖掃選取）</h3>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>加入</button>
+                    <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
+                    <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
+                    <button @click="applySlotStatus('blank')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>取消（空白）</button>
+                    <button v-if="slotDirtyCount" @click="confirmSlotChanges" :disabled="slotBusy" class="px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-blue-600 disabled:opacity-40"><i class="fas fa-check mr-1"></i>確認儲存（{{ slotDirtyCount }}）</button>
+                  </div>
+                </div>
+
+                <div v-if="slotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
+                <div v-else-if="!slotDays.length" class="text-center py-10 text-slate-500">
+                  <i class="fas fa-calendar-times text-4xl mb-3"></i><p>暫無時段資料，請揀選日期。</p>
+                </div>
+                <div v-else class="overflow-x-auto" @mouseleave="endSlotSelect" @mouseup="endSlotSelect">
+                  <table class="border-collapse select-none" style="user-select:none">
+                    <thead>
+                      <tr class="bg-slate-100">
+                        <th class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 sticky left-0 bg-slate-100 z-10">時間</th>
+                        <th v-for="d in slotDays" :key="d.date" class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 min-w-[92px]">
+                          <div>{{ d.label }}</div><div class="text-[10px] text-slate-400">{{ d.dow }}</div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(time, ti) in slotTimeList" :key="time">
+                        <td class="border border-slate-200 px-2 py-1 font-mono text-xs font-bold text-slate-500 sticky left-0 bg-white z-10">{{ time }}</td>
+                        <td v-for="(d, di) in slotDays" :key="d.date + time"
+                            @mousedown.prevent="startSlotSelect(di, ti)"
+                            @mouseenter="enterSlotCell(di, ti)"
+                            class="border border-slate-200 px-1 py-1 text-center cursor-pointer transition-colors"
+                            :class="slotCellClass(di, ti, d.cells[ti])">
+                          <span class="text-[10px] leading-none block">{{ slotCellText(d.cells[ti]) }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="flex flex-wrap gap-3 mt-3 text-xs text-slate-500">
+                  <span><span class="inline-block w-3 h-3 rounded bg-emerald-200 align-middle"></span> 加入（開放）</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-rose-200 align-middle"></span> 休息</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-amber-200 align-middle"></span> 候診</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-slate-200 align-middle"></span> 取消（空白）</span>
+                  <span><span class="inline-block w-3 h-3 rounded ring-2 ring-blue-500 bg-blue-100 align-middle"></span> 已選取</span>
+                </div>
+                <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mt-2"><i class="fas fa-check-circle mr-1"></i>已儲存！</p>
+              </div>
+            </template>
+            <div v-else class="bg-white rounded-xl shadow p-8 text-center text-slate-400">
+              <i class="fas fa-user-md text-4xl mb-3"></i><p>請先選擇一位醫師以管理佢嘅時段。</p>
+            </div>
+          </div>
+
           <!-- 日期篩選 & 搜尋 -->
           <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow p-4 mb-6">
             <div class="flex flex-wrap items-center gap-3">
@@ -1616,6 +1732,7 @@
           <button @click="mainTab='records'; loadAllMedicalRecords(); sidebarOpen=false" :class="mainTab==='records' ? 'on' : ''"><i class="fas fa-folder-open"></i><span>病歷</span></button>
           <button @click="mainTab='hr'; loadMyHr(); sidebarOpen=false" :class="mainTab==='hr' ? 'on' : ''"><i class="fas fa-clock"></i><span>考勤</span></button>
           <button @click="mainTab='ess'; loadEss(); sidebarOpen=false" :class="mainTab==='ess' ? 'on' : ''"><i class="fas fa-user-cog"></i><span>自助</span></button>
+          <button @click="mainTab='timeslots'; openSlotManager(); sidebarOpen=false" :class="mainTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>時段</span></button>
         </nav>
           </div>
         </div>
@@ -1939,6 +2056,25 @@
 
             // 🗓️ 預約日曆
             mainTab: "list",
+            // 🗓️ 時段管理（Google 日曆式拖掃）
+            doctors: [],
+            slotDoctorId: "",
+            slotView: 'week',
+            slotRangeStart: new Date().toISOString().slice(0, 10),
+            slotRangeEnd: new Date().toISOString().slice(0, 10),
+            slotCalendarMonth: new Date().toISOString().slice(0, 7),
+            slotCalendar: {},
+            slotDays: [],
+            slotTimeList: [],
+            slotBusy: false,
+            slotSelecting: false,
+            slotAnchor: null,
+            slotHead: null,
+            slotSel: new Set(),
+            slotDirty: new Set(),
+            slotSelCount: 0,
+            slotDirtyCount: 0,
+            slotSavedFlash: false,
             calCursor: new Date().toISOString().slice(0, 7),
             calSelected: "",
             calView: "month",
@@ -2081,6 +2217,180 @@
         },
 
         methods: {
+          // ==================== 時段管理（Google 日曆式拖掃）====================
+          async loadDoctors() {
+            try {
+              // 用公開端點 /api/doctors（與 admin 一致），避免 /api/settings/doctors 需登入而職員 token 被拒
+              const res = await fetch('/api/doctors');
+              if (res.ok) this.doctors = await res.json();
+            } catch (e) { console.error('載入醫師失敗', e); }
+          },
+          openSlotManager() {
+            this.loadDoctors();
+            this.loadSlotCalendar();
+            if (this.slotDoctorId) this.loadSlotGrid();
+          },
+          slotCalendarDays() {
+            const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+            const first = new Date(y, m - 1, 1);
+            const startDow = (first.getDay() + 6) % 7;
+            const daysInMonth = new Date(y, m, 0).getDate();
+            const cells = [];
+            for (let i = 0; i < startDow; i++) cells.push(null);
+            const did = this.slotDoctorId ? parseInt(this.slotDoctorId, 10) : null;
+            for (let dN = 1; dN <= daysInMonth; dN++) {
+              const date = `${this.slotCalendarMonth}-${String(dN).padStart(2, '0')}`;
+              const info = (this.slotCalendar || {})[date];
+              const myInfo = did != null ? (info || {})[did] : null;
+              cells.push({ date, day: dN, working: !!(myInfo && myInfo.working && !myInfo.leave), leave: !!(myInfo && myInfo.leave) });
+            }
+            return cells;
+          },
+          prevSlotMonth() {
+            const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+            const d = new Date(y, m - 2, 1);
+            this.slotCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            this.loadSlotCalendar();
+          },
+          nextSlotMonth() {
+            const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+            const d = new Date(y, m, 1);
+            this.slotCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            this.loadSlotCalendar();
+          },
+          async loadSlotCalendar() {
+            try {
+              const [y, m] = this.slotCalendarMonth.split('-').map(Number);
+              const start = `${this.slotCalendarMonth}-01`;
+              const lastDay = new Date(y, m, 0).getDate();
+              const end = `${this.slotCalendarMonth}-${String(lastDay).padStart(2, '0')}`;
+              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${start}&end=${end}`);
+              if (res.ok) { const data = await res.json(); this.slotCalendar = data.days || {}; }
+            } catch (e) { console.error('載入月曆失敗', e); }
+          },
+          pickSlotDay(date) { this.slotRangeStart = date; this.slotRangeEnd = date; this.loadSlotGrid(); },
+          onSlotRangeChange() { if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart; this.loadSlotGrid(); },
+          slotDaysInRange() {
+            const start = new Date(this.slotRangeStart + 'T00:00:00');
+            if (this.slotView === 'week') {
+              const dow = (start.getDay() + 6) % 7;
+              const mon = new Date(start); mon.setDate(start.getDate() - dow);
+              const arr = [];
+              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(dd.toISOString().slice(0, 10)); }
+              return arr;
+            }
+            const end = new Date(this.slotRangeEnd + 'T00:00:00');
+            const arr = []; let cur = new Date(start);
+            while (cur <= end && arr.length < 31) { arr.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+            return arr;
+          },
+          async loadSlotGrid() {
+            const myId = this.slotDoctorId ? parseInt(this.slotDoctorId, 10) : null;
+            if (myId == null) { this.slotDays = []; this.slotTimeList = []; return; }
+            this.slotBusy = true;
+            this.slotSel = new Set(); this.slotDirty = new Set();
+            this.slotSelCount = 0; this.slotDirtyCount = 0;
+            try {
+              const days = this.slotDaysInRange();
+              if (!days.length) { this.slotDays = []; this.slotTimeList = []; this.slotBusy = false; return; }
+              const firstJson = await (await fetch(`/api/bookings/doctor-time-slots/${days[0]}`)).json();
+              const timeList = [...(firstJson.morningSlots || []), ...(firstJson.afternoonSlots || [])];
+              this.slotTimeList = timeList;
+              const wn = ['日', '一', '二', '三', '四', '五', '六'];
+              const out = [];
+              for (let i = 0; i < days.length; i++) {
+                const date = days[i];
+                let djson;
+                if (i === 0) djson = firstJson;
+                else { const r = await fetch(`/api/bookings/doctor-time-slots/${date}`); djson = r.ok ? await r.json() : { slots: {} }; }
+                const cells = timeList.map(time => {
+                  const ds = ((djson.slots || {})[time] || {})[myId] || {};
+                  const status = ds.status || (ds.is_available === false ? 'blank' : 'open');
+                  return { time, status, booked: ds.current_bookings || 0, capacity: ds.max_capacity || 1 };
+                });
+                const dt = new Date(date + 'T00:00:00');
+                out.push({ date, label: date.slice(5), dow: '週' + wn[dt.getDay()], cells });
+              }
+              this.slotDays = out;
+            } catch (e) { console.error('載入時段網格失敗', e); }
+            finally { this.slotBusy = false; }
+          },
+          startSlotSelect(di, ti) {
+            this.slotSelecting = true;
+            this.slotAnchor = { di, ti };
+            this.slotHead = { di, ti };
+            this.slotSel = new Set([di + '-' + ti]);
+            this.slotSelCount = 1;
+          },
+          enterSlotCell(di, ti) {
+            if (!this.slotSelecting) return;
+            this.slotHead = { di, ti };
+            this.computeSel();
+          },
+          endSlotSelect() { this.slotSelecting = false; },
+          computeSel() {
+            if (!this.slotAnchor || !this.slotHead) return;
+            const a = this.slotAnchor, b = this.slotHead;
+            const d0 = Math.min(a.di, b.di), d1 = Math.max(a.di, b.di);
+            const t0 = Math.min(a.ti, b.ti), t1 = Math.max(a.ti, b.ti);
+            const set = new Set();
+            for (let di = d0; di <= d1; di++) for (let ti = t0; ti <= t1; ti++) set.add(di + '-' + ti);
+            this.slotSel = set;
+            this.slotSelCount = set.size;
+          },
+          applySlotStatus(status) {
+            if (!this.slotSel.size) return;
+            this.slotSel.forEach(key => {
+              const [di, ti] = key.split('-').map(Number);
+              const cell = this.slotDays[di] && this.slotDays[di].cells[ti];
+              if (cell) { cell.status = status; this.slotDirty.add(key); }
+            });
+            this.slotSel = new Set(); this.slotSelecting = false;
+            this.slotSelCount = 0; this.slotDirtyCount = this.slotDirty.size;
+          },
+          slotCellClass(di, ti, cell) {
+            if (!cell) return 'bg-slate-50';
+            const sel = this.slotSel.has(di + '-' + ti);
+            let base = 'bg-slate-100 border-slate-200';
+            if (cell.status === 'open') base = 'bg-emerald-100 border-emerald-300';
+            else if (cell.status === 'rest') base = 'bg-rose-100 border-rose-300';
+            else if (cell.status === 'waiting') base = 'bg-amber-100 border-amber-300';
+            return sel ? (base + ' ring-2 ring-blue-500 bg-blue-100') : base;
+          },
+          slotCellText(cell) {
+            if (!cell) return '';
+            if (cell.booked > 0) return '約' + cell.booked;
+            if (cell.status === 'open') return '開';
+            if (cell.status === 'rest') return '休';
+            if (cell.status === 'waiting') return '候';
+            return '×';
+          },
+          async confirmSlotChanges() {
+            const myId = this.slotDoctorId ? parseInt(this.slotDoctorId, 10) : null;
+            if (myId == null) return;
+            this.slotBusy = true;
+            try {
+              const slots = [];
+              this.slotDirty.forEach(key => {
+                const [di, ti] = key.split('-').map(Number);
+                const day = this.slotDays[di]; if (!day) return;
+                const cell = day.cells[ti]; if (!cell) return;
+                slots.push({ date: day.date, time: cell.time, doctor_id: myId, status: cell.status, max_capacity: cell.capacity });
+              });
+              const res = await fetch('/api/bookings/doctor-time-slots/batch', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slots })
+              });
+              if (res.ok) {
+                this.slotDirty = new Set();
+                this.slotDirtyCount = 0;
+                this.slotSavedFlash = true;
+                setTimeout(() => { this.slotSavedFlash = false; }, 2000);
+                this.loadSlotCalendar();
+              } else { alert('儲存失敗'); }
+            } catch (e) { alert('儲存失敗：' + e.message); }
+            finally { this.slotBusy = false; }
+          },
+
           // ==================== 登入 ====================
           async handleLogin() {
             if (!this.loginUsername || !this.loginPassword) {

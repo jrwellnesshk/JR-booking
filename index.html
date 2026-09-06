@@ -2448,6 +2448,16 @@
               >{{ realTier === 'family' ? '家庭' : '高級' }}</span>
             </button>
             <button
+              @click="setView('coupons')"
+              :class="{ active: view === 'coupons' }"
+            >
+              <i class="fas fa-ticket-alt"></i>優惠券
+              <span
+                v-if="couponTotalRemaining > 0"
+                class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-pink-400 text-white"
+              >{{ couponTotalRemaining }}</span>
+            </button>
+            <button
               @click="setView('mySettings')"
               :class="{ active: view === 'mySettings' }"
             >
@@ -3209,6 +3219,27 @@
                   </div>
                 </div>
 
+                <!-- 🛡️ 子帳戶私隱：隱藏資料唔俾主帳戶睇 -->
+                <div v-if="privacyIsChild" class="rounded-lg p-4 m-box border border-amber-200" style="background:#fffbeb;">
+                  <h3 class="font-semibold text-slate-700 mb-1 flex items-center">
+                    <i class="fas fa-eye-slash mr-2" style="color:#d97706;"></i>私隱設定（家庭帳戶）
+                  </h3>
+                  <p class="text-xs text-slate-500 mb-3">你係「{{ privacyHeadName }}」家庭帳戶嘅子成員。開啟以下開關，主帳戶將唔能夠查看你的病歷、預約紀錄及個人資料（18 歲以上適用）。</p>
+                  <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                    <span class="flex items-center gap-2 text-sm text-slate-700">
+                      <i class="fas fa-user-secret text-amber-500"></i>唔俾主帳戶（{{ privacyHeadName }}）睇我資料
+                      <span v-if="hideFromHead" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">已隱藏</span>
+                      <span v-else class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">公開中</span>
+                    </span>
+                    <span class="relative inline-flex">
+                      <input type="checkbox" :checked="hideFromHead" @change="toggleHideFromHead" :disabled="privacyBusy" class="sr-only peer">
+                      <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-amber-500 transition"></div>
+                      <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
+                    </span>
+                  </label>
+                  <p v-if="privacyMsg" class="text-xs mt-2" :class="hideFromHead ? 'text-amber-600' : 'text-emerald-600'">{{ privacyMsg }}</p>
+                </div>
+
                 <!-- 緊急聯絡人 -->
                 <div class="rounded-lg p-4 m-box">
                   <h3
@@ -3689,6 +3720,78 @@
                   </div>
                 </div>
               </template>
+            </div>
+
+            <!-- 優惠券頁面 -->
+            <div
+              v-if="view === 'coupons'"
+              class="m-panel bg-white rounded-2xl shadow-lg p-6"
+            >
+              <h2 class="m-panel-head mb-2 flex items-center" style="color:var(--p700);">
+                <i class="fas fa-ticket-alt mr-2"></i>優惠券
+              </h2>
+              <p class="text-sm text-gray-500 mb-4">
+                輸入優惠券密碼即可啟用免費診症次數；會員編號即你的手機號碼。
+              </p>
+
+              <!-- 會員編號（會員編號 = 電話號碼）-->
+              <div class="rounded-xl border p-4 mb-6" style="border-color:var(--p300);">
+                <div class="text-sm text-gray-500">會員編號</div>
+                <div class="text-2xl font-bold mt-1" style="color:var(--p700);">
+                  {{ currentMember && currentMember.phone ? currentMember.phone : '—' }}
+                </div>
+                <div class="text-xs text-gray-400 mt-1">會員編號 = 你的手機號碼</div>
+              </div>
+
+              <!-- 剩餘免費診症 -->
+              <div class="rounded-xl p-4 mb-6 text-white" style="background:linear-gradient(135deg,var(--p600),var(--p500));">
+                <div class="text-sm opacity-90">剩餘免費診症</div>
+                <div class="text-3xl font-bold mt-1">{{ couponTotalRemaining }} <span class="text-base font-normal">次</span></div>
+              </div>
+
+              <!-- 啟用優惠券 -->
+              <div class="rounded-xl border border-gray-200 p-5 mb-6">
+                <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-key text-pink-500 mr-2"></i>啟用優惠券</h3>
+                <p class="text-sm text-gray-500 mb-3">輸入診所給你的優惠券密碼，按「啟用」即時獲得免費診症次數。</p>
+                <div class="flex flex-col sm:flex-row gap-2">
+                  <input
+                    v-model="couponRedeemCode"
+                    placeholder="優惠券密碼（例如 AURORA-2026）"
+                    class="flex-1 rounded-lg border border-gray-300 p-2.5 text-sm"
+                    @keyup.enter="redeemCoupon"
+                  >
+                  <button
+                    class="px-5 py-2.5 rounded-lg text-white font-bold disabled:opacity-60"
+                    style="background:linear-gradient(135deg,var(--p600),var(--p500));"
+                    :disabled="couponBusy || !couponRedeemCode.trim()"
+                    @click="redeemCoupon"
+                  >
+                    <i class="fas fa-bolt mr-1"></i>{{ couponBusy ? '啟用中...' : '啟用優惠券' }}
+                  </button>
+                </div>
+                <p v-if="couponMsg" class="text-sm mt-2" :class="couponMsgType === 'ok' ? 'text-green-600' : 'text-red-500'">
+                  <i class="fas" :class="couponMsgType === 'ok' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>{{ couponMsg }}
+                </p>
+              </div>
+
+              <!-- 我的優惠券 -->
+              <div class="rounded-xl border border-gray-200 p-5">
+                <h3 class="font-bold mb-3 flex items-center"><i class="fas fa-list text-pink-500 mr-2"></i>我的優惠券</h3>
+                <div v-if="coupons.length === 0" class="text-sm text-gray-400 py-2">尚無已啟用的優惠券。</div>
+                <div v-else class="space-y-2">
+                  <div v-for="c in coupons" :key="c.id" class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm">
+                    <div>
+                      <b>{{ c.title || c.coupon_code }}</b>
+                      <span class="text-gray-400 ml-2 text-xs">{{ c.coupon_code }}</span>
+                      <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 border border-pink-200">{{ c.status === 'active' ? '生效中' : c.status }}</span>
+                    </div>
+                    <div class="text-right">
+                      <div class="font-bold" style="color:var(--p700);">剩 {{ c.remaining }} 次</div>
+                      <div class="text-xs text-gray-400">共 {{ c.free_total }} 次 · 已用 {{ c.free_used }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 我的預約頁面 -->

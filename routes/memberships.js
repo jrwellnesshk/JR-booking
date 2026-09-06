@@ -66,11 +66,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   });
 
   // 🏠 家庭計劃 A/B/C + 跟死全家嘅單號（FAM-1001 順序）
-  // 總人數 = 戶主 + 子女：A(1-2) / B(3-6) / C(7 人以上)
+  // 總人數 = 戶主 + 子女：A(1-2) / B(3-9) / C(10 人以上)
   async function syncFamilyPlan(headId) {
     const children = await q1("SELECT COUNT(*) AS c FROM family_links WHERE parent_user_id=?", [headId]);
     const total = 1 + (children ? children.c : 0);
-    const plan = total <= 2 ? 'A' : (total <= 6 ? 'B' : 'C');
+    const plan = total <= 2 ? 'A' : (total <= 9 ? 'B' : 'C');
     await run("UPDATE users SET family_plan=? WHERE id=?", [plan, headId]);
     const exist = await q1("SELECT id, invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
     if (!exist) {
@@ -339,8 +339,29 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // POST /api/membership/family/add — 加入子帳戶（關聯現有帳戶）
   // 🔒 規格：子帳戶申請必須喺員工/管理員帳戶實行，一般家庭帳戶只可觀看
+  // GET /api/membership/family/available-children — 列出可連結為子帳戶嘅客戶（管理員／員工）
+  router.get('/family/available-children', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
+    try {
+      const excludeHead = parseInt(req.query.excludeHeadId, 10) || 0;
+      const rows = await q(
+        `SELECT u.id, u.username, u.name, u.phone
+         FROM users u
+         WHERE u.role='customer'
+           AND u.id <> ?
+           AND u.id NOT IN (SELECT child_user_id FROM family_links)
+           AND u.id NOT IN (SELECT child_user_id FROM family_links WHERE parent_user_id=?)
+         ORDER BY u.name COLLATE NOCASE`,
+        [excludeHead, excludeHead]
+      );
+      res.json({ ok: true, children: rows || [] });
+    } catch (e) {
+      console.error('列出可連結子帳戶失敗:', e);
+      res.status(500).json({ error: '載入失敗' });
+    }
+  });
+
   router.post('/family/add', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
-    const { parentUserId, parentUsername, childUsername, childBirthDate, relation } = req.body || {};
+    const { parentUserId, parentUsername, childUsername, childBirthDate, relation, name } = req.body || {};
     if (!childUsername) return res.status(400).json({ error: '請輸入子帳戶的用戶名' });
     if (!childBirthDate) return res.status(400).json({ error: '請提供子帳戶的出生日期' });
     const parent = await resolveParent(parentUserId, parentUsername, { allowNonFamilyTier: !!req.body.allowNonFamilyTier });
@@ -354,6 +375,10 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     try {
       const child = await q1("SELECT id, username, birth_date FROM users WHERE username=? COLLATE NOCASE", [childUsername]);
       if (!child) return res.status(404).json({ error: '找不到該用戶名嘅帳戶' });
+      // 📝 管理員連結時可一併設定／更新子帳戶名稱
+      if (name && String(name).trim()) {
+        await run("UPDATE users SET name=? WHERE id=?", [String(name).trim(), child.id]);
+      }
       // 🔒 一個帳戶只可屬於一個家庭：已連結另一戶主時拒絕（避免資料混亂）
       const existingLink = await q1("SELECT * FROM family_links WHERE child_user_id=?", [child.id]);
       if (existingLink && Number(existingLink.parent_user_id) !== Number(head.id)) {
@@ -646,6 +671,21 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // GET /api/membership/privacy — 讀取子帳戶「唔俾主帳戶睇我資料」嘅目前狀態
+  router.get('/privacy', requireAuth, async (req, res) => {
+    try {
+      if (req.user.role !== 'customer') return res.status(403).json({ error: '只限客戶' });
+      const u = await q1("SELECT hide_from_head, family_head_id, id FROM users WHERE id=?", [req.user.id]);
+      const isChild = !!(u && u.family_head_id && Number(u.family_head_id) !== Number(u.id));
+      let headName = null;
+      if (isChild) {
+        const h = await q1("SELECT name FROM users WHERE id=?", [u.family_head_id]);
+        headName = h ? h.name : null;
+      }
+      res.json({ ok: true, hide_from_head: u ? u.hide_from_head : 0, isChild, headName });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   // PUT /api/membership/family/:id — 修改子帳戶（僅 18 歲以下）
   router.put('/family/:id', requireAuth, async (req, res) => {
     const childId = Number(req.params.id);
@@ -664,6 +704,20 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) {
       res.status(500).json({ error: '更新失敗' });
     }
+  });
+
+  // POST /api/membership/family/:id/privacy — 職員/管理員代 18+ 子帳戶開關「唔俾主帳戶睇我資料」
+  router.post('/family/:id/privacy', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
+    try {
+      const childId = Number(req.params.id);
+      const { hide } = req.body || {};
+      const child = await q1("SELECT id, birth_date FROM users WHERE id=?", [childId]);
+      if (!child) return res.status(404).json({ error: '找不到該成員' });
+      if (computeAge(child.birth_date) < 18) return res.status(400).json({ error: '只有 18 歲或以上嘅成員可以設定隱私' });
+      const v = hide ? 1 : 0;
+      await run("UPDATE users SET hide_from_head=? WHERE id=?", [v, childId]);
+      res.json({ ok: true, hide_from_head: v });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // GET /api/membership/family/:id/bookings — 子帳戶預約（18+ 只顯示「預約成功」狀態）

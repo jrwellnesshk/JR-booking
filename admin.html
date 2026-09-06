@@ -710,7 +710,7 @@
                 <i class="fas fa-folder-open mr-2"></i>病歷記錄
               </button>
               <button
-                @click="currentView = 'timeslots'; loadTimeSlots(); loadSlotCalendar();"
+                @click="currentView = 'timeslots'; openSlotManager();"
                 :class="currentView === 'timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
                 class="w-full text-left px-4 py-2 rounded-lg transition-colors"
               >
@@ -2402,6 +2402,103 @@
                   <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 頂部「上一代」為預留入口，未來可擴展祖父母層
                 </div>
               </div>
+
+              <!-- 🆕 家庭計劃 / 單號 / 連結子帳戶（選中主帳戶時） -->
+              <div v-if="selectedFamilyHead" class="bg-white rounded-xl shadow-lg p-6 space-y-6">
+                <h2 class="text-xl font-bold text-slate-800"><i class="fas fa-file-invoice text-emerald-600 mr-2"></i>家庭計劃與單號</h2>
+
+                <!-- 計劃 + 單號 + 戶主會員編號 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="rounded-xl border p-4" :class="familyDetail.plan ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-200'">
+                    <div class="text-sm text-slate-500">家庭計劃</div>
+                    <div class="text-2xl font-bold mt-1 text-slate-800">
+                      <template v-if="familyDetail.plan === 'A'">A 計劃</template>
+                      <template v-else-if="familyDetail.plan === 'B'">B 計劃</template>
+                      <template v-else-if="familyDetail.plan === 'C'">C 計劃</template>
+                      <template v-else>—</template>
+                    </div>
+                    <div class="text-xs text-slate-400 mt-1">
+                      <template v-if="familyDetail.plan === 'A'">1–2 人</template>
+                      <template v-else-if="familyDetail.plan === 'B'">3–6 人</template>
+                      <template v-else-if="familyDetail.plan === 'C'">7 人以上</template>
+                      <template v-else>未設定</template>
+                    </div>
+                  </div>
+                  <div class="rounded-xl border border-slate-200 p-4">
+                    <div class="text-sm text-slate-500">全家單號</div>
+                    <div class="text-2xl font-bold mt-1 text-slate-800">{{ familyDetail.invoiceNo || '—' }}</div>
+                    <div class="text-xs text-slate-400 mt-1">跟隨成個家庭，每位付費戶主一張單</div>
+                  </div>
+                  <div class="rounded-xl border border-slate-200 p-4">
+                    <div class="text-sm text-slate-500">戶主會員編號</div>
+                    <div class="text-2xl font-bold mt-1 text-slate-800">{{ familyDetail.headMemberNo || '—' }}</div>
+                    <div class="text-xs text-slate-400 mt-1">會員編號 = 戶主電話號碼</div>
+                  </div>
+                </div>
+
+                <!-- 連結家庭成員（connect account） -->
+                <div class="rounded-xl border border-slate-200 p-5">
+                  <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-user-plus text-emerald-500 mr-2"></i>連結家庭成員（子帳戶）</h3>
+                  <p class="text-sm text-slate-500 mb-3">以主帳戶「{{ selectedFamilyHead.name }}」為戶主，連結一個已存在嘅子帳戶。下拉選擇關係，旁邊輸入子帳戶用戶名。</p>
+                  <div class="flex flex-col md:flex-row gap-2 items-end">
+                    <div class="flex-1">
+                      <label class="block text-xs text-slate-500 mb-1">選擇子帳戶</label>
+                      <select v-model="familyConnectForm.childUsername" @change="onFamilyConnectPick" class="rounded border border-gray-300 p-2 text-sm bg-white w-full">
+                        <option value="">— 請選擇要連結嘅子帳戶 —</option>
+                        <option v-for="c in familyConnectCandidates" :key="c.id" :value="c.username">{{ c.name }}（{{ c.username }}）</option>
+                      </select>
+                    </div>
+                    <div class="flex-1">
+                      <label class="block text-xs text-slate-500 mb-1">子帳戶名稱（連結用）</label>
+                      <input v-model="familyConnectForm.childName" placeholder="子帳戶名稱" class="w-full rounded border border-gray-300 p-2 text-sm">
+                    </div>
+                    <div>
+                      <label class="block text-xs text-slate-500 mb-1">出生日期</label>
+                      <input v-model="familyConnectForm.childBirthDate" type="date" class="rounded border border-gray-300 p-2 text-sm">
+                    </div>
+                    <div>
+                      <label class="block text-xs text-slate-500 mb-1">關係</label>
+                      <select v-model="familyConnectForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
+                        <option v-for="r in ['父母','子女','配偶','兄弟','姐妹','親戚','朋友','其他']" :key="r" :value="r">{{ r }}</option>
+                      </select>
+                    </div>
+                    <button class="px-5 py-2 rounded-lg text-white font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60" :disabled="familyConnectBusy" @click="connectFamilyMember">
+                      <i class="fas fa-link mr-1"></i>{{ familyConnectBusy ? '連結中...' : '連結' }}
+                    </button>
+                  </div>
+                  <p v-if="familyConnectMsg" class="text-sm mt-2" :class="familyConnectMsgType === 'ok' ? 'text-emerald-600' : 'text-red-500'">
+                    <i class="fas" :class="familyConnectMsgType === 'ok' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>{{ familyConnectMsg }}
+                  </p>
+                </div>
+
+                <!-- 成員與私隱 -->
+                <div class="rounded-xl border border-slate-200 p-5">
+                  <h3 class="font-bold mb-3 flex items-center"><i class="fas fa-user-shield text-indigo-500 mr-2"></i>家庭成員與私隱</h3>
+                  <div v-if="familyDetailLoading" class="text-slate-400 text-sm py-3">載入中...</div>
+                  <div v-else-if="familyDetail.children.length === 0" class="text-sm text-slate-400 py-2">暫無家庭成員。</div>
+                  <div v-else class="space-y-2">
+                    <div v-for="c in familyDetail.children" :key="c.id" class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm">
+                      <div>
+                        <b>{{ c.name }}</b> <span class="text-gray-400 ml-2">{{ c.username }}</span>
+                        <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ c.age }} 歲</span>
+                        <span v-if="c.hiddenFromHead" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-eye-slash mr-1"></i>已隱藏資料</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span v-if="c.hiddenFromHead" class="text-xs text-amber-600">唔俾主帳戶睇</span>
+                        <button
+                          v-if="c.isAdult"
+                          class="text-xs px-3 py-1 rounded border"
+                          :class="c.hiddenFromHead ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'"
+                          @click="toggleMemberPrivacy(c)"
+                        >
+                          <i class="fas" :class="c.hiddenFromHead ? 'fa-eye' : 'fa-eye-slash'"></i>{{ c.hiddenFromHead ? '恢復顯示' : '隱藏資料（18+）' }}
+                        </button>
+                        <span v-else class="text-xs text-gray-400">18 歲以下由戶主管理</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- 🆕 連結帳戶管理（親戚／同輩／朋友，管理員代所選主帳戶連結；該主帳戶自動轉 family） -->
@@ -2607,17 +2704,17 @@
               <div class="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  @click="selectedDoctors = []"
-                  :class="selectedDoctors.length === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  @click="slotDoctorId = ''"
+                  :class="!slotDoctorId ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                   class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                 >全部醫師</button>
                 <button
                   v-for="doc in doctors"
                   :key="doc.id"
                   type="button"
-                  @click="toggleDoctorFilter(doc.id)"
-                  :class="selectedDoctors.includes(doc.id) ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  :style="selectedDoctors.includes(doc.id) ? { backgroundColor: doctorColor(doc.id) } : {}"
+                  @click="slotDoctorId = doc.id"
+                  :class="slotDoctorId == doc.id ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  :style="slotDoctorId == doc.id ? { backgroundColor: doctorColor(doc.id) } : {}"
                   class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                 >
                   <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: doctorColor(doc.id) }"></span>{{ doc.name }}
@@ -2665,141 +2762,80 @@
             </div>
 
             <div class="bg-white rounded-xl shadow-lg p-6">
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-2"
-                  >選擇日期</label
-                >
-                <input
-                  type="date"
-                  v-model="selectedSlotDate"
-                  @change="loadTimeSlots"
-                  class="border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500"
-                />
+              <!-- 日期範圍 -->
+              <div class="flex flex-wrap items-end gap-4 mb-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">由（年／月／日）</label>
+                  <input type="date" v-model="slotRangeStart" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">至（年／月／日）</label>
+                  <input type="date" v-model="slotRangeEnd" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
+                </div>
+                <div class="flex items-center gap-2 self-center">
+                  <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>週（一至日）</button>
+                  <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>日</button>
+                </div>
+                <p class="text-xs text-slate-400 self-center">每格 15 分鐘</p>
               </div>
 
-              <!-- 載入提示 -->
-              <div v-if="!timeSlotMatrix || Object.keys(timeSlotMatrix).length === 0" class="text-center py-8 text-slate-500">
-                <i class="fas fa-calendar-times text-4xl mb-3"></i>
-                <p>請選擇日期以查看時段</p>
-                <p class="text-sm mt-2">或點擊上方日期選擇器載入當天時段</p>
+              <!-- 拖掃網格 + 操作掣 -->
+              <div v-if="!slotDoctorId" class="text-center py-10 text-slate-400">
+                <i class="fas fa-user-md text-4xl mb-3"></i><p>請先喺右上「選擇方框」或上面醫師列揀選一位醫師。</p>
               </div>
+              <template v-else>
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格（拖掃選取）</h3>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <select v-model="slotDoctorId" @change="loadSlotGrid()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white">
+                      <option value="">選擇方框（醫師）</option>
+                      <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
+                    </select>
+                    <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>加入</button>
+                    <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
+                    <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
+                    <button @click="applySlotStatus('blank')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>取消（空白）</button>
+                    <button v-if="slotDirtyCount" @click="confirmSlotChanges" :disabled="slotBusy" class="px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-blue-600 disabled:opacity-40"><i class="fas fa-check mr-1"></i>確認儲存（{{ slotDirtyCount }}）</button>
+                  </div>
+                </div>
 
-              <!-- 時段醫師矩陣 -->
-              <div v-if="timeSlotMatrix && Object.keys(timeSlotMatrix).length > 0" id="slotMatrix" class="space-y-4">
-                <!-- 表格標題 -->
-                <div class="overflow-x-auto">
-                  <table class="w-full border-collapse">
+                <div v-if="slotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
+                <div v-else-if="!slotDays.length" class="text-center py-10 text-slate-500">
+                  <i class="fas fa-calendar-times text-4xl mb-3"></i><p>暫無時段資料，請揀選日期。</p>
+                </div>
+                <div v-else class="overflow-x-auto" @mouseleave="endSlotSelect" @mouseup="endSlotSelect">
+                  <table class="border-collapse select-none" style="user-select:none">
                     <thead>
                       <tr class="bg-slate-100">
-                        <th class="border border-slate-300 px-4 py-3 text-left font-semibold text-slate-700 w-24">
-                          時段
-                        </th>
-                        <th 
-                          v-for="doctor in doctorsToShow()" 
-                          :key="doctor.id"
-                          class="border border-slate-300 px-3 py-3 text-center font-semibold text-slate-700 min-w-[120px]"
-                        >
-                          <i class="fas fa-user-md text-emerald-600 mr-1"></i>
-                          {{ doctor.name }}
-                        </th>
-                        <th class="border border-slate-300 px-3 py-3 text-center font-semibold text-slate-700 w-28">
-                          時段狀態
+                        <th class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 sticky left-0 bg-slate-100 z-10">時間</th>
+                        <th v-for="d in slotDays" :key="d.date" class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 min-w-[92px]">
+                          <div>{{ d.label }}</div><div class="text-[10px] text-slate-400">{{ d.dow }}</div>
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr 
-                        v-for="(slotData, time) in timeSlotMatrix" 
-                        :key="time"
-                        class="hover:bg-slate-50"
-                      >
-                        <!-- 時段 -->
-                        <td class="border border-slate-300 px-4 py-2 font-mono font-bold text-lg text-emerald-700">
-                          {{ time }}
-                        </td>
-                        
-                        <!-- 每位醫師的狀態 -->
-                        <td 
-                          v-for="doctor in doctorsToShow()" 
-                          :key="doctor.id + time"
-                          class="border border-slate-300 px-2 py-2 text-center"
-                          :class="getDoctorSlotClass(slotData.doctors[doctor.id])"
-                        >
-                          <div class="flex flex-col items-center space-y-1">
-                            <!-- 預約狀態 -->
-                            <span class="text-xs">
-                              {{ getDoctorSlotStatus(slotData.doctors[doctor.id]) }}
-                            </span>
-                            <!-- 開關按鈕 -->
-                            <label class="relative inline-flex items-center cursor-pointer">
-                              <input 
-                                type="checkbox" 
-                                :checked="slotData.doctors[doctor.id]?.is_available !== false"
-                                @change="toggleDoctorSlot(time, doctor.id, $event.target.checked)"
-                                class="sr-only peer"
-                              />
-                              <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                            </label>
-                          </div>
-                        </td>
-                        
-                        <!-- 時段總狀態 -->
-                        <td class="border border-slate-300 px-2 py-2 text-center">
-                          <div class="flex flex-col items-center">
-                            <span 
-                              class="px-2 py-1 rounded-full text-xs font-medium"
-                              :class="getSlotOverallStatusClass(slotData)"
-                            >
-                              {{ getSlotOverallStatus(slotData) }}
-                            </span>
-                            <span class="text-xs text-slate-500 mt-1">
-                              {{ slotData.totalBooked }}/{{ slotData.totalAvailable }}
-                            </span>
-                          </div>
+                      <tr v-for="(time, ti) in slotTimeList" :key="time">
+                        <td class="border border-slate-200 px-2 py-1 font-mono text-xs font-bold text-slate-500 sticky left-0 bg-white z-10">{{ time }}</td>
+                        <td v-for="(d, di) in slotDays" :key="d.date + time"
+                            @mousedown.prevent="startSlotSelect(di, ti)"
+                            @mouseenter="enterSlotCell(di, ti)"
+                            class="border border-slate-200 px-1 py-1 text-center cursor-pointer transition-colors"
+                            :class="slotCellClass(di, ti, d.cells[ti])">
+                          <span class="text-[10px] leading-none block">{{ slotCellText(d.cells[ti]) }}</span>
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-
-                <!-- 圖例說明 -->
-                <div class="flex flex-wrap gap-4 p-3 bg-slate-50 rounded-lg text-sm">
-                  <div class="flex items-center">
-                    <span class="w-4 h-4 bg-green-100 border border-green-300 rounded mr-2"></span>
-                    <span>可預約</span>
-                  </div>
-                  <div class="flex items-center">
-                    <span class="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded mr-2"></span>
-                    <span>已有預約</span>
-                  </div>
-                  <div class="flex items-center">
-                    <span class="w-4 h-4 bg-red-100 border border-red-300 rounded mr-2"></span>
-                    <span>已滿額/關閉</span>
-                  </div>
+                <div class="flex flex-wrap gap-3 mt-3 text-xs text-slate-500">
+                  <span><span class="inline-block w-3 h-3 rounded bg-emerald-200 align-middle"></span> 加入（開放）</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-rose-200 align-middle"></span> 休息</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-amber-200 align-middle"></span> 候診</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-slate-200 align-middle"></span> 取消（空白）</span>
+                  <span><span class="inline-block w-3 h-3 rounded ring-2 ring-blue-500 bg-blue-100 align-middle"></span> 已選取</span>
                 </div>
-
-                <!-- 操作按鈕 -->
-                <div class="flex justify-between items-center pt-4 border-t">
-                  <button
-                    @click="setAllDoctorSlotsAvailable(true)"
-                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    <i class="fas fa-check-circle mr-2"></i>全部開放
-                  </button>
-                  <button
-                    @click="setAllDoctorSlotsAvailable(false)"
-                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    <i class="fas fa-times-circle mr-2"></i>全部關閉
-                  </button>
-                  <button
-                    @click="saveDoctorSlots"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    <i class="fas fa-save mr-2"></i>儲存所有設定
-                  </button>
-                </div>
-              </div>
+                <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mt-2"><i class="fas fa-check-circle mr-1"></i>已儲存！</p>
+              </template>
             </div>
           </div>
 
@@ -6780,6 +6816,14 @@
             adminLinkBusy: false,
             adminLinkError: '',
             adminLinkForm: { fromUsername: '', targetUsername: '', relation: '朋友', customRelation: '' },
+            // 🆕 家庭計劃 / 單號 / 連結子帳戶
+            familyDetail: { plan: null, invoiceNo: null, headMemberNo: null, children: [] },
+            familyDetailLoading: false,
+            familyConnectForm: { childUsername: '', childName: '', childBirthDate: '', relation: '父母' },
+            familyConnectCandidates: [],
+            familyConnectBusy: false,
+            familyConnectMsg: '',
+            familyConnectMsgType: '',
             // 病歴管理（管理員）
             showMedicalRecordModal: false,
             selectedBooking: null,
@@ -6842,6 +6886,22 @@
             doctorColors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'],
             timeSlotMatrix: {}, // 時段-醫師矩陣
             selectedSlotDate: new Date().toISOString().split("T")[0],
+            // 🗓️ 拖掃網格狀態
+            slotDoctorId: "",
+            slotView: 'week',
+            slotRangeStart: new Date().toISOString().slice(0, 10),
+            slotRangeEnd: new Date().toISOString().slice(0, 10),
+            slotDays: [],
+            slotTimeList: [],
+            slotBusy: false,
+            slotSelecting: false,
+            slotAnchor: null,
+            slotHead: null,
+            slotSel: new Set(),
+            slotDirty: new Set(),
+            slotSelCount: 0,
+            slotDirtyCount: 0,
+            slotSavedFlash: false,
 
             // 診所設定
             clinicSettings: {
@@ -8270,7 +8330,149 @@ async handleLogin() {
           selectFamilyHead(head) {
             this.selectedFamilyHead = head;
             this.headLinks = [];
+            this.familyConnectForm = { childUsername: '', childName: '', childBirthDate: '', relation: '父母' };
+            this.familyConnectCandidates = [];
+            this.familyConnectMsg = '';
             this.loadHeadLinks(head.id);
+            this.loadFamilyDetail(head);
+            this.loadFamilyConnectCandidates(head.id);
+          },
+
+          // 🆕 載入可連結為子帳戶嘅客戶名單（下拉選擇用）
+          async loadFamilyConnectCandidates(headId) {
+            try {
+              const res = await fetch(`/api/membership/family/available-children?excludeHeadId=${headId || ''}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({}));
+              this.familyConnectCandidates = (res.ok && data.ok) ? (data.children || []) : [];
+            } catch (e) {
+              this.familyConnectCandidates = [];
+            }
+          },
+
+          // 🆕 載入所選主帳戶嘅家庭計劃 / 單號 / 成員（含隱私狀態）
+          async loadFamilyDetail(head) {
+            this.familyDetailLoading = true;
+            try {
+              const res = await fetch(`/api/membership/family?parentUsername=${encodeURIComponent(head.username)}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok) {
+                this.familyDetail = {
+                  plan: data.plan || null,
+                  invoiceNo: data.invoiceNo || null,
+                  headMemberNo: data.headMemberNo || null,
+                  children: data.children || []
+                };
+              } else {
+                this.familyDetail = { plan: null, invoiceNo: null, headMemberNo: null, children: [] };
+              }
+            } catch (e) {
+              this.familyDetail = { plan: null, invoiceNo: null, headMemberNo: null, children: [] };
+            } finally {
+              this.familyDetailLoading = false;
+            }
+          },
+
+          // 🆕 揀選子帳戶時，自動帶入佢嘅名稱到名稱輸入框
+          onFamilyConnectPick() {
+            const u = (this.familyConnectForm.childUsername || '').trim();
+            const picked = this.familyConnectCandidates.find(c => c.username === u);
+            this.familyConnectForm.childName = picked ? picked.name : '';
+          },
+
+          // 🆕 連結家庭成員（子帳戶）：管理員以所選主帳戶為戶主，連結指定用戶名嘅子帳戶
+          async connectFamilyMember() {
+            const head = this.selectedFamilyHead;
+            if (!head) { this.familyConnectMsg = '請先喺上方家庭樹撳選一個主帳戶'; this.familyConnectMsgType = 'err'; return; }
+            const childU = (this.familyConnectForm.childUsername || '').trim();
+            if (!childU) { this.familyConnectMsg = '請輸入子帳戶用戶名'; this.familyConnectMsgType = 'err'; return; }
+            if (!this.familyConnectForm.childBirthDate) { this.familyConnectMsg = '請提供子帳戶出生日期'; this.familyConnectMsgType = 'err'; return; }
+            this.familyConnectBusy = true;
+            this.familyConnectMsg = '';
+            try {
+              const res = await fetch('/api/membership/family/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                body: JSON.stringify({
+                  parentUserId: head.id,
+                  childUsername: childU,
+                  childName: this.familyConnectForm.childName,
+                  childBirthDate: this.familyConnectForm.childBirthDate,
+                  relation: this.familyConnectForm.relation
+                })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) {
+                this.familyConnectMsg = '已成功連結家庭成員';
+                this.familyConnectMsgType = 'ok';
+                this.familyConnectForm = { childUsername: '', childName: '', childBirthDate: '', relation: '父母' };
+                this.loadFamilyDetail(head);
+                this.loadFamilyTree();
+              } else if (res.status === 409 && data.code === 'parent_not_family_tier') {
+                // 戶主非家庭會員：確認後帶 allowNonFamilyTier 重試
+                if (confirm(`${data.error}\n\n按「確定」即為「${head.name}」啟用家庭帳戶（費用差額按現行安排處理）。`)) {
+                  const res2 = await fetch('/api/membership/family/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                    body: JSON.stringify({
+                      parentUserId: head.id,
+                      childUsername: childU,
+                      childName: this.familyConnectForm.childName,
+                      childBirthDate: this.familyConnectForm.childBirthDate,
+                      relation: this.familyConnectForm.relation,
+                      allowNonFamilyTier: true
+                    })
+                  });
+                  const d2 = await res2.json().catch(() => ({}));
+                  if (res2.ok && d2.ok) {
+                    this.familyConnectMsg = '已成功連結家庭成員（並啟用家庭帳戶）';
+                    this.familyConnectMsgType = 'ok';
+                    this.familyConnectForm = { childUsername: '', childName: '', childBirthDate: '', relation: '父母' };
+                    this.loadFamilyDetail(head);
+                    this.loadFamilyTree();
+                  } else {
+                    this.familyConnectMsg = d2.error || '連結失敗';
+                    this.familyConnectMsgType = 'err';
+                  }
+                } else {
+                  this.familyConnectMsg = '已取消連結';
+                  this.familyConnectMsgType = 'err';
+                }
+              } else {
+                this.familyConnectMsg = data.error || '連結失敗';
+                this.familyConnectMsgType = 'err';
+              }
+            } catch (e) {
+              this.familyConnectMsg = '連結服務暫時不可用';
+              this.familyConnectMsgType = 'err';
+            } finally {
+              this.familyConnectBusy = false;
+            }
+          },
+
+          // 🆕 18+ 子帳戶：開關「唔俾主帳戶睇我資料」
+          async toggleMemberPrivacy(m) {
+            const hide = !(m.hiddenFromHead);
+            if (!confirm(`確定${hide ? '隱藏' : '顯示'}「${m.name}」嘅資料${hide ? '，唔俾主帳戶（${this.selectedFamilyHead.name}）睇' : '，恢復畀主帳戶睇'}？`)) return;
+            try {
+              const res = await fetch(`/api/membership/family/${m.id}/privacy`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                body: JSON.stringify({ hide })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) {
+                m.hiddenFromHead = data.hide_from_head;
+                // 同步更新 familyDetail 內對應成員
+                const idx = this.familyDetail.children.findIndex(c => c.id === m.id);
+                if (idx >= 0) this.familyDetail.children[idx].hiddenFromHead = data.hide_from_head;
+              } else {
+                alert(data.error || '設定失敗');
+              }
+            } catch (e) { alert('服務暫時不可用'); }
           },
 
           // 🆕 載入戶主嘅 account_links（過濾家庭子女，只顯示親戚／同輩）
@@ -9199,8 +9401,138 @@ phone: this.addUserForm.phone,
           },
           selectSlotDay(date) {
             this.selectedSlotDate = date;
-            this.loadTimeSlots();
-            this.$nextTick(() => { const el = document.getElementById('slotMatrix'); if (el) el.scrollIntoView({ behavior: 'smooth' }); });
+            this.slotRangeStart = date;
+            this.slotRangeEnd = date;
+            if (this.slotDoctorId) this.loadSlotGrid();
+          },
+          // ==================== 拖掃網格（時段管理）====================
+          openSlotManager() {
+            this.loadSlotCalendar();
+            if (this.slotDoctorId) this.loadSlotGrid();
+          },
+          onSlotRangeChange() {
+            if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart;
+            this.loadSlotGrid();
+          },
+          slotDaysInRange() {
+            const start = new Date(this.slotRangeStart + 'T00:00:00');
+            if (this.slotView === 'week') {
+              const dow = (start.getDay() + 6) % 7;
+              const mon = new Date(start); mon.setDate(start.getDate() - dow);
+              const arr = [];
+              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(dd.toISOString().slice(0, 10)); }
+              return arr;
+            }
+            const end = new Date(this.slotRangeEnd + 'T00:00:00');
+            const arr = []; let cur = new Date(start);
+            while (cur <= end && arr.length < 31) { arr.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+            return arr;
+          },
+          async loadSlotGrid() {
+            const myId = this.slotDoctorId ? parseInt(this.slotDoctorId, 10) : null;
+            if (myId == null) { this.slotDays = []; this.slotTimeList = []; return; }
+            this.slotBusy = true;
+            this.slotSel = new Set(); this.slotDirty = new Set();
+            this.slotSelCount = 0; this.slotDirtyCount = 0;
+            try {
+              const days = this.slotDaysInRange();
+              if (!days.length) { this.slotDays = []; this.slotTimeList = []; this.slotBusy = false; return; }
+              const firstJson = await (await fetch(`/api/bookings/doctor-time-slots/${days[0]}`)).json();
+              const timeList = [...(firstJson.morningSlots || []), ...(firstJson.afternoonSlots || [])];
+              this.slotTimeList = timeList;
+              const wn = ['日', '一', '二', '三', '四', '五', '六'];
+              const out = [];
+              for (let i = 0; i < days.length; i++) {
+                const date = days[i];
+                let djson;
+                if (i === 0) djson = firstJson;
+                else { const r = await fetch(`/api/bookings/doctor-time-slots/${date}`); djson = r.ok ? await r.json() : { slots: {} }; }
+                const cells = timeList.map(time => {
+                  const ds = ((djson.slots || {})[time] || {})[myId] || {};
+                  const status = ds.status || (ds.is_available === false ? 'blank' : 'open');
+                  return { time, status, booked: ds.current_bookings || 0, capacity: ds.max_capacity || 1 };
+                });
+                const dt = new Date(date + 'T00:00:00');
+                out.push({ date, label: date.slice(5), dow: '週' + wn[dt.getDay()], cells });
+              }
+              this.slotDays = out;
+            } catch (e) { console.error('載入時段網格失敗', e); }
+            finally { this.slotBusy = false; }
+          },
+          startSlotSelect(di, ti) {
+            this.slotSelecting = true;
+            this.slotAnchor = { di, ti };
+            this.slotHead = { di, ti };
+            this.slotSel = new Set([di + '-' + ti]);
+            this.slotSelCount = 1;
+          },
+          enterSlotCell(di, ti) {
+            if (!this.slotSelecting) return;
+            this.slotHead = { di, ti };
+            this.computeSel();
+          },
+          endSlotSelect() { this.slotSelecting = false; },
+          computeSel() {
+            if (!this.slotAnchor || !this.slotHead) return;
+            const a = this.slotAnchor, b = this.slotHead;
+            const d0 = Math.min(a.di, b.di), d1 = Math.max(a.di, b.di);
+            const t0 = Math.min(a.ti, b.ti), t1 = Math.max(a.ti, b.ti);
+            const set = new Set();
+            for (let di = d0; di <= d1; di++) for (let ti = t0; ti <= t1; ti++) set.add(di + '-' + ti);
+            this.slotSel = set;
+            this.slotSelCount = set.size;
+          },
+          applySlotStatus(status) {
+            if (!this.slotSel.size) return;
+            this.slotSel.forEach(key => {
+              const [di, ti] = key.split('-').map(Number);
+              const cell = this.slotDays[di] && this.slotDays[di].cells[ti];
+              if (cell) { cell.status = status; this.slotDirty.add(key); }
+            });
+            this.slotSel = new Set(); this.slotSelecting = false;
+            this.slotSelCount = 0; this.slotDirtyCount = this.slotDirty.size;
+          },
+          slotCellClass(di, ti, cell) {
+            if (!cell) return 'bg-slate-50';
+            const sel = this.slotSel.has(di + '-' + ti);
+            let base = 'bg-slate-100 border-slate-200';
+            if (cell.status === 'open') base = 'bg-emerald-100 border-emerald-300';
+            else if (cell.status === 'rest') base = 'bg-rose-100 border-rose-300';
+            else if (cell.status === 'waiting') base = 'bg-amber-100 border-amber-300';
+            return sel ? (base + ' ring-2 ring-blue-500 bg-blue-100') : base;
+          },
+          slotCellText(cell) {
+            if (!cell) return '';
+            if (cell.booked > 0) return '約' + cell.booked;
+            if (cell.status === 'open') return '開';
+            if (cell.status === 'rest') return '休';
+            if (cell.status === 'waiting') return '候';
+            return '×';
+          },
+          async confirmSlotChanges() {
+            const myId = this.slotDoctorId ? parseInt(this.slotDoctorId, 10) : null;
+            if (myId == null) return;
+            this.slotBusy = true;
+            try {
+              const slots = [];
+              this.slotDirty.forEach(key => {
+                const [di, ti] = key.split('-').map(Number);
+                const day = this.slotDays[di]; if (!day) return;
+                const cell = day.cells[ti]; if (!cell) return;
+                slots.push({ date: day.date, time: cell.time, doctor_id: myId, status: cell.status, max_capacity: cell.capacity });
+              });
+              const res = await fetch('/api/bookings/doctor-time-slots/batch', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slots })
+              });
+              if (res.ok) {
+                this.slotDirty = new Set();
+                this.slotDirtyCount = 0;
+                this.slotSavedFlash = true;
+                setTimeout(() => { this.slotSavedFlash = false; }, 2000);
+                this.loadSlotCalendar();
+              } else { alert('儲存失敗'); }
+            } catch (e) { alert('儲存失敗：' + e.message); }
+            finally { this.slotBusy = false; }
           },
           calendarDays() {
             const [y, m] = this.calendarMonth.split('-').map(Number);

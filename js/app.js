@@ -127,6 +127,19 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const linkError = ref('');
           const linkForm = ref({ targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null });
           const linkRelationOptions = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
+          // ==================== 優惠券（買券 → 免費診症）====================
+          const coupons = ref([]);
+          const couponTotalRemaining = ref(0);
+          const couponRedeemCode = ref('');
+          const couponBusy = ref(false);
+          const couponMsg = ref('');
+          const couponMsgType = ref(''); // 'ok' | 'err'
+          // 🛡️ 子帳戶私隱：隱藏資料唔俾主帳戶睇
+          const hideFromHead = ref(false);
+          const privacyIsChild = ref(false);
+          const privacyHeadName = ref('');
+          const privacyBusy = ref(false);
+          const privacyMsg = ref('');
           const currentMemberId = computed(() => (currentMember.value && (currentMember.value.dbId || currentMember.value.id)) || null);
           const currentMemberName = computed(() => (currentMember.value && (currentMember.value.name || currentMember.value.id)) || '');
           const myFamilyChildren = computed(() => (membership.value && membership.value.isFamilyHead) ? (familyList.value.children || []) : []);
@@ -1652,6 +1665,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             } else if (newView === "mySettings") {
               // 當切換到「我的設定」時載入個人資料
               loadUserProfile();
+              // 🛡️ 讀取子帳戶私隱狀態（隱藏資料唔俾主帳戶睇）
+              loadPrivacyState();
               // 🆕 確保會員資料已載入（家庭帳戶按鈕需要）
               if (!membership.value.tier || membership.value.tier === 'general') loadMyMembership();
             } else if (newView === "feedback") {
@@ -1660,6 +1675,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             } else if (newView === "myMembership") {
               // 當切換到「會員中心」時載入會員資料
               loadMyMembership();
+            } else if (newView === "coupons") {
+              // 當切換到「優惠券」時載入我的優惠券
+              loadCoupons();
             } else if (newView === "forum") {
               // 當切換到「中醫討論區」時載入最新帖子
               loadForumPosts();
@@ -1705,6 +1723,100 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               accountLinks.value = [];
             } finally {
               linkLoading.value = false;
+            }
+          };
+
+          // ==================== 優惠券 ====================
+          // 客戶：查看自己嘅優惠券 + 剩餘免費診症
+          const loadCoupons = async () => {
+            if (!currentMember.value?.dbId) return;
+            try {
+              const res = await fetch(`${API_URL}/coupons/my`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              if (!res.ok) throw new Error('status');
+              const data = await res.json();
+              coupons.value = data.coupons || [];
+              couponTotalRemaining.value = data.totalRemaining || 0;
+            } catch (e) {
+              console.warn('無法載入優惠券', e);
+              coupons.value = [];
+              couponTotalRemaining.value = 0;
+            }
+          };
+
+          // 客戶：輸入優惠券密碼啟用（「右手邊輸入密碼產生效果」）
+          const redeemCoupon = async () => {
+            const code = (couponRedeemCode.value || '').trim();
+            if (!code) { couponMsg.value = '請輸入優惠券密碼'; couponMsgType.value = 'err'; return; }
+            couponBusy.value = true;
+            couponMsg.value = '';
+            try {
+              const res = await fetch(`${API_URL}/coupons/redeem`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}`
+                },
+                body: JSON.stringify({ code })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                // 409 = 已啟用過；404 = 密碼無效
+                couponMsg.value = data.error || '啟用失敗，請檢查密碼';
+                couponMsgType.value = 'err';
+                return;
+              }
+              couponMsg.value = `成功啟用！獲得 ${data.freeAdded || 0} 次免費診症，目前剩餘 ${data.totalRemaining || 0} 次。`;
+              couponMsgType.value = 'ok';
+              couponRedeemCode.value = '';
+              await loadCoupons();
+            } catch (e) {
+              couponMsg.value = '網絡錯誤，請稍後再試';
+              couponMsgType.value = 'err';
+            } finally {
+              couponBusy.value = false;
+            }
+          };
+
+          // 🛡️ 讀取子帳戶私隱狀態（只影響 18 歲以上自己）
+          const loadPrivacyState = async () => {
+            try {
+              const res = await fetch(`${API_URL}/membership/privacy`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) {
+                hideFromHead.value = !!data.hide_from_head;
+                privacyIsChild.value = !!data.isChild;
+                privacyHeadName.value = data.headName || '';
+              }
+            } catch (e) {}
+          };
+
+          // 🛡️ 切換「唔俾主帳戶睇我資料」
+          const toggleHideFromHead = async () => {
+            if (!privacyIsChild.value) return;
+            privacyBusy.value = true;
+            privacyMsg.value = '';
+            const next = !hideFromHead.value;
+            try {
+              const res = await fetch(`${API_URL}/membership/privacy`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                body: JSON.stringify({ hide: next })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.ok) {
+                hideFromHead.value = !!data.hide_from_head;
+                privacyMsg.value = hideFromHead.value ? '已隱藏你的資料，主帳戶將唔能夠查看。' : '已恢復畀主帳戶查看你的資料。';
+              } else {
+                privacyMsg.value = data.error || '操作失敗';
+              }
+            } catch (e) {
+              privacyMsg.value = '網絡錯誤，請稍後再試';
+            } finally {
+              privacyBusy.value = false;
             }
           };
 
@@ -4320,6 +4432,23 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             loadAccountLinks,
             createAccountLink,
             removeAccountLink,
+            // 🆕 優惠券
+            coupons,
+            couponTotalRemaining,
+            couponRedeemCode,
+            couponBusy,
+            couponMsg,
+            couponMsgType,
+            loadCoupons,
+            redeemCoupon,
+            // 🛡️ 子帳戶私隱
+            hideFromHead,
+            privacyIsChild,
+            privacyHeadName,
+            privacyBusy,
+            privacyMsg,
+            loadPrivacyState,
+            toggleHideFromHead,
           };
         },
       }).mount("#app");
