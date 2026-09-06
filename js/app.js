@@ -130,6 +130,17 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const currentMemberId = computed(() => (currentMember.value && (currentMember.value.dbId || currentMember.value.id)) || null);
           const currentMemberName = computed(() => (currentMember.value && (currentMember.value.name || currentMember.value.id)) || '');
           const myFamilyChildren = computed(() => (membership.value && membership.value.isFamilyHead) ? (familyList.value.children || []) : []);
+          // 🆕 連結來源可選項：自己 + 已連結嘅帳戶（子女 / account_links 對方），對應用家「揀已連結 A 再搜尋 B」
+          const myLinkSources = computed(() => {
+            const src = [];
+            if (currentMember.value) src.push({ id: currentMemberId.value, name: (currentMemberName.value || '我自己') + '（我自己）' });
+            (myFamilyChildren.value || []).forEach(c => src.push({ id: c.id, name: `${c.name || c.username || '子女'}（子女）` }));
+            (accountLinks.value || []).forEach(lk => {
+              const o = lk.other;
+              if (o && o.id && !src.some(s => s.id === o.id)) src.push({ id: o.id, name: `${o.name || o.username}（已連結）` });
+            });
+            return src;
+          });
           const familyHint = computed(() => {
             if (membership.value.tier !== 'family') return '家庭會員可集中查看子女狀況及病歷、管理家庭預約。請先升級至家庭會員。';
             if (!membership.value.isFamilyHead) return '殷請先「啟用家庭帳戶」，即可查看子女狀況及病歷。';
@@ -1710,9 +1721,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               const body = {
                 targetUsername: target,
                 relation: linkForm.value.relation,
-                customRelation: linkForm.value.relation === '其他' ? linkForm.value.customRelation.trim() : undefined
+                customRelation: linkForm.value.relation === '其他' ? linkForm.value.customRelation.trim() : undefined,
+                fromUserId: linkForm.value.fromUserId || currentMemberId.value
               };
-              if (linkForm.value.fromUserId) body.fromUserId = linkForm.value.fromUserId;
               const res = await fetch(`${API_URL}/membership/account-links`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
@@ -1720,8 +1731,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               });
               const data = await res.json();
               if (res.ok && data.ok) {
-                linkForm.value = { targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null };
-                await loadAccountLinks();
+                linkForm.value = { targetUsername: '', relation: '朋友', customRelation: '', fromUserId: currentMemberId.value };
+                await loadMyMembership();
               } else {
                 linkError.value = data.error || '連結失敗';
               }
@@ -4305,6 +4316,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             currentMemberId,
             currentMemberName,
             myFamilyChildren,
+            myLinkSources,
             loadAccountLinks,
             createAccountLink,
             removeAccountLink,

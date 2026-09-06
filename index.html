@@ -3641,7 +3641,7 @@
                 <!-- 我的連結帳戶（親戚／同輩／朋友，客人自助連結） -->
                 <div class="rounded-xl border border-gray-200 p-5 mt-6">
                   <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-link text-emerald-500 mr-2"></i>我的連結帳戶</h3>
-                  <p class="text-sm text-gray-500 mb-4">連結親戚、同輩或朋友嘅帳戶，關係由你定義；連結後雙方都會喺「我的連結帳戶」見到對方。管理員同家庭戶主亦可代為管理。</p>
+                  <p class="text-sm text-gray-500 mb-4">連結親戚、同輩或朋友嘅帳戶，關係由你定義；連結後雙方都會喺「我的連結帳戶」見到對方，而你的主帳戶會自動轉為家庭會員。管理員同家庭戶主亦可代為管理。</p>
 
                   <!-- 已連結列表 -->
                   <div v-if="linkLoading" class="text-gray-400 text-sm py-3"><i class="fas fa-spinner fa-spin mr-1"></i>載入連結中...</div>
@@ -3668,15 +3668,15 @@
                   <!-- 連結新帳戶 -->
                   <div class="rounded-lg bg-gray-50 p-4">
                     <b class="text-sm">連結新帳戶</b>
-                    <div v-if="membership.isFamilyHead && myFamilyChildren.length" class="mt-2">
-                      <label class="text-xs text-gray-500">以邊個身份連結</label>
+                    <p class="text-xs text-gray-500 mt-1">先揀你已連結嘅帳戶（或你自己）作為來源 A，再搜尋另一個帳戶 B 連過去，並選擇關係。</p>
+                    <div class="mt-2">
+                      <label class="text-xs text-gray-500">以邊個身份連結（來源 A）</label>
                       <select v-model="linkForm.fromUserId" class="w-full mt-1 rounded border border-gray-300 p-2 text-sm bg-white">
-                        <option :value="currentMemberId">我自己（{{ currentMemberName }}）</option>
-                        <option v-for="c in myFamilyChildren" :key="c.id" :value="c.id">{{ c.name }}（子女）</option>
+                        <option v-for="s in myLinkSources" :key="s.id" :value="s.id">{{ s.name }}</option>
                       </select>
                     </div>
                     <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <input v-model="linkForm.targetUsername" placeholder="對方用戶名（username）" class="rounded border border-gray-300 p-2 text-sm">
+                      <input v-model="linkForm.targetUsername" placeholder="搜尋目標帳戶用戶名 B（username）" class="rounded border border-gray-300 p-2 text-sm">
                       <select v-model="linkForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
                         <option v-for="r in linkRelationOptions" :key="r" :value="r">{{ r }}</option>
                       </select>

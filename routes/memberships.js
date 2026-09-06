@@ -693,7 +693,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     return false;
   };
 
-  // POST /api/membership/account-links — 連結兩個帳戶（客人自助 / 管理員 / 家庭戶主代連結）
+  // POST /api/membership/account-links — 連結兩個帳戶（客人自助 / 管理員代連所選主帳戶 / 家庭戶主代子女）；連結後來源主帳戶自動轉 family
   router.post('/account-links', requireAuth, async (req, res) => {
     try {
       const user = req.user;
@@ -733,7 +733,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const ins = await run(
         "INSERT INTO account_links (user_a, user_b, relation, custom_relation, initiated_by, created_at) VALUES (?,?,?,?,?,?)",
         [a, b, relation, displayRelation, user.id, new Date().toISOString()]);
-      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id });
+      // 「一連即轉」：連接第一個成員即將來源主帳戶升為 family（只對 customer；管理員代連時升被選主帳戶）
+      const ownerId = (user.role === 'admin') ? fromId : user.id;
+      const owner = await q1("SELECT id, role, membership_tier FROM users WHERE id=?", [ownerId]);
+      let ownerUpgradedToFamily = false;
+      if (owner && owner.role === 'customer' && owner.membership_tier !== 'family') {
+        await run("UPDATE users SET membership_tier='family' WHERE id=?", [ownerId]);
+        ownerUpgradedToFamily = true;
+      }
+      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id, ownerUpgradedToFamily });
     } catch (e) {
       console.error('連結帳戶失敗:', e);
       res.status(500).json({ error: '連結失敗' });
@@ -793,6 +801,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       }
       if (!allowed) return res.status(403).json({ error: '沒有權限移除該連結' });
       await run("DELETE FROM account_links WHERE id=?", [linkId]);
+      // 保守還原：若雙方已無任何連結（account_links + family_links 皆空），將 membership_tier 退回 general
+      for (const pid of [link.user_a, link.user_b]) {
+        const remain = await q1(
+          "SELECT 1 FROM account_links WHERE user_a=? OR user_b=? UNION SELECT 1 FROM family_links WHERE parent_user_id=? OR child_user_id=?",
+          [pid, pid, pid, pid]);
+        if (!remain) {
+          await run("UPDATE users SET membership_tier='general' WHERE id=? AND membership_tier='family'", [pid]);
+        }
+      }
       res.json({ ok: true });
     } catch (e) {
       console.error('移除連結失敗:', e);
