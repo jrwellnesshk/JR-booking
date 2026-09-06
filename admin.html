@@ -268,6 +268,149 @@
       .feedback-notification-bar.show {
         transform: translateY(0);
       }
+
+      /* === 家庭帳戶樹狀圖（相框風格）=== */
+      .ftree-canvas{
+        position:relative;
+        border-radius:2rem;
+        background:linear-gradient(160deg, rgba(255,253,250,.95), rgba(245,235,221,.92));
+        border:1px solid rgba(192,136,117,.22);
+        box-shadow:var(--warm-shadow-lg), inset 0 0 60px rgba(192,136,117,.06);
+        padding:2.2rem 1.8rem 2rem;
+        overflow:hidden;
+      }
+      .ftree-canvas::before, .ftree-canvas::after{
+        content:''; position:absolute; width:120px; height:120px;
+        background-repeat:no-repeat; background-size:contain; opacity:.55; pointer-events:none;
+      }
+      .ftree-canvas::before{
+        top:-18px; left:-18px;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cg fill='%237E9476' fill-opacity='.55'%3E%3Ccircle cx='28' cy='34' r='12'/%3E%3Ccircle cx='55' cy='22' r='15'/%3E%3Ccircle cx='18' cy='62' r='10'/%3E%3Cpath d='M30 30 Q55 5 80 25 Q95 40 80 60 Q60 80 35 70 Q15 60 30 30'/%3E%3Cpath d='M25 55 Q5 75 20 95 Q35 110 55 95'/%3E%3C/g%3E%3Cpath fill='none' stroke='%23C08875' stroke-width='1.2' stroke-opacity='.45' d='M45 45 Q70 20 95 40'/%3E%3C/svg%3E");
+      }
+      .ftree-canvas::after{
+        bottom:-18px; right:-18px;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cg fill='%23C08875' fill-opacity='.5'%3E%3Ccircle cx='92' cy='86' r='12'/%3E%3Ccircle cx='65' cy='98' r='15'/%3E%3Ccircle cx='102' cy='58' r='10'/%3E%3Cpath d='M90 90 Q65 115 40 95 Q25 80 40 60 Q60 40 85 50 Q105 60 90 90'/%3E%3Cpath d='M95 65 Q115 45 100 25 Q85 10 65 25'/%3E%3C/g%3E%3Cpath fill='none' stroke='%237E9476' stroke-width='1.2' stroke-opacity='.45' d='M75 75 Q50 100 25 80'/%3E%3C/svg%3E");
+      }
+      .ftree-title{
+        font-family:"Noto Serif TC",serif; font-size:1.6rem; font-weight:600;
+        color:var(--taupe-800); text-align:center; letter-spacing:.06em;
+        margin-bottom:1.2rem; position:relative; z-index:1;
+      }
+      .ftree-title small{
+        display:block; font-family:"Noto Sans TC",sans-serif; font-size:.65rem;
+        color:var(--taupe-500); letter-spacing:.18em; margin-top:.25rem;
+      }
+
+      .ftree-level{ position:relative; display:flex; justify-content:center; gap:2.2rem; margin:1.6rem 0; z-index:1; }
+      .ftree-level-grand{ margin-bottom:2.4rem; }
+      .ftree-level-parent{ margin-bottom:2.8rem; }
+      .ftree-level-children{ gap:1.2rem; flex-wrap:wrap; }
+
+      .ftree-node{
+        position:relative; display:flex; flex-direction:column; align-items:center;
+        text-align:center; transition:transform .2s ease;
+      }
+      .ftree-node:hover{ transform:translateY(-3px); }
+      .ftree-node[data-role="head"] .ftree-avatar-wrap{ width:96px; height:96px; }
+      .ftree-node[data-role="child"] .ftree-avatar-wrap{ width:68px; height:68px; }
+      .ftree-node[data-role="placeholder"] .ftree-avatar-wrap{ width:76px; height:76px; }
+      .ftree-avatar-wrap{
+        position:relative; border-radius:50%;
+        padding:5px; background:linear-gradient(135deg, var(--sage-300), var(--pink-border));
+        box-shadow:0 10px 24px -10px rgba(99,124,93,.35);
+      }
+      .ftree-node[data-role="head"] .ftree-avatar-wrap{
+        padding:6px;
+        background:linear-gradient(135deg, #C08875, #A8B89A, #C08875);
+        background-size:200% 200%; animation:ftreeShimmer 5s ease infinite;
+      }
+      .ftree-avatar{
+        width:100%; height:100%; border-radius:50%;
+        background:linear-gradient(135deg, #FDF6FA, #F5E5D5);
+        display:flex; align-items:center; justify-content:center;
+        color:var(--taupe-600); font-size:1.4rem; overflow:hidden;
+        border:2px solid rgba(255,255,255,.8);
+      }
+      .ftree-node[data-role="head"] .ftree-avatar{ font-size:1.8rem; }
+      .ftree-node[data-role="placeholder"] .ftree-avatar{
+        background:linear-gradient(135deg, rgba(245,229,213,.6), rgba(232,201,181,.4));
+        border:2px dashed rgba(192,136,117,.4); color:rgba(94,64,55,.5); font-size:1.6rem;
+      }
+      .ftree-avatar img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
+      .ftree-name{
+        margin-top:.55rem; font-weight:600; color:var(--taupe-800); font-size:.85rem; line-height:1.25;
+        max-width:110px; word-break:break-word;
+      }
+      .ftree-node[data-role="head"] .ftree-name{ font-size:1rem; color:var(--taupe-800); }
+      .ftree-meta{
+        font-size:.7rem; color:var(--taupe-500); margin-top:.15rem; line-height:1.3;
+      }
+      .ftree-tag{
+        display:inline-block; margin-top:.35rem; padding:.15rem .5rem; border-radius:999px;
+        font-size:.65rem; font-weight:600; background:var(--pink-soft); color:var(--pink-700);
+      }
+      .ftree-tag.sage{ background:var(--sage-soft); color:var(--sage-700); }
+      .ftree-tag.adult{ background:#FBEAE8; color:var(--red-700); }
+      .ftree-unlink{
+        margin-top:.35rem; padding:.15rem .4rem; border-radius:999px;
+        font-size:.65rem; color:rgba(180,69,58,.55); background:transparent;
+        border:1px solid rgba(180,69,58,.2); cursor:pointer; transition:all .2s ease;
+      }
+      .ftree-unlink:hover{ color:#fff; background:rgba(180,69,58,.85); border-color:rgba(180,69,58,.85); }
+
+      /* 連接線 */
+      .ftree-branch-v, .ftree-branch-h{ position:absolute; background:rgba(192,136,117,.35); z-index:0; }
+      .ftree-branch-v{ width:2px; }
+      .ftree-branch-h{ height:2px; }
+      .ftree-level-grand::after{
+        content:''; position:absolute; left:50%; bottom:-2.4rem; width:2px; height:2.4rem;
+        background:linear-gradient(to bottom, rgba(192,136,117,.35), rgba(192,136,117,.15)); transform:translateX(-50%);
+      }
+      .ftree-level-parent::before{
+        content:''; position:absolute; left:50%; top:-2.8rem; width:2px; height:2.8rem;
+        background:linear-gradient(to bottom, rgba(192,136,117,.2), rgba(192,136,117,.35)); transform:translateX(-50%);
+      }
+      .ftree-level-parent::after{
+        content:''; position:absolute; left:50%; bottom:-2.8rem; width:2px; height:2.8rem;
+        background:linear-gradient(to bottom, rgba(192,136,117,.35), rgba(192,136,117,.2)); transform:translateX(-50%);
+      }
+      .ftree-level-children::before{
+        content:''; position:absolute; left:50%; top:-2.8rem; width:60%; max-width:420px; height:2px;
+        border-top:2px solid rgba(192,136,117,.3); border-radius:50% 50% 0 0/12px 12px 0 0;
+        transform:translateX(-50%);
+      }
+
+      .ftree-actions{
+        position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem;
+        margin-top:1.6rem; padding-top:1.2rem; border-top:1px dashed rgba(192,136,117,.25);
+      }
+      .ftree-note{
+        position:relative; z-index:1; text-align:center; font-size:.75rem; color:var(--taupe-500);
+        margin-top:.9rem;
+      }
+
+      @keyframes ftreeShimmer{
+        0%{ background-position:0% 50%; }
+        50%{ background-position:100% 50%; }
+        100%{ background-position:0% 50%; }
+      }
+
+      @media (max-width: 767px){
+        .ftree-canvas{ padding:1.4rem .9rem; border-radius:1.4rem; }
+        .ftree-title{ font-size:1.25rem; }
+        .ftree-level{ gap:1.1rem; margin:1.1rem 0; }
+        .ftree-level-grand{ margin-bottom:1.6rem; }
+        .ftree-level-parent{ margin-bottom:1.9rem; }
+        .ftree-level-grand::after{ bottom:-1.6rem; height:1.6rem; }
+        .ftree-level-parent::before{ top:-1.9rem; height:1.9rem; }
+        .ftree-level-parent::after{ bottom:-1.9rem; height:1.9rem; }
+        .ftree-level-children::before{ width:75%; }
+        .ftree-node[data-role="head"] .ftree-avatar-wrap{ width:76px; height:76px; }
+        .ftree-node[data-role="child"] .ftree-avatar-wrap{ width:56px; height:56px; }
+        .ftree-node[data-role="placeholder"] .ftree-avatar-wrap{ width:60px; height:60px; }
+        .ftree-name{ font-size:.78rem; max-width:84px; }
+        .ftree-meta{ font-size:.65rem; }
+      }
     </style>
   <style>
 /* ===== 手機版深度優化 2026-09-04：表格轉卡片 / sticky 篩選 / 字階留白 / FAB ===== */
@@ -2162,57 +2305,79 @@
               </template>
 
               <!-- 樹狀圖（選中主帳戶時） -->
-              <div v-else class="bg-white rounded-xl shadow-lg p-6">
-                <!-- 戶主（根節點） -->
-                <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg"><i class="fas fa-user"></i></div>
-                    <div>
-                      <p class="font-bold text-slate-800 text-lg">{{ selectedFamilyHead.name }} <span class="text-xs text-slate-400">({{ selectedFamilyHead.username }})</span></p>
-                      <p class="text-xs text-slate-500">
-                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">家庭戶主</span>
-                        <span class="ml-1">{{ selectedFamilyHead.members.length }} 位成員</span>
-                        <template v-if="selectedFamilyHead.membership_tier === 'family'"><span class="ml-1">· 家庭會員</span></template>
-                        <span v-else class="ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold">非 family 級（{{ selectedFamilyHead.membership_tier || 'general' }}）</span>
-                      </p>
+              <div v-else class="ftree-canvas">
+                <div class="ftree-title">
+                  Family Tree
+                  <small>{{ selectedFamilyHead.name }} 的家庭帳戶</small>
+                </div>
+
+                <!-- 祖父母層（預留三代入口） -->
+                <div class="ftree-level ftree-level-grand">
+                  <div class="ftree-node" data-role="placeholder">
+                    <div class="ftree-avatar-wrap">
+                      <div class="ftree-avatar"><i class="fas fa-user"></i></div>
                     </div>
+                    <div class="ftree-name">上一代<br><span class="text-[10px] opacity-70">（預留）</span></div>
+                    <span class="ftree-tag sage">祖父</span>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <button @click="addAdminFamilyChild(selectedFamilyHead)" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium"><i class="fas fa-user-plus mr-1"></i>加子女</button>
-                    <button @click="changeFamilyTier(selectedFamilyHead)" class="text-blue-600 hover:text-blue-800 text-sm font-medium"><i class="fas fa-exchange-alt mr-1"></i>更改級別</button>
+                  <div class="ftree-node" data-role="placeholder">
+                    <div class="ftree-avatar-wrap">
+                      <div class="ftree-avatar"><i class="fas fa-user"></i></div>
+                    </div>
+                    <div class="ftree-name">上一代<br><span class="text-[10px] opacity-70">（預留）</span></div>
+                    <span class="ftree-tag sage">祖母</span>
                   </div>
                 </div>
 
-                <!-- 子節點（家庭成員） -->
-                <div v-if="selectedFamilyHead.members.length === 0" class="text-sm text-slate-400 pl-6">沒有家庭成員</div>
-                <div v-else class="pl-6">
-                  <div class="relative">
-                    <div class="absolute left-0 top-2 bottom-2 w-px bg-slate-300"></div>
-                    <div v-for="m in selectedFamilyHead.members" :key="m.id" class="relative pl-6 pb-3">
-                      <div class="absolute left-0 top-5 w-5 h-px bg-slate-300"></div>
-                      <div class="flex items-center justify-between rounded-lg border border-slate-200 p-3 bg-slate-50">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs shrink-0">
-                            <i class="fas fa-child" v-if="!m.isAdult"></i><i class="fas fa-user" v-else></i>
-                          </div>
-                          <div class="min-w-0">
-                            <p class="text-sm font-semibold text-slate-700 truncate">{{ m.name }} <span class="text-xs font-normal text-slate-400">{{ m.username }}</span></p>
-                            <p class="text-xs text-slate-400 truncate">{{ m.age }} 歲<template v-if="m.phone"> · {{ m.phone }}</template> · 預約 {{ m.booking_count || 0 }} 次</p>
-                          </div>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold" :class="m.isAdult ? 'bg-rose-100 text-rose-700' : (m.turning18Soon ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-600')">
-                            {{ m.isAdult ? '已成年·跟進' : (m.turning18Soon ? `快將成年(${m.days_to_18}日)` : '18歲以下') }}
-                          </span>
-                          <button @click="removeFamilyMember(selectedFamilyHead, m)" class="text-red-500 hover:text-red-700 text-xs" title="移除家庭連結（帳戶保留）"><i class="fas fa-unlink"></i></button>
-                        </div>
+                <!-- 父母層（戶主） -->
+                <div class="ftree-level ftree-level-parent">
+                  <div class="ftree-node" data-role="head">
+                    <div class="ftree-avatar-wrap">
+                      <div class="ftree-avatar">
+                        <img v-if="selectedFamilyHead.avatar_url" :src="selectedFamilyHead.avatar_url" :alt="selectedFamilyHead.name">
+                        <i v-else class="fas fa-crown"></i>
                       </div>
                     </div>
+                    <div class="ftree-name">{{ selectedFamilyHead.name }}</div>
+                    <div class="ftree-meta">{{ selectedFamilyHead.username }} · {{ selectedFamilyHead.members.length }} 位成員</div>
+                    <span class="ftree-tag" :class="selectedFamilyHead.membership_tier === 'family' ? '' : 'adult'">
+                      {{ selectedFamilyHead.membership_tier === 'family' ? '家庭會員' : (selectedFamilyHead.membership_tier || 'general') }}
+                    </span>
                   </div>
                 </div>
 
-                <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
-                  <i class="fas fa-calendar-check mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約
+                <!-- 子女層（家庭成員） -->
+                <div v-if="selectedFamilyHead.members.length === 0" class="text-center text-sm text-slate-400 py-6">沒有家庭成員</div>
+                <div v-else class="ftree-level ftree-level-children">
+                  <div
+                    v-for="m in selectedFamilyHead.members"
+                    :key="m.id"
+                    class="ftree-node"
+                    data-role="child"
+                  >
+                    <div class="ftree-avatar-wrap">
+                      <div class="ftree-avatar">
+                        <img v-if="m.avatar_url" :src="m.avatar_url" :alt="m.name">
+                        <i v-else :class="m.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
+                      </div>
+                    </div>
+                    <div class="ftree-name">{{ m.name }}</div>
+                    <div class="ftree-meta">{{ m.age }} 歲 · 預約 {{ m.booking_count || 0 }} 次</div>
+                    <span class="ftree-tag" :class="m.isAdult ? 'adult' : (m.turning18Soon ? '' : 'sage')">
+                      {{ m.isAdult ? '已成年·跟進' : (m.turning18Soon ? `快成年(${m.days_to_18}日)` : '18歲以下') }}
+                    </span>
+                    <button @click="removeFamilyMember(selectedFamilyHead, m)" class="ftree-unlink" title="移除家庭連結（帳戶保留）"><i class="fas fa-unlink"></i></button>
+                  </div>
+                </div>
+
+                <div class="ftree-actions">
+                  <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>加子女</button>
+                  <button @click="changeFamilyTier(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-white border border-slate-200 text-slate-700 text-sm hover:bg-slate-50"><i class="fas fa-exchange-alt mr-1"></i>更改級別</button>
+                  <button @click="selectedFamilyHead = null" class="px-4 py-2 rounded-full bg-slate-100 text-slate-700 text-sm hover:bg-slate-200"><i class="fas fa-arrow-left mr-1"></i>返全部主帳戶</button>
+                </div>
+
+                <div class="ftree-note">
+                  <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 頂部「上一代」為預留入口，未來可擴展祖父母層
                 </div>
               </div>
             </div>
