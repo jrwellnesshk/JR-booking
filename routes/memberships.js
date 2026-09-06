@@ -797,7 +797,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   const canLinkAs = async (user, fromUserId) => {
     if (user.role === 'admin') return true;
     if (Number(fromUserId) === Number(user.id)) return true;
-    const isHead = Number(user.family_head_id) === Number(user.id);
+    // 戶主定義同 GET /membership 一致：family_head_id=自己 或 名下已有 family_links 子女
+    let isHead = Number(user.family_head_id) === Number(user.id);
+    if (!isHead) {
+      const c = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [user.id]);
+      isHead = !!c;
+    }
     if (isHead) {
       const child = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, Number(fromUserId)]);
       return !!child;
@@ -926,6 +931,35 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) {
       console.error('移除連結失敗:', e);
       res.status(500).json({ error: '移除失敗' });
+    }
+  });
+
+  // 🔍 GET /api/membership/account-links/search?q= — 客人／戶主搜尋可以連結嘅客戶帳戶（按名稱/用戶名/電話）
+  // 排除：自己、自己名下嘅家庭子女、以及雙方已存在嘅 account_links（避免重複連結）
+  router.get('/account-links/search', requireAuth, async (req, res) => {
+    try {
+      const kw = String(req.query.q || '').trim();
+      if (!kw) return res.json({ ok: true, results: [] });
+      const like = `%${kw}%`;
+      const me = req.user.id;
+      const rows = await q(
+        `SELECT u.id, u.username, u.name, u.membership_tier
+         FROM users u
+         WHERE u.role='customer' AND u.id <> ?
+           AND (u.name LIKE ? COLLATE NOCASE OR u.username LIKE ? COLLATE NOCASE OR u.phone LIKE ? OR u.member_no LIKE ?)
+           AND u.id NOT IN (SELECT child_user_id FROM family_links WHERE parent_user_id=?)
+           AND u.id NOT IN (
+             SELECT CASE WHEN user_a=? THEN user_b ELSE user_a END
+             FROM account_links WHERE user_a=? OR user_b=?
+           )
+         ORDER BY u.name COLLATE NOCASE
+         LIMIT 12`,
+        [me, like, like, like, like, me, me, me]
+      );
+      res.json({ ok: true, results: rows || [] });
+    } catch (e) {
+      console.error('搜尋可連結帳戶失敗:', e);
+      res.status(500).json({ error: '搜尋失敗' });
     }
   });
 

@@ -127,6 +127,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const linkError = ref('');
           const linkForm = ref({ targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null });
           const linkRelationOptions = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
+          // 🔍 搜尋要連結嘅帳戶（支援 姓名/用戶名/電話）
+          const linkSearchQ = ref('');
+          const linkSearchResults = ref([]);
+          const linkSearching = ref(false);
+          const linkSearchMsg = ref('');
+          const linkTargetName = ref('');   // 已揀選目標嘅顯示名稱（username 存喺 linkForm.targetUsername）
           // ==================== 優惠券（買券 → 免費診症）====================
           const coupons = ref([]);
           const couponTotalRemaining = ref(0);
@@ -1820,11 +1826,50 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
 
+          // 🔍 搜尋可以連結嘅帳戶（姓名／用戶名／電話都得）
+          const searchLinkAccounts = async () => {
+            const kw = (linkSearchQ.value || '').trim();
+            if (!kw) { linkSearchMsg.value = '請輸入姓名、用戶名或電話去搜尋'; return; }
+            linkSearching.value = true;
+            linkSearchMsg.value = '';
+            try {
+              const res = await fetch(`${API_URL}/membership/account-links/search?q=${encodeURIComponent(kw)}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) { linkSearchMsg.value = data.error || '搜尋失敗'; linkSearchResults.value = []; }
+              else {
+                linkSearchResults.value = data.results || [];
+                if (!linkSearchResults.value.length) linkSearchMsg.value = '搵唔到符合嘅帳戶（對方可能已係你嘅家庭成員或已連結）';
+              }
+            } catch (e) {
+              linkSearchMsg.value = '搜尋服務暫時不可用';
+              linkSearchResults.value = [];
+            } finally {
+              linkSearching.value = false;
+            }
+          };
+
+          // ✅ 揀選搜尋結果做目標 B
+          const pickLinkTarget = (u) => {
+            linkForm.value.targetUsername = u.username;
+            linkTargetName.value = u.name || u.username;
+            linkSearchResults.value = [];
+            linkSearchQ.value = '';
+            linkSearchMsg.value = '';
+            linkError.value = '';
+          };
+
+          const clearLinkTarget = () => {
+            linkForm.value.targetUsername = '';
+            linkTargetName.value = '';
+          };
+
           // 🆕 連結新帳戶（客人自助；家庭戶主可代子女）
           const createAccountLink = async () => {
             linkError.value = '';
             const target = (linkForm.value.targetUsername || '').trim();
-            if (!target) { linkError.value = '請輸入對方用戶名'; return; }
+            if (!target) { linkError.value = '請搜尋並揀選要連結嘅帳戶'; return; }
             if (linkForm.value.relation === '其他' && !(linkForm.value.customRelation || '').trim()) {
               linkError.value = '請輸入關係說明'; return;
             }
@@ -1844,6 +1889,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               const data = await res.json();
               if (res.ok && data.ok) {
                 linkForm.value = { targetUsername: '', relation: '朋友', customRelation: '', fromUserId: currentMemberId.value };
+                linkTargetName.value = '';
+                linkSearchResults.value = [];
+                linkSearchQ.value = '';
+                linkSearchMsg.value = '';
                 await loadMyMembership();
               } else {
                 linkError.value = data.error || '連結失敗';
@@ -4425,6 +4474,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             linkError,
             linkForm,
             linkRelationOptions,
+            // 🔍 搜尋要連結嘅帳戶
+            linkSearchQ,
+            linkSearchResults,
+            linkSearching,
+            linkSearchMsg,
+            linkTargetName,
+            searchLinkAccounts,
+            pickLinkTarget,
+            clearLinkTarget,
             currentMemberId,
             currentMemberName,
             myFamilyChildren,
