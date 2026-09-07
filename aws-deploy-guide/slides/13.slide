@@ -1,0 +1,35 @@
+<Slide style={{ background: '#F0E4D2' }}>
+  <Box style={{ height: 120, paddingLeft: 64, paddingRight: 64, paddingTop: 22, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <Box style={{ width: 8, height: 40, background: '#7E9476', borderRadius: 4 }} />
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#3E2A1E' }}>第 6 步：PM2 常駐與開機自啟</Text>
+  </Box>
+  <Box style={{ height: 540, paddingLeft: 64, paddingRight: 64, paddingTop: 8, flexDirection: 'row', gap: 24 }}>
+    <Box style={{ width: 380, justifyContent: 'center', gap: 12 }}>
+      <Text style={{ fontSize: 19, color: '#3E2A1E', lineHeight: 1.6 }}>PM2 會幫你嘅 Node 程式：永遠執行、崩咗自動重啟、伺服器重開自動起返。</Text>
+      <Box style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: '14px 16px' }}>
+        <Text style={{ fontSize: 16, color: '#3E2A1E', lineHeight: 1.7 }}>項目已經有 <Text style={{ fontWeight: 'bold' }}>ecosystem.config.js</Text>，PM2 名係 <Text style={{ fontWeight: 'bold' }}>potin-clinic</Text>。SQLite 一定要 <Text style={{ fontWeight: 'bold' }}>instances: 1</Text>（單寫入者），千萬唔好設 cluster。</Text>
+      </Box>
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center' }}>
+      <CodeBlock
+        code={`# 用項目設定啟動
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup      # 跟指示執行返回嘅 sudo 指令
+
+# 睇即時 log（有冇 error）
+pm2 logs potin-clinic
+
+# 之後改咗 code 要重啟：
+pm2 restart potin-clinic`}
+        language='bash'
+        width={660}
+        fontSize={14}
+      />
+    </Box>
+  </Box>
+  <Box style={{ height: 60, paddingLeft: 64, paddingRight: 64, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>寶天醫館 · AWS 上線手把手教學</Text>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>13 / 18</Text>
+  </Box>
+</Slide>

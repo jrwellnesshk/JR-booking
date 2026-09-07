@@ -1,0 +1,53 @@
+<Slide style={{ background: '#F0E4D2' }}>
+  <Box style={{ height: 120, paddingLeft: 64, paddingRight: 64, paddingTop: 22, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <Box style={{ width: 8, height: 40, background: '#7E9476', borderRadius: 4 }} />
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#3E2A1E' }}>整體架構圖：你個網站會變成點</Text>
+  </Box>
+  <Box style={{ height: 540, paddingLeft: 64, paddingRight: 64, paddingTop: 4, flexDirection: 'row', gap: 28, alignItems: 'center' }}>
+    <Box style={{ width: 540 }}>
+      <svg width={520} height={430} viewBox='0 0 520 430'>
+        <rect x='180' y='10' width='160' height='54' rx='10' fill='#7E9476' />
+        <text x='260' y='42' textAnchor='middle' fill='#FFFFFF' fontSize='18' fontWeight='bold'>用戶（電話 / 電腦）</text>
+        <line x1='260' y1='64' x2='260' y2='96' stroke='#5D4037' strokeWidth='3' />
+        <rect x='170' y='96' width='180' height='50' rx='10' fill='#FFFFFF' stroke='#7E9476' strokeWidth='2' />
+        <text x='260' y='126' textAnchor='middle' fill='#3E2A1E' fontSize='16'>網域 / DNS 解析</text>
+        <line x1='260' y1='146' x2='260' y2='178' stroke='#5D4037' strokeWidth='3' />
+        <rect x='40' y='178' width='440' height='180' rx='14' fill='#FFFFFF' stroke='#C0392B' strokeWidth='2' strokeDasharray='6 5' />
+        <text x='260' y='200' textAnchor='middle' fill='#C0392B' fontSize='14' fontWeight='bold'>EC2 安全組（防火牆：開 80 / 443 / 22）</text>
+        <rect x='150' y='212' width='220' height='44' rx='8' fill='#7E9476' />
+        <text x='260' y='239' textAnchor='middle' fill='#FFFFFF' fontSize='15'>Nginx（反向代理）</text>
+        <line x1='260' y1='256' x2='260' y2='276' stroke='#5D4037' strokeWidth='2' />
+        <rect x='150' y='276' width='220' height='44' rx='8' fill='#5D4037' />
+        <text x='260' y='303' textAnchor='middle' fill='#F0E4D2' fontSize='15'>Node.js Express（:4000）</text>
+        <line x1='370' y1='298' x2='430' y2='298' stroke='#5D4037' strokeWidth='2' />
+        <rect x='370' y='276' width='110' height='44' rx='8' fill='#EFD2BD' stroke='#5D4037' strokeWidth='1' />
+        <text x='425' y='303' textAnchor='middle' fill='#3E2A1E' fontSize='13'>SQLite 檔</text>
+        <line x1='425' y1='320' x2='425' y2='356' stroke='#5D4037' strokeWidth='2' strokeDasharray='4 4' />
+        <rect x='360' y='356' width='130' height='40' rx='8' fill='#FFFFFF' stroke='#7E9476' strokeWidth='2' />
+        <text x='425' y='381' textAnchor='middle' fill='#3E2A1E' fontSize='13'>EBS 硬碟</text>
+        <line x1='150' y1='358' x2='60' y2='358' stroke='#C0392B' strokeWidth='2' />
+        <rect x='20' y='338' width='120' height='40' rx='8' fill='#FFFFFF' stroke='#C0392B' strokeWidth='2' />
+        <text x='80' y='363' textAnchor='middle' fill='#C0392B' fontSize='13'>S3 備份</text>
+      </svg>
+    </Box>
+    <Box style={{ flex: 1, gap: 14 }}>
+      <Text style={{ fontSize: 19, color: '#3E2A1E', lineHeight: 1.6 }}>客人喺瀏覽器輸入網址 → 經 DNS 搵到你在 AWS 嘅伺服器 → Nginx 收到要求，轉去 Node.js 跑個預約系統 → 資料存落 SQLite 檔（喺 EBS 硬碟）。</Text>
+      <Box style={{ background: '#FFFFFF', borderRadius: 12, padding: '14px 18px', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Box style={{ width: 34, height: 34, borderRadius: 17, background: '#C0392B', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#fff' }}>!</Text>
+        </Box>
+        <Text style={{ fontSize: 17, color: '#3E2A1E' }}>防火牆（安全組）只開必要端口，外面直接打 4000 係連唔入嘅。</Text>
+      </Box>
+      <Box style={{ background: '#FFFFFF', borderRadius: 12, padding: '14px 18px', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Box style={{ width: 34, height: 34, borderRadius: 17, background: '#7E9476', justifyContent: 'center', alignItems: 'center' }}>
+          <svg width={18} height={18} viewBox='0 0 24 24' fill='none' stroke='#fff' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><ellipse cx='12' cy='6' rx='8' ry='3'/><path d='M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6'/><path d='M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'/></svg>
+        </Box>
+        <Text style={{ fontSize: 17, color: '#3E2A1E' }}>每日自動將 SQLite 備份去 S3，硬件壞咗都唔使驚。</Text>
+      </Box>
+    </Box>
+  </Box>
+  <Box style={{ height: 60, paddingLeft: 64, paddingRight: 64, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>寶天醫館 · AWS 上線手把手教學</Text>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>04 / 18</Text>
+  </Box>
+</Slide>

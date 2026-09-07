@@ -1,0 +1,8 @@
+<Slide style={{ background: 'linear-gradient(135deg,#7E9476 0%,#5D4037 100%)' }}>
+  <Box style={{ height: '100%', padding: '0 80px', flexDirection: 'column', justifyContent: 'center' }}>
+    <Text style={{ fontSize: 24, color: '#F0E4D2', letterSpacing: 2 }}>第 2 章</Text>
+    <Text style={{ fontSize: 56, fontWeight: 'bold', color: '#FFFFFF', marginTop: 8 }}>安裝環境與正式上線</Text>
+    <Box style={{ width: 120, height: 6, background: '#F0E4D2', borderRadius: 3, marginTop: 24 }} />
+    <Text style={{ fontSize: 20, color: '#F0E4D2', marginTop: 22 }}>第 11–17 頁：裝 Node → 上傳代碼 → PM2 → Nginx/HTTPS → 安全備份 → 上線清單</Text>
+  </Box>
+</Slide>

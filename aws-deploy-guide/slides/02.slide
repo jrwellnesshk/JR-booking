@@ -1,0 +1,35 @@
+<Slide style={{ background: '#F0E4D2' }}>
+  <Box style={{ height: 120, paddingLeft: 64, paddingRight: 64, paddingTop: 22, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <Box style={{ width: 8, height: 40, background: '#7E9476', borderRadius: 4 }} />
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#3E2A1E' }}>目錄</Text>
+  </Box>
+  <Box style={{ height: 540, paddingLeft: 64, paddingRight: 64, paddingTop: 8, flexDirection: 'row', gap: 40 }}>
+    <Box style={{ width: '40%', justifyContent: 'center' }}>
+      <Text style={{ fontSize: 20, color: '#3E2A1E', lineHeight: 1.7 }}>整份教學分為 <span style={{ fontWeight: 'bold', color: '#5D4037' }}>兩大階段</span>：先學識開 AWS 帳號同建立伺服器，再學點樣裝環境同正式上線。中間仲有架構圖、費用預警、安全同備份，確保你做得穩陣。</Text>
+    </Box>
+    <Box style={{ flex: 1, gap: 22, justifyContent: 'center' }}>
+      <Box style={{ background: '#FFFFFF', borderRadius: 14, padding: '20px 24px', flexDirection: 'row', alignItems: 'center', gap: 18, boxShadow: '0 4px 20px rgba(62,42,30,.08)' }}>
+        <Box style={{ width: 56, height: 56, borderRadius: 14, background: '#7E9476', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF' }}>1</Text>
+        </Box>
+        <Box>
+          <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#3E2A1E' }}>第 1 章　開帳號與建立伺服器</Text>
+          <Text style={{ fontSize: 16, color: '#7c6f63' }}>開 AWS 帳號 → 建立 EC2 → 瀏覽器連接</Text>
+        </Box>
+      </Box>
+      <Box style={{ background: '#FFFFFF', borderRadius: 14, padding: '20px 24px', flexDirection: 'row', alignItems: 'center', gap: 18, boxShadow: '0 4px 20px rgba(62,42,30,.08)' }}>
+        <Box style={{ width: 56, height: 56, borderRadius: 14, background: '#5D4037', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FFFFFF' }}>2</Text>
+        </Box>
+        <Box>
+          <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#3E2A1E' }}>第 2 章　安裝環境與正式上線</Text>
+          <Text style={{ fontSize: 16, color: '#7c6f63' }}>裝 Node → 上傳代碼 → PM2 → Nginx/HTTPS → 安全備份</Text>
+        </Box>
+      </Box>
+    </Box>
+  </Box>
+  <Box style={{ height: 60, paddingLeft: 64, paddingRight: 64, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>寶天醫館 · AWS 上線手把手教學</Text>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>02 / 18</Text>
+  </Box>
+</Slide>

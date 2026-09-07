@@ -1,0 +1,41 @@
+<Slide style={{ background: '#F0E4D2' }}>
+  <Box style={{ height: 120, paddingLeft: 64, paddingRight: 64, paddingTop: 22, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <Box style={{ width: 8, height: 40, background: '#7E9476', borderRadius: 4 }} />
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#3E2A1E' }}>費用預估與免費層預警</Text>
+  </Box>
+  <Box style={{ height: 540, paddingLeft: 64, paddingRight: 64, paddingTop: 6, flexDirection: 'row', gap: 24 }}>
+    <Box style={{ flex: 1.5, gap: 7 }}>
+      <Box style={{ flexDirection: 'row', backgroundColor: '#7E9476', borderRadius: 8, padding: '9px 14px', gap: 10, alignItems: 'center' }}>
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#fff', width: 170 }}>項目</Text>
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#fff', width: 150 }}>免費層(首12月)</Text>
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#fff', flex: 1 }}>之後估計</Text>
+      </Box>
+      {[['EC2 t2.micro (1GB)','免費','約 $8–10 / 月'],['EBS 硬碟 20GB','免費(30GB內)','約 $2 / 月'],['流量 100GB/月','免費','超出 $0.09/GB'],['彈性 IP','免費(有掛載)','閒置 $3.6/月'],['SSL 證書 (Let’s Encrypt)','免費','免費'],['網域','—','約 $10–15 / 年']].map((r, i) => (
+        <Box key={i} style={{ flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 8, padding: '9px 14px', gap: 10, alignItems: 'center' }}>
+          <Text style={{ fontSize: 15, color: '#3E2A1E', width: 170 }}>{r[0]}</Text>
+          <Text style={{ fontSize: 15, color: '#5D4037', width: 150 }}>{r[1]}</Text>
+          <Text style={{ fontSize: 15, color: '#3E2A1E', flex: 1 }}>{r[2]}</Text>
+        </Box>
+      ))}
+      <Box style={{ flexDirection: 'row', backgroundColor: '#5D4037', borderRadius: 8, padding: '11px 14px', gap: 10, alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#F0E4D2', width: 170 }}>合計</Text>
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#F0E4D2', width: 150 }}>$0</Text>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#F0E4D2', flex: 1 }}>約 $12–15 / 月（唔計網域）</Text>
+      </Box>
+    </Box>
+    <Box style={{ flex: 1, gap: 14, justifyContent: 'center' }}>
+      <Box style={{ backgroundColor: '#C0392B', borderRadius: 14, padding: '18px 20px' }}>
+        <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#fff' }}>預警 1：免費層得 12 個月</Text>
+        <Text style={{ fontSize: 16, color: '#fff', lineHeight: 1.6, marginTop: 8 }}>免費層喺開帳號後 12 個月到期，之後會自動收費。一定要去 Billing → Budgets 設一個 $0 或 $20 嘅費用警報，避免被突然收錢。</Text>
+      </Box>
+      <Box style={{ backgroundColor: '#FFFFFF', borderRadius: 14, padding: '18px 20px' }}>
+        <Text style={{ fontSize: 19, fontWeight: 'bold', color: '#3E2A1E' }}>預警 2：彈性 IP 唔好閒置</Text>
+        <Text style={{ fontSize: 16, color: '#3E2A1E', lineHeight: 1.6, marginTop: 8 }}>分配咗彈性 IP 但冇掛住伺服器，AWS 會當你浪費而收錢。正式上線時先申請彈性 IP 並掛返落 EC2。</Text>
+      </Box>
+    </Box>
+  </Box>
+  <Box style={{ height: 60, paddingLeft: 64, paddingRight: 64, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>寶天醫館 · AWS 上線手把手教學</Text>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>05 / 18</Text>
+  </Box>
+</Slide>

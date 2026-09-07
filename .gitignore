@@ -37,3 +37,6 @@ _*.ps1
 _*.json
 _*.md
 test-ui/results.json
+
+# 投影片工具快取
+aws-deploy-guide/.cache/

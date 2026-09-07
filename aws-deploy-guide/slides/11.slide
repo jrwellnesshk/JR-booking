@@ -1,0 +1,41 @@
+<Slide style={{ background: '#F0E4D2' }}>
+  <Box style={{ height: 120, paddingLeft: 64, paddingRight: 64, paddingTop: 22, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <Box style={{ width: 8, height: 40, background: '#7E9476', borderRadius: 4 }} />
+    <Text style={{ fontSize: 34, fontWeight: 'bold', color: '#3E2A1E' }}>第 4 步：安裝 Node.js 與系統依賴</Text>
+  </Box>
+  <Box style={{ height: 540, paddingLeft: 64, paddingRight: 64, paddingTop: 8, flexDirection: 'row', gap: 24 }}>
+    <Box style={{ width: 360, justifyContent: 'center', gap: 14 }}>
+      <Text style={{ fontSize: 19, color: '#3E2A1E', lineHeight: 1.6 }}>喺 EC2 個 terminal 入面，逐段貼落去執行：</Text>
+      <Box style={{ backgroundColor: '#FFFFFF', borderRadius: 12, padding: '14px 16px' }}>
+        <Text style={{ fontSize: 16, color: '#3E2A1E', lineHeight: 1.6 }}>1. 更新系統<Text style={{ color: '#7c6f63' }}>（約幾分鐘）</Text></Text>
+        <Text style={{ fontSize: 16, color: '#3E2A1E', lineHeight: 1.6, marginTop: 8 }}>2. 裝 Node.js 20 LTS</Text>
+        <Text style={{ fontSize: 16, color: '#3E2A1E', lineHeight: 1.6, marginTop: 8 }}>3. 裝 puppeteer 要嘅系統 lib</Text>
+        <Text style={{ fontSize: 16, color: '#3E2A1E', lineHeight: 1.6, marginTop: 8 }}>4. 裝 PM2（之後用嚟常駐）</Text>
+      </Box>
+    </Box>
+    <Box style={{ flex: 1, justifyContent: 'center' }}>
+      <CodeBlock
+        code={`# 1) 更新系統
+sudo apt update && sudo apt upgrade -y
+
+# 2) 裝 Node.js 20 LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v        # 應該顯示 v20.x
+
+# 3) puppeteer 跑 Chrome 所需系統 lib
+sudo apt install -y libnss3 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 libpango-1.0-0 libcairo2 fonts-noto-cjk unzip
+
+# 4) 裝 PM2（永遠執行 + 開機自啟）
+sudo npm install -g pm2`}
+        language='bash'
+        width={680}
+        fontSize={12}
+      />
+    </Box>
+  </Box>
+  <Box style={{ height: 60, paddingLeft: 64, paddingRight: 64, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>寶天醫館 · AWS 上線手把手教學</Text>
+    <Text style={{ fontSize: 14, color: '#7c6f63' }}>11 / 18</Text>
+  </Box>
+</Slide>

@@ -1,0 +1,8 @@
+<Slide style={{ background: 'linear-gradient(135deg,#7E9476 0%,#5D4037 100%)' }}>
+  <Box style={{ height: '100%', padding: '0 80px', flexDirection: 'column', justifyContent: 'center' }}>
+    <Text style={{ fontSize: 24, color: '#F0E4D2', letterSpacing: 2 }}>第 1 章</Text>
+    <Text style={{ fontSize: 56, fontWeight: 'bold', color: '#FFFFFF', marginTop: 8 }}>開帳號與建立伺服器</Text>
+    <Box style={{ width: 120, height: 6, background: '#F0E4D2', borderRadius: 3, marginTop: 24 }} />
+    <Text style={{ fontSize: 20, color: '#F0E4D2', marginTop: 22 }}>第 7–9 頁：開 AWS 帳號 → 建立 EC2 實例 → 瀏覽器連接</Text>
+  </Box>
+</Slide>
