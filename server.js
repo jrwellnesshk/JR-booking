@@ -10,6 +10,9 @@ require('dotenv').config();
 // 📋 日誌輪轉（每日檔案 + 自動清理，必須喺其他模組之前掛載）
 require('./services/logger');
 
+// 🔒 生產安全預檢：帶住後門 / 預設密碼上生產就即刻擋低（NODE_ENV=production 先生效）
+require('./config/preflight').runPreflight();
+
 const helmet = require('helmet');
 const express = require("express");
 const cors = require("cors");
@@ -221,15 +224,54 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==================== 健康檢查（ALB / ECS target group 用） ====================
+// 必須排喺 globalLimiter 之前 —— 健康檢查唔應該被限流攔（否則 ALB 會誤判實例 unhealthy）。
+// 亦唔好掛喺 /api/ 下面，避免日後有人改 /api 前綴時連帶整死健康檢查。
+const SERVER_STARTED_AT = Date.now();
+
+// liveness：只答「個 process 仲喺度」，唔掂 DB、唔做 I/O，永遠 200（除非 process 死咗）
+app.get(['/health', '/healthz'], (req, res) => {
+  res.status(200).json({
+    ok: true,
+    status: 'alive',
+    uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
+  });
+});
+
+// readiness：個 process 喺度但未 Ready 就唔好派流量（DB 未起好、migration 未跑完）
+// db 喺下面 initializeDatabase() 之後先存在，所以用 lazy getter。
+app.get('/health/ready', (req, res) => {
+  if (!dbReady) {
+    return res.status(503).json({ ok: false, status: 'starting', reason: 'database not initialised' });
+  }
+  // 用一條極輕嘅 query 確認 SQLite 真係讀到嘢（唔係淨係物件存在）
+  db.get('SELECT 1 AS ok', (err) => {
+    if (err) {
+      return res.status(503).json({ ok: false, status: 'not_ready', reason: 'database query failed' });
+    }
+    res.status(200).json({
+      ok: true,
+      status: 'ready',
+      uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
+    });
+  });
+});
+
 // 應用全局速率限制到所有 API 路由
 app.use('/api/', globalLimiter);
 
 // ==================== 初始化資料庫 ====================
 
+// readiness 旗標：initializeDatabase() 同 migrations 跑完先設 true
+let dbReady = false;
+
 const db = initializeDatabase();
 
 // 🔒 JWT revocation 持久化：將登出黑名單落到 DB，重啟後仍然有效（M1 修正）
 jwt.init(db);
+
+// DB 已初始化 + migration 已跑完（initializeDatabase 內部同步建表），開放 readiness
+dbReady = true;
 
 // 🔒 家庭帳戶單一來源修復：以 family_links 為準，重算 users.family_head_id（H3 修正）
 const familyService = require('./services/family')(db);

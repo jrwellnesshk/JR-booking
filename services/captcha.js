@@ -51,7 +51,12 @@ const createCaptcha = () => {
  * @returns {{ ok: boolean, error?: string }}
  */
 const verifyCaptcha = (id, answer) => {
-  if (process.env.CAPTCHA_TEST_BYPASS && String(answer) === process.env.CAPTCHA_TEST_BYPASS) return { ok: true };
+  // 🔒 測試後門：只喺非 production 生效。
+  // 以前版本無環境判斷，若 .env 帶 CAPTCHA_TEST_BYPASS 會令生產環境任何人都可用固定答案
+  // 繞過驗證碼（暴力破解 / 批量註冊）。而家 production 下呢條捷徑一律停用。
+  if (process.env.NODE_ENV !== 'production') {
+    if (process.env.CAPTCHA_TEST_BYPASS && String(answer) === process.env.CAPTCHA_TEST_BYPASS) return { ok: true };
+  }
   if (!id || !answer) {
     return { ok: false, error: '請輸入驗證碼' };
   }

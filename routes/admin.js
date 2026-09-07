@@ -1181,8 +1181,15 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (!fileBuffer) {
         return res.status(400).json({ error: "請上傳 Excel 檔案（透過檔案選擇器）" });
       }
+      // 🔒 上傳大小上限 5MB：Excel 解析器要一次過 inflate 成個 workbook 入記憶體，
+      // 無上限嘅話一個細細嘅「zip bomb」就可以打爆 Node process。
+      const MAX_XLSX_BYTES = 5 * 1024 * 1024;
+      if (fileBuffer.length > MAX_XLSX_BYTES) {
+        return res.status(413).json({ error: `Excel 檔案過大（上限 ${MAX_XLSX_BYTES / 1024 / 1024}MB）` });
+      }
       const xlsx = require('xlsx');
-      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+      // cellFormula/cellNF 唔需要，關咗可以縮小攻擊面（避免公式字串做後續解析）
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer', cellFormula: false, cellNF: false, cellText: false });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawGrid = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
