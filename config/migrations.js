@@ -612,7 +612,7 @@ function runMigrations(db) {
     defaultSettings.forEach(([key, value]) => {
       db.get("SELECT id FROM clinic_settings WHERE setting_key=?", [key], (e, row) => {
         if (e || row) return;
-        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", [key, value], (e2) => {
+        db.run("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", [key, value], (e2) => {
           if (e2) console.error(`初始化 ${key} 失敗:`, e2.message);
           else console.log(`✅ 已初始化 clinic_settings.${key} = ${value}`);
         });
@@ -759,14 +759,26 @@ function runMigrations(db) {
       bAdd('is_free', "ALTER TABLE bookings ADD COLUMN is_free INTEGER DEFAULT 0");
     });
 
-    // services 欄位擴展：床位需求
+    // services 欄位擴展：床位需求（S6 一定要等 requires_bed 欄位存在先插入，否則 fresh DB 會 race 撞「no column named requires_bed」）
+    const upsertS6Service = () => {
+      db.run(`
+        INSERT INTO services (id, name, duration, price, requires_bed) VALUES
+          ('S6', '針灸組合治療（含床位）', 45, 450, 1)
+        ON CONFLICT(id) DO UPDATE SET duration=excluded.duration, price=excluded.price, name=excluded.name, requires_bed=1
+      `, (err) => {
+        if (err) console.error("創建 S6 床位服務失敗:", err.message);
+        else console.log("✅ 床位服務 S6 已準備就緒");
+      });
+    };
     db.all("PRAGMA table_info(services)", (err, cols) => {
       if (err || !cols) return;
       if (!cols.some(col => col.name === 'requires_bed')) {
         db.run("ALTER TABLE services ADD COLUMN requires_bed INTEGER DEFAULT 0", (e) => {
-          if (e) console.error("添加 services.requires_bed 欄位失敗:", e.message);
-          else console.log("✅ 已添加 services.requires_bed 欄位");
+          if (e) { console.error("添加 services.requires_bed 欄位失敗:", e.message); upsertS6Service(); }
+          else { console.log("✅ 已添加 services.requires_bed 欄位"); upsertS6Service(); }
         });
+      } else {
+        upsertS6Service();
       }
       if (!cols.some(col => col.name === 'short_name')) {
         db.run("ALTER TABLE services ADD COLUMN short_name TEXT", (e) => {
@@ -788,16 +800,6 @@ function runMigrations(db) {
     `, (err) => {
       if (err) console.error("更新 services 失敗:", err.message);
       else console.log("✅ 服務時長已更新（15/15/30/30 + 初體驗 60）");
-    });
-
-    // 針灸組合服務需要床位資源
-    db.run(`
-      INSERT INTO services (id, name, duration, price, requires_bed) VALUES
-        ('S6', '針灸組合治療（含床位）', 45, 450, 1)
-      ON CONFLICT(id) DO UPDATE SET duration=excluded.duration, price=excluded.price, name=excluded.name, requires_bed=1
-    `, (err) => {
-      if (err) console.error("創建 S6 床位服務失敗:", err.message);
-      else console.log("✅ 床位服務 S6 已準備就緒");
     });
 
     // 修正 medical_records 表的 doctor_user_id 為可選（允許 NULL）

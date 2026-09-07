@@ -626,7 +626,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     // 初始化診所設定
     db.get("SELECT COUNT(*) as count FROM clinic_settings", (err, row) => {
       if (!err && row.count === 0) {
-        const stmt = db.prepare("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)");
+        const stmt = db.prepare("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)");
         stmt.run("tuina_beds", "5");
         stmt.run("acupuncture_beds", "5");
         stmt.run("vip_rooms", "5");
@@ -640,7 +640,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     // 檢查並添加 closed_days 設定（如果不存在）
     db.get("SELECT * FROM clinic_settings WHERE setting_key = 'closed_days'", (err, row) => {
       if (!err && !row) {
-        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["closed_days", "0"], (err) => {
+        db.run("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["closed_days", "0"], (err) => {
           if (!err) console.log("✅ 已添加休息日設定（預設星期日）");
         });
       }
@@ -649,7 +649,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     // 檢查並添加 holidays_enabled 設定（如果不存在）- 預設啟用公眾假期休息
     db.get("SELECT * FROM clinic_settings WHERE setting_key = 'holidays_enabled'", (err, row) => {
       if (!err && !row) {
-        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["holidays_enabled", "1"], (err) => {
+        db.run("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["holidays_enabled", "1"], (err) => {
           if (!err) console.log("✅ 已添加公眾假期設定（預設啟用）");
         });
       }
@@ -658,7 +658,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     // 檢查並添加 working_holidays 設定（如果不存在）- 儲存要營業的特定假期日期
     db.get("SELECT * FROM clinic_settings WHERE setting_key = 'working_holidays'", (err, row) => {
       if (!err && !row) {
-        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["working_holidays", ""], (err) => {
+        db.run("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["working_holidays", ""], (err) => {
           if (!err) console.log("✅ 已添加營業假期設定");
         });
       }
@@ -667,7 +667,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     // 檢查並添加 SMS 通知設定（如果不存在）- 預設開啟
     db.get("SELECT * FROM clinic_settings WHERE setting_key = 'sms_notification_enabled'", (err, row) => {
       if (!err && !row) {
-        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["sms_notification_enabled", "true"], (err) => {
+        db.run("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["sms_notification_enabled", "true"], (err) => {
           if (!err) console.log("✅ 已添加 SMS 通知設定（預設開啟）");
         });
       }
@@ -676,7 +676,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     // 檢查並添加 WhatsApp 通知設定（如果不存在）- 預設開啟
     db.get("SELECT * FROM clinic_settings WHERE setting_key = 'whatsapp_notification_enabled'", (err, row) => {
       if (!err && !row) {
-        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["whatsapp_notification_enabled", "true"], (err) => {
+        db.run("INSERT OR IGNORE INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)", ["whatsapp_notification_enabled", "true"], (err) => {
           if (!err) console.log("✅ 已添加 WhatsApp 通知設定（預設開啟）");
         });
       }

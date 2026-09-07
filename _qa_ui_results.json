@@ -1,23 +1,23 @@
 {
-  "at": "2026-09-06T09:30:57.148Z",
+  "at": "2026-09-07T08:01:06.910Z",
   "failed": 0,
   "out": [
     {
       "page": "http://localhost:4000/index.html",
       "status": 200,
-      "htmlLen": 25954,
+      "htmlLen": 37929,
       "errors": []
     },
     {
       "page": "http://localhost:4000/staff.html",
       "status": 200,
-      "htmlLen": 57105,
+      "htmlLen": 67011,
       "errors": []
     },
     {
       "page": "http://localhost:4000/doctor.html",
       "status": 200,
-      "htmlLen": 50069,
+      "htmlLen": 54850,
       "errors": []
     },
     {

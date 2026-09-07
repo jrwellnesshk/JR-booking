@@ -31,6 +31,7 @@ backup/
 _*.js
 !_qa_cross_test.js
 !_qa_ui_check.js
+!_qa_runtime_smoke.js
 _*.py
 _*.ps1
 _*.json

@@ -147,10 +147,15 @@ async function pickSlot(date, serviceId, doctorName) {
 }
 
 // 揾一個有位嘅日子（由 baseDay 開始向後最多掃 10 日，避開星期日冇位）
+// 用本地日曆輸出（唔好再用 toISOString —— 香港 UTC+8 會變成「上一日」，
+// 同下面 closeDate 嘅 Sunday 迴圈夾埋會無限迴圈）
 function addDays(base, n) {
   const d = new Date(base + 'T00:00:00');
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 }
 async function findOpenDate(serviceId, doctorName) {
   for (let i = 1; i <= 10; i++) {
@@ -210,7 +215,7 @@ const state = { ids: {}, bookings: {}, records: {}, waOriginal: null, allBooking
 (async () => {
   console.log('=== QA 交叉場景測試開始 ' + new Date().toLocaleTimeString() + ' ===');
   const t0 = Date.now();
-  dbw = new (require('sqlite3').Database)('./database.db');
+  dbw = new (require('sqlite3').Database)(process.env.DB_PATH || './database.db');
 
   // 自備演示帳戶（職員/醫師/家庭會員），避免依賴已清走嘅種子資料；測後會刪除保持 DB 整潔
   await ensureDemoAccounts();
