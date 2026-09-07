@@ -3826,95 +3826,94 @@
                 <!-- 我的連結帳戶（親戚／同輩／朋友，客人自助連結） -->
                 <div class="rounded-xl border border-gray-200 p-5 mt-6">
                   <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-link text-emerald-500 mr-2"></i>我的連結帳戶</h3>
-                  <p class="text-sm text-gray-500 mb-4">連結親戚、同輩或朋友嘅帳戶，關係由你定義；連結後雙方都會喺「我的連結帳戶」見到對方，而你的主帳戶會自動轉為家庭會員。管理員同家庭戶主亦可代為管理。</p>
+                  <p class="text-sm text-gray-500 mb-4">連結親戚、同輩或朋友嘅帳戶，關係由你定義；連結後雙方都會喺「我的連結帳戶」見到對方。你唔需要揀主帳戶，直接以自己嘅帳戶連結即可。</p>
 
-                  <!-- 已連結列表 -->
-                  <div v-if="linkLoading" class="text-gray-400 text-sm py-3"><i class="fas fa-spinner fa-spin mr-1"></i>載入連結中...</div>
-                  <div v-else-if="accountLinks.length === 0" class="text-sm text-gray-400 py-2">仲未連結任何帳戶。</div>
-                  <div v-else class="space-y-2 mb-4">
-                    <div v-for="lk in accountLinks" :key="lk.id" class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm">
-                      <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold overflow-hidden flex-shrink-0">
-                          <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" class="w-full h-full object-cover" alt="">
-                          <span v-else>{{ (lk.other.name || lk.other.username || '?').slice(0,1) }}</span>
-                        </div>
-                        <div class="min-w-0">
-                          <b>{{ lk.other.name || lk.other.username }}</b>
-                          <span class="text-gray-500 ml-2">{{ lk.other.username }}</span>
-                          <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">{{ lk.customRelation || lk.relation }}</span>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 左框：已連結子帳戶 -->
+                    <div class="rounded-xl bg-gray-50 p-4">
+                      <div class="flex items-center justify-between mb-2">
+                        <b class="text-sm">已連結帳戶</b>
+                        <span class="text-xs text-gray-400">{{ accountLinks.length }} 個</span>
+                      </div>
+                      <div v-if="linkLoading" class="text-gray-400 text-sm py-6 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>載入連結中...</div>
+                      <div v-else-if="accountLinks.length === 0" class="text-sm text-gray-400 py-6 text-center">仲未連結任何帳戶。</div>
+                      <div v-else class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        <div v-for="lk in accountLinks" :key="lk.id" class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-2.5 text-sm">
+                          <div class="flex items-center gap-2 min-w-0">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
+                              <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" class="w-full h-full object-cover" alt="">
+                              <span v-else>{{ (lk.other.name || lk.other.username || '?').slice(0,1) }}</span>
+                            </div>
+                            <div class="min-w-0">
+                              <b class="truncate block">{{ lk.other.name || lk.other.username }}</b>
+                              <span class="text-xs text-gray-400">{{ lk.other.username }}</span>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600">{{ lk.customRelation || lk.relation }}</span>
+                            <button class="text-xs px-2 py-1 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" @click="removeAccountLink(lk)"><i class="fas fa-unlink mr-0.5"></i>解除</button>
+                          </div>
                         </div>
                       </div>
-                      <button class="text-xs px-3 py-1 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 flex-shrink-0" @click="removeAccountLink(lk)">
-                        <i class="fas fa-unlink mr-1"></i>解除
-                      </button>
                     </div>
-                  </div>
 
-                  <!-- 連結新帳戶 -->
-                  <div class="rounded-lg bg-gray-50 p-4">
-                    <b class="text-sm">連結新帳戶</b>
-                    <p class="text-xs text-gray-500 mt-1">先揀要由邊個身份出發（你自己或你嘅子帳戶），再搵另一位帳戶連結，並選擇關係。</p>
-                    <div class="mt-2">
-                      <label class="text-xs text-gray-500">以邊個身份連結（來源 A：你自己／你嘅子帳戶）</label>
-                      <select v-model="linkForm.fromUserId" class="w-full mt-1 rounded border border-gray-300 p-2 text-sm bg-white">
-                        <option v-for="s in myLinkSources" :key="s.id" :value="s.id">{{ s.name }}</option>
-                      </select>
-                    </div>
-                    <div class="mt-2">
-                      <label class="text-xs text-gray-500">搜尋要連結嘅帳戶（目標 B：姓名／用戶名／電話）</label>
-                      <div class="flex gap-2 mt-1">
-                        <input
-                          v-model="linkSearchQ"
-                          placeholder="輸入姓名、用戶名或電話搜尋"
-                          class="flex-1 rounded border border-gray-300 p-2 text-sm"
-                          @keyup.enter="searchLinkAccounts"
-                        >
+                    <!-- 右框：輸入要連結嘅帳戶 -->
+                    <div class="rounded-xl bg-emerald-50 p-4">
+                      <b class="block text-sm text-slate-700 mb-2">連結新帳戶</b>
+                      <div class="flex gap-2">
+                        <div class="relative flex-1">
+                          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                          <input
+                            v-model="linkSearchQ"
+                            placeholder="輸入姓名、用戶名或電話搜尋"
+                            class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm bg-white"
+                            @keyup.enter="searchLinkAccounts"
+                          >
+                        </div>
                         <button
-                          class="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-60"
+                          class="px-3.5 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-60 flex-shrink-0"
                           style="background:linear-gradient(135deg,var(--p600),var(--p500));"
                           :disabled="linkSearching"
                           @click="searchLinkAccounts"
                         >
-                          <i class="fas fa-search mr-1"></i>{{ linkSearching ? '搜尋中...' : '搜尋' }}
+                          <i class="fas fa-search"></i>
+                        </button>
+                      </div>
+                      <div v-if="linkSearching" class="text-gray-500 text-xs py-2"><i class="fas fa-spinner fa-spin mr-1"></i>搜尋中...</div>
+                      <div v-else-if="linkSearchResults.length" class="mt-2 rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 max-h-52 overflow-auto">
+                        <button v-for="u in linkSearchResults" :key="u.id" class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-pink-50 transition" @click="pickLinkTarget(u)">
+                          <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold flex-shrink-0">{{ (u.name || u.username || '?').slice(0,1) }}</span>
+                          <span class="min-w-0">
+                            <b class="block text-sm truncate">{{ u.name || u.username }}</b>
+                            <span class="text-xs text-gray-400">{{ u.username }}</span>
+                          </span>
+                          <i class="fas fa-link ml-auto text-gray-300"></i>
+                        </button>
+                      </div>
+                      <p v-else-if="linkSearchMsg" class="text-xs mt-2" :class="linkSearchMsg.includes('搵唔到') ? 'text-amber-600' : 'text-gray-400'">{{ linkSearchMsg }}</p>
+
+                      <div v-if="linkTargetName" class="mt-2 flex items-center gap-2 rounded-lg border border-pink-200 bg-white px-3 py-2 text-sm">
+                        <i class="fas fa-check-circle text-emerald-600"></i>
+                        <span>目標：<b>{{ linkTargetName }}</b> <span class="text-gray-400">({{ linkForm.targetUsername }})</span></span>
+                        <button class="ml-auto text-xs text-red-500 hover:underline" @click="clearLinkTarget"><i class="fas fa-times mr-1"></i>清除</button>
+                      </div>
+
+                      <div v-if="linkTargetName" class="mt-2 space-y-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <select v-model="linkForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
+                            <option v-for="r in linkRelationOptions" :key="r" :value="r">{{ r }}</option>
+                          </select>
+                          <select v-model="linkForm.fromUserId" class="rounded border border-gray-300 p-2 text-sm bg-white" title="以邊個身份連結">
+                            <option v-for="s in myLinkSources" :key="s.id" :value="s.id">{{ s.name }}</option>
+                          </select>
+                        </div>
+                        <input v-if="linkForm.relation === '其他'" v-model="linkForm.customRelation" placeholder="請輸入關係說明（例如：表哥、契姐）" class="w-full rounded border border-gray-300 p-2 text-sm">
+                        <p v-if="linkError" class="text-red-500 text-xs">{{ linkError }}</p>
+                        <button class="w-full px-4 py-2 rounded-lg text-white font-bold text-sm disabled:opacity-60" style="background:linear-gradient(135deg,var(--p600),var(--p500));" :disabled="linkBusy" @click="createAccountLink">
+                          <i v-if="linkBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-plus mr-1"></i>{{ linkBusy ? '連結中...' : '連結帳戶' }}
                         </button>
                       </div>
                     </div>
-
-                    <!-- 搜尋結果 -->
-                    <div v-if="linkSearchResults.length" class="mt-2 rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 max-h-56 overflow-auto">
-                      <button
-                        v-for="u in linkSearchResults"
-                        :key="u.id"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-pink-50 transition"
-                        @click="pickLinkTarget(u)"
-                      >
-                        <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold flex-shrink-0">{{ (u.name || u.username || '?').slice(0,1) }}</span>
-                        <span class="min-w-0">
-                          <b class="block text-sm truncate">{{ u.name || u.username }}</b>
-                          <span class="text-xs text-gray-400">{{ u.username }}</span>
-                        </span>
-                        <i class="fas fa-link ml-auto text-gray-300"></i>
-                      </button>
-                    </div>
-                    <p v-else-if="linkSearchMsg" class="text-xs mt-2" :class="linkSearchMsg.includes('搵唔到') ? 'text-amber-600' : 'text-gray-400'">{{ linkSearchMsg }}</p>
-
-                    <!-- 已揀目標 -->
-                    <div v-if="linkTargetName" class="mt-2 flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm">
-                      <i class="fas fa-check-circle text-emerald-600"></i>
-                      <span>目標：<b>{{ linkTargetName }}</b> <span class="text-gray-400">({{ linkForm.targetUsername }})</span></span>
-                      <button class="ml-auto text-xs text-red-500 hover:underline" @click="clearLinkTarget"><i class="fas fa-times mr-1"></i>清除</button>
-                    </div>
-
-                    <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <select v-model="linkForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
-                        <option v-for="r in linkRelationOptions" :key="r" :value="r">{{ r }}</option>
-                      </select>
-                      <input v-if="linkForm.relation === '其他'" v-model="linkForm.customRelation" placeholder="請輸入關係說明（例如：表哥、契姐）" class="rounded border border-gray-300 p-2 text-sm">
-                    </div>
-                    <p v-if="linkError" class="text-red-500 text-xs mt-2">{{ linkError }}</p>
-                    <button class="mt-3 px-4 py-2 rounded-lg text-white font-bold text-sm disabled:opacity-60" style="background:linear-gradient(135deg,var(--p600),var(--p500));" :disabled="linkBusy" @click="createAccountLink">
-                      <i class="fas fa-plus mr-1"></i>{{ linkBusy ? '連結中...' : '連結帳戶' }}
-                    </button>
                   </div>
                 </div>
               </template>

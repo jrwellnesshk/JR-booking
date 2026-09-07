@@ -2634,39 +2634,70 @@
                   </div>
                 </div>
 
-                <!-- 連結家庭成員（connect account） -->
+                <!-- 連結帳戶（統一：左/右框） -->
                 <div class="rounded-xl border border-slate-200 p-5">
-                  <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-user-plus text-emerald-500 mr-2"></i>連結家庭成員（子帳戶）</h3>
-                  <p class="text-sm text-slate-500 mb-3">以主帳戶「{{ selectedFamilyHead.name }}」為戶主，連結一個已存在嘅子帳戶。下拉選擇關係，旁邊輸入子帳戶用戶名。</p>
-                  <div class="flex flex-col md:flex-row gap-2 items-end">
-                    <div class="flex-1">
-                      <label class="block text-xs text-slate-500 mb-1">選擇子帳戶</label>
-                      <select v-model="familyConnectForm.childUsername" @change="onFamilyConnectPick" class="rounded border border-gray-300 p-2 text-sm bg-white w-full">
-                        <option value="">— 請選擇要連結嘅子帳戶 —</option>
-                        <option v-for="c in familyConnectCandidates" :key="c.id" :value="c.username">{{ c.name }}（{{ c.username }}）</option>
-                      </select>
+                  <h3 class="font-bold mb-3 flex items-center"><i class="fas fa-link text-emerald-500 mr-2"></i>連結帳戶</h3>
+                  <!-- 左框：已連結子帳戶 -->
+                  <div class="rounded-lg bg-slate-50 p-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <b class="text-sm">已連結子帳戶</b>
+                      <span class="text-xs text-slate-400">{{ headSubAccounts.length }} 個</span>
                     </div>
-                    <div class="flex-1">
-                      <label class="block text-xs text-slate-500 mb-1">子帳戶名稱（連結用）</label>
-                      <input v-model="familyConnectForm.childName" placeholder="子帳戶名稱" class="w-full rounded border border-gray-300 p-2 text-sm">
+                    <div v-if="headSubAccounts.length === 0" class="text-sm text-slate-400 py-5 text-center">暫無已連結子帳戶</div>
+                    <div v-else class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      <div v-for="sa in headSubAccounts" :key="sa.key" class="flex items-center justify-between rounded-lg border bg-white p-2.5 text-sm" :class="sa.type === 'family' ? 'border-indigo-200' : 'border-gray-200'">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0" :class="sa.type === 'family' ? 'bg-indigo-500' : 'bg-slate-400'">
+                            <i class="fas" :class="sa.type === 'family' ? (sa.isAdult ? 'fa-user' : 'fa-child') : 'fa-user'"></i>
+                          </div>
+                          <div class="min-w-0">
+                            <b class="truncate block">{{ sa.name }}</b>
+                            <span class="text-xs text-slate-400">{{ sa.username }}<template v-if="sa.age !== undefined"> · {{ sa.age }} 歲</template></span>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                          <span class="text-xs px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600">{{ sa.relationLabel }}</span>
+                          <button @click="unlinkSubAccount(sa)" class="text-xs px-2 py-1 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" title="解除連結"><i class="fas fa-unlink mr-0.5"></i>解除</button>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label class="block text-xs text-slate-500 mb-1">出生日期</label>
-                      <input v-model="familyConnectForm.childBirthDate" type="date" class="rounded border border-gray-300 p-2 text-sm">
+                  </div>
+                  <!-- 右框：輸入要連結嘅帳戶 -->
+                  <div class="rounded-lg bg-emerald-50 p-4 mt-4">
+                    <b class="block text-sm text-slate-700 mb-2">連結新帳戶</b>
+                    <div class="relative">
+                      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                      <input v-model="adminLinkSearchQ" @input="onAdminLinkSearch" placeholder="輸入帳戶搜尋（姓名／帳號／電話）..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
                     </div>
-                    <div>
-                      <label class="block text-xs text-slate-500 mb-1">關係</label>
-                      <select v-model="familyConnectForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
+                    <div v-if="adminLinkSearching" class="text-slate-500 text-xs py-2"><i class="fas fa-spinner fa-spin mr-1"></i>搜尋中...</div>
+                    <div v-else-if="adminLinkSearchResults.length" class="mt-2 space-y-1.5">
+                      <button v-for="r in adminLinkSearchResults" :key="r.id" @click="pickAdminLinkTarget(r)"
+                        class="w-full flex items-center justify-between rounded-lg border bg-white p-2 text-sm hover:border-emerald-400 text-left"
+                        :class="adminLinkPick && adminLinkPick.id === r.id ? 'border-emerald-400 ring-1 ring-emerald-300' : 'border-gray-200'">
+                        <span class="min-w-0">
+                          <b class="truncate block">{{ r.name || r.username }}</b>
+                          <span class="text-xs text-slate-400">{{ r.username }}<template v-if="r.phone"> · {{ r.phone }}</template></span>
+                        </span>
+                        <i v-if="adminLinkPick && adminLinkPick.id === r.id" class="fas fa-check-circle text-emerald-500 ml-2"></i>
+                      </button>
+                    </div>
+                    <p v-else-if="adminLinkSearchQ" class="text-xs text-slate-400 py-2">無符合嘅帳戶（已連結／已喺家庭嘅會自動排除）</p>
+                    <div v-if="adminLinkPick" class="mt-3 space-y-2">
+                      <div class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm">
+                        <i class="fas fa-check-circle text-emerald-500"></i>
+                        <span>已選：<b>{{ adminLinkPick.name || adminLinkPick.username }}</b> <span class="text-slate-400">({{ adminLinkPick.username }})</span></span>
+                        <button @click="adminLinkPick = null" class="ml-auto text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                      </div>
+                      <select v-model="adminLinkRelation" class="w-full rounded border border-gray-300 p-2 text-sm bg-white">
                         <option v-for="r in ['父母','子女','配偶','兄弟','姐妹','親戚','朋友','其他']" :key="r" :value="r">{{ r }}</option>
                       </select>
+                      <input v-if="adminLinkRelation === '其他'" v-model="adminLinkCustomRelation" placeholder="請輸入關係說明" class="w-full rounded border border-gray-300 p-2 text-sm">
+                      <p v-if="adminLinkError" class="text-red-500 text-xs">{{ adminLinkError }}</p>
+                      <button :disabled="adminLinkBusy" @click="createAdminAccountLink" class="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 disabled:opacity-60">
+                        <i v-if="adminLinkBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-link mr-1"></i>連結
+                      </button>
                     </div>
-                    <button class="px-5 py-2 rounded-lg text-white font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60" :disabled="familyConnectBusy" @click="connectFamilyMember">
-                      <i class="fas fa-link mr-1"></i>{{ familyConnectBusy ? '連結中...' : '連結' }}
-                    </button>
                   </div>
-                  <p v-if="familyConnectMsg" class="text-sm mt-2" :class="familyConnectMsgType === 'ok' ? 'text-emerald-600' : 'text-red-500'">
-                    <i class="fas" :class="familyConnectMsgType === 'ok' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>{{ familyConnectMsg }}
-                  </p>
                 </div>
 
                 <!-- 成員與私隱 -->
@@ -2699,52 +2730,6 @@
               </div>
             </div>
 
-            <!-- 🆕 連結帳戶管理（親戚／同輩／朋友，管理員代所選主帳戶連結；該主帳戶自動轉 family） -->
-            <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
-              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 class="text-xl font-bold text-slate-800"><i class="fas fa-link text-emerald-600 mr-2"></i>連結帳戶管理</h2>
-                <button @click="loadAdminAccountLinks" :disabled="adminLinkLoading" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm hover:bg-slate-200">
-                  <i v-if="adminLinkLoading" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-sync-alt mr-1"></i>重新整理
-                </button>
-              </div>
-
-              <!-- 連結清單 -->
-              <div v-if="adminLinkLoading" class="text-slate-400 text-sm py-3">載入中...</div>
-              <div v-else-if="adminAccountLinks.length === 0" class="text-sm text-slate-400 py-2">暫無任何連結帳戶。</div>
-              <div v-else class="space-y-2 mb-5">
-                <div v-for="lk in adminAccountLinks" :key="lk.id" class="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm">
-                  <div>
-                    <b>{{ lk.a_name || lk.a_username }}</b> <span class="text-gray-400">({{ lk.a_username }})</span>
-                    <i class="fas fa-exchange-alt mx-2 text-gray-300"></i>
-                    <b>{{ lk.b_name || lk.b_username }}</b> <span class="text-gray-400">({{ lk.b_username }})</span>
-                    <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">{{ lk.customRelation || lk.relation }}</span>
-                  </div>
-                  <button class="text-xs px-3 py-1 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" @click="removeAdminAccountLink(lk)">
-                    <i class="fas fa-unlink mr-1"></i>解除
-                  </button>
-                </div>
-              </div>
-
-              <!-- 新增連結（以選中主帳戶為來源 A） -->
-              <div v-if="selectedFamilyHead" class="rounded-lg bg-slate-50 p-4">
-                <b class="text-sm">連結主帳戶「{{ selectedFamilyHead.name }}」到另一個帳戶</b>
-                <p class="text-xs text-slate-500 mt-1">該主帳戶連結後會自動轉為家庭會員。</p>
-                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <input v-model="adminLinkForm.targetUsername" placeholder="目標帳戶用戶名 B（username）" class="rounded border border-gray-300 p-2 text-sm">
-                  <select v-model="adminLinkForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
-                    <option v-for="r in ['父母','子女','配偶','兄弟','姐妹','親戚','朋友','其他']" :key="r" :value="r">{{ r }}</option>
-                  </select>
-                </div>
-                <input v-if="adminLinkForm.relation === '其他'" v-model="adminLinkForm.customRelation" placeholder="請輸入關係說明" class="rounded border border-gray-300 p-2 text-sm w-full mt-2">
-                <p v-if="adminLinkError" class="text-red-500 text-xs mt-2">{{ adminLinkError }}</p>
-                <button class="mt-3 px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 disabled:opacity-60" :disabled="adminLinkBusy" @click="createAdminAccountLink">
-                  <i class="fas fa-plus mr-1"></i>{{ adminLinkBusy ? '連結中...' : '連結帳戶' }}
-                </button>
-              </div>
-              <div v-else class="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
-                請喺上方家庭樹撳選一個主帳戶，再連結佢嘅親戚／同輩／朋友帳戶。
-              </div>
-            </div>
           </div>
 
           <!-- 🏥 病歷記錄管理（全部客戶） -->
@@ -7027,20 +7012,18 @@
             selectedFamilyHead: null,
             // 🆕 戶主嘅通用連結（親戚／同輩）
             headLinks: [],
-            // 🆕 管理員連結帳戶管理
-            adminAccountLinks: [],
-            adminLinkLoading: false,
+            // 🆕 連結帳戶（統一左/右框）搜尋狀態
             adminLinkBusy: false,
             adminLinkError: '',
-            adminLinkForm: { fromUsername: '', targetUsername: '', relation: '朋友', customRelation: '' },
-            // 🆕 家庭計劃 / 單號 / 連結子帳戶
+            adminLinkSearchQ: '',
+            adminLinkSearching: false,
+            adminLinkSearchResults: [],
+            adminLinkPick: null,
+            adminLinkRelation: '朋友',
+            adminLinkCustomRelation: '',
+            // 🆕 家庭計劃 / 單號 / 成員
             familyDetail: { plan: null, invoiceNo: null, headMemberNo: null, children: [] },
             familyDetailLoading: false,
-            familyConnectForm: { childUsername: '', childName: '', childBirthDate: '', relation: '父母' },
-            familyConnectCandidates: [],
-            familyConnectBusy: false,
-            familyConnectMsg: '',
-            familyConnectMsgType: '',
             // 病歴管理（管理員）
             showMedicalRecordModal: false,
             selectedBooking: null,
@@ -7400,6 +7383,34 @@ addUserForm: {
               (h.name || '').toLowerCase().includes(q) ||
               (h.username || '').toLowerCase().includes(q)
             );
+          },
+          // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
+          headSubAccounts() {
+            const out = [];
+            (this.selectedFamilyHead?.members || []).forEach(m => {
+              out.push({
+                key: 'f-' + m.id,
+                id: m.id,
+                type: 'family',
+                name: m.name,
+                username: m.username,
+                age: m.age,
+                isAdult: m.isAdult,
+                relationLabel: '家庭成員'
+              });
+            });
+            (this.headLinks || []).forEach(lk => {
+              out.push({
+                key: 'g-' + lk.id,
+                id: lk.id,
+                type: 'general',
+                linkId: lk.id,
+                name: lk.other.name || lk.other.username,
+                username: lk.other.username,
+                relationLabel: lk.customRelation || lk.relation
+              });
+            });
+            return out;
           },
           // 🔒 分層密碼政策提示（跟隨新增帳號所選角色）
           passwordRuleHint() {
@@ -8536,7 +8547,6 @@ async handleLogin() {
               const data = await response.json();
               this.familyTree.tree = data.tree || [];
               this.selectedFamilyHead = null;
-              this.loadAdminAccountLinks();
             } catch (error) {
               console.error("載入家庭帳戶失敗:", error);
               this.familyTree.tree = [];
@@ -8637,25 +8647,77 @@ async handleLogin() {
           selectFamilyHead(head) {
             this.selectedFamilyHead = head;
             this.headLinks = [];
-            this.familyConnectForm = { childUsername: '', childName: '', childBirthDate: '', relation: '父母' };
-            this.familyConnectCandidates = [];
-            this.familyConnectMsg = '';
+            this.adminLinkSearchQ = '';
+            this.adminLinkSearchResults = [];
+            this.adminLinkPick = null;
+            this.adminLinkRelation = '朋友';
+            this.adminLinkCustomRelation = '';
+            this.adminLinkError = '';
             this.loadHeadLinks(head.id);
             this.loadFamilyDetail(head);
-            this.loadFamilyConnectCandidates(head.id);
           },
 
-          // 🆕 載入可連結為子帳戶嘅客戶名單（下拉選擇用）
-          async loadFamilyConnectCandidates(headId) {
+          // 🔗 統一左框：解除已連結子帳戶（家庭成員／通用連結）
+          async unlinkSubAccount(sa) {
+            const head = this.selectedFamilyHead;
+            if (!head) return;
+            if (!confirm(`確定解除「${sa.name}」(${sa.username}) 嘅連結？\n（帳戶會保留，日後可以再連結）`)) return;
             try {
-              const res = await fetch(`/api/membership/family/available-children?excludeHeadId=${headId || ''}`, {
+              let ok = false;
+              if (sa.type === 'family') {
+                const res = await fetch(`/api/membership/admin/link/${sa.id}`, { method: 'DELETE' });
+                const data = await res.json().catch(() => ({}));
+                ok = res.ok && data.ok;
+                if (!ok) alert(data.error || '解除失敗');
+              } else {
+                const res = await fetch(`/api/membership/account-links/${sa.linkId}`, {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+                });
+                const data = await res.json().catch(() => ({}));
+                ok = res.ok && data.ok;
+                if (!ok) alert(data.error || '解除失敗');
+              }
+              if (ok) {
+                this.loadFamilyTree();
+                this.loadHeadLinks(head.id);
+                this.loadFamilyDetail(head);
+              }
+            } catch (e) { alert('解除服務暫時不可用'); }
+          },
+
+          // 🔗 統一右框：輸入即搜尋
+          onAdminLinkSearch() {
+            clearTimeout(this._adminLinkSearchTimer);
+            const kw = (this.adminLinkSearchQ || '').trim();
+            if (kw.length < 2) { this.adminLinkSearchResults = []; return; }
+            this._adminLinkSearchTimer = setTimeout(() => this.searchAdminAccounts(), 300);
+          },
+          async searchAdminAccounts() {
+            const kw = (this.adminLinkSearchQ || '').trim();
+            const head = this.selectedFamilyHead;
+            if (!kw || !head) { this.adminLinkSearchResults = []; return; }
+            this.adminLinkSearching = true;
+            try {
+              const p = new URLSearchParams({ q: kw, excludeHeadId: head.id });
+              const res = await fetch(`/api/membership/account-links/search?${p.toString()}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
               });
-              const data = await res.json().catch(() => ({}));
-              this.familyConnectCandidates = (res.ok && data.ok) ? (data.children || []) : [];
+              const data = await res.json().catch(() => ({ results: [] }));
+              this.adminLinkSearchResults = (res.ok && data.ok) ? (data.results || []) : [];
             } catch (e) {
-              this.familyConnectCandidates = [];
+              this.adminLinkSearchResults = [];
+            } finally {
+              this.adminLinkSearching = false;
             }
+          },
+          pickAdminLinkTarget(r) {
+            this.adminLinkPick = r;
+            this.adminLinkSearchResults = [];
+            this.adminLinkSearchQ = '';
+            this.adminLinkError = '';
+            this.adminLinkRelation = '朋友';
+            this.adminLinkCustomRelation = '';
           },
 
           // 🆕 載入所選主帳戶嘅家庭計劃 / 單號 / 成員（含隱私狀態）
@@ -8680,83 +8742,6 @@ async handleLogin() {
               this.familyDetail = { plan: null, invoiceNo: null, headMemberNo: null, children: [] };
             } finally {
               this.familyDetailLoading = false;
-            }
-          },
-
-          // 🆕 揀選子帳戶時，自動帶入佢嘅名稱到名稱輸入框
-          onFamilyConnectPick() {
-            const u = (this.familyConnectForm.childUsername || '').trim();
-            const picked = this.familyConnectCandidates.find(c => c.username === u);
-            this.familyConnectForm.childName = picked ? picked.name : '';
-          },
-
-          // 🆕 連結家庭成員（子帳戶）：管理員以所選主帳戶為戶主，連結指定用戶名嘅子帳戶
-          async connectFamilyMember() {
-            const head = this.selectedFamilyHead;
-            if (!head) { this.familyConnectMsg = '請先喺上方家庭樹撳選一個主帳戶'; this.familyConnectMsgType = 'err'; return; }
-            const childU = (this.familyConnectForm.childUsername || '').trim();
-            if (!childU) { this.familyConnectMsg = '請輸入子帳戶用戶名'; this.familyConnectMsgType = 'err'; return; }
-            if (!this.familyConnectForm.childBirthDate) { this.familyConnectMsg = '請提供子帳戶出生日期'; this.familyConnectMsgType = 'err'; return; }
-            this.familyConnectBusy = true;
-            this.familyConnectMsg = '';
-            try {
-              const res = await fetch('/api/membership/family/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
-                body: JSON.stringify({
-                  parentUserId: head.id,
-                  childUsername: childU,
-                  childName: this.familyConnectForm.childName,
-                  childBirthDate: this.familyConnectForm.childBirthDate,
-                  relation: this.familyConnectForm.relation
-                })
-              });
-              const data = await res.json().catch(() => ({}));
-              if (res.ok && data.ok) {
-                this.familyConnectMsg = '已成功連結家庭成員';
-                this.familyConnectMsgType = 'ok';
-                this.familyConnectForm = { childUsername: '', childName: '', childBirthDate: '', relation: '父母' };
-                this.loadFamilyDetail(head);
-                this.loadFamilyTree();
-              } else if (res.status === 409 && data.code === 'parent_not_family_tier') {
-                // 戶主非家庭會員：確認後帶 allowNonFamilyTier 重試
-                if (confirm(`${data.error}\n\n按「確定」即為「${head.name}」啟用家庭帳戶（費用差額按現行安排處理）。`)) {
-                  const res2 = await fetch('/api/membership/family/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
-                    body: JSON.stringify({
-                      parentUserId: head.id,
-                      childUsername: childU,
-                      childName: this.familyConnectForm.childName,
-                      childBirthDate: this.familyConnectForm.childBirthDate,
-                      relation: this.familyConnectForm.relation,
-                      allowNonFamilyTier: true
-                    })
-                  });
-                  const d2 = await res2.json().catch(() => ({}));
-                  if (res2.ok && d2.ok) {
-                    this.familyConnectMsg = '已成功連結家庭成員（並啟用家庭帳戶）';
-                    this.familyConnectMsgType = 'ok';
-                    this.familyConnectForm = { childUsername: '', childName: '', childBirthDate: '', relation: '父母' };
-                    this.loadFamilyDetail(head);
-                    this.loadFamilyTree();
-                  } else {
-                    this.familyConnectMsg = d2.error || '連結失敗';
-                    this.familyConnectMsgType = 'err';
-                  }
-                } else {
-                  this.familyConnectMsg = '已取消連結';
-                  this.familyConnectMsgType = 'err';
-                }
-              } else {
-                this.familyConnectMsg = data.error || '連結失敗';
-                this.familyConnectMsgType = 'err';
-              }
-            } catch (e) {
-              this.familyConnectMsg = '連結服務暫時不可用';
-              this.familyConnectMsgType = 'err';
-            } finally {
-              this.familyConnectBusy = false;
             }
           },
 
@@ -8810,30 +8795,14 @@ async handleLogin() {
             } catch (e) { alert('服務暫時不可用'); }
           },
 
-          // 🆕 管理員：載入全部連結
-          async loadAdminAccountLinks() {
-            this.adminLinkLoading = true;
-            try {
-              const res = await fetch('/api/membership/admin/account-links', {
-                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
-              });
-              const data = await res.json().catch(() => ({ links: [] }));
-              this.adminAccountLinks = data.links || [];
-            } catch (e) {
-              this.adminAccountLinks = [];
-            } finally {
-              this.adminLinkLoading = false;
-            }
-          },
-
-          // 🆕 管理員：以所選主帳戶為來源 A，連結到目標帳戶 B（該主帳戶自動轉 family）
+          // 🆕 管理員：統一右框，以所選主帳戶為來源 A 連結目標帳戶 B（該主帳戶自動轉 family）
           async createAdminAccountLink() {
             this.adminLinkError = '';
-            const headId = this.selectedFamilyHead ? this.selectedFamilyHead.id : null;
+            const head = this.selectedFamilyHead;
+            const headId = head ? head.id : null;
             if (!headId) { this.adminLinkError = '請先喺上方家庭樹撳選一個主帳戶'; return; }
-            const targetU = (this.adminLinkForm.targetUsername || '').trim();
-            if (!targetU) { this.adminLinkError = '請填寫目標帳戶用戶名'; return; }
-            if (this.adminLinkForm.relation === '其他' && !(this.adminLinkForm.customRelation || '').trim()) {
+            if (!this.adminLinkPick) { this.adminLinkError = '請先搜尋並揀選要連結嘅帳戶'; return; }
+            if (this.adminLinkRelation === '其他' && !(this.adminLinkCustomRelation || '').trim()) {
               this.adminLinkError = '請輸入關係說明'; return;
             }
             this.adminLinkBusy = true;
@@ -8843,17 +8812,21 @@ async handleLogin() {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
                 body: JSON.stringify({
                   fromUserId: headId,
-                  targetUsername: targetU,
-                  relation: this.adminLinkForm.relation,
-                  customRelation: this.adminLinkForm.relation === '其他' ? this.adminLinkForm.customRelation.trim() : undefined
+                  targetUsername: this.adminLinkPick.username,
+                  relation: this.adminLinkRelation,
+                  customRelation: this.adminLinkRelation === '其他' ? this.adminLinkCustomRelation.trim() : undefined
                 })
               });
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.ok) {
-                this.adminLinkForm = { fromUsername: '', targetUsername: '', relation: '朋友', customRelation: '' };
-                if (this.selectedFamilyHead) this.selectedFamilyHead.membership_tier = 'family';
+                this.adminLinkPick = null;
+                this.adminLinkRelation = '朋友';
+                this.adminLinkCustomRelation = '';
+                this.adminLinkSearchQ = '';
+                this.adminLinkSearchResults = [];
+                if (head) head.membership_tier = 'family';
                 this.loadHeadLinks(headId);
-                this.loadAdminAccountLinks();
+                this.loadFamilyDetail(head);
               } else {
                 this.adminLinkError = data.error || '連結失敗';
               }
@@ -8862,20 +8835,6 @@ async handleLogin() {
             } finally {
               this.adminLinkBusy = false;
             }
-          },
-
-          // 🆕 管理員：解除連結
-          async removeAdminAccountLink(lk) {
-            if (!confirm(`確定解除「${lk.a_name || lk.a_username}」同「${lk.b_name || lk.b_username}」嘅連結？`)) return;
-            try {
-              const res = await fetch(`/api/membership/account-links/${lk.id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
-              });
-              const data = await res.json().catch(() => ({}));
-              if (res.ok && data.ok) this.loadAdminAccountLinks();
-              else alert(data.error || '解除失敗');
-            } catch (e) { alert('服務暫時不可用'); }
           },
 
           // ==================== 病歴管理（管理員） ====================

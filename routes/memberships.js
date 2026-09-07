@@ -936,14 +936,20 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // 🔍 GET /api/membership/account-links/search?q= — 客人／戶主搜尋可以連結嘅客戶帳戶（按名稱/用戶名/電話）
   // 排除：自己、自己名下嘅家庭子女、以及雙方已存在嘅 account_links（避免重複連結）
+  // 管理員可傳 userId ?excludeHeadId= 代指定主帳戶搜尋（排除該戶主及其下子女/已連結）
   router.get('/account-links/search', requireAuth, async (req, res) => {
     try {
       const kw = String(req.query.q || '').trim();
       if (!kw) return res.json({ ok: true, results: [] });
       const like = `%${kw}%`;
-      const me = req.user.id;
+      let me = req.user.id;
+      if (req.query.excludeHeadId && Number(req.query.excludeHeadId) !== Number(req.user.id)) {
+        const allowed = req.user.role === 'admin' || (await canLinkAs(req.user, req.query.excludeHeadId));
+        if (!allowed) return res.status(403).json({ error: '沒有權限搜尋該帳戶' });
+        me = Number(req.query.excludeHeadId);
+      }
       const rows = await q(
-        `SELECT u.id, u.username, u.name, u.membership_tier
+        `SELECT u.id, u.username, u.name, u.membership_tier, u.phone
          FROM users u
          WHERE u.role='customer' AND u.id <> ?
            AND (u.name LIKE ? COLLATE NOCASE OR u.username LIKE ? COLLATE NOCASE OR u.phone LIKE ? OR u.member_no LIKE ?)
