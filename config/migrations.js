@@ -595,6 +595,25 @@ function runMigrations(db) {
       }
     });
 
+    // 遷移：exceptions 加請假審批 / 通知 / 補位欄位
+    db.all("PRAGMA table_info(exceptions)", (err, cols) => {
+      if (err || !cols) return;
+      const names = cols.map(c => c.name);
+      const adds = [];
+      if (!names.includes('notified')) adds.push("ALTER TABLE exceptions ADD COLUMN notified INTEGER DEFAULT 0");
+      if (!names.includes('notified_at')) adds.push("ALTER TABLE exceptions ADD COLUMN notified_at TEXT");
+      if (!names.includes('reassigned_to')) adds.push("ALTER TABLE exceptions ADD COLUMN reassigned_to INTEGER REFERENCES users(id)");
+      if (!names.includes('status')) adds.push("ALTER TABLE exceptions ADD COLUMN status TEXT DEFAULT 'pending'");
+      if (!names.includes('approved_by')) adds.push("ALTER TABLE exceptions ADD COLUMN approved_by INTEGER");
+      if (!names.includes('approved_at')) adds.push("ALTER TABLE exceptions ADD COLUMN approved_at TEXT");
+      if (!names.includes('notify_customer')) adds.push("ALTER TABLE exceptions ADD COLUMN notify_customer INTEGER DEFAULT 1");
+      if (!adds.length) return;
+      db.serialize(() => {
+        adds.forEach(sql => db.run(sql, (e) => { if (e) console.error("exceptions 加欄失敗:", e.message); }));
+        console.log("✅ exceptions 表已加 notified / notified_at / reassigned_to / status / approved_by / approved_at / notify_customer 欄位");
+      });
+    });
+
     // 診所預設設定（冇先建立）：營業時間 10:00-19:00 / 通知開關 / 公眾註冊閘門
     const defaultSettings = [
       ['morning_start', '10:00'],

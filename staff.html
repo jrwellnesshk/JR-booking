@@ -1219,6 +1219,44 @@
               </select>
             </div>
 
+            <!-- 📋 醫師請假審批隊列 -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 class="font-bold text-slate-800"><i class="fas fa-clipboard-check mr-2 text-amber-600"></i>醫師請假審批（{{ leaveApprovals.length }}）</h3>
+                <button @click="loadStaffLeaveQueue()" class="text-xs text-slate-500 hover:text-slate-700"><i class="fas fa-rotate mr-1"></i>重新整理</button>
+              </div>
+              <div v-if="leaveApprovalsLoading" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
+              <div v-else-if="!leaveApprovals.length" class="text-center py-8 text-slate-400">
+                <i class="fas fa-check-circle text-3xl mb-2 text-emerald-400"></i><p>暫無待審批嘅醫師請假。</p>
+              </div>
+              <div v-else class="space-y-3">
+                <div v-for="lv in leaveApprovals" :key="lv.id" class="border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
+                  <div class="flex-1 min-w-[220px]">
+                    <p class="font-medium text-slate-800">
+                      <span class="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" :style="{ backgroundColor: doctorColorByName(lv.doctor_name) }"></span>
+                      {{ lv.doctor_name }}
+                      <span class="text-xs text-slate-400 ml-2">{{ lv.exception_date }}（週{{ weekdayLabel(lv.exception_date) }}）</span>
+                    </p>
+                    <p class="text-xs text-slate-500 mt-1">
+                      時段：{{ (lv.time_open && lv.time_close) ? (lv.time_open + '–' + lv.time_close) : '全日' }}
+                      <span v-if="lv.reason">　·　原因：{{ lv.reason }}</span>
+                    </p>
+                    <p class="text-xs mt-1 flex flex-wrap gap-1">
+                      <span class="px-2 py-0.5 rounded-full font-medium" :class="lv.notify_customer ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'">{{ lv.notify_customer ? '會通知客人' : '唔通知客人' }}</span>
+                      <span v-if="lv.reassigned_to && lv.cover_doctor_name" class="px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">補位：{{ lv.cover_doctor_name }}</span>
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2" v-if="lv.status === 'pending'">
+                    <button @click="approveLeave(lv)" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700"><i class="fas fa-check mr-1"></i>批准</button>
+                    <button @click="rejectLeave(lv)" class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-sm hover:bg-slate-300"><i class="fas fa-xmark mr-1"></i>拒絕</button>
+                  </div>
+                  <div v-else class="text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap" :class="lv.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+                    {{ lv.status === 'approved' ? '已批准' : '已拒絕' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <template v-if="slotDoctorId">
               <!-- 📅 月曆 -->
               <div class="bg-white rounded-xl shadow-lg p-6">
@@ -2069,6 +2107,8 @@
             // 🗓️ 時段管理（Google 日曆式拖掃）
             doctors: [],
             slotDoctorId: "",
+            leaveApprovals: [],
+            leaveApprovalsLoading: false,
             slotView: 'week',
             slotRangeStart: new Date().toISOString().slice(0, 10),
             slotRangeEnd: new Date().toISOString().slice(0, 10),
@@ -2240,6 +2280,54 @@
             this.loadDoctors();
             this.loadSlotCalendar();
             if (this.slotDoctorId) this.loadSlotGrid();
+            this.loadStaffLeaveQueue();
+          },
+          async loadStaffLeaveQueue() {
+            this.leaveApprovalsLoading = true;
+            try {
+              const start = new Date().toISOString().slice(0, 10);
+              const end = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+              const res = await fetch(`/api/admin/doctor/leaves-range?start=${start}&end=${end}`, {
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              if (!res.ok) { this.leaveApprovals = []; return; }
+              const data = await res.json();
+              this.leaveApprovals = (data.data || []).filter(l => l.status === 'pending');
+            } catch (e) { this.leaveApprovals = []; }
+            finally { this.leaveApprovalsLoading = false; }
+          },
+          async approveLeave(lv) {
+            if (!confirm(`批准 ${lv.doctor_name} 於 ${lv.exception_date} 嘅請假？\n（將關閉其時段、按設定通知客人並轉嫁預約至補位醫師）`)) return;
+            try {
+              const res = await fetch(`/api/admin/doctor/my-leaves/${lv.id}/approve`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) { this.loadStaffLeaveQueue(); this.loadSlotCalendar(); }
+              else alert(data.error || "批准失敗");
+            } catch (e) { alert("網絡錯誤"); }
+          },
+          async rejectLeave(lv) {
+            if (!confirm(`拒絕 ${lv.doctor_name} 於 ${lv.exception_date} 嘅請假？`)) return;
+            try {
+              const res = await fetch(`/api/admin/doctor/my-leaves/${lv.id}/reject`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) { this.loadStaffLeaveQueue(); }
+              else alert(data.error || "拒絕失敗");
+            } catch (e) { alert("網絡錯誤"); }
+          },
+          doctorColorByName(name) {
+            const palette = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+            let h = 0; const s = name || ''; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+            return palette[h % palette.length];
+          },
+          weekdayLabel(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
           },
           slotCalendarDays() {
             const [y, m] = this.slotCalendarMonth.split('-').map(Number);

@@ -1006,7 +1006,9 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     const targetId = (req.query.doctorUserId && ['admin', 'doctor'].includes(req.user.role)) ? Number(req.query.doctorUserId) : req.user.id;
     const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD（本地時區）
     db.all(
-      `SELECT e.*, u.name AS doctor_name FROM exceptions e LEFT JOIN users u ON e.doctor_user_id = u.id
+      `SELECT e.*, u.name AS doctor_name, cu.name AS cover_doctor_name FROM exceptions e
+       LEFT JOIN users u ON e.doctor_user_id = u.id
+       LEFT JOIN users cu ON e.reassigned_to = cu.id
        WHERE e.type='doctor_leave' AND e.doctor_user_id=? AND e.exception_date >= ?
        ORDER BY e.exception_date ASC`,
       [targetId, todayStr],
@@ -1019,9 +1021,13 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
   // POST /api/admin/doctor/my-leave — 醫師申請請假（預設自己，可代其他醫師請假；自動通知受影響客戶，可選取消預約）
   router.post("/doctor/my-leave", requireAuth, requireRole('doctor', 'admin'), async (req, res) => {
-    const { exception_date, reason, notifyWhatsapp = true, cancelBookings = false } = req.body || {};
-    const doctorUserId = (req.body && req.body.doctorUserId && ['admin', 'doctor'].includes(req.user.role))
-      ? Number(req.body.doctorUserId)
+    const {
+      exception_date, reason, time_open, time_close, reassigned_to,
+      notify_customer = true, doctorUserId: reqDoctorUserId
+    } = req.body || {};
+    const actorId = req.user.id;
+    const doctorUserId = (reqDoctorUserId && ['admin', 'doctor'].includes(req.user.role))
+      ? Number(reqDoctorUserId)
       : req.user.id;
     if (!exception_date || !/^\d{4}-\d{2}-\d{2}$/.test(exception_date)) {
       return res.status(400).json({ error: '請選擇請假日期' });
@@ -1030,6 +1036,17 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     if (exception_date < todayStr) {
       return res.status(400).json({ error: '請假日期不可以係過去日子' });
     }
+    const partial = !!(time_open && time_close);
+    if (partial && (!/^\d{2}:\d{2}$/.test(time_open) || !/^\d{2}:\d{2}$/.test(time_close) || time_open >= time_close)) {
+      return res.status(400).json({ error: '請假時段格式無效（需 HH:MM 且 開始 < 結束）' });
+    }
+    let coverDoc = null;
+    if (reassigned_to) {
+      coverDoc = await new Promise((resolve) => {
+        db.get("SELECT id, name FROM users WHERE id=? AND role='doctor'", [Number(reassigned_to)], (e, r) => resolve(r || null));
+      });
+      if (!coverDoc) return res.status(400).json({ error: '揀嘅補位醫師唔存在' });
+    }
 
     try {
       const doctor = await new Promise((resolve) => {
@@ -1037,80 +1054,168 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       });
       if (!doctor) return res.status(404).json({ error: '找不到醫師帳戶' });
 
-      // 1. 記錄請假（同一日重複申請 → 更新原因）
-      await new Promise((resolve, reject) => {
-        db.get("SELECT id FROM exceptions WHERE exception_date=? AND type='doctor_leave' AND doctor_user_id=?",
-          [exception_date, doctorUserId], (e, row) => {
-            if (e) return reject(e);
-            if (row) {
-              db.run("UPDATE exceptions SET reason=?, created_by=? WHERE id=?", [reason || '', req.user.id, row.id], (e2) => e2 ? reject(e2) : resolve());
-            } else {
-              db.run(`INSERT INTO exceptions (exception_date, name, type, reason, doctor_user_id, created_by) VALUES (?,?,?,?,?,?)`,
-                [exception_date, `${doctor.name}請假`, 'doctor_leave', reason || '', doctorUserId, req.user.id],
-                (e2) => e2 ? reject(e2) : resolve());
-            }
-          });
-      });
-
-      // 2. 查詢受影響預約
+      // 受影響預約（俾醫師/管理員先知範圍；pending 階段未生效）
       const activeStatuses = "('pending','confirmed','in-progress','in-treatment','visited','dispensing')";
+      const timeFilterSql = partial ? ` AND b.appointment_time >= ? AND b.appointment_time < ?` : '';
+      const timeParams = partial ? [time_open, time_close] : [];
       const affected = await new Promise((resolve, reject) => {
         db.all(
-          `SELECT b.*, s.name AS service_name FROM bookings b LEFT JOIN services s ON s.id=b.service_id
-           WHERE b.appointment_date=? AND (b.doctor_user_id=? OR b.doctor_name=?) AND b.status IN ${activeStatuses}
+          `SELECT b.id, b.customer_name, b.appointment_time, s.name AS service_name FROM bookings b LEFT JOIN services s ON s.id=b.service_id
+           WHERE b.appointment_date=? AND (b.doctor_user_id=? OR b.doctor_name=?) AND b.status IN ${activeStatuses} ${timeFilterSql}
            ORDER BY b.appointment_time`,
-          [exception_date, doctorUserId, doctor.name],
+          [exception_date, doctorUserId, doctor.name, ...timeParams],
           (e, rows) => e ? reject(e) : resolve(rows || [])
         );
       });
 
-      // 3. WhatsApp 通知受影響客戶
-      const whatsappService = require('../services/whatsapp');
-      const notifyResults = { whatsapp: 0, failed: 0 };
-      const messageText = `【寶天醫館】通知：${doctor.name}醫師於 ${exception_date} 請假（${reason || '休息'}），您的預約需要改期。請致電 2555-1136 或登入系統重新預約。不便之處，敬請原諒。`;
-      if (notifyWhatsapp) {
-        for (const b of affected) {
-          if (whatsappService.isConfigured() && b.customer_phone) {
-            try {
-              let phone = String(b.customer_phone);
-              if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
-              const wa = await whatsappService.sendWhatsApp(phone, messageText);
-              if (wa && wa.success) notifyResults.whatsapp++;
-              else notifyResults.failed++;
-            } catch (e) { notifyResults.failed++; }
-          }
-        }
-      }
+      // 建立 pending 請假（未生效：唔改 slot / 唔通知客人 / 唔轉嫁）
+      const excId = await new Promise((resolve, reject) => {
+        db.get("SELECT id, status FROM exceptions WHERE exception_date=? AND type='doctor_leave' AND doctor_user_id=?",
+          [exception_date, doctorUserId], (e, row) => {
+            if (e) return reject(e);
+            if (row) {
+              db.run("UPDATE exceptions SET reason=?, time_open=?, time_close=?, reassigned_to=?, notify_customer=?, created_by=?, status='pending', approved_by=NULL, approved_at=NULL WHERE id=?",
+                [reason || '', partial ? time_open : null, partial ? time_close : null, coverDoc ? coverDoc.id : null, notify_customer ? 1 : 0, actorId, row.id],
+                (e2) => e2 ? reject(e2) : resolve(row.id));
+            } else {
+              db.run(`INSERT INTO exceptions (exception_date, name, type, reason, doctor_user_id, time_open, time_close, reassigned_to, notify_customer, status, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+                [exception_date, `${doctor.name}請假`, 'doctor_leave', reason || '', doctorUserId, partial ? time_open : null, partial ? time_close : null, coverDoc ? coverDoc.id : null, notify_customer ? 1 : 0, 'pending', actorId],
+                function (e2) { e2 ? reject(e2) : resolve(this.lastID); });
+            }
+          });
+      });
 
-      // 4. 可選：自動取消受影響預約
-      let cancelled = 0;
-      if (cancelBookings && affected.length) {
-        await new Promise((resolve, reject) => {
-          db.run(
-            `UPDATE bookings SET status='cancelled', notes=COALESCE(notes,'') || ' [醫師請假自動取消]', updated_at=CURRENT_TIMESTAMP
-             WHERE appointment_date=? AND (doctor_user_id=? OR doctor_name=?) AND status IN ${activeStatuses}`,
-            [exception_date, doctorUserId, doctor.name],
-            (e) => e ? reject(e) : resolve()
-          );
-        });
-        cancelled = affected.length;
+      // 通知管理員批核（WA 如配置）
+      const whatsappService = require('../services/whatsapp');
+      const adminMsg = `【寶天醫館】${doctor.name}醫師申請 ${exception_date}${partial ? ` ${time_open}-${time_close}` : ''} 請假（${reason || '休息'}），請登入後台批核。${coverDoc ? `已揀補位：${coverDoc.name}。` : ''}`;
+      if (whatsappService.isConfigured()) {
+        const admins = await new Promise((resolve) => db.all("SELECT phone FROM users WHERE role='admin' AND phone IS NOT NULL AND phone<>''", [], (e, r) => resolve(r || [])));
+        for (const a of admins) {
+          try {
+            let phone = String(a.phone);
+            if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
+            await whatsappService.sendWhatsApp(phone, adminMsg);
+          } catch (e) { /* ignore */ }
+        }
       }
 
       res.json({
         ok: true,
+        pending: true,
+        exception_id: excId,
         exception_date,
+        partial,
+        time_open: partial ? time_open : null,
+        time_close: partial ? time_close : null,
         affected_count: affected.length,
-        affected: affected.map(b => ({
-          id: b.id, customer_name: b.customer_name, service_name: b.service_name,
-          appointment_time: b.appointment_time, status: b.status
-        })),
-        notified: notifyResults,
-        cancelled
+        affected: affected.map(b => ({ id: b.id, customer_name: b.customer_name, service_name: b.service_name, appointment_time: b.appointment_time })),
+        reassigned_to: coverDoc ? coverDoc.id : null,
+        notify_customer: !!notify_customer,
+        message: '已提交，待管理員批核。批核後會通知客人' + (coverDoc ? `並轉嫁畀 ${coverDoc.name} 醫師` : '') + '。'
       });
     } catch (e) {
       console.error('醫師自助請假失敗:', e);
       res.status(500).json({ error: '處理失敗：' + (e.message || '') });
     }
+  });
+
+  // POST /api/admin/doctor/my-leaves/:id/approve — 管理員批核（生效：閂 slot、通知客人、轉嫁補位）
+  router.post("/doctor/my-leaves/:id/approve", requireAuth, requireRole('admin'), async (req, res) => {
+    const id = Number(req.params.id);
+    const whatsappService = require('../services/whatsapp');
+    try {
+      const exc = await new Promise((resolve, reject) => db.get("SELECT * FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (e, r) => e ? reject(e) : resolve(r || null)));
+      if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
+      if (exc.status === 'approved') return res.status(400).json({ error: '已經批核過' });
+      const doctor = await new Promise((resolve) => db.get("SELECT id, name FROM users WHERE id=?", [exc.doctor_user_id], (e, r) => resolve(r || null)));
+      // ⚠️ 關鍵映射：exceptions.doctor_user_id 係 users.id，但 doctor_time_slots.doctor_id 存嘅係 doctors.id
+      const docRow = await new Promise((resolve) => db.get("SELECT id FROM doctors WHERE user_id=?", [exc.doctor_user_id], (e, r) => resolve(r || null)));
+      const doctorSlotId = docRow ? docRow.id : exc.doctor_user_id;
+      const partial = !!exc.time_open && !!exc.time_close;
+      const activeStatuses = "('pending','confirmed','in-progress','in-treatment','visited','dispensing')";
+      const timeFilterSql = partial ? ` AND b.appointment_time >= ? AND b.appointment_time < ?` : '';
+      const timeParams = partial ? [exc.time_open, exc.time_close] : [];
+      const affected = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT b.*, s.name AS service_name FROM bookings b LEFT JOIN services s ON s.id=b.service_id
+           WHERE b.appointment_date=? AND (b.doctor_user_id=? OR b.doctor_name=?) AND b.status IN ${activeStatuses} ${timeFilterSql}
+           ORDER BY b.appointment_time`,
+          [exc.exception_date, exc.doctor_user_id, doctor ? doctor.name : '', ...timeParams],
+          (e, rows) => e ? reject(e) : resolve(rows || [])
+        );
+      });
+
+      // 1. 閂 slot（令網格反映 + availability 一致）
+      const slotFilterSql = partial ? ` AND time >= ? AND time < ?` : '';
+      const slotParams = partial ? [exc.time_open, exc.time_close] : [];
+      await new Promise((resolve, reject) => {
+        db.run(`UPDATE doctor_time_slots SET status='leave', is_available=0, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? ${slotFilterSql}`,
+          [doctorSlotId, exc.exception_date, ...slotParams], (e) => e ? reject(e) : resolve());
+      });
+
+      // 2. 通知客人（醫師勾選先）
+      let notified = 0;
+      const notifyResults = { whatsapp: 0, failed: 0 };
+      if (exc.notify_customer) {
+        const whenTxt = partial ? ` ${exc.time_open}-${exc.time_close}` : '';
+        const msg = `【寶天醫館】通知：${(doctor ? doctor.name : '該')}醫師於 ${exc.exception_date}${whenTxt} 請假（${exc.reason || '休息'}），您的預約需要改期。請致電 2555-1136 或登入系統重新預約。不便之處，敬請原諒。`;
+        for (const b of affected) {
+          if (whatsappService.isConfigured() && b.customer_phone) {
+            try {
+              let phone = String(b.customer_phone);
+              if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
+              const wa = await whatsappService.sendWhatsApp(phone, msg);
+              if (wa && wa.success) notifyResults.whatsapp++; else notifyResults.failed++;
+            } catch (e) { notifyResults.failed++; }
+          }
+        }
+        notified = 1;
+      }
+
+      // 3. 補位醫師轉嫁
+      let reassignedCount = 0, coverDoc = null;
+      if (exc.reassigned_to) {
+        coverDoc = await new Promise((resolve) => db.get("SELECT id, name, phone FROM users WHERE id=?", [exc.reassigned_to], (e, r) => resolve(r || null)));
+        if (coverDoc && affected.length) {
+          const note = ` [醫師請假轉嫁至 ${coverDoc.name} 醫師]`;
+          await new Promise((resolve, reject) => {
+            db.run(`UPDATE bookings SET doctor_user_id=?, doctor_name=?, notes=COALESCE(notes,'') || ?, updated_at=CURRENT_TIMESTAMP WHERE appointment_date=? AND (doctor_user_id=? OR doctor_name=?) AND status IN ${activeStatuses} ${timeFilterSql}`,
+              [coverDoc.id, coverDoc.name, note, exc.exception_date, exc.doctor_user_id, doctor ? doctor.name : '', ...timeParams], (e) => e ? reject(e) : resolve());
+          });
+          reassignedCount = affected.length;
+          if (whatsappService.isConfigured() && coverDoc.phone) {
+            try {
+              let phone = String(coverDoc.phone);
+              if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
+              await whatsappService.sendWhatsApp(phone, `【寶天醫館】${doctor ? doctor.name : '醫師'} ${exc.exception_date} 請假，以下 ${reassignedCount} 個預約已轉嫁畀你跟進，請登入系統查看。`);
+            } catch (e2) { /* ignore */ }
+          }
+        }
+      }
+
+      await new Promise((resolve, reject) => {
+        db.run("UPDATE exceptions SET status='approved', approved_by=?, approved_at=?, notified=? WHERE id=?",
+          [req.user.id, new Date().toISOString(), notified, id], (e) => e ? reject(e) : resolve());
+      });
+
+      res.json({ ok: true, status: 'approved', affected_count: affected.length, notified: notifyResults, reassigned_count: reassignedCount, reassigned_to: exc.reassigned_to });
+    } catch (e) {
+      console.error('批核請假失敗:', e);
+      res.status(500).json({ error: '處理失敗：' + (e.message || '') });
+    }
+  });
+
+  // POST /api/admin/doctor/my-leaves/:id/reject — 管理員拒絕
+  router.post("/doctor/my-leaves/:id/reject", requireAuth, requireRole('admin'), (req, res) => {
+    const id = Number(req.params.id);
+    db.get("SELECT * FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (err, exc) => {
+      if (err) return serverError(res, err);
+      if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
+      db.run("UPDATE exceptions SET status='rejected', approved_by=?, approved_at=? WHERE id=?", [req.user.id, new Date().toISOString(), id], (e2) => {
+        if (e2) return res.status(500).json({ error: e2.message });
+        res.json({ ok: true, status: 'rejected' });
+      });
+    });
   });
 
   // DELETE /api/admin/doctor/my-leaves/:id — 取消未來嘅請假（回復應診；管理員／醫師）
@@ -1124,12 +1229,48 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (req.user.role !== 'admin' && exc.exception_date < todayStr) {
         return res.status(400).json({ error: '過去嘅請假記錄不可以刪除' });
       }
-      // 計算受影響（原本被擋新增、但已存在嘅預約不變，只回復可約狀態）
-      db.run("DELETE FROM exceptions WHERE id=?", [id], function (e2) {
+      // 只有已批核（已閂 slot）嘅請假先要回復 slot；pending 仲未生效，唔使恢復
+      const finish = () => db.run("DELETE FROM exceptions WHERE id=?", [id], (e3) => {
+        if (e3) return res.status(500).json({ error: e3.message });
+        res.json({ ok: true, message: `已取消 ${exc.exception_date} 嘅請假，該時段恢復接受預約` });
+      });
+      if (exc.status !== 'approved') return finish();
+      // ⚠️ doctor_user_id(users.id) → doctors.id 映射，先查 doctors 表
+      db.get("SELECT id FROM doctors WHERE user_id=?", [exc.doctor_user_id], (e1, docRow) => {
+        const doctorSlotId = docRow ? docRow.id : exc.doctor_user_id;
+        const partial = !!exc.time_open && !!exc.time_close;
+        const slotSql = partial ? ` AND time >= ? AND time < ?` : '';
+        const slotParams = partial ? [exc.time_open, exc.time_close] : [];
+        db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? ${slotSql}`,
+          [doctorSlotId, exc.exception_date, ...slotParams], (e2) => {
         if (e2) return res.status(500).json({ error: e2.message });
-        res.json({ ok: true, message: `已取消 ${exc.exception_date} 嘅請假，該日恢復接受預約` });
+        finish();
+      });
       });
     });
+  });
+
+  // GET /api/admin/doctor/leaves-range — 全部醫師請假（醫師睇 coverage / 管理員及員工檢視批核）
+  router.get("/doctor/leaves-range", requireAuth, requireRole('doctor', 'admin', 'staff'), (req, res) => {
+    const { start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ error: '需要 start 同 end' });
+    db.all(
+      `SELECT e.id, e.exception_date, e.doctor_user_id, u.name AS doctor_name,
+              e.time_open, e.time_close, e.reason, e.notified, e.notified_at, e.reassigned_to,
+              e.status, e.notify_customer, e.approved_by, e.approved_at,
+              cu.name AS cover_doctor_name, au.name AS approved_by_name, e.created_at
+       FROM exceptions e
+       LEFT JOIN users u ON e.doctor_user_id = u.id
+       LEFT JOIN users cu ON e.reassigned_to = cu.id
+       LEFT JOIN users au ON e.approved_by = au.id
+       WHERE e.type='doctor_leave' AND e.exception_date >= ? AND e.exception_date <= ?
+       ORDER BY e.exception_date ASC, u.name ASC`,
+      [start, end],
+      (err, rows) => {
+        if (err) return serverError(res, err);
+        res.json({ ok: true, data: rows || [] });
+      }
+    );
   });
 
   // 🆕 初體驗用戶申請記錄（管理員查看全部：預約中 / 完成 / 就診中）

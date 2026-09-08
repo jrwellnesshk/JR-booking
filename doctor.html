@@ -723,11 +723,7 @@
                 </div>
                 <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
                   <input type="checkbox" v-model="leaveForm.notify" class="w-4 h-4">
-                  WhatsApp 通知受影響客戶
-                </label>
-                <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
-                  <input type="checkbox" v-model="leaveForm.cancel" class="w-4 h-4">
-                  同時自動取消該日{{ leaveForm.doctorUserId ? doctorName(leaveForm.doctorUserId) + '嘅' : '我嘅' }}預約
+                  通知客人（批核後會 WhatsApp 通知受影響客戶）
                 </label>
                 <button @click="submitLeave" :disabled="leaveBusy"
                   class="px-5 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50">
@@ -735,7 +731,7 @@
                 </button>
               </div>
               <p class="text-xs text-slate-400 mt-3">
-                <i class="fas fa-circle-info mr-1"></i>請假當日客戶將無法預約你嘅時段。如該日已有預約，建議剔選「自動取消」並通知客戶，或聯絡職員協助改期。
+                <i class="fas fa-circle-info mr-1"></i>提交後會送交管理員批核；批核後系統會關閉該時段、按需通知受影響客戶，並將預約轉嫁畀你揀嘅補位醫師。
               </p>
 
               <!-- 提交結果 -->
@@ -780,8 +776,9 @@
                     <p class="font-medium text-slate-800">
                       <i class="far fa-calendar mr-2 text-purple-500"></i>{{ lv.exception_date }}
                       <span class="text-xs text-slate-400 ml-2">{{ weekdayLabel(lv.exception_date) }}</span>
+                      <span class="text-xs px-2 py-0.5 rounded-full font-medium ml-2" :class="leaveBadge(lv).cls">{{ leaveBadge(lv).text }}</span>
                     </p>
-                    <p class="text-xs text-slate-500 mt-0.5" v-if="lv.reason">原因：{{ lv.reason }}</p>
+                    <p class="text-xs text-slate-500 mt-0.5" v-if="lv.reason">原因：{{ lv.reason }}　·　時段：{{ leaveTimeLabel(lv) }}　<span v-if="lv.cover_doctor_name">　·　補位：{{ lv.cover_doctor_name }}</span></p>
                   </div>
                   <button @click="cancelLeave(lv)" class="text-sm text-red-500 hover:text-red-700 whitespace-nowrap">
                     <i class="fas fa-rotate-left mr-1"></i>取消請假
@@ -1004,13 +1001,13 @@
                   @click="setSlotSubView('booking')"
                   :class="slotSubView==='booking' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'"
                   class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                ><i class="fas fa-table-cells mr-1"></i>時段網格</button>
+                ><i class="fas fa-calendar-day mr-1"></i>預約</button>
                 <button
                   type="button"
                   @click="setSlotSubView('leave')"
                   :class="slotSubView==='leave' ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-700'"
                   class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                ><i class="fas fa-calendar-xmark mr-1"></i>預約／假期</button>
+                ><i class="fas fa-plane-departure mr-1"></i>假期</button>
               </div>
             </div>
 
@@ -1058,13 +1055,27 @@
                   >
                     <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
                     <div class="flex flex-col gap-0.5 mt-0.5 w-full">
-                      <span
-                        v-for="bar in cell.bars"
-                        :key="bar.id"
-                        class="h-1.5 rounded-full"
-                        :style="{ backgroundColor: bar.color }"
-                        :title="(doctors.find(d => d.id == bar.id) || {}).name + (bar.leave ? '（休假）' : '：' + bar.count + ' 個開放時段')"
-                      ></span>
+                      <template v-if="slotSubView==='booking'">
+                        <button
+                          v-for="a in (cell.appts || [])"
+                          :key="a.id"
+                          type="button"
+                          @mousedown.stop
+                          @click.stop="openSlotBookingDetail(a)"
+                          :title="a.customer_name + ' ' + a.appointment_time + ' · ' + (a.service_name || '')"
+                          class="text-left text-[10px] leading-tight px-1 py-0.5 rounded bg-rose-50 text-rose-700 truncate border border-rose-100 hover:bg-rose-100"
+                        >{{ a.customer_name }}</button>
+                        <span v-if="!cell.appts || !cell.appts.length" class="text-[10px] text-slate-200 px-1">—</span>
+                      </template>
+                      <template v-else>
+                        <span
+                          v-for="bar in cell.bars"
+                          :key="bar.id"
+                          class="h-1.5 rounded-full"
+                          :style="{ backgroundColor: bar.color }"
+                          :title="(doctors.find(d => d.id == bar.id) || {}).name + (bar.leave ? '（休假）' : '：' + bar.count + ' 個開放時段')"
+                        ></span>
+                      </template>
                     </div>
                   </button>
                 </template>
@@ -1186,7 +1197,7 @@
                 </div>
               </div>
 
-              <!-- 全部醫師請假列表 -->
+              <!-- 全部醫師請假列表（權威來源：exceptions 表） -->
               <div class="bg-white rounded-xl shadow-lg p-4">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                   <h3 class="font-bold text-slate-800"><i class="fas fa-plane-departure mr-2 text-purple-600"></i>醫師請假（{{ slotLeaves.length }}）</h3>
@@ -1202,18 +1213,74 @@
                       <tr class="text-slate-500 text-xs">
                         <th class="px-3 py-2 text-left">日期</th>
                         <th class="px-3 py-2 text-left">醫師</th>
+                        <th class="px-3 py-2 text-left">時段</th>
                         <th class="px-3 py-2 text-left">原因</th>
+                        <th class="px-3 py-2 text-left">狀態</th>
+                        <th class="px-3 py-2 text-left">補位醫師</th>
+                        <th class="px-3 py-2"></th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="lv in slotLeaves" :key="lv.id" class="border-t border-slate-100">
                         <td class="px-3 py-2 text-slate-700">{{ lv.exception_date }}</td>
                         <td class="px-3 py-2 text-slate-700"><span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: doctorColorByName(lv.doctor_name) }"></span>{{ lv.doctor_name }}</td>
+                        <td class="px-3 py-2 text-slate-600">{{ leaveTimeLabel(lv) }}</td>
                         <td class="px-3 py-2 text-slate-600">{{ lv.reason || '請假' }}</td>
+                        <td class="px-3 py-2"><span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="leaveBadge(lv).cls">{{ leaveBadge(lv).text }}</span></td>
+                        <td class="px-3 py-2 text-slate-600">{{ lv.cover_doctor_name || '—' }}</td>
+                        <td class="px-3 py-2 text-right">
+                          <button v-if="isOwnLeave(lv)" @click="cancelLeave(lv)" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-rotate-left mr-1"></i>取消</button>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              <!-- 申請請假（自己／代其他醫師） -->
+              <div class="bg-white rounded-xl shadow-lg p-4">
+                <h3 class="font-bold text-slate-800 mb-3"><i class="fas fa-paper-plane mr-2 text-purple-600"></i>申請請假（提交後待管理員批核）</h3>
+                <div class="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">請假醫師</label>
+                    <select v-model="leaveForm.doctorUserId" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]">
+                      <option value="">自己（{{ doctorInfo ? doctorInfo.name : '' }}）</option>
+                      <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">請假日期 *</label>
+                    <input v-model="leaveForm.date" type="date" :min="todayStr" @change="checkLeaveAffected()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">開始時間（留空＝全日）</label>
+                    <input v-model="leaveForm.timeOpen" type="time" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">結束時間</label>
+                    <input v-model="leaveForm.timeClose" type="time" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <div class="flex-1 min-w-[180px]">
+                    <label class="block text-xs text-slate-500 mb-1">原因</label>
+                    <input v-model="leaveForm.reason" placeholder="例如：進修 / 休息 / 私人事務" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
+                    <input type="checkbox" v-model="leaveForm.notify" class="w-4 h-4"> 通知客人
+                  </label>
+                  <button @click="submitLeave" :disabled="leaveBusy || !leaveForm.date" class="px-5 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50">
+                    <i v-if="leaveBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-paper-plane mr-1"></i>提交申請
+                  </button>
+                </div>
+                <div v-if="slotLeaveAffected && slotLeaveAffected.length" class="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                  <p class="font-medium">該日有 {{ slotLeaveAffected.length }} 筆你嘅預約受影響，請揀補位醫師：</p>
+                  <select v-model="leaveForm.reassignedTo" class="mt-2 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
+                    <option value="">— 唔使補位（管理員另行安排）—</option>
+                    <option v-for="doc in doctors.filter(d => String(d.id) !== String(leaveForm.doctorUserId || (doctorInfo && doctorInfo.id)))" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
+                  </select>
+                </div>
+                <p v-if="leaveResult" class="mt-3 text-sm" :class="leaveResult.ok ? 'text-emerald-700' : 'text-red-600'">
+                  <i :class="leaveResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" class="mr-1"></i>{{ leaveResult.message }}
+                </p>
               </div>
             </div>
           </div>
@@ -1850,11 +1917,12 @@
             slotSavedFlash: false,
 
             // 排程／請假
-            leaveForm: { date: "", reason: "", notify: true, cancel: false, doctorUserId: "" },
+            leaveForm: { date: "", reason: "", notify: true, doctorUserId: "", timeOpen: "", timeClose: "", reassignedTo: "" },
             leaveBusy: false,
             leaveResult: null,
             myLeaves: [],
             leaveListLoading: false,
+            slotLeaveAffected: [], // 假期申請表：該日受影響嘅自己預約（用嚟決定要唔要揀補位醫師）
 
             // 🕐 打卡考勤（自助）
             hrStatus: null,
@@ -2189,25 +2257,29 @@
               }
             } catch (e) { console.error('載入預約清單失敗', e); }
           },
-          // 假期表：載入所揀範圍內全部醫師嘅請假紀錄
+          // 假期表：載入所揀範圍內全部醫師嘅請假紀錄（權威來源：exceptions 表，含審批／補位狀態）
           async loadSlotLeaves() {
             if (!this.slotRangeStart || !this.slotRangeEnd) { this.slotLeaves = []; return; }
             this.slotLeavesLoading = true;
             try {
-              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${this.slotRangeStart}&end=${this.slotRangeEnd}`);
+              const res = await fetch(`/api/admin/doctor/leaves-range?start=${this.slotRangeStart}&end=${this.slotRangeEnd}`);
               if (!res.ok) { this.slotLeaves = []; return; }
               const data = await res.json();
-              const docMap = {};
-              (data.doctors || []).forEach(d => { docMap[d.id] = d.name; });
-              const leaves = [];
-              for (const [date, dayDocs] of Object.entries(data.days || {})) {
-                for (const [docId, info] of Object.entries(dayDocs)) {
-                  if (info.leave) {
-                    leaves.push({ id: `${date}-${docId}`, exception_date: date, doctor_id: Number(docId), doctor_name: docMap[Number(docId)] || `醫師${docId}` });
-                  }
-                }
-              }
-              leaves.sort((a, b) => a.exception_date.localeCompare(b.exception_date) || a.doctor_name.localeCompare(b.doctor_name));
+              const leaves = (data.data || []).map(e => ({
+                id: e.id,
+                exception_date: e.exception_date,
+                doctor_user_id: e.doctor_user_id,
+                doctor_name: e.doctor_name,
+                time_open: e.time_open,
+                time_close: e.time_close,
+                reason: e.reason,
+                status: e.status,
+                notified: e.notified,
+                notify_customer: e.notify_customer,
+                reassigned_to: e.reassigned_to,
+                cover_doctor_name: e.cover_doctor_name,
+                approved_by_name: e.approved_by_name,
+              }));
               this.slotLeaves = leaves;
             } catch (e) { this.slotLeaves = []; }
             finally { this.slotLeavesLoading = false; }
@@ -2222,6 +2294,38 @@
           doctorColorByName(name) {
             const d = this.doctors.find(x => x.name === name);
             return d ? this.doctorColor(Number(d.id)) : '#94a3b8';
+          },
+          // 假期表：時段顯示（全日 / 某時段）
+          leaveTimeLabel(lv) {
+            if (lv.time_open && lv.time_close) return `${lv.time_open}–${lv.time_close}`;
+            return '全日';
+          },
+          // 假期表：系統狀態徽章（待通知客人 / 已通知待補 / 已由 X 醫師補上）
+          leaveBadge(lv) {
+            if (lv.status === 'rejected') return { text: '已拒絕', cls: 'bg-slate-100 text-slate-500' };
+            if (lv.status === 'pending') return { text: '待批核 · 待通知客人', cls: 'bg-amber-100 text-amber-700' };
+            // approved
+            if (lv.reassigned_to) return { text: `已由 ${lv.cover_doctor_name || '醫師'} 補上`, cls: 'bg-emerald-100 text-emerald-700' };
+            if (lv.notified) return { text: '已通知客人', cls: 'bg-sky-100 text-sky-700' };
+            return { text: '已批核', cls: 'bg-emerald-100 text-emerald-700' };
+          },
+          isOwnLeave(lv) {
+            return this.doctorUser && Number(lv.doctor_user_id) === Number(this.doctorUser.id);
+          },
+          // 假期申請表：根據所揀日期，查該日自己嘅預約（決定要唔要揀補位醫師）
+          async checkLeaveAffected() {
+            const d = this.leaveForm.date;
+            this.slotLeaveAffected = [];
+            this.leaveForm.reassignedTo = '';
+            if (!d || !this.doctorUser) return;
+            try {
+              const res = await fetch(`/api/bookings/doctor-appointments/range?start=${d}&end=${d}`);
+              if (res.ok) {
+                const data = await res.json();
+                const list = (data.bookings || []).filter(b => Number(b.doctor_user_id) === Number(this.doctorUser.id));
+                this.slotLeaveAffected = list;
+              }
+            } catch (e) { /* ignore */ }
           },
           slotToastNotif(msg, color = 'slate') {
             this.slotToast = msg;
@@ -2247,7 +2351,9 @@
                 }
                 return null;
               }).filter(Boolean);
-              cells.push({ date, day: dN, bars });
+              // 預約模式：附加該日客人預約名單（撳落去睇詳情）
+              const appts = this.slotSubView === 'booking' ? (this.slotApptByDate[date] || []) : [];
+              cells.push({ date, day: dN, bars, appts });
             }
             return cells;
           },
@@ -2678,7 +2784,7 @@
           async submitLeave() {
             if (!this.leaveForm.date) { alert("請選擇請假日期"); return; }
             const lvName = this.leaveForm.doctorUserId ? this.doctorName(this.leaveForm.doctorUserId) : (this.doctorInfo ? this.doctorInfo.name : '自己');
-            if (!confirm(`確定為 ${lvName} 申請 ${this.leaveForm.date} 請假？`)) return;
+            if (!confirm(`確定為 ${lvName} 申請 ${this.leaveForm.date} 請假？提交後會送交管理員批核。`)) return;
             this.leaveBusy = true;
             this.leaveResult = null;
             try {
@@ -2689,25 +2795,30 @@
                   exception_date: this.leaveForm.date,
                   doctorUserId: this.leaveForm.doctorUserId || undefined,
                   reason: this.leaveForm.reason || "",
-                  notifyWhatsapp: this.leaveForm.notify,
-                  cancelBookings: this.leaveForm.cancel,
+                  notify_customer: !!this.leaveForm.notify,
+                  reassigned_to: this.leaveForm.reassignedTo || undefined,
+                  time_open: this.leaveForm.timeOpen || undefined,
+                  time_close: this.leaveForm.timeClose || undefined,
                 }),
               });
               const data = await resp.json();
               if (resp.ok && data.ok) {
+                const coverTxt = data.reassigned_to ? `，已揀補位醫師` : '';
                 this.leaveResult = {
                   ok: true,
-                  message: `${data.exception_date} ${lvName} 請假已登記。` +
-                    (data.affected_count ? `該日 ${lvName} 有 ${data.affected_count} 筆預約受影響` + (data.cancelled ? `，已自動取消 ${data.cancelled} 筆。` : "，如需改期請聯絡職員。") : "該日冇預約受影響。"),
+                  message: `${data.exception_date} ${lvName} 請假已提交，待管理員批核${coverTxt}。` +
+                    (data.affected_count ? ` 該日有 ${data.affected_count} 筆預約受影響${data.reassigned_to ? '，批核後會轉嫁畀補位醫師' : '，批核後會通知客人改期'}。` : " 該日冇預約受影響。"),
                   affected: data.affected || [],
                   notified: data.notified,
                 };
                 this.leaveForm.date = "";
                 this.leaveForm.reason = "";
-                this.leaveForm.cancel = false;
+                this.leaveForm.timeOpen = "";
+                this.leaveForm.timeClose = "";
+                this.leaveForm.reassignedTo = "";
+                this.slotLeaveAffected = [];
                 this.loadMyLeaves();
-                this.loadBookings();
-                this.loadSlotCalendar();
+                this.loadSlotLeaves();
               } else {
                 this.leaveResult = { ok: false, message: data.error || "申請失敗" };
               }
