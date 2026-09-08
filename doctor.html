@@ -1071,10 +1071,10 @@
                         <span
                           v-for="bar in cell.bars"
                           :key="bar.id"
-                          class="h-1.5 rounded-full"
-                          :style="{ backgroundColor: bar.color }"
-                          :title="(doctors.find(d => d.id == bar.id) || {}).name + (bar.leave ? '（休假）' : '：' + bar.count + ' 個開放時段')"
-                        ></span>
+                          class="inline-flex items-center gap-0.5 text-[9px] leading-tight px-1 py-0.5 rounded truncate max-w-full"
+                          :style="{ backgroundColor: bar.leave ? 'rgba(139,92,246,0.16)' : '#e5e7eb', color: bar.leave ? '#6d28d9' : '#64748b' }"
+                          :title="bar.name + (bar.leave ? '（休假）' : '：' + bar.count + ' 個開放時段')"
+                        ><span class="w-1.5 h-1.5 rounded-full shrink-0" :style="{ backgroundColor: bar.color }"></span>{{ bar.name }}</span>
                       </template>
                     </div>
                   </button>
@@ -1099,7 +1099,7 @@
             <!-- 預約模式：全部醫師時段網格（拖掃揀自己帳戶改時段；有預約格撳入睇詳情） -->
             <div v-if="slotSubView==='booking'" class="bg-white rounded-xl shadow-lg p-4">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }} 日 × {{ slotAllTimes.length }} 時段 · 全部醫師；淨係可以修改自己帳戶）</span></h3>
+                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }} 日 × {{ slotAllTimes.length }} 時段 · 自己帳戶）</span></h3>
                 <div class="flex flex-wrap items-center gap-2">
                   <button @click="applyAllSlotStatus('leave')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-violet-600 disabled:opacity-40"><i class="fas fa-plane-departure mr-1"></i>放假</button>
                   <button @click="applyAllSlotStatus('rest')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
@@ -1134,14 +1134,11 @@
                             :key="dc.doctorId"
                             class="group relative px-1 py-0.5 rounded cursor-pointer transition-colors"
                             :style="allCellStyle(dc, allCellIsSel(slotAllCellByKey[d.date + '|' + time], dc))"
-                            :title="dc.name + ' ' + ((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位')))) + (dc.isOwn ? '（自己帳戶，可改）' : '（其他醫師，只可查閱）')"
+                            :title="((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位')))) + '（自己帳戶）'"
                             @mousedown.prevent="startAllSelect(slotAllCellByKey[d.date + '|' + time], dc)"
                             @mouseenter="enterAllCell(slotAllCellByKey[d.date + '|' + time], dc)"
                           >
-                            <span class="flex items-center gap-1 text-[10px] leading-none font-medium text-slate-600">
-                              <span v-if="dc.isOwn" class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: doctorColor(dc.doctorId) }"></span>
-                              <span class="truncate">{{ dc.name }}</span>
-                            </span>
+                            <span class="text-[10px] leading-none font-medium" :style="{ color: dc.status==='leave' ? '#6d28d9' : (dc.status==='open' ? '#047857' : (dc.status==='rest' ? '#be123c' : (dc.status==='waiting' ? '#b45309' : '#64748b'))) }">{{ dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位'))) }}</span>
                           </div>
                           <span v-if="!(slotAllCellByKey[d.date + '|' + time] || { docs: [] }).docs.length" class="text-[10px] text-slate-200 px-1">—</span>
                         </div>
@@ -1156,7 +1153,7 @@
                 <span><span class="inline-block w-3 h-3 rounded align-middle bg-amber-200"></span> 候診</span>
                 <span><span class="inline-block w-3 h-3 rounded align-middle bg-emerald-200"></span> 開放</span>
                 <span><span class="inline-block w-3 h-3 rounded align-middle ring-2 ring-blue-500 bg-blue-100"></span> 已選取</span>
-                <span class="text-slate-400">時段網格純粹設定狀態，唔顯示預約；拖掃揀自己帳戶嘅時段，再揀「放假／休息／候診／取消」；淨係改到自己，其他醫師只可查閱。睇預約請去「預約／假期」。</span>
+                <span class="text-slate-400">時段網格純粹設定你自己嘅時段狀態，唔顯示預約；拖掃揀時段，再撳「放假／休息／候診／取消」。如該時段已有預約，揀「放假」或「休息」會彈出提醒。睇預約紀錄請去「預約／假期」。</span>
               </div>
             </div>
 
@@ -1237,51 +1234,6 @@
                 </div>
               </div>
 
-              <!-- 申請請假（自己／代其他醫師） -->
-              <div class="bg-white rounded-xl shadow-lg p-4">
-                <h3 class="font-bold text-slate-800 mb-3"><i class="fas fa-paper-plane mr-2 text-purple-600"></i>申請請假（提交後待管理員批核）</h3>
-                <div class="flex flex-wrap items-end gap-3">
-                  <div>
-                    <label class="block text-xs text-slate-500 mb-1">請假醫師</label>
-                    <select v-model="leaveForm.doctorUserId" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]">
-                      <option value="">自己（{{ doctorInfo ? doctorInfo.name : '' }}）</option>
-                      <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-xs text-slate-500 mb-1">請假日期 *</label>
-                    <input v-model="leaveForm.date" type="date" :min="todayStr" @change="checkLeaveAffected()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  </div>
-                  <div>
-                    <label class="block text-xs text-slate-500 mb-1">開始時間（留空＝全日）</label>
-                    <input v-model="leaveForm.timeOpen" type="time" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  </div>
-                  <div>
-                    <label class="block text-xs text-slate-500 mb-1">結束時間</label>
-                    <input v-model="leaveForm.timeClose" type="time" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  </div>
-                  <div class="flex-1 min-w-[180px]">
-                    <label class="block text-xs text-slate-500 mb-1">原因</label>
-                    <input v-model="leaveForm.reason" placeholder="例如：進修 / 休息 / 私人事務" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  </div>
-                  <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
-                    <input type="checkbox" v-model="leaveForm.notify" class="w-4 h-4"> 通知客人
-                  </label>
-                  <button @click="submitLeave" :disabled="leaveBusy || !leaveForm.date" class="px-5 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50">
-                    <i v-if="leaveBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-paper-plane mr-1"></i>提交申請
-                  </button>
-                </div>
-                <div v-if="slotLeaveAffected && slotLeaveAffected.length" class="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                  <p class="font-medium">該日有 {{ slotLeaveAffected.length }} 筆你嘅預約受影響，請揀補位醫師：</p>
-                  <select v-model="leaveForm.reassignedTo" class="mt-2 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[160px]">
-                    <option value="">— 唔使補位（管理員另行安排）—</option>
-                    <option v-for="doc in doctors.filter(d => String(d.id) !== String(leaveForm.doctorUserId || (doctorInfo && doctorInfo.id)))" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
-                  </select>
-                </div>
-                <p v-if="leaveResult" class="mt-3 text-sm" :class="leaveResult.ok ? 'text-emerald-700' : 'text-red-600'">
-                  <i :class="leaveResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" class="mr-1"></i>{{ leaveResult.message }}
-                </p>
-              </div>
             </div>
           </div>
 
@@ -2347,7 +2299,7 @@
               const bars = showDocs.map(id => {
                 const info = dayInfo[id];
                 if (info && (info.working || info.leave)) {
-                  return { id: Number(id), color: info.leave ? '#9ca3af' : this.doctorColor(Number(id)), leave: !!info.leave, count: info.availableSlots };
+                  return { id: Number(id), color: info.leave ? '#9ca3af' : this.doctorColor(Number(id)), leave: !!info.leave, count: info.availableSlots, name: (this.doctors.find(d => d.id == id) || {}).name || '醫師' };
                 }
                 return null;
               }).filter(Boolean);
@@ -2474,7 +2426,9 @@
                   if (d0.doctors && d0.doctors.length) this.doctors = d0.doctors;
                 } catch (e) {}
               }
-              const docRows = this.doctors.length ? this.doctors : [];
+              // 時段網格只顯示自己帳戶（每個時段一格，唔顯示醫師名）
+              let docRows = myId != null ? this.doctors.filter(d => Number(d.id) === myId) : [];
+              if (!docRows.length && this.doctorInfo) docRows = [{ id: this.doctorInfo.id, name: this.doctorInfo.name }];
               const result = [];
               for (let i = 0; i < days.length; i++) {
                 const date = days[i];
