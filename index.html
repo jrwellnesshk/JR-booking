@@ -312,9 +312,9 @@
           box-shadow:0 8px 24px -12px rgba(0,0,0,.35);
         }
         .m-side-brand{ justify-content:flex-start; }
-        .m-side-nav{ flex-direction:row; flex-wrap:nowrap; overflow-x:auto; gap:.3rem; padding-bottom:.25rem; -webkit-overflow-scrolling:touch; }
+        .m-side-nav{ flex-direction:row; flex-wrap:nowrap; overflow-x:auto; gap:.3rem; padding-bottom:.25rem; margin-bottom:.5rem; -webkit-overflow-scrolling:touch; }
         .m-side-nav button{ white-space:nowrap; width:auto; }
-        .m-side-foot{ flex-direction:row; align-items:center; border-left:none; border-top:1px solid rgba(255,255,255,.1); padding:.6rem 0 0; margin-left:0; }
+        .m-side-foot{ flex-direction:row; align-items:center; border-left:none; border-top:1px solid rgba(255,255,255,.1); padding:.9rem 0 0; margin:.4rem 0 0; }
         .m-side-logout{ width:auto; padding:.55rem .9rem; }
         .m-stats{ grid-template-columns:repeat(2,1fr); }
         .m-promise{ grid-template-columns:1fr; }
@@ -332,14 +332,14 @@
         .m-side-brand{ justify-content:flex-start; }
         .m-side-nav{
           flex-direction:row; flex-wrap:nowrap; overflow-x:auto;
-          gap:.3rem; padding-bottom:.25rem;
+          gap:.3rem; padding-bottom:.25rem; margin-bottom:.5rem;
           -webkit-overflow-scrolling:touch;
         }
         .m-side-nav button{ white-space:nowrap; }
         .m-side-foot{
           flex-direction:row; align-items:center;
           border-left:none; border-top:1px solid rgba(120,80,40,.2);
-          padding:.6rem 0 0; margin-left:0;
+          padding:.9rem 0 0; margin:.4rem 0 0;
         }
       }
       /* ============ 歐美風官網 ============ */
@@ -453,12 +453,14 @@
       .aq-links a{ font-size:.86rem; color:#3a5650; font-weight:500; }
       .aq-links a:hover{ color:var(--p600); }
       .aq-topbar-right{ display:flex; align-items:center; gap:1rem; margin-left:1.4rem; }
+      /* EN 頂欄加寬 + 收窄間距，令 8 個 inline link + 短 CTA「Book」唔會裁切 */
+      .lang-en .aq-topbar-in{ max-width:1440px; padding-left:1.1rem; padding-right:1.1rem; }
+      .lang-en .aq-links{ gap:.75rem; }
       .aq-lang-toggle{ display:inline-flex; align-items:center; gap:.4rem; padding:.42rem .85rem; border-radius:999px; border:1px solid rgba(20,66,58,.25); background:rgba(255,255,255,.6); color:#3a5650; font-size:.82rem; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
       .aq-lang-toggle:hover{ background:rgba(20,66,58,.08); border-color:rgba(20,66,58,.45); }
       .aq-menu-btn{ display:none; align-items:center; justify-content:center; width:2.6rem; height:2.6rem; border-radius:.8rem; border:1px solid rgba(20,66,58,.25); background:rgba(255,255,255,.6); color:#3a5650; font-size:1.05rem; cursor:pointer; transition:background .2s; }
       .aq-menu-btn:hover{ background:rgba(20,66,58,.08); }
-      /* 頂欄 CTA 喺英文寬螢幕改為只顯示圖標，騰出空間畀 8 個英文連結；完整文案見 Hero / 漢堡包 */
-      .lang-en .aq-cta-label{ display:none; }
+      /* 手機（≤640）頂欄 CTA 只顯示圖標，寬螢幕保留完整文案；詳見 media query */
       .aq-lang-toggle i{ font-size:.78rem; }
       .aq-btn{ display:inline-flex; align-items:center; gap:.5rem; font-weight:600; font-size:.88rem; padding:.66rem 1.45rem; border-radius:999px; transition:all .25s ease; border:none; cursor:pointer; }
       .aq-btn-solid{ background:linear-gradient(135deg,var(--p500),var(--p600)); color:#fff; box-shadow:0 12px 28px -12px rgba(31,145,133,.55); }
@@ -484,7 +486,7 @@
         .aq-links a{ padding:.75rem .2rem; border-bottom:1px solid rgba(20,66,58,.07); }
         .aq-links a:last-child{ border-bottom:none; }
       }
-      @media (max-width:1300px){
+      @media (max-width:1440px){
         .lang-en .aq-menu-btn{ display:inline-flex; }
         .lang-en .aq-links{
           position:absolute; top:100%; left:0; right:0;
@@ -583,7 +585,7 @@
       }
       @media (max-width:640px){
         .aq-links{ display:none; }
-        .aq-topbar-right .aq-btn-solid{ display:none; }
+        .aq-topbar-right .aq-btn-solid .aq-cta-label{ display:none; }
         .aq-logo-sub{ display:none !important; }
         .aq-logo b{ font-size:1rem; white-space:nowrap; }
         .aq-float{ margin-top:-4rem; }
@@ -964,7 +966,7 @@
       }
       @media (max-width:640px){
         .aq-links{ display:none; }
-        .aq-topbar-right .aq-btn-solid{ display:none; }
+        .aq-topbar-right .aq-btn-solid .aq-cta-label{ display:none; }
         .aq-logo-sub{ display:none !important; }
         .aq-logo b{ font-size:1rem; white-space:nowrap; }
         .aq-topbar-in{ padding:.75rem 1.1rem; }
@@ -1319,7 +1321,7 @@
               <button type="button" class="aq-lang-toggle" @click="setLang(lang === 'en' ? 'zh-TW' : 'en')" :title="t('請選擇語言 / Please select language')" :aria-label="t('請選擇語言 / Please select language')">
                 <i class="fas fa-globe"></i><span>{{ lang === 'en' ? '中文' : 'EN' }}</span>
               </button>
-              <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-seedling"></i><span class="aq-cta-label">{{ t('初體驗預約') }}</span></a>
+              <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-seedling"></i><span class="aq-cta-label">{{ t('頂欄預約') }}</span></a>
             </div>
           </div>
         </div>

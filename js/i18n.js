@@ -123,6 +123,7 @@ window.I18N_EN = {
   "列印預約確認": "Print Booking Confirmation",
   "初次體驗可先使用「初體驗預約 · 一小時」免帳戶預約": "First-timers may use \"Trial Booking · One Hour\" without an account",
   "初體驗預約": "Trial Booking",
+  "頂欄預約": "Book",
   "初體驗預約 · 一小時": "Trial Booking · One Hour",
   "到診登記": "Clinic Check-in",
   "前往升級": "Go to Upgrade",
