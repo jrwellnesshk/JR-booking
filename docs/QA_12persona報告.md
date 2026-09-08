@@ -438,4 +438,68 @@
 
 ---
 
+---
+
+## 9. 修復執行記錄（2026-09-08 收尾）
+
+> 用戶指示：**「訪客淨係可以初體驗係正常，其他全部都幫我處理包括優化」**。
+> 即 — 保留 guest-only-初體驗 門控（正確業務規則），其餘 bug + 優化全部處理。
+
+### 9.1 修復總覽（B1–B15）
+
+| # | Bug | 狀態 | Commit | 驗證 |
+|---|---|---|---|---|
+| B1 | 訪客/會員 POST /api/bookings 走唔通 | ✅ 修 | `cbc59c7` | snake_case + camelCase 雙收 |
+| B2 | send-reset-code 500 | ✅ 修 | `a7e28a1` | 5/5 沙盒返 200 + dev code |
+| B3 | 公開醫師列表 401 | ✅ 修 | `a7e28a1` | /doctors 200、/clinic 仍 401 |
+| B4 | 客人改自己密碼 403 | ❌ **false positive** | — | 前端用 `reset-password-authenticated`，實測 200 正常 |
+| B5 | 海外電話格式 400 | ✅ 修 | `9394f0c` | `+6012-3456789` 開戶成功 (userId 113) |
+| B6 | admin/users 400 缺欄位提示 | ✅ 修 | `9394f0c` | 返 `missing:['username']` |
+| B7 | privacy 用 PUT+private 404 | ✅ 修 | `cbc59c7` | POST/PUT + hide/private 全收 |
+| B8 | account-links 400 缺欄位 | ✅ 修 | `cbc59c7` | snake_case alias 全收 |
+| B9 | payroll 缺月份 400 | ✅ 修 | `9394f0c` | 無參數自動填上一個月 |
+| B10 | admin my-leave 404 | ✅ 修 | `9394f0c` | 改清晰 400 提示 + clinicWide 路徑 ok |
+| B11 | 家庭代約冇端點 | ✅ 修 | `cbc59c7` | `POST /api/membership/family/bookings` 實測 ok |
+| B12 | 404 vs 403 唔統一 | ✅ **已滿足** | — | admin 端點有 `requireRole` 中間件，customer 統一 403 先於 404，無 enumeration 漏 |
+| B13 | 缺 18+ 子女測試帳號 | ✅ 修 | `cbc59c7` | `sc_kid1`(18+) / `sc_kid2`(<18) 已 seed |
+| B14 | 時段端點 400 訊息唔清 | ✅ 修 | `cbc59c7` | 列缺失欄位 + service_id alias |
+| B15 | AI 缺 symptoms 400 | ✅ 修 | `cbc59c7` | 返 200 + 熱門推薦 fallback |
+
+**修復率：13/15 真實 bug 已修（B4 證實 false positive、B12 證實已滿足）。**
+
+### 9.2 已保留嘅正確行為（用戶確認「正常」）
+
+- **guest-only-初體驗 門控**（`routes/bookings.js:303` 訪客、`308-319` 一般會員）完全保留，未改動。
+- 會員分級：guest / general 只可「初體驗」；family / 高級可全部 — 業務邏輯正確。
+- 一般會員約非初體驗時回 403 `membership_required`，已附升級提示 + 診所電話 2555-1136。
+
+### 9.3 優化項目處理情況
+
+| 報告建議 | 處理 |
+|---|---|
+| §3.1 #1 統一 API 命名 (snake_case + alias) | ✅ 已做（B1/B7/B8 加 alias，前端唔使改） |
+| §3.1 #2 send-reset-code fallback | ✅ 已做（B2） |
+| §3.1 #3 公開醫師列表 | ✅ 已做（B3） |
+| §3.1 #5 電話寬鬆化 | ✅ 已做（B5） |
+| §3.2 #6 時段 400 清晰 | ✅ 已做（B14） |
+| §3.2 #7 家庭代約 | ✅ 已做（B11） |
+| §3.2 #8 18+ 子女帳號 | ✅ 已做（B13） |
+| §3.2 #9 薪資預設本月 | ✅ 已做（B9 改為預設上一個月） |
+| §3.2 #10 404/403 統一 | ✅ 已確認滿足（B12） |
+| §3.3 #12 AI 熱門 fallback | ✅ 已做（B15） |
+| §3.3 #14 過期會員友善提示 | ✅ 已有（403 附升級提示） |
+| §3.3 #13/15 自助安排 / 訪客轉會員 CTA | ⏸ 前端項，需 UI 配合 |
+| §3.4 #16 錯誤格式統一 | ⏸ 大型重構，需 design discussion |
+| §3.4 #17 OpenAPI / #18 CI contract / #19 A11y / #20 Sentry | ⏸ 系統性基礎建設，建議另開專項 |
+
+### 9.4 後續建議（非 bug，路線圖）
+
+1. **OpenAPI 3.0 + CI contract test** — 根治 API 命名漂移（今次靠 alias 過渡，長遠要 contract）。
+2. **全域 rate limit** — 目前只 login / email 有，其他端點缺（報告 5.2 #8）。
+3. **XSS 輸出過濾確認** — 後端收 `<script>` 正常，需前端 v-text 確認 sanitize（報告 5.2 #2）。
+4. **生產環境 email/WhatsApp** — B2 嘅 dev fallback 只適用 sandbox，生產須真 SMTP 或 SMS 替代，否則密碼救援仍壞。
+
+---
+
 *報告生成：2026-09-08 · 寶天醫館 QA · 12 persona × 117 步 · scenario.db 沙盒*
+*修復跟進：2026-09-08 收尾 · 13/15 bug 已修 · 3 commits (b99063a→a7e28a1→cbc59c7→9394f0c)*

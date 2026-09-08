@@ -54,6 +54,8 @@ li{margin:6px 0}
 .tag-p1{background:#FAEDD0;color:#8A6A20}
 .tag-p2{background:#E5E8D9;color:#3E5240}
 .tag-p3{background:#F0E4D2;color:#5D4037}
+.tag.ok{background:#E5E8D9;color:#3E5240}
+.tag.warn{background:#FAE0DC;color:#8B3A3A}
 .callout{background:linear-gradient(135deg,#FAE0DC 0%,#FAEDD0 100%);border-radius:14px;padding:20px 24px;margin:18px 0;border-left:5px solid var(--red)}
 .callout h4{color:var(--red);margin-bottom:8px}
 .callout-good{background:linear-gradient(135deg,#E5E8D9 0%,#F0E4D2 100%);border-left-color:var(--green)}
@@ -434,9 +436,58 @@ footer{margin:48px 0 24px;padding:24px;text-align:center;color:var(--brown);font
   <li>多實例 / HA 部署</li>
 </ul>
 
+<h2>9. 修復執行記錄（2026-09-08 收尾）</h2>
+<p>用戶指示：<strong>「訪客淨係可以初體驗係正常，其他全部都幫我處理包括優化」</strong>。即 — 保留 guest-only-初體驗 門控（正確業務規則），其餘 bug + 優化全部處理。</p>
+
+<h3>9.1 修復總覽（B1–B15）</h3>
+<table>
+  <thead><tr><th>#</th><th>Bug</th><th>狀態</th><th>Commit</th><th>驗證</th></tr></thead>
+  <tbody>
+    <tr><td>B1</td><td>POST /api/bookings 走唔通</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>snake_case + camelCase 雙收</td></tr>
+    <tr><td>B2</td><td>send-reset-code 500</td><td><span class="tag ok">✅ 修</span></td><td>a7e28a1</td><td>5/5 沙盒返 200 + dev code</td></tr>
+    <tr><td>B3</td><td>公開醫師列表 401</td><td><span class="tag ok">✅ 修</span></td><td>a7e28a1</td><td>/doctors 200、/clinic 仍 401</td></tr>
+    <tr><td>B4</td><td>客人改自己密碼 403</td><td><span class="tag warn">❌ false positive</span></td><td>—</td><td>前端用 reset-password-authenticated，實測 200</td></tr>
+    <tr><td>B5</td><td>海外電話格式 400</td><td><span class="tag ok">✅ 修</span></td><td>9394f0c</td><td>+6012-3456789 開戶成功</td></tr>
+    <tr><td>B6</td><td>admin/users 缺欄位提示</td><td><span class="tag ok">✅ 修</span></td><td>9394f0c</td><td>返 missing:['username']</td></tr>
+    <tr><td>B7</td><td>privacy PUT+private 404</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>POST/PUT + hide/private 全收</td></tr>
+    <tr><td>B8</td><td>account-links 400</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>snake_case alias 全收</td></tr>
+    <tr><td>B9</td><td>payroll 缺月份 400</td><td><span class="tag ok">✅ 修</span></td><td>9394f0c</td><td>無參數自填上一個月</td></tr>
+    <tr><td>B10</td><td>admin my-leave 404</td><td><span class="tag ok">✅ 修</span></td><td>9394f0c</td><td>改清晰 400 + clinicWide ok</td></tr>
+    <tr><td>B11</td><td>家庭代約冇端點</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>POST /api/membership/family/bookings ok</td></tr>
+    <tr><td>B12</td><td>404 vs 403 唔統一</td><td><span class="tag ok">✅ 已滿足</span></td><td>—</td><td>requireRole 中間件先 403，無 enumeration</td></tr>
+    <tr><td>B13</td><td>缺 18+ 子女帳號</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>sc_kid1/sc_kid2 已 seed</td></tr>
+    <tr><td>B14</td><td>時段 400 訊息唔清</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>列缺失欄位 + alias</td></tr>
+    <tr><td>B15</td><td>AI 缺 symptoms 400</td><td><span class="tag ok">✅ 修</span></td><td>cbc59c7</td><td>返 200 + 熱門推薦</td></tr>
+  </tbody>
+</table>
+<p><strong>修復率：13/15 真實 bug 已修（B4 false positive、B12 已滿足）。</strong></p>
+
+<h3>9.2 已保留嘅正確行為</h3>
+<ul>
+  <li><strong>guest-only-初體驗 門控</strong>完全保留（用戶確認「正常」）。</li>
+  <li>會員分級：guest/general 只可「初體驗」；family/高級可全部 — 業務邏輯正確。</li>
+  <li>一般會員約非初體驗回 403 <code>membership_required</code>，已附升級提示 + 診所電話 2555-1136。</li>
+</ul>
+
+<h3>9.3 優化項目處理</h3>
+<ul>
+  <li>✅ 已完成：API 命名 alias（B1/B7/B8）、send-reset fallback（B2）、公開醫師（B3）、電話寬鬆（B5）、時段清晰（B14）、家庭代約（B11）、子女帳號（B13）、薪資預設（B9）、AI fallback（B15）、404/403（B12）。</li>
+  <li>⏸ 需 UI 配合：自助安排、訪客轉會員 CTA。</li>
+  <li>⏸ 需 design discussion：錯誤格式統一、OpenAPI、CI contract test、A11y、Sentry。</li>
+</ul>
+
+<h3>9.4 後續路線圖（非 bug）</h3>
+<ul>
+  <li><strong>OpenAPI 3.0 + CI contract test</strong> — 根治命名漂移（今次靠 alias 過渡）。</li>
+  <li><strong>全域 rate limit</strong> — 目前只 login/email 有。</li>
+  <li><strong>XSS 輸出過濾確認</strong> — 前端 v-text 需確認 sanitize。</li>
+  <li><strong>生產 email/WhatsApp</strong> — B2 dev fallback 只適用 sandbox，生產須真 SMTP 或 SMS，否則密碼救援仍壞。</li>
+</ul>
+
 <footer>
   <p>報告生成：2026-09-08 · 寶天醫館 QA · 12 persona × 117 步 · scenario.db 沙盒</p>
   <p style="margin-top:8px;color:var(--brown-light)">🩺 earthy spa 主題 · 鼠尾草綠 + 粉桃 + 奶油底 · 與官網同款</p>
+  <p style="margin-top:4px;color:var(--brown-light)">修復跟進：2026-09-08 收尾 · 13/15 bug 已修 · commits b99063a → a7e28a1 → cbc59c7 → 9394f0c</p>
 </footer>
 
 </div>
