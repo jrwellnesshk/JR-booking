@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>寶天醫館 · 四帳戶使用情況總覽</title>
+<style>
+  :root{
+    --cream:#F0E4D2; --peach:#EFD2BD; --surface:#F5E5D5; --sage:#7E9476;
+    --sage-deep:#3E5240; --brown:#3E2A1E; --brown2:#5D4037; --brown3:#7E5140;
+    --line:#E2D5C2; --ink:#3E2A1E; --muted:#7A6A5A;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Noto Sans TC","Inter",sans-serif;background:var(--cream);color:var(--ink);line-height:1.7;}
+  h1,h2,h3,h4{font-family:"Noto Serif TC",serif;color:var(--brown);line-height:1.3;}
+  a{color:var(--sage-deep);}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px;}
+  header.hero{background:linear-gradient(135deg,var(--sage-deep),var(--sage));color:#fff;border-radius:18px;padding:34px 36px;box-shadow:0 10px 30px rgba(62,82,64,.25);}
+  header.hero h1{color:#fff;margin:0 0 6px;font-size:2rem;}
+  header.hero p{margin:0;opacity:.92;}
+  .toc{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 8px;}
+  .toc a{background:var(--surface);border:1px solid var(--line);padding:9px 16px;border-radius:999px;text-decoration:none;font-weight:600;font-size:.92rem;}
+  .toc a:hover{background:var(--sage);color:#fff;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 28px;margin:22px 0;box-shadow:0 4px 14px rgba(62,42,30,.05);}
+  .role-tag{display:inline-block;font-size:.78rem;font-weight:700;padding:3px 11px;border-radius:999px;margin-bottom:10px;letter-spacing:.04em;}
+  .tag-admin{background:#3E5240;color:#fff;}
+  .tag-staff{background:var(--brown2);color:#fff;}
+  .tag-doctor{background:var(--sage);color:#fff;}
+  .tag-customer{background:var(--brown3);color:#fff;}
+  h2.sec{border-left:6px solid var(--sage);padding-left:14px;margin-top:0;}
+  h3.sub{color:var(--brown2);margin:24px 0 8px;font-size:1.18rem;}
+  ol.steps{counter-reset:s;margin:8px 0 8px 0;padding-left:0;list-style:none;}
+  ol.steps>li{position:relative;padding:8px 0 8px 40px;border-bottom:1px dashed var(--line);}
+  ol.steps>li:last-child{border-bottom:none;}
+  ol.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:26px;height:26px;background:var(--sage);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;}
+  ul.bul{margin:6px 0;padding-left:22px;}
+  ul.bul li{margin:3px 0;}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.92rem;background:#fff;border-radius:10px;overflow:hidden;}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;}
+  th{background:var(--sage);color:#fff;font-weight:600;}
+  tbody tr:nth-child(even){background:#FBF4EA;}
+  .yes{color:#2f7d4f;font-weight:700;}
+  .no{color:#b4452f;font-weight:700;}
+  .note{background:#FFF7EC;border-left:4px solid var(--brown3);padding:12px 16px;border-radius:8px;margin:14px 0;font-size:.92rem;color:var(--brown);}
+  .kbd{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:.85rem;font-weight:600;}
+  code{background:#fff;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.86rem;}
+  footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:40px;}
+  @media(max-width:640px){.wrap{padding:18px 12px 60px;}header.hero{padding:24px 20px;}.card{padding:20px 16px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>寶天醫館 · 四帳戶使用情況總覽</h1>
+    <p>系統 booking-aurora（Express 5 + SQLite + Vue 3）｜ 適用版本 2026-09-08 ｜ 管理員 / 員工 / 醫師 / 客人 四類帳戶全場景＋步驟</p>
+  </header>
+
+  <nav class="toc">
+    <a href="#login">登入與角色分流</a>
+    <a href="#admin">① 管理員</a>
+    <a href="#staff">② 員工</a>
+    <a href="#doctor">③ 醫師</a>
+    <a href="#customer">④ 客人</a>
+    <a href="#matrix">權限速查表</a>
+    <a href="#notes">備註</a>
+  </nav>
+
+  <!-- LOGIN -->
+  <section class="card" id="login">
+    <h2 class="sec">0. 登入與角色分流</h2>
+    <p>所有角色共用同一登入頁 <code>index.html</code>（官網登入卡），後端按帳號 <code>role</code> 自動跳轉對應版面。</p>
+    <ol class="steps">
+      <li>打開官網首頁，右上角或「會員登入」錨點開啟登入卡。</li>
+      <li>登入卡頂部切換角色：<b>會員登入</b>（客人）／<b>醫師登入</b>（醫師）／<b>員工 / 管理員登入</b>（職員）。</li>
+      <li>輸入帳號（會員 ID）＋ 密碼 ＋ 驗證碼（captcha）。</li>
+      <li>後端按 <code>role</code> 分流：customer→官網會員中心；doctor→<code>doctor.html</code>；staff→<code>staff.html</code>；admin→<code>admin.html</code>。</li>
+    </ol>
+    <div class="note">客人帳戶<b>不公開自助註冊</b>（<code>allow_public_registration</code> 預設關閉），新會員一律由職員後台開戶。訪客可<b>免登入</b>直接預約「初體驗」。管理員預設帳號：<span class="kbd">admin</span> / <span class="kbd">admin123</span>。</div>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="card" id="admin">
+    <span class="role-tag tag-admin">ADMIN 管理員</span>
+    <h2 class="sec">1. 管理員帳戶 — admin.html</h2>
+    <p>管理員擁有絕大多數權限，左側選單 <code>currentView</code> 切換以下功能區。</p>
+
+    <h3 class="sub">1.1 儀表板（dashboard）</h3>
+    <ol class="steps"><li>登入後預設停留儀表板，檢視用戶總數、醫師數、員工數、今日預約數等指標卡。</li></ol>
+
+    <h3 class="sub">1.2 預約管理（bookings）</h3>
+    <ol class="steps">
+      <li>點「預約管理」→ 列表載入。</li>
+      <li>用篩選器（日期、醫師、狀態）縮小範圍。</li>
+      <li>點單張預約 → 改狀態（確認／完成／未到／取消）、記錄遲到分鐘、或直接改單（時間／醫師／服務）。</li>
+      <li>儲存後系統發送對應通知。</li>
+    </ol>
+
+    <h3 class="sub">1.3 初體驗預約（trialbookings）</h3>
+    <ol class="steps"><li>點「初體驗預約」→ 檢視／跟進訪客免登入預約的初體驗單，可聯絡轉為正式會員。</li></ol>
+
+    <h3 class="sub">1.4 收入（income）</h3>
+    <ol class="steps"><li>點「收入」→ 選時間範圍 → 檢視營收明細報表。</li></ol>
+
+    <h3 class="sub">1.5 用戶管理（users）</h3>
+    <ol class="steps">
+      <li>點「用戶管理」→ 列出全部用戶（角色、保險標記、VIP/備註）。</li>
+      <li>新增用戶：選角色（客戶／醫師／員工／管理員）→ 填姓名、電話、電郵、保險覆蓋 → 系統生成帳號＋臨時密碼。</li>
+      <li>編輯客戶備註（VIP、敏感標記）。</li>
+      <li>重設他人密碼 → <b>需二次驗證</b>（輸入自己密碼）。</li>
+      <li>刪除用戶 → <b>需 2FA 且連帶刪除關聯資料</b>。</li>
+    </ol>
+
+    <h3 class="sub">1.6 會員付款（member-payments）</h3>
+    <ol class="steps"><li>點「會員付款」→ 檢視各會員訂閱狀態與付款紀錄。</li></ol>
+
+    <h3 class="sub">1.7 家庭樹（familytree）</h3>
+    <ol class="steps"><li>點「家庭樹」→ 展開家庭關係圖；可移除成員連結。</li></ol>
+
+    <h3 class="sub">1.8 病歷記錄（medicalrecords）</h3>
+    <ol class="steps">
+      <li>點「病歷記錄」→ 列表（按客戶／醫師／日期篩選）。</li>
+      <li>點開單張病歷 → 看診療紀錄、療程進度、上傳相片。</li>
+      <li>下載錄音檔（admin/staff 權限）。</li>
+    </ol>
+
+    <h3 class="sub">1.9 時段管理（timeslots）— 含醫師請假審批</h3>
+    <ol class="steps">
+      <li>點「時段管理」→ 月曆載入，每格顯示醫師名＋顏色狀態（上班／休息／請假）。</li>
+      <li>改單一醫師時段：點格 → 設 open / rest / blank；或拖掃批量套用。</li>
+      <li><b>醫師請假審批</b>：左側「醫師請假」隊列顯示待批申請。</li>
+      <li>點「批准」→ 該醫師當日時段封鎖；若有已約客人，標 <code>needs_arrange</code> 並通知「唔使改期，會安排第二位醫師，請 OK」。</li>
+      <li>批准後若仍有待安排單（琥珀色「待安排第二位醫師 (N 張)」），於下拉選<b>補位醫師</b> → PATCH 落實（系統校驗補位醫師該時段有位才轉嫁）＋通知「已安排 X 醫師」。</li>
+      <li>「拒絕」→ 請假失效，時段恢復。</li>
+      <li><b>全診所休診</b>：醫師提交選「全診所」→ 當日所有醫師時段封鎖，公開預約引擎同步封診。</li>
+    </ol>
+
+    <h3 class="sub">1.10 診所設定（clinic-settings）</h3>
+    <ol class="steps">
+      <li>點「診所設定」→ 醫師頁：新增／編輯／停用（軟刪除）醫師。</li>
+      <li>服務頁：新增／編輯／刪除服務項目。</li>
+      <li>床位／營業時間／通知開關：按診所實際設定填寫並儲存。</li>
+    </ol>
+
+    <h3 class="sub">1.11 系統（system → triage / faqs）</h3>
+    <ol class="steps"><li>點「系統」→「分流問題」增刪改分流題與選項；「FAQ」維護常見問題。</li></ol>
+
+    <h3 class="sub">1.12 審計（audit）</h3>
+    <ol class="steps"><li>點「審計」→ 檢視操作日誌（誰在何時做了什麼）。</li></ol>
+
+    <h3 class="sub">1.13 反饋（feedback）</h3>
+    <ol class="steps">
+      <li>點「反饋」→ 列表（含未讀數）。</li>
+      <li>點開 → 閱讀、標記已讀。</li>
+      <li>回覆 → 客戶端收通知；可改狀態或刪除。</li>
+    </ol>
+
+    <h3 class="sub">1.14 通知（notifications）</h3>
+    <ol class="steps">
+      <li>點「通知」→ 檢視即將到來節氣／節日。</li>
+      <li>設定：開關各類通知、編輯節氣自訂訊息。</li>
+      <li>手動發送：測試／節氣／節日／天氣／預約提醒，或「執行全部」。</li>
+      <li>查看發送記錄（logs），可單條刪除或清空。</li>
+    </ol>
+
+    <h3 class="sub">1.15 網站內容（siteContent）</h3>
+    <ol class="steps">
+      <li>點「網站內容」→ 公告／影片／案例：新增／編輯／刪除；影片可上傳檔案。</li>
+      <li>評價：審核客戶提交（通過／拒絕）。</li>
+      <li>討論區：刪除不當帖子或回覆。</li>
+      <li>動態文字：維護官網文案。</li>
+    </ol>
+
+    <h3 class="sub">1.16 考勤（attendance）— 自我 + 全 HR 管理</h3>
+    <ol class="steps">
+      <li>自我：點「考勤」→ 上班／下班打卡；睇自己考勤記錄。</li>
+      <li>全店管理：員工名冊、手動加考勤、排班例外、診所休息日、請假審批、薪資報表與匯出、考勤報表。</li>
+    </ol>
+  </section>
+
+  <!-- STAFF -->
+  <section class="card" id="staff">
+    <span class="role-tag tag-staff">STAFF 員工</span>
+    <h2 class="sec">2. 員工帳戶 — staff.html</h2>
+    <p>權限較管理員收窄：可看客戶資料與全店病歷、處理預約、設補位、自助 HR；但<b>不可</b>用戶管理／診所設定／內容管理／通知管理／反饋管理／家庭樹等 admin-only 功能。左側 <code>mainTab</code> 切換：列表 / 日曆 / 病歷 / 考勤 / 自助 / 時段。</p>
+
+    <h3 class="sub">2.1 列表（list）— 預約列表</h3>
+    <ol class="steps">
+      <li>點「列表」→ 預約清單（可篩選醫師／日期／狀態）。</li>
+      <li>點單張 → 改狀態、記錄遲到、改單（時間／醫師／服務）。</li>
+      <li>儲存。</li>
+    </ol>
+
+    <h3 class="sub">2.2 日曆（calendar）— 預約日曆</h3>
+    <ol class="steps"><li>點「日曆」→ 月曆檢視預約分佈（含假期標記）；點日看當日預約。</li></ol>
+
+    <h3 class="sub">2.3 病歷（records）— 全客戶病歷</h3>
+    <ol class="steps"><li>點「病歷」→ 載入全店病歷；點開看診療紀錄、療程進度、相片、下載錄音。（寫入病歷限醫師本人單。）</li></ol>
+
+    <h3 class="sub">2.4 考勤（hr）— 自我打卡</h3>
+    <ol class="steps">
+      <li>點「考勤」→ 顯示今日是否已打卡。</li>
+      <li>按「上班打卡」／「下班打卡」。</li>
+      <li>檢視自己考勤記錄、請假記錄、薪資單、HR 文件（上傳／下載）。</li>
+    </ol>
+
+    <h3 class="sub">2.5 自助（ess）— 員工自助服務</h3>
+    <ol class="steps"><li>點「自助」→ 編輯個人檔案、查排班／值勤、申請請假、上傳 HR 文件。</li></ol>
+
+    <h3 class="sub">2.6 時段（timeslots）— 醫師返工月曆</h3>
+    <ol class="steps">
+      <li>點「時段」→ 月曆；批量改醫師時段。</li>
+      <li>請假隊列中對待安排單 → 選補位醫師 → 落實轉嫁。</li>
+    </ol>
+  </section>
+
+  <!-- DOCTOR -->
+  <section class="card" id="doctor">
+    <span class="role-tag tag-doctor">DOCTOR 醫師</span>
+    <h2 class="sec">3. 醫師帳戶 — doctor.html</h2>
+    <p>醫師聚焦自身排程、預約、病歷、考勤。底部 <code>docTab</code> 切換：預約 / 排程 / 考勤 / 時段 / 自助 / 更多。</p>
+
+    <h3 class="sub">3.1 預約（bookings）— 自己名下預約</h3>
+    <ol class="steps">
+      <li>點「預約」→ 列出指派給自己的預約。</li>
+      <li>點單張 → 改狀態（僅限自己單）、記錄遲到。</li>
+      <li>於預約詳情可撰寫／更新<b>該次病歷</b>（僅自己單可寫）。</li>
+    </ol>
+
+    <h3 class="sub">3.2 排程（schedule）— 請假與排班</h3>
+    <ol class="steps">
+      <li>點「排程」→ 檢視自己排班與請假記錄。</li>
+      <li>申請請假：選日期、時段、是否「全診所休診」→ 提交（狀態 pending，等 admin 批）。</li>
+      <li>可刪除自己未批的請假；<b>不可</b>批自己的請假（僅 admin 可批）。</li>
+    </ol>
+
+    <h3 class="sub">3.3 考勤（attendance）— 打卡</h3>
+    <ol class="steps"><li>點「考勤」→ 上班／下班打卡；檢視考勤記錄。</li></ol>
+
+    <h3 class="sub">3.4 時段（timeslots）— 自己時段月曆</h3>
+    <ol class="steps"><li>點「時段」→ 檢視／批量改自己時段狀態。</li></ol>
+
+    <h3 class="sub">3.5 自助（ess）— 員工自助</h3>
+    <ol class="steps"><li>點「自助」→ 個人檔案、薪資單、HR 文件、請假申請。</li></ol>
+
+    <h3 class="sub">3.6 更多</h3>
+    <ol class="steps"><li>跳轉其他頁面／登出。</li></ol>
+  </section>
+
+  <!-- CUSTOMER -->
+  <section class="card" id="customer">
+    <span class="role-tag tag-customer">CUSTOMER 客人</span>
+    <h2 class="sec">4. 客人帳戶 — index.html（公開官網 + 會員中心）</h2>
+
+    <h3 class="sub">4.1 瀏覽公開官網（免登入）</h3>
+    <ol class="steps">
+      <li>首頁可看醫師介紹、服務項目、會員計劃、家庭計劃、客戶評價、中醫討論區、常見問題、假期／節氣資訊。</li>
+      <li><b>AI 問診（公開）</b>：首頁 AI 問診入口 → 回答症狀分類問題 → 取得建議（免登入）。</li>
+      <li><b>醫療分流（公開）</b>：依分流問題與可約醫師／服務對應選擇。</li>
+    </ol>
+
+    <h3 class="sub">4.2 訪客初體驗預約（免登入）</h3>
+    <ol class="steps">
+      <li>點「初體驗預約」→ 開啟訪客預約流程。</li>
+      <li>揀服務（<b>僅「初體驗」可約</b>，其餘需登入會員）。</li>
+      <li>揀醫師 → 揀日期與時段（顯示可用性＋床位）。</li>
+      <li>填姓名／電話／備註 → 確認預約。</li>
+      <li>系統建立初體驗預約並通知。</li>
+    </ol>
+
+    <h3 class="sub">4.3 會員登入 / 密碼救援</h3>
+    <ol class="steps">
+      <li>點「會員登入」→ 輸入會員 ID＋密碼＋驗證碼 → 進會員中心。</li>
+      <li>忘記密碼：點「忘記密碼」→ 收驗證碼（Email/WhatsApp）→ 重設。</li>
+      <li>找回會員 ID：點「找回會員 ID」→ 姓名＋Email 查詢。</li>
+    </ol>
+
+    <h3 class="sub">4.4 會員中心（登入後 setView）</h3>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">立即預約（booking）</h4>
+    <ol class="steps">
+      <li>揀服務 → 服務有分級門控：<b>一般會員（general）僅可約「初體驗」</b>；<b>高級（premium）／家庭（family）可約全部服務</b>（針灸、推拿、內科等）。</li>
+      <li>揀醫師 → 日期時段 → 確認。</li>
+    </ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">我的預約（myBookings）</h4>
+    <ol class="steps"><li>檢視自己預約；可改期（鎖定／已確認單受限）、取消預約。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">我的病歷（myMedical）</h4>
+    <ol class="steps"><li>檢視自己病歷＋療程進度；下載錄音；可記錄自身療程進度（自動建 minimal 病歷）。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">會員中心（myMembership）</h4>
+    <ol class="steps">
+      <li>檢視當前 tier（general / premium / family）。</li>
+      <li>升級：選 plan → Stripe 安全付款（Visa/Mastercard/Apple Pay/Google Pay）；或致電職員轉數快／現金代開。</li>
+      <li>家庭帳戶：購買家庭會員後「啟用家庭帳戶」→ 連結家庭成員（輸入家人帳戶名稱／電話；18 歲以下子女可由診所代開子帳戶）。</li>
+      <li>隱私設定：18 歲以上子成員可開關「不給主帳戶看我資料」。</li>
+    </ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">優惠券（coupons）</h4>
+    <ol class="steps"><li>查自己優惠券＋剩餘免費診症次數；購買優惠券（Stripe）；或輸入密碼兌換（加免費診症次數）。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">設定（mySettings）</h4>
+    <ol class="steps"><li>改個人資料（電話／電郵／地址）、改密碼（需舊密碼）、通知偏好（WhatsApp）、上傳／設頭像。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">AI 客服（aiCustomerService）</h4>
+    <ol class="steps"><li>輸入問題 → AI 客服回覆。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">意見反饋（feedback）</h4>
+    <ol class="steps"><li>提交反饋 → 之後可查自己反饋與未讀回覆數、標記已讀。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">中醫討論區（forum）</h4>
+    <ol class="steps"><li>瀏覽帖子；發新帖；回覆帖子。</li></ol>
+
+    <h4 style="color:var(--brown2);margin:14px 0 4px;">客戶評價 / 家庭成員代辦（戶主）</h4>
+    <ol class="steps">
+      <li>於官網評價區提交評價（待審核後公開）。</li>
+      <li>家庭成員代辦：戶主於會員中心代約 18 歲以下子女預約、查子女病歷與預約（18+ 子女視乎隱私開關，僅顯示成功狀態）。</li>
+    </ol>
+  </section>
+
+  <!-- MATRIX -->
+  <section class="card" id="matrix">
+    <h2 class="sec">5. 權限速查表</h2>
+    <table>
+      <thead><tr><th>功能</th><th>客人</th><th>醫師</th><th>員工</th><th>管理員</th></tr></thead>
+      <tbody>
+        <tr><td>瀏覽官網／AI 問診／分流</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>訪客初體驗預約</td><td class="yes">✅</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td>會員預約（分級門控）</td><td class="yes">✅</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td>自管預約／病歷／反饋／優惠券／家庭</td><td class="yes">✅</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td>自己名下預約（改狀態／病歷）</td><td class="no">—</td><td class="yes">✅</td><td class="no">—</td><td class="yes">✅</td></tr>
+        <tr><td>請假申請（自己）</td><td class="no">—</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>寫病歷（限自己單）</td><td class="no">—</td><td class="yes">✅</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>全店病歷檢視</td><td class="no">—</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>預約處理（列表／日曆／改單）</td><td class="no">—</td><td class="yes">✅(自己)</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>時段月曆（批量改）</td><td class="no">—</td><td class="yes">✅(自己)</td><td class="yes">✅</td><td class="yes">✅</td></tr>
+        <tr><td>醫師請假審批／補位</td><td class="no">—</td><td class="no">❌</td><td class="no">❌(設補位)</td><td class="yes">✅</td></tr>
+        <tr><td>用戶管理／診所設定</td><td class="no">—</td><td class="no">❌</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>內容管理／通知管理／反饋管理</td><td class="no">—</td><td class="no">❌</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>HR 全店管理（薪資／排班／休息日）</td><td class="no">—</td><td class="no">❌</td><td class="no">❌</td><td class="yes">✅</td></tr>
+        <tr><td>自助打卡／ESS</td><td class="no">—</td><td class="yes">✅</td><td class="yes">✅</td><td class="yes">✅(自己)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- NOTES -->
+  <section class="card" id="notes">
+    <h2 class="sec">6. 已知範圍與備註</h2>
+    <ul class="bul">
+      <li><b>公開註冊關閉</b>：新會員由職員後台開戶（符合私隱與病歷準確性要求）。</li>
+      <li><b>會員門控</b>：一般會員（general）僅可約「初體驗」；進階服務需 premium／family。</li>
+      <li><b>醫師請假 → 手動安排</b>：批准後不自動轉醫師，標 <code>needs_arrange</code> 並通知客人；客人 OK 後由 admin／staff 手動 PATCH 安排第二位。</li>
+      <li><b>全診所休診</b>：選「全診所」的請假會封鎖當日所有醫師時段，並同步公開預約引擎封診。</li>
+      <li><b>2FA 保護</b>：用戶刪除、他人密碼重設、會員級別代改（員工）等敏感操作需二次驗證。</li>
+      <li><b>Stripe / WhatsApp 通知</b>：為可選外部整合，不在本次場景測試覆蓋範圍（按專案約定）。</li>
+    </ul>
+  </section>
+
+  <footer>寶天醫館 booking-aurora · 四帳戶使用情況總覽 · 生成日期 2026-09-08</footer>
+</div>
+</body>
+</html>
