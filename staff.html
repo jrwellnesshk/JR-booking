@@ -1244,16 +1244,18 @@
                     <p class="text-xs mt-1 flex flex-wrap gap-1">
                       <span class="px-2 py-0.5 rounded-full font-medium" :class="lv.notify_customer ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'">{{ lv.notify_customer ? '會通知客人' : '唔通知客人' }}</span>
                       <span v-if="lv.reassigned_to && lv.cover_doctor_name" class="px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">補位：{{ lv.cover_doctor_name }}</span>
-                      <span class="px-2 py-0.5 rounded-full font-medium whitespace-nowrap" :class="lv.status === 'pending' ? 'bg-amber-100 text-amber-700' : (lv.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')">
-                        {{ lv.status === 'pending' ? '待批核' : (lv.status === 'approved' ? '已批准' : '已拒絕') }}
+                      <span v-if="lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0" class="px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">待安排第二位醫師（{{ lv.needs_arrange_count }} 張）</span>
+                      <span class="px-2 py-0.5 rounded-full font-medium whitespace-nowrap" :class="(lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0) ? 'bg-amber-100 text-amber-700' : (lv.status === 'pending' ? 'bg-amber-100 text-amber-700' : (lv.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'))">
+                        {{ (lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0) ? '已批准 · 待安排補位' : (lv.status === 'pending' ? '待批核' : (lv.status === 'approved' ? '已批准' : '已拒絕')) }}
                       </span>
                     </p>
-                    <div v-if="lv.status === 'pending' && lv.doctor_user_id" class="mt-2 flex items-center gap-2">
+                    <div v-if="lv.doctor_user_id && (lv.status === 'pending' || (lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0))" class="mt-2 flex items-center gap-2">
                       <label class="text-xs text-slate-500 shrink-0">補位醫師：</label>
                       <select v-model="lv.reassigned_to" @change="setStaffCoverDoctor(lv)" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white max-w-[150px]">
-                        <option value="">唔指定（批核時按系統處理）</option>
+                        <option value="">揀第二位醫師…</option>
                         <option v-for="doc in doctors.filter(d => d.user_id && String(d.user_id) !== String(lv.doctor_user_id))" :key="doc.id" :value="String(doc.user_id)">{{ doc.name }}</option>
                       </select>
+                      <span v-if="lv.status === 'approved'" class="text-xs text-amber-600">選好後即安排落實</span>
                     </div>
                   </div>
                 </div>
@@ -2314,6 +2316,11 @@
               });
               const data = await res.json().catch(() => ({}));
               if (!res.ok || !data.ok) { alert("設定補位醫師失敗：" + (data.error || "未知錯誤")); }
+              else if (data.reassigned_count !== undefined && (data.reassigned_count || data.skipped_count)) {
+                let m = `已安排第二位醫師：${data.reassigned_count} 筆轉嫁成功`;
+                if (data.skipped_count) m += `；${data.skipped_count} 筆因補位醫師該時段唔得而保留待安排`;
+                alert(m);
+              }
               this.loadStaffLeaveQueue();
             } catch (e) { alert("網絡錯誤：" + e.message); this.loadStaffLeaveQueue(); }
           },

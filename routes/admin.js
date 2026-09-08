@@ -1193,8 +1193,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (exc.notify_customer) {
         const whenTxt = partial ? ` ${exc.time_open}-${exc.time_close}` : '';
         const msg = isClinic
-          ? `【寶天醫館】通知：診所於 ${exc.exception_date}${whenTxt} 全診所休診（${exc.reason || '休息'}），您的預約需要改期。請致電 2555-1136 或登入系統重新預約。不便之處，敬請原諒。`
-          : `【寶天醫館】通知：${(doctor ? doctor.name : '該')}醫師於 ${exc.exception_date}${whenTxt} 請假（${exc.reason || '休息'}），您的預約需要改期。請致電 2555-1136 或登入系統重新預約。不便之處，敬請原諒。`;
+          ? `【寶天醫館】通知：診所於 ${exc.exception_date}${whenTxt} 全診所休診（${exc.reason || '休息'}），您的預約唔使改期，我哋會為您安排第二位醫師跟進。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。`
+          : `【寶天醫館】通知：${(doctor ? doctor.name : '該')}醫師於 ${exc.exception_date}${whenTxt} 請假（${exc.reason || '休息'}），您的預約唔使改期，我哋會為您安排第二位醫師跟進。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。`;
         for (const b of affected) {
           if (whatsappService.isConfigured() && b.customer_phone) {
             try {
@@ -1208,45 +1208,14 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         notified = 1;
       }
 
-      // 3. 補位醫師轉嫁（逐筆校驗補位醫師該時段可用性＋容量；唔符合就跳過並記錄）
-      let reassignedCount = 0, skippedCount = 0;
-      const coverIssues = [];
-      if (exc.reassigned_to && !isClinic) {
-        const coverDoc = await new Promise((resolve) => db.get("SELECT id, name, phone FROM users WHERE id=?", [exc.reassigned_to], (e, r) => resolve(r || null)));
-        const coverRow = coverDoc ? await new Promise((resolve) => db.get("SELECT id FROM doctors WHERE user_id=?", [coverDoc.id], (e, r) => resolve(r || null))) : null;
-        const coverSlotId = coverRow ? coverRow.id : null;
-        if (coverDoc && coverSlotId) {
-          for (const b of affected) {
-            const slot = await new Promise((resolve) => db.get(
-              `SELECT max_capacity, status, is_available FROM doctor_time_slots WHERE doctor_id=? AND date=? AND time=?`,
-              [coverSlotId, exc.exception_date, b.appointment_time], (e, r) => resolve(r || null)));
-            let canTake = !!slot && slot.status === 'open' && slot.is_available === 1;
-            if (canTake) {
-              const cap = (slot.max_capacity || 1);
-              const used = await new Promise((resolve) => db.get(
-                `SELECT COUNT(*) AS c FROM bookings WHERE appointment_date=? AND appointment_time=? AND doctor_user_id=? AND status IN ${activeStatuses}`,
-                [exc.exception_date, b.appointment_time, coverDoc.id], (e, r) => resolve(r ? r.c : 0)));
-              if (used >= cap) canTake = false;
-            }
-            if (canTake) {
-              await new Promise((resolve, reject) => {
-                db.run(`UPDATE bookings SET doctor_user_id=?, doctor_name=?, notes=COALESCE(notes,'') || ? , updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-                  [coverDoc.id, coverDoc.name, ` [醫師請假轉嫁至 ${coverDoc.name} 醫師]`, b.id], (e) => e ? reject(e) : resolve());
-              });
-              reassignedCount++;
-            } else {
-              skippedCount++;
-              coverIssues.push({ booking_id: b.id, time: b.appointment_time, customer: b.customer_name });
-            }
-          }
-          if (whatsappService.isConfigured() && coverDoc.phone && reassignedCount) {
-            try {
-              let phone = String(coverDoc.phone);
-              if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
-              await whatsappService.sendWhatsApp(phone, `【寶天醫館】${doctor ? doctor.name : '醫師'} ${exc.exception_date} 請假，以下 ${reassignedCount} 個預約已轉嫁畀你跟進，請登入系統查看。`);
-            } catch (e2) { /* ignore */ }
-          }
-        }
+      // 3. 標記受影響預約為「待安排第二位醫師」（唔自動轉；等客人 OK 後由我哋手動安排）
+      //    —— 個別醫師請假保留原本 doctor_user_id，只標 needs_arrange；俾管理員/員工稍後用手動補位安排。
+      let needsArrangeCount = 0;
+      for (const b of affected) {
+        await new Promise((resolve, reject) => {
+          db.run("UPDATE bookings SET reassignment_status='needs_arrange', updated_at=CURRENT_TIMESTAMP WHERE id=?", [b.id], (e) => e ? reject(e) : resolve());
+        });
+        needsArrangeCount++;
       }
 
       await new Promise((resolve, reject) => {
@@ -1254,7 +1223,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           [req.user.id, new Date().toISOString(), notified, id], (e) => e ? reject(e) : resolve());
       });
 
-      res.json({ ok: true, status: 'approved', clinic: isClinic, affected_count: affected.length, notified: notifyResults, reassigned_count: reassignedCount, skipped_count: skippedCount, cover_issues: coverIssues, reassigned_to: exc.reassigned_to });
+      res.json({ ok: true, status: 'approved', clinic: isClinic, affected_count: affected.length, notified: notifyResults, needs_arrange_count: needsArrangeCount, reassigned_to: exc.reassigned_to });
     } catch (e) {
       console.error('批核請假失敗:', e);
       res.status(500).json({ error: '處理失敗：' + (e.message || '') });
@@ -1295,35 +1264,49 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       const slotSql = partial ? ` AND time >= ? AND time < ?` : '';
       const slotParams = partial ? [exc.time_open, exc.time_close] : [];
       if (!exc.doctor_user_id) {
-        // 診所級：恢復所有醫師嗰日時段
-        db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE date=? ${slotSql}`,
-          [exc.exception_date, ...slotParams], (e2) => {
-          if (e2) return res.status(500).json({ error: e2.message });
-          finish();
+        // 診所級：恢復所有醫師嗰日時段 + 重設受影響預約嘅待安排標記
+        db.run(`UPDATE bookings SET reassignment_status=NULL, updated_at=CURRENT_TIMESTAMP WHERE appointment_date=? AND reassignment_status='needs_arrange'`,
+          [exc.exception_date], (eR) => {
+          if (eR) console.error('重置 reassignment_status 失敗(clinic):', eR.message);
+          db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE date=? ${slotSql}`,
+            [exc.exception_date, ...slotParams], (e2) => {
+            if (e2) return res.status(500).json({ error: e2.message });
+            finish();
+          });
         });
       } else {
         // ⚠️ doctor_user_id(users.id) → doctors.id 映射，先查 doctors 表
         db.get("SELECT id FROM doctors WHERE user_id=?", [exc.doctor_user_id], (e1, docRow) => {
           const doctorSlotId = docRow ? docRow.id : exc.doctor_user_id;
-          db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? ${slotSql}`,
-            [doctorSlotId, exc.exception_date, ...slotParams], (e2) => {
-          if (e2) return res.status(500).json({ error: e2.message });
-          finish();
-        });
+          db.run(`UPDATE bookings SET reassignment_status=NULL, updated_at=CURRENT_TIMESTAMP WHERE appointment_date=? AND doctor_user_id=? AND reassignment_status='needs_arrange'`,
+            [exc.exception_date, exc.doctor_user_id], (eR) => {
+            if (eR) console.error('重置 reassignment_status 失敗(individual):', eR.message);
+            db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? ${slotSql}`,
+              [doctorSlotId, exc.exception_date, ...slotParams], (e2) => {
+              if (e2) return res.status(500).json({ error: e2.message });
+              finish();
+            });
+          });
         });
       }
     });
   });
 
-  // PATCH /api/admin/doctor/my-leaves/:id — 管理員／員工指定補位醫師（只改 pending；獲批後不可改）
+  // PATCH /api/admin/doctor/my-leaves/:id — 管理員／員工指定補位醫師
+  //   · pending  ：只記錄 reassigned_to / notify_customer（批核時唔會自動轉，等客人 OK 後先安排）
+  //   · approved ：手動安排第二位醫師 —— 將該請假下「待安排」嘅預約轉嫁去揀定嘅補位醫師
   router.patch("/doctor/my-leaves/:id", requireAuth, requireRole('admin', 'staff'), async (req, res) => {
     const id = Number(req.params.id);
     const { reassigned_to, notify_customer } = req.body || {};
+    const whatsappService = require('../services/whatsapp');
     try {
       const exc = await new Promise((resolve, reject) => db.get(
-        "SELECT id, status, doctor_user_id FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (e, r) => e ? reject(e) : resolve(r)));
+        "SELECT id, status, doctor_user_id, exception_date, time_open, time_close FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (e, r) => e ? reject(e) : resolve(r)));
       if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
-      if (exc.status !== 'pending') return res.status(400).json({ error: '只有待批核嘅請假可以先指定補位醫師（已批核／已拒絕請先取消再改）' });
+      if (exc.status !== 'pending' && exc.status !== 'approved') {
+        return res.status(400).json({ error: '只有待批核或已批核（待安排）嘅請假可以指定補位醫師（已拒絕請先取消再改）' });
+      }
+      const isClinic = !exc.doctor_user_id;
       const sets = []; const params = [];
       if (reassigned_to !== undefined) {
         const coverId = reassigned_to ? Number(reassigned_to) : null;
@@ -1341,9 +1324,68 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         }
       }
       if (notify_customer !== undefined) { sets.push("notify_customer=?"); params.push(notify_customer ? 1 : 0); }
-      if (!sets.length) return res.status(400).json({ error: '冇嘢要更新' });
-      await new Promise((resolve, reject) => db.run(`UPDATE exceptions SET ${sets.join(', ')} WHERE id=?`, [...params, id], (e) => e ? reject(e) : resolve()));
-      res.json({ ok: true, id, reassigned_to: reassigned_to ? Number(reassigned_to) : null, notify_customer });
+
+      // 已批核 → 實際轉嫁「待安排」預約去補位醫師（手動安排第二位）
+      let reassignedCount = 0, skippedCount = 0;
+      const coverIssues = [];
+      if (exc.status === 'approved' && reassigned_to !== undefined && !isClinic) {
+        const coverId = reassigned_to ? Number(reassigned_to) : null;
+        if (coverId) {
+          const coverDoc = await new Promise((resolve, reject) => db.get("SELECT id, name, phone FROM users WHERE id=? AND role='doctor'", [coverId], (e, r) => e ? reject(e) : resolve(r || null)));
+          const coverRow = coverDoc ? await new Promise((resolve) => db.get("SELECT id FROM doctors WHERE user_id=?", [coverDoc.id], (e, r) => resolve(r || null))) : null;
+          const coverSlotId = coverRow ? coverRow.id : null;
+          if (coverDoc && coverSlotId) {
+            const activeStatuses = "('pending','confirmed','in-progress','in-treatment','visited','dispensing')";
+            const bookingsToReassign = await new Promise((resolve, reject) => db.all(
+              `SELECT b.* FROM bookings b WHERE b.appointment_date=? AND b.doctor_user_id=? AND b.reassignment_status='needs_arrange' AND b.status IN ${activeStatuses}`,
+              [exc.exception_date, exc.doctor_user_id], (e, rows) => e ? reject(e) : resolve(rows || [])));
+            for (const b of bookingsToReassign) {
+              const slot = await new Promise((resolve) => db.get(
+                `SELECT max_capacity, status, is_available FROM doctor_time_slots WHERE doctor_id=? AND date=? AND time=?`,
+                [coverSlotId, exc.exception_date, b.appointment_time], (e, r) => resolve(r || null)));
+              let canTake = !!slot && slot.status === 'open' && slot.is_available === 1;
+              if (canTake) {
+                const cap = (slot.max_capacity || 1);
+                const used = await new Promise((resolve) => db.get(
+                  `SELECT COUNT(*) AS c FROM bookings WHERE appointment_date=? AND appointment_time=? AND doctor_user_id=? AND status IN ${activeStatuses}`,
+                  [exc.exception_date, b.appointment_time, coverDoc.id], (e, r) => resolve(r ? r.c : 0)));
+                if (used >= cap) canTake = false;
+              }
+              if (canTake) {
+                await new Promise((resolve, reject) => db.run(
+                  `UPDATE bookings SET doctor_user_id=?, doctor_name=?, reassignment_status='arranged', notes=COALESCE(notes,'') || ? , updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+                  [coverDoc.id, coverDoc.name, ` [醫師請假轉嫁至 ${coverDoc.name} 醫師]`, b.id], (e) => e ? reject(e) : resolve()));
+                reassignedCount++;
+                if (whatsappService.isConfigured() && b.customer_phone) {
+                  try {
+                    let phone = String(b.customer_phone);
+                    if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
+                    await whatsappService.sendWhatsApp(phone, `【寶天醫館】通知：您於 ${exc.exception_date} ${b.appointment_time} 嘅預約，我哋已為您安排 ${coverDoc.name} 醫師跟進（唔使改期）。唔使額外操作，多謝惠顧。`);
+                  } catch (e2) { /* ignore */ }
+                }
+              } else {
+                skippedCount++;
+                coverIssues.push({ booking_id: b.id, time: b.appointment_time, customer: b.customer_name });
+              }
+            }
+            if (whatsappService.isConfigured() && coverDoc.phone && reassignedCount) {
+              try {
+                let phone = String(coverDoc.phone);
+                if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
+                await whatsappService.sendWhatsApp(phone, `【寶天醫館】${exc.exception_date} 有醫師請假，以下 ${reassignedCount} 個預約已安排畀你跟進，請登入系統查看。`);
+              } catch (e2) { /* ignore */ }
+            }
+          }
+        }
+      }
+
+      if (!sets.length && reassignedCount === 0 && skippedCount === 0) {
+        return res.status(400).json({ error: '冇嘢要更新' });
+      }
+      if (sets.length) {
+        await new Promise((resolve, reject) => db.run(`UPDATE exceptions SET ${sets.join(', ')} WHERE id=?`, [...params, id], (e) => e ? reject(e) : resolve()));
+      }
+      res.json({ ok: true, id, status: exc.status, reassigned_to: reassigned_to ? Number(reassigned_to) : null, notify_customer, reassigned_count: reassignedCount, skipped_count: skippedCount, cover_issues: coverIssues });
     } catch (e) { serverError(res, e); }
   });
 
@@ -1355,7 +1397,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       `SELECT e.id, e.exception_date, e.doctor_user_id, u.name AS doctor_name,
               e.time_open, e.time_close, e.reason, e.notified, e.notified_at, e.reassigned_to,
               e.status, e.notify_customer, e.approved_by, e.approved_at,
-              cu.name AS cover_doctor_name, au.name AS approved_by_name, e.created_at
+              cu.name AS cover_doctor_name, au.name AS approved_by_name, e.created_at,
+              (SELECT COUNT(*) FROM bookings b WHERE b.appointment_date = e.exception_date AND b.reassignment_status='needs_arrange' AND (e.doctor_user_id IS NULL OR b.doctor_user_id = e.doctor_user_id)) AS needs_arrange_count
        FROM exceptions e
        LEFT JOIN users u ON e.doctor_user_id = u.id
        LEFT JOIN users cu ON e.reassigned_to = cu.id

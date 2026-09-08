@@ -123,6 +123,15 @@ function initializeDatabase() {
             else console.log("✅ 已添加 bookings.doctor_user_id 欄位");
           });
         }
+        // 🆕 為 bookings 表添加 reassignment_status 欄位（醫師請假後待安排第二位醫師）
+        const hasReassign = columns.some(col => col.name === 'reassignment_status');
+        if (!hasReassign) {
+          console.log("🔄 正在添加 bookings.reassignment_status 欄位...");
+          db.run("ALTER TABLE bookings ADD COLUMN reassignment_status TEXT", (err2) => {
+            if (err2) console.error("添加 reassignment_status 失敗:", err2.message);
+            else console.log("✅ 已添加 bookings.reassignment_status 欄位");
+          });
+        }
       }
     });
 
