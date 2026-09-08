@@ -70,7 +70,7 @@ module.exports = function (db, { requireAuth, requireRole } = {}) {
    */
   router.get("/doctors", (req, res) => {
     db.all(
-      "SELECT id, name, specialty FROM doctors WHERE is_active = 1 ORDER BY id",
+      "SELECT id, name, specialty, user_id FROM doctors WHERE is_active = 1 ORDER BY id",
       [],
       (err, doctors) => {
         if (err) {

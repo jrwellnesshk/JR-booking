@@ -1315,6 +1315,38 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     });
   });
 
+  // PATCH /api/admin/doctor/my-leaves/:id — 管理員／員工指定補位醫師（只改 pending；獲批後不可改）
+  router.patch("/doctor/my-leaves/:id", requireAuth, requireRole('admin', 'staff'), async (req, res) => {
+    const id = Number(req.params.id);
+    const { reassigned_to, notify_customer } = req.body || {};
+    try {
+      const exc = await new Promise((resolve, reject) => db.get(
+        "SELECT id, status, doctor_user_id FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (e, r) => e ? reject(e) : resolve(r)));
+      if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
+      if (exc.status !== 'pending') return res.status(400).json({ error: '只有待批核嘅請假可以先指定補位醫師（已批核／已拒絕請先取消再改）' });
+      const sets = []; const params = [];
+      if (reassigned_to !== undefined) {
+        const coverId = reassigned_to ? Number(reassigned_to) : null;
+        if (coverId) {
+          // 唔可以係請假緊嘅醫師本人（診所級 doctor_user_id 為 NULL，無此限制）
+          if (exc.doctor_user_id && coverId === Number(exc.doctor_user_id)) {
+            return res.status(400).json({ error: '補位醫師唔可以係請假緊嘅醫師本人' });
+          }
+          const coverDoc = await new Promise((resolve, reject) => db.get(
+            "SELECT id, name FROM users WHERE id=? AND role='doctor'", [coverId], (e, r) => e ? reject(e) : resolve(r || null)));
+          if (!coverDoc) return res.status(400).json({ error: '補位醫師無效' });
+          sets.push("reassigned_to=?"); params.push(coverId);
+        } else {
+          sets.push("reassigned_to=NULL");
+        }
+      }
+      if (notify_customer !== undefined) { sets.push("notify_customer=?"); params.push(notify_customer ? 1 : 0); }
+      if (!sets.length) return res.status(400).json({ error: '冇嘢要更新' });
+      await new Promise((resolve, reject) => db.run(`UPDATE exceptions SET ${sets.join(', ')} WHERE id=?`, [...params, id], (e) => e ? reject(e) : resolve()));
+      res.json({ ok: true, id, reassigned_to: reassigned_to ? Number(reassigned_to) : null, notify_customer });
+    } catch (e) { serverError(res, e); }
+  });
+
   // GET /api/admin/doctor/leaves-range — 全部醫師請假（醫師睇 coverage / 管理員及員工檢視批核）
   router.get("/doctor/leaves-range", requireAuth, requireRole('doctor', 'admin', 'staff'), (req, res) => {
     const { start, end } = req.query;

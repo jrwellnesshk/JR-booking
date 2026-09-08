@@ -1499,9 +1499,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   router.get("/doctor-time-slots/range", async (req, res) => {
     const { start, end } = req.query;
     if (!start || !end) return res.status(400).json({ error: "缺少開始或結束日期" });
-    db.all("SELECT id, name FROM doctors WHERE is_active=1 ORDER BY id", (err, doctors) => {
-      if (err) return serverError(res, err);
-      const docList = (doctors && doctors.length) ? doctors : [{ id: 1, name: '張醫師' }, { id: 2, name: '李醫師' }];
+      db.all("SELECT id, name, user_id FROM doctors WHERE is_active=1 ORDER BY id", (err, doctors) => {
+        if (err) return serverError(res, err);
+        const docList = (doctors && doctors.length) ? doctors : [{ id: 1, name: '張醫師', user_id: null }, { id: 2, name: '李醫師', user_id: null }];
       db.all(
         `SELECT doctor_id, date, COUNT(*) as total,
                 SUM(CASE WHEN is_available=1 THEN 1 ELSE 0 END) as avail

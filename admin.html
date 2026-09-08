@@ -2961,13 +2961,10 @@
                   >
                     <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
                     <div class="flex flex-col gap-0.5 mt-0.5 w-full">
-                      <span
-                        v-for="bar in cell.bars"
-                        :key="bar.id"
-                        class="h-1.5 rounded-full"
-                        :style="{ backgroundColor: bar.color }"
-                        :title="(doctors.find(d=>d.id===bar.id)||{}).name + (bar.leave ? '（休假）' : `：${bar.count} 個開放時段`)"
-                      ></span>
+                      <div v-for="bar in cell.bars" :key="bar.id" class="flex items-center gap-1" :title="bar.name + (bar.leave ? '（休假）' : `：${bar.count} 個開放時段`)">
+                        <span class="h-1.5 w-3 rounded-full shrink-0" :style="{ backgroundColor: bar.color }"></span>
+                        <span class="text-[9px] leading-tight truncate text-slate-600">{{ bar.name }}</span>
+                      </div>
                     </div>
                   </button>
                 </template>
@@ -3101,6 +3098,13 @@
                       <span class="px-2 py-0.5 rounded-full font-medium" :class="lv.notify_customer ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'">{{ lv.notify_customer ? '會通知客人' : '唔通知客人' }}</span>
                       <span v-if="lv.reassigned_to && lv.cover_doctor_name" class="px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">補位：{{ lv.cover_doctor_name }}</span>
                     </p>
+                    <div v-if="lv.status === 'pending' && lv.doctor_user_id" class="mt-2 flex items-center gap-2">
+                      <label class="text-xs text-slate-500 shrink-0">補位醫師：</label>
+                      <select v-model="lv.reassigned_to" @change="setCoverDoctor(lv)" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white max-w-[150px]">
+                        <option value="">唔指定（批核時按系統處理）</option>
+                        <option v-for="doc in doctors.filter(d => d.user_id && String(d.user_id) !== String(lv.doctor_user_id))" :key="doc.id" :value="String(doc.user_id)">{{ doc.name }}</option>
+                      </select>
+                    </div>
                   </div>
                   <div class="flex items-center gap-2" v-if="lv.status === 'pending'">
                     <button @click="approveLeave(lv)" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700"><i class="fas fa-check mr-1"></i>批准</button>
@@ -9878,7 +9882,9 @@ phone: this.addUserForm.phone,
               });
               if (!res.ok) { this.leaveApprovals = []; return; }
               const data = await res.json();
-              this.leaveApprovals = (data.data || []).filter(l => l.status === 'pending');
+              this.leaveApprovals = (data.data || [])
+                .filter(l => l.status === 'pending')
+                .map(l => ({ ...l, reassigned_to: l.reassigned_to ? String(l.reassigned_to) : '' }));
             } catch (e) { this.leaveApprovals = []; }
             finally { this.leaveApprovalsLoading = false; }
           },
@@ -9932,6 +9938,19 @@ phone: this.addUserForm.phone,
               if (res.ok && data.ok) { this.loadAdminLeaveQueue(); }
               else alert(data.error || "拒絕失敗");
             } catch (e) { alert("網絡錯誤"); }
+          },
+          async setCoverDoctor(lv) {
+            const val = lv.reassigned_to ? Number(lv.reassigned_to) : null;
+            try {
+              const res = await fetch(`/api/admin/doctor/my-leaves/${lv.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
+                body: JSON.stringify({ reassigned_to: val })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || !data.ok) { alert("設定補位醫師失敗：" + (data.error || "未知錯誤")); }
+              this.loadAdminLeaveQueue();
+            } catch (e) { alert("網絡錯誤：" + e.message); this.loadAdminLeaveQueue(); }
           },
           doctorColorByName(name) {
             const d = (this.doctors || []).find(x => x.name === name);
@@ -10079,7 +10098,8 @@ phone: this.addUserForm.phone,
               const bars = showDocs.map(id => {
                 const info = dayInfo[id];
                 if (info && (info.working || info.leave)) {
-                  return { id, color: info.leave ? '#9ca3af' : this.doctorColor(id), leave: !!info.leave, count: info.availableSlots };
+                  const doc = this.doctors.find(d => d.id === id) || {};
+                  return { id, color: info.leave ? '#9ca3af' : this.doctorColor(id), leave: !!info.leave, count: info.availableSlots, name: doc.name || '醫師' };
                 }
                 return null;
               }).filter(Boolean);
