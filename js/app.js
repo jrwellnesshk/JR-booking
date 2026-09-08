@@ -34,7 +34,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           function t(key) {
             if (key == null) return key;
             if (lang.value === 'en' && I18N_EN[key] != null) return I18N_EN[key];
-            return key; // 繁中 fallback：key 本身即中文
+            // 繁中 fallback：key 本身即中文；nav-only key 去 namespace 返中文基底（如 nav.服務 → 服務）
+            if (typeof key === 'string' && key.startsWith('nav.')) return key.slice(4);
+            return key;
           }
           function setLang(l) {
             if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
