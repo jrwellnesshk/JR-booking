@@ -12,6 +12,33 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
       createApp({
         setup() {
+          // ===== 🌐 多語言 i18n 基建（繁中 + 英文）=====
+          // 字典 key = 中文原文，繁中直接 fallback 顯示 key；英文查 window.I18N_EN
+          const I18N_EN = (typeof window !== 'undefined' && window.I18N_EN) || {};
+          const SUPPORTED_LANGS = ['zh-TW', 'en'];
+          const lang = ref(
+            (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) ||
+            'zh-TW'
+          );
+          if (!SUPPORTED_LANGS.includes(lang.value)) lang.value = 'zh-TW';
+          const currentLang = computed(() => lang.value);
+          function t(key) {
+            if (key == null) return key;
+            if (lang.value === 'en' && I18N_EN[key] != null) return I18N_EN[key];
+            return key; // 繁中 fallback：key 本身即中文
+          }
+          function setLang(l) {
+            if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
+            lang.value = l;
+            try { localStorage.setItem('lang', l); } catch (e) {}
+            if (typeof document !== 'undefined') {
+              document.documentElement.lang = l === 'en' ? 'en' : 'zh-TW';
+            }
+          }
+          // 啟動時同步 <html lang>
+          if (typeof document !== 'undefined') {
+            document.documentElement.lang = lang.value === 'en' ? 'en' : 'zh-TW';
+          }
           // 資料定義（預設資料）
           const DOCTORS = ref([
             { id: "d1", name: "張醫師", specialty: "推拿專家" },
@@ -187,7 +214,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const avatarUploading = ref(false);
 
           // 網站文字 helper：管理員修改後即時反映
-          const t = (key, fallback = "") => siteTexts.value[key] || fallback;
+          const st = (key, fallback = "") => siteTexts.value[key] || fallback;
 
           const loadSiteContent = async () => {
             try {
@@ -4180,6 +4207,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           };
 
           return {
+            // 🌐 i18n
+            lang,
+            currentLang,
+            t,
+            setLang,
+            SUPPORTED_LANGS,
             DOCTORS,
             SERVICES,
             bookableServices,
@@ -4261,7 +4294,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             siteSocial,
             siteReviews,
             siteTexts,
-            t,
+            st,
             forumPosts,
             activeForumPost,
             forumReplyContent,
