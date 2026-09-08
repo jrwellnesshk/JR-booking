@@ -9,8 +9,13 @@ const router = express.Router();
 
 module.exports = (db, { requireAuth, requireRole } = {}) => {
 
-  // 全部設定路由均需管理員權限
-  router.use(requireAuth, requireRole('admin'));
+  // 全部設定路由均需管理員權限（GET /doctors + GET /services 例外：公開官網要展示）
+  router.use((req, res, next) => {
+    if (req.method === 'GET' && (req.path === '/doctors' || req.path === '/services')) {
+      return next();
+    }
+    return requireAuth(req, res, () => requireRole('admin')(req, res, next));
+  });
 
   // ==================== 診所設定 ====================
 
