@@ -471,7 +471,7 @@
       .aq-btn-white:hover{ transform:translateY(-2px); }
       .aq-btn-line{ border:1px solid var(--p500); color:var(--p600); background:transparent; }
       .aq-btn-line:hover{ background:var(--p50); }
-      /* 中文連結較短，≤1024px 先收合成漢堡包；英文連結較長，≤1300px 收合 */
+      /* 中文連結較短，≤1024px 先收合成漢堡包；英文改用簡短 nav 標籤，同樣 ≤1024px 收合（與中文一致） */
       @media (max-width:1024px){
         .aq-menu-btn{ display:inline-flex; }
         .aq-links{
@@ -486,7 +486,7 @@
         .aq-links a{ padding:.75rem .2rem; border-bottom:1px solid rgba(20,66,58,.07); }
         .aq-links a:last-child{ border-bottom:none; }
       }
-      @media (max-width:1440px){
+      @media (max-width:1024px){
         .lang-en .aq-menu-btn{ display:inline-flex; }
         .lang-en .aq-links{
           position:absolute; top:100%; left:0; right:0;
@@ -1307,14 +1307,14 @@
               <span><b>{{ t('寶天醫館') }}</b><span class="aq-logo-sub" style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
             </a>
             <div class="aq-links" :class="{ open: menuOpen }" @click="closeMenu">
-              <a href="#aq-services">{{ t('服務') }}</a>
-              <a href="#aq-about">{{ t('關於我們') }}</a>
-              <a href="#aq-philosophy">{{ t('中醫智慧') }}</a>
-              <a href="#aq-doctors">{{ t('醫師團隊') }}</a>
-              <a href="#aq-cases">{{ t('成功案例') }}</a>
-              <a href="#plans">{{ t('會員計劃') }}</a>
-              <a href="#aq-family">{{ t('家庭帳戶') }}</a>
-              <a href="#aq-login">{{ t('會員登入') }}</a>
+              <a href="#aq-services">{{ t('nav.服務') }}</a>
+              <a href="#aq-about">{{ t('nav.關於我們') }}</a>
+              <a href="#aq-philosophy">{{ t('nav.中醫智慧') }}</a>
+              <a href="#aq-doctors">{{ t('nav.醫師團隊') }}</a>
+              <a href="#aq-cases">{{ t('nav.成功案例') }}</a>
+              <a href="#plans">{{ t('nav.會員計劃') }}</a>
+              <a href="#aq-family">{{ t('nav.家庭帳戶') }}</a>
+              <a href="#aq-login">{{ t('nav.會員登入') }}</a>
             </div>
             <div class="aq-topbar-right">
               <button type="button" class="aq-menu-btn" @click="toggleMenu" :aria-label="t('選單')" aria-label="Menu"><i class="fas fa-bars"></i></button>
