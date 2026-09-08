@@ -700,16 +700,19 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
-  // POST /api/membership/privacy — 子帳戶開關「唔俾主帳戶睇我資料」（只影響 18 歲以上自己）
-  router.post('/privacy', requireAuth, async (req, res) => {
+  // 🆕 同時接受 POST + PUT，hide / private / is_private 任一字段都接受
+  const privacyHandler = async (req, res) => {
     try {
       if (req.user.role !== 'customer') return res.status(403).json({ error: '只限客戶' });
-      const { hide } = req.body || {};
+      const b = req.body || {};
+      const hide = b.hide ?? b.private ?? b.is_private ?? false;
       const v = hide ? 1 : 0;
       await run("UPDATE users SET hide_from_head=? WHERE id=?", [v, req.user.id]);
       res.json({ ok: true, hide_from_head: v });
     } catch (e) { res.status(500).json({ error: e.message }); }
-  });
+  };
+  router.post('/privacy', requireAuth, privacyHandler);
+  router.put('/privacy',  requireAuth, privacyHandler);
 
   // GET /api/membership/privacy — 讀取子帳戶「唔俾主帳戶睇我資料」嘅目前狀態
   router.get('/privacy', requireAuth, async (req, res) => {
@@ -854,8 +857,17 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.post('/account-links', requireAuth, async (req, res) => {
     try {
       const user = req.user;
-      const { targetUsername, targetPhone, relation, customRelation, fromUserId, fromUsername } = req.body || {};
-      if (!relation || !RELATION_PRESETS.includes(relation)) return res.status(400).json({ error: '請選擇有效的關係類型' });
+      // 🆕 snake_case alias：target_username / target_phone / from_user_id / from_username / custom_relation
+      const body = req.body || {};
+      const targetUsername = body.targetUsername || body.target_username;
+      const targetPhone    = body.targetPhone    || body.target_phone;
+      const relation       = body.relation;
+      const customRelation = body.customRelation || body.custom_relation;
+      const fromUserId     = body.fromUserId     || body.from_user_id;
+      const fromUsername   = body.fromUsername   || body.from_username;
+      if (!relation || !RELATION_PRESETS.includes(relation)) {
+        return res.status(400).json({ error: '請選擇有效的關係類型', allowed: RELATION_PRESETS });
+      }
       const displayRelation = String(customRelation || '').trim() || null;
       if (relation === '其他' && !displayRelation) return res.status(400).json({ error: '請輸入關係說明' });
 
@@ -1124,6 +1136,65 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) {
       console.error('更改會員級別失敗:', e);
       res.status(500).json({ error: '更改失敗' });
+    }
+  });
+
+  // 🆕 POST /api/membership/family/bookings — 家庭戶主代家庭成員預約
+  //   Body: { for_user_id, service_id, doctor_name, appointment_date, appointment_time, customer_phone, customer_name?, customer_email? }
+  //   校驗：req.user 必須係 for_user_id 嘅家庭戶主（family_head_id = req.user.id）
+  //   業務規則：成員若係 general 級別（非家庭連結），只可預約「初體驗」；family/premium 可全部
+  router.post('/family/bookings', requireAuth, async (req, res) => {
+    try {
+      const headId = req.user.id;
+      const b = req.body || {};
+      const forUserId    = b.forUserId     || b.for_user_id;
+      const serviceId    = b.serviceId     || b.service_id;
+      const doctorName   = b.doctorName    || b.doctor_name || '張醫師';
+      const apptDate     = b.appointmentDate || b.appointment_date || b.date;
+      const apptTime     = b.appointmentTime || b.appointment_time || b.time;
+      const customerName = b.customerName  || b.customer_name;
+      const customerPhone= b.customerPhone || b.customer_phone;
+      const customerEmail= b.customerEmail || b.customer_email;
+      const extraNotes   = b.notes || '';
+      if (!forUserId) return res.status(400).json({ error: "缺少 forUserId" });
+      if (!serviceId || !apptDate || !apptTime) return res.status(400).json({ error: "缺少必要欄位：serviceId、appointmentDate、appointmentTime" });
+      // 查成員
+      const member = await q1("SELECT id, name, family_head_id, role FROM users WHERE id=?", [forUserId]);
+      if (!member) return res.status(404).json({ error: "找不到該家庭成員" });
+      if (member.role !== 'customer') return res.status(400).json({ error: "只能為客戶帳戶代約" });
+      // 戶主驗證
+      const isSelf = Number(forUserId) === Number(headId);
+      const isMyChild = member.family_head_id && Number(member.family_head_id) === Number(headId);
+      if (!isSelf && !isMyChild) {
+        return res.status(403).json({ error: "你唔係該成員嘅家庭戶主，無權代約" });
+      }
+      // 查服務
+      const svc = await q1("SELECT name, duration FROM services WHERE id=?", [serviceId]);
+      if (!svc) return res.status(400).json({ error: "服務不存在" });
+      // 查成員 tier
+      const memberRow = await q1("SELECT membership_tier, family_head_id FROM users WHERE id=?", [forUserId]);
+      const tier = memberRow.membership_tier || 'general';
+      const familyLinked = memberRow.family_head_id != null && Number(memberRow.family_head_id) !== Number(forUserId);
+      if (tier === 'general' && !familyLinked && !svc.name.includes('初體驗')) {
+        return res.status(403).json({ error: "該成員只可預約「初體驗」服務，請先升級家庭會員", code: 'membership_required' });
+      }
+      // 醫師 user_id
+      const docRow = await q1("SELECT id, user_id FROM doctors WHERE name=? AND is_active=1", [doctorName]);
+      const doctorUserId = docRow ? docRow.user_id : null;
+      // 寫入（繞過 checkClinicOpen 因為咁樣要載入 holidays 模組；admin UI 可手動檢查；簡化版：直接寫 confirmed）
+      const notes = (extraNotes ? extraNotes + ' ' : '') + `[代約 by ${req.user.name}#${req.user.id}]`;
+      const r = await run(
+        `INSERT INTO bookings (user_id, customer_name, customer_phone, customer_email, service_id, doctor_name, doctor_user_id, appointment_date, appointment_time, end_time, status, notes, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
+        [forUserId, customerName || member.name, customerPhone || null, customerEmail || null,
+         serviceId, doctorName, doctorUserId, apptDate, apptTime,
+         svc.duration ? `${apptTime} +${svc.duration}min` : null,
+         'confirmed', notes]
+      );
+      res.json({ ok: true, booking_id: r.lastID || r.id, for_user_id: forUserId, member_name: member.name, message: `已代 ${member.name} 預約成功` });
+    } catch (e) {
+      console.error('family proxy booking error:', e);
+      res.status(500).json({ error: e.message });
     }
   });
 

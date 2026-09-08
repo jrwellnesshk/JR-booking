@@ -82,6 +82,22 @@ async function main() {
     "INSERT INTO users (username,password,name,phone,email,role,profile_completed,must_change_password,membership_tier) VALUES (?,?,?,?,?,?,0,0,'general')",
     ['sc_incomplete', hash, '未完成資料客', '9800 9999', 'sc_incomplete@patient.com', 'customer']);
 
+  // 4c) 🆕 家庭子女帳號（測 18+ 隱私流程）
+  //   sc_kid1：18 歲（剛成年，可獨立開啟隱私）
+  //   sc_kid2：12 歲（未成年，戶主可代管）
+  //   兩者都連到 sc_cust01（家庭戶主）
+  const kid1Id = await run(
+    "INSERT INTO users (username,password,name,phone,email,role,profile_completed,must_change_password,membership_tier,birth_date) VALUES (?,?,?,?,?,?,1,0,'family',?)",
+    ['sc_kid1', hash, '李一心', '9899 0001', 'sc_kid1@patient.com', 'customer', '2008-09-08']);
+  const kid2Id = await run(
+    "INSERT INTO users (username,password,name,phone,email,role,profile_completed,must_change_password,membership_tier,birth_date) VALUES (?,?,?,?,?,?,1,0,'family',?)",
+    ['sc_kid2', hash, '李二朗', '9899 0002', 'sc_kid2@patient.com', 'customer', '2014-09-08']);
+  const headId01 = custIds[0].id; // sc_cust01
+  await run("UPDATE users SET family_head_id=? WHERE id IN (?,?)", [headId01, kid1Id, kid2Id]);
+  await run("INSERT INTO family_links (parent_user_id, child_user_id, relation) VALUES (?,?, 'child')", [headId01, kid1Id]);
+  await run("INSERT INTO family_links (parent_user_id, child_user_id, relation) VALUES (?,?, 'child')", [headId01, kid2Id]);
+  console.log(`  👨‍👧‍👦 子女測試帳號：sc_kid1(18 歲) + sc_kid2(12 歲) → 連結 sc_cust01`);
+
   // 5) 40 預約：每日 20，歷史兩日，多種狀態 / 醫師 / 服務；約半數有 user_id，半數 walk-in
   const times = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'];
   let bk = 0;

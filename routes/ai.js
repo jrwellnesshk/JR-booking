@@ -188,8 +188,26 @@ module.exports = (db) => {
   router.get("/get-recommendation", (req, res) => {
     const { session_id, category_id, lang = 'zh_hant' } = req.query;
 
+    // 🆕 缺 session_id 時回熱門症狀/推薦列表（唔好 400 整死前端）
     if (!session_id) {
-      return res.status(400).json({ error: "缺少 session_id" });
+      db.all(
+        "SELECT category_id, recommendation_zh_hant, recommendation_en, urgency_level FROM ai_recommendations ORDER BY category_id ASC LIMIT 10",
+        [],
+        (err, recs) => {
+          if (err) return serverError(res, err);
+          return res.json({
+            ok: true,
+            fallback: true,
+            message: "請選擇症狀分類或直接預約初體驗服務",
+            popular_recommendations: recs || [],
+            recommendation: {
+              zh_hant: "請揀選下方症狀，我哋會根據你嘅情況推薦合適嘅服務。",
+              en: "Please select a symptom below for more accurate recommendations."
+            }
+          });
+        }
+      );
+      return;
     }
 
     // 計算該 session 的總分

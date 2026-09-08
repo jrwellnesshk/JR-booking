@@ -229,11 +229,29 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   // 建立預約（可選登入：已登入用戶記錄 userId；訪客以 isGuest / 無 token 建立，只可預約「初體驗」）
   router.post("/", optionalAuth, async (req, res) => {
     const userId = req.userId; // 訪客時為 undefined
-    const { isGuest, customerName, customerNameEn, customerPhone, customerEmail, customerAge, serviceId, doctorName, appointmentDate, appointmentTime, notes, sendEmailNotification, bedNumber, bedType: reqBedType } = req.body;
+    // 🆕 同時接受 camelCase（前端）+ snake_case（API 契約統一），第一個有值嘅 wins
+    const b = req.body || {};
+    const customerName       = b.customerName       || b.customer_name;
+    const customerNameEn     = b.customerNameEn     || b.customer_name_en;
+    const customerPhone      = b.customerPhone      || b.customer_phone;
+    const customerEmail      = b.customerEmail      || b.customer_email;
+    const customerAge        = b.customerAge        || b.customer_age;
+    const serviceId          = b.serviceId          || b.service_id;
+    const doctorName         = b.doctorName         || b.doctor_name || b.doctor;
+    const doctorId           = b.doctorId           || b.doctor_id;
+    const appointmentDate    = b.appointmentDate    || b.appointment_date || b.date;
+    const appointmentTime    = b.appointmentTime    || b.appointment_time || b.time;
+    const notes              = b.notes;
+    const sendEmailNotification = b.sendEmailNotification ?? b.send_email_notification ?? true;
+    const bedNumber          = b.bedNumber          || b.bed_number;
+    const reqBedType         = b.bedType            || b.bed_type;
+    const isGuest            = b.isGuest ?? b.is_guest;
     const guestMode = !userId; // 訪客模式：以是否持有有效 token 為準（isGuest 僅供前端標示）
-    
+
     if (!customerName || !customerPhone || !serviceId || !appointmentDate || !appointmentTime) {
-      return res.status(400).json({ error: "缺少必要欄位" });
+      const missing = ['customerName', 'customerPhone', 'serviceId', 'appointmentDate', 'appointmentTime']
+        .filter(k => !b[k] && !b[k.replace(/[A-Z]/g, m => '_' + m.toLowerCase())]);
+      return res.status(400).json({ error: "缺少必要欄位：" + missing.join('、'), missing });
     }
 
     try {
@@ -1204,11 +1222,18 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
   // 查詢可預約時段（重疊邏輯：每 30 分鐘一個時段，與前後最多重疊 15 分鐘）
   router.get("/timeslots/available", (req, res) => {
-    const { date, serviceId, doctor } = req.query;
-    if (!date || !serviceId) return res.status(400).json({ error: "缺少日期或服務ID" });
+    const { date, serviceId, service: serviceAlias, doctor } = req.query;
+    // 🆕 同時接受 serviceId / service_id / service
+    const svcId = serviceId || req.query.service_id || serviceAlias;
+    if (!date || !svcId) {
+      const missing = [];
+      if (!date) missing.push('date');
+      if (!svcId) missing.push('serviceId (or service_id)');
+      return res.status(400).json({ error: "缺少必要 query 參數：" + missing.join('、'), missing });
+    }
 
-    db.get("SELECT name, duration, requires_bed FROM services WHERE id=?", [serviceId], async (err, svc) => {
-      if (err || !svc) return res.status(404).json({ error: "找不到服務" });
+    db.get("SELECT name, duration, requires_bed FROM services WHERE id=?", [svcId], async (err, svc) => {
+      if (err || !svc) return res.status(404).json({ error: "找不到服務：" + svcId });
 
       const duration = svc.duration || 30;
       const needsBed = svc.requires_bed === 1;
