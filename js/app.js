@@ -21,7 +21,16 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             'zh-TW'
           );
           if (!SUPPORTED_LANGS.includes(lang.value)) lang.value = 'zh-TW';
+          try {
+            document.body.classList.toggle('lang-en', lang.value === 'en');
+            document.body.classList.toggle('lang-zh', lang.value !== 'en');
+          } catch (e) {}
           const currentLang = computed(() => lang.value);
+
+          // 頂欄手機選單開合（英文模式下連結較長，需要收合成漢堡包）
+          const menuOpen = ref(false);
+          const toggleMenu = () => { menuOpen.value = !menuOpen.value; };
+          const closeMenu = () => { menuOpen.value = false; };
           function t(key) {
             if (key == null) return key;
             if (lang.value === 'en' && I18N_EN[key] != null) return I18N_EN[key];
@@ -31,6 +40,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
             lang.value = l;
             try { localStorage.setItem('lang', l); } catch (e) {}
+            try {
+              document.body.classList.toggle('lang-en', l === 'en');
+              document.body.classList.toggle('lang-zh', l !== 'en');
+            } catch (e) {}
             if (typeof document !== 'undefined') {
               document.documentElement.lang = l === 'en' ? 'en' : 'zh-TW';
               // 同步 <title> 同 meta 標籤（佢哋喺 <head>，Vue 唔會編譯）

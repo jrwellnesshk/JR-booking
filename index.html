@@ -444,17 +444,21 @@
       .aq *{ box-sizing:border-box; }
       .aq a{ text-decoration:none; }
       .aq-topbar{ position:fixed; top:0; left:0; right:0; z-index:60; background:rgba(255,255,255,.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid rgba(20,66,58,.08); }
-      .aq-topbar-in{ max-width:1160px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:.85rem 1.5rem; }
+      .aq-topbar-in{ max-width:1360px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:.85rem 1.5rem; }
       .aq-logo{ display:flex; align-items:center; gap:.75rem; }
       .aq-logo img{ width:2.6rem; height:2.6rem; border-radius:50%; object-fit:cover; border:2px solid var(--p100); }
       .aq-logo b{ font-family:'Quicksand',sans-serif; font-size:1.15rem; color:#14443d; font-weight:700; }
       .aq-logo span{ display:block; font-size:.66rem; letter-spacing:.24em; color:var(--p600); font-weight:600; }
       .aq-links{ display:flex; align-items:center; gap:1.9rem; }
-      .aq-links a{ font-size:.9rem; color:#3a5650; font-weight:500; }
+      .aq-links a{ font-size:.86rem; color:#3a5650; font-weight:500; }
       .aq-links a:hover{ color:var(--p600); }
       .aq-topbar-right{ display:flex; align-items:center; gap:1rem; margin-left:1.4rem; }
       .aq-lang-toggle{ display:inline-flex; align-items:center; gap:.4rem; padding:.42rem .85rem; border-radius:999px; border:1px solid rgba(20,66,58,.25); background:rgba(255,255,255,.6); color:#3a5650; font-size:.82rem; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
       .aq-lang-toggle:hover{ background:rgba(20,66,58,.08); border-color:rgba(20,66,58,.45); }
+      .aq-menu-btn{ display:none; align-items:center; justify-content:center; width:2.6rem; height:2.6rem; border-radius:.8rem; border:1px solid rgba(20,66,58,.25); background:rgba(255,255,255,.6); color:#3a5650; font-size:1.05rem; cursor:pointer; transition:background .2s; }
+      .aq-menu-btn:hover{ background:rgba(20,66,58,.08); }
+      /* 頂欄 CTA 喺英文寬螢幕改為只顯示圖標，騰出空間畀 8 個英文連結；完整文案見 Hero / 漢堡包 */
+      .lang-en .aq-cta-label{ display:none; }
       .aq-lang-toggle i{ font-size:.78rem; }
       .aq-btn{ display:inline-flex; align-items:center; gap:.5rem; font-weight:600; font-size:.88rem; padding:.66rem 1.45rem; border-radius:999px; transition:all .25s ease; border:none; cursor:pointer; }
       .aq-btn-solid{ background:linear-gradient(135deg,var(--p500),var(--p600)); color:#fff; box-shadow:0 12px 28px -12px rgba(31,145,133,.55); }
@@ -465,6 +469,35 @@
       .aq-btn-white:hover{ transform:translateY(-2px); }
       .aq-btn-line{ border:1px solid var(--p500); color:var(--p600); background:transparent; }
       .aq-btn-line:hover{ background:var(--p50); }
+      /* 中文連結較短，≤1024px 先收合成漢堡包；英文連結較長，≤1300px 收合 */
+      @media (max-width:1024px){
+        .aq-menu-btn{ display:inline-flex; }
+        .aq-links{
+          position:absolute; top:100%; left:0; right:0;
+          flex-direction:column; align-items:stretch; gap:.1rem;
+          background:#fff; padding:.55rem 1.3rem 1rem;
+          box-shadow:0 22px 46px -22px rgba(40,30,20,.5);
+          border-bottom:1px solid rgba(20,66,58,.12);
+          display:none;
+        }
+        .aq-links.open{ display:flex; }
+        .aq-links a{ padding:.75rem .2rem; border-bottom:1px solid rgba(20,66,58,.07); }
+        .aq-links a:last-child{ border-bottom:none; }
+      }
+      @media (max-width:1300px){
+        .lang-en .aq-menu-btn{ display:inline-flex; }
+        .lang-en .aq-links{
+          position:absolute; top:100%; left:0; right:0;
+          flex-direction:column; align-items:stretch; gap:.1rem;
+          background:#fff; padding:.55rem 1.3rem 1rem;
+          box-shadow:0 22px 46px -22px rgba(40,30,20,.5);
+          border-bottom:1px solid rgba(20,66,58,.12);
+          display:none;
+        }
+        .lang-en .aq-links.open{ display:flex; }
+        .lang-en .aq-links a{ padding:.75rem .2rem; border-bottom:1px solid rgba(20,66,58,.07); }
+        .lang-en .aq-links a:last-child{ border-bottom:none; }
+      }
       .aq-hero{ position:relative; min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; overflow:hidden; padding:8rem 1.5rem 12rem; background:linear-gradient(165deg,#0a2e2b 0%,#115c55 52%,#1f9185 100%); }
       #vanta-bg-aurora{ position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.4; }
       .aq-hero-in{ position:relative; z-index:2; max-width:840px; }
@@ -550,6 +583,9 @@
       }
       @media (max-width:640px){
         .aq-links{ display:none; }
+        .aq-topbar-right .aq-btn-solid{ display:none; }
+        .aq-logo-sub{ display:none !important; }
+        .aq-logo b{ font-size:1rem; white-space:nowrap; }
         .aq-float{ margin-top:-4rem; }
         .aq-hero{ padding-bottom:10rem; }
         .aq-about-circle{ font-size:4rem; }
@@ -713,7 +749,7 @@
       .aq-logo img{ width:2.9rem; height:2.9rem; border-radius:50%; object-fit:cover; border:2px solid rgba(199,180,166,.45); box-shadow:0 8px 20px -10px rgba(60,50,30,.35); }
       .aq-logo b{ font-family:var(--headserif); font-size:1.28rem; color:var(--inkd); font-weight:600; letter-spacing:.06em; white-space:nowrap; }
       .aq-logo span{ display:block; font-size:.62rem; letter-spacing:.3em; color:var(--taupe); font-weight:600; }
-      .aq-links{ display:flex; align-items:center; gap:1.3rem; }
+      .aq-links{ display:flex; align-items:center; gap:.95rem; }
       .aq-links ::selection{ background:transparent; }
       .aq-links a{ font-size:.86rem; color:var(--insoft); font-weight:600; position:relative; padding:.3rem 0; white-space:nowrap; }
       .aq-links a::after{ content:""; position:absolute; left:0; right:100%; bottom:0; height:1.5px; background:var(--moss); transition:right .3s ease; }
@@ -928,6 +964,9 @@
       }
       @media (max-width:640px){
         .aq-links{ display:none; }
+        .aq-topbar-right .aq-btn-solid{ display:none; }
+        .aq-logo-sub{ display:none !important; }
+        .aq-logo b{ font-size:1rem; white-space:nowrap; }
         .aq-topbar-in{ padding:.75rem 1.1rem; }
         .aq-hero{ padding:8rem 1.2rem 6.5rem; min-height:92vh; }
         .aq-float{ grid-template-columns:1fr; margin-top:-3rem; padding:0 1.2rem 2rem; }
@@ -1122,6 +1161,13 @@
       .m-side-logout{ color:#5D4037 !important; background:rgba(192,130,104,.12) !important; border:1px solid rgba(192,130,104,.30) !important; }
       .m-side-logout:hover{ background:rgba(192,130,104,.22) !important; }
 
+      /* EN-layout safety：英文標籤較長，令 flex/grid 子項可收縮而非溢出 */
+      .m-main .grid > div{ min-width:0; }
+      .m-main input, .m-main select, .m-main textarea{ min-width:0; max-width:100%; }
+      .m-main .flex{ min-width:0; }
+      .m-main .flex.justify-between.items-center{ flex-wrap:wrap; row-gap:.4rem; }
+      .m-main .flex.gap-2.items-center{ flex-wrap:wrap; row-gap:.5rem; }
+
       .m-tabs button.active{ color:#7E5140 !important; }
 
       /* ---------- 會員主區 hero：淺粉底＋深字（去青綠＋白字） ---------- */
@@ -1256,9 +1302,9 @@
           <div class="aq-topbar-in">
             <a href="#aq-top" class="aq-logo">
               <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天醫館')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events:none;user-select:none;-webkit-user-drag:none;">
-              <span><b>{{ t('寶天醫館') }}</b><span style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
+              <span><b>{{ t('寶天醫館') }}</b><span class="aq-logo-sub" style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
             </a>
-            <div class="aq-links">
+            <div class="aq-links" :class="{ open: menuOpen }" @click="closeMenu">
               <a href="#aq-services">{{ t('服務') }}</a>
               <a href="#aq-about">{{ t('關於我們') }}</a>
               <a href="#aq-philosophy">{{ t('中醫智慧') }}</a>
@@ -1269,13 +1315,16 @@
               <a href="#aq-login">{{ t('會員登入') }}</a>
             </div>
             <div class="aq-topbar-right">
+              <button type="button" class="aq-menu-btn" @click="toggleMenu" :aria-label="t('選單')" aria-label="Menu"><i class="fas fa-bars"></i></button>
               <button type="button" class="aq-lang-toggle" @click="setLang(lang === 'en' ? 'zh-TW' : 'en')" :title="t('請選擇語言 / Please select language')" :aria-label="t('請選擇語言 / Please select language')">
                 <i class="fas fa-globe"></i><span>{{ lang === 'en' ? '中文' : 'EN' }}</span>
               </button>
-              <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-seedling"></i>{{ t('初體驗預約') }}</a>
+              <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-seedling"></i><span class="aq-cta-label">{{ t('初體驗預約') }}</span></a>
             </div>
           </div>
         </div>
+        <!-- 手機選單遮罩：點擊關閉 -->
+        <div v-if="menuOpen" @click="closeMenu" style="position:fixed;inset:0;z-index:55;"></div>
 
         <!-- Hero：米色＋淺綠分層波浪 · 浮雕熱帶葉片與大象 -->
         <!-- 逐屏導航 -->
@@ -1809,7 +1858,8 @@
           <div style="max-width:960px;margin:2.8rem auto 0;padding:0 1.5rem;">
             <h3 style="text-align:center;color:#3E2A1E;font-size:1.35rem;margin:0 0 1.2rem;letter-spacing:.05em;">{{ t('三個家庭計劃點揀？') }}</h3>
             <div style="border-radius:1.4rem;overflow:hidden;border:1px solid #EADFD2;background:#fff;">
-              <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+              <div style="overflow-x:auto;">
+              <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:.9rem;">
                 <thead>
                   <tr style="background:#F5E5D5;">
                     <th style="padding:.9rem 1.2rem;text-align:left;color:#5D4037;">{{ t('比較') }}</th>
@@ -1851,6 +1901,7 @@
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
 
             <!-- 申請／升級步驟 -->
