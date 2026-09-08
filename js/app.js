@@ -33,11 +33,34 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             try { localStorage.setItem('lang', l); } catch (e) {}
             if (typeof document !== 'undefined') {
               document.documentElement.lang = l === 'en' ? 'en' : 'zh-TW';
+              // 同步 <title> 同 meta 標籤（佢哋喺 <head>，Vue 唔會編譯）
+              try {
+                document.title = t('寶天醫館');
+                const metaDesc = document.querySelector('meta[name="description"]');
+                if (metaDesc) metaDesc.content = t('寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
+                const ogTitle = document.querySelector('meta[property="og:title"]');
+                if (ogTitle) ogTitle.content = t('寶天醫館');
+                const ogDesc = document.querySelector('meta[property="og:description"]');
+                if (ogDesc) ogDesc.content = t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認');
+                const ogLocale = document.querySelector('meta[property="og:locale"]');
+                if (ogLocale) ogLocale.content = l === 'en' ? 'en_HK' : 'zh_HK';
+              } catch (e) {}
             }
           }
-          // 啟動時同步 <html lang>
+          // 啟動時同步 <html lang> 同 <title>/meta
           if (typeof document !== 'undefined') {
             document.documentElement.lang = lang.value === 'en' ? 'en' : 'zh-TW';
+            try {
+              document.title = t('寶天醫館');
+              const metaDesc = document.querySelector('meta[name="description"]');
+              if (metaDesc) metaDesc.content = t('寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
+              const ogTitle = document.querySelector('meta[property="og:title"]');
+              if (ogTitle) ogTitle.content = t('寶天醫館');
+              const ogDesc = document.querySelector('meta[property="og:description"]');
+              if (ogDesc) ogDesc.content = t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認');
+              const ogLocale = document.querySelector('meta[property="og:locale"]');
+              if (ogLocale) ogLocale.content = lang.value === 'en' ? 'en_HK' : 'zh_HK';
+            } catch (e) {}
           }
           // 資料定義（預設資料）
           const DOCTORS = ref([

@@ -10,10 +10,10 @@
     />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>{{ t('寶天醫館') }}</title>
-    <meta name="description" :content="t('寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。')" />
-    <meta property="og:title" :content="t('寶天醫館')" />
-    <meta property="og:description" :content="t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認')" />
+    <title>寶天醫館</title>
+    <meta name="description" content="寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。" />
+    <meta property="og:title" content="寶天醫館" />
+    <meta property="og:description" content="資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="zh_HK" />
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
@@ -190,13 +190,13 @@
       .m-hero-btn-primary:hover{ transform:translateY(-2px); }
       .m-hero-btn-ghost{ color:#fff; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); }
       .m-hero-btn-ghost:hover{ background:rgba(255,255,255,.24); }
-      .m-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.3rem; }
-      .m-stat-card{ background:#fff; border:1px solid var(--n100); border-radius:var(--r-xl); padding:1.1rem 1.2rem; display:flex; align-items:center; gap:.9rem; box-shadow:0 22px 50px -34px rgba(28,27,64,.28); }
+      .m-stats{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; margin-bottom:1.3rem; }
+      .m-stat-card{ background:#fff; border:1px solid var(--n100); border-radius:var(--r-xl); padding:1.1rem 1.2rem; display:flex; align-items:center; gap:.9rem; box-shadow:0 22px 50px -34px rgba(28,27,64,.28); min-width:0; }
       .m-stat-ic{ width:3rem; height:3rem; flex-shrink:0; border-radius:.95rem; display:flex; align-items:center; justify-content:center; font-size:1.15rem; color:#fff; }
       .m-stat-card b{ display:block; font-size:1.35rem; font-weight:800; color:var(--n800); line-height:1.1; }
       .m-stat-card span{ font-size:.75rem; color:var(--n500); font-weight:500; }
-      .m-promise{ display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.3rem; }
-      .m-promise-card{ background:#fff; border:1px solid var(--n100); border-radius:var(--r-xl); padding:1.3rem 1.35rem; box-shadow:0 22px 50px -34px rgba(28,27,64,.28); transition:transform .25s ease, box-shadow .25s ease; }
+      .m-promise{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.3rem; }
+      .m-promise-card{ background:#fff; border:1px solid var(--n100); border-radius:var(--r-xl); padding:1.3rem 1.35rem; box-shadow:0 22px 50px -34px rgba(28,27,64,.28); transition:transform .25s ease, box-shadow .25s ease; min-width:0; }
       .m-promise-card:hover{ transform:translateY(-3px); box-shadow:0 30px 60px -32px rgba(28,27,64,.38); }
       .m-promise-ic{ width:2.8rem; height:2.8rem; border-radius:.85rem; display:flex; align-items:center; justify-content:center; font-size:1.05rem; margin-bottom:.85rem; }
       .m-promise-card h4{ font-size:1rem; font-weight:700; margin:0 0 .3rem; color:var(--n800); }
@@ -304,10 +304,17 @@
       @media (max-width:1024px){
         .m-grid{ grid-template-columns:1fr; }
         .m-shell{ flex-direction:column; }
-        .m-sidebar{ width:100%; height:auto; position:static; flex-direction:row; flex-wrap:wrap; align-items:center; gap:1rem; }
-        .m-side-nav{ flex-direction:row; flex-wrap:wrap; gap:.2rem; }
-        .m-side-nav button{ width:auto; }
-        .m-side-foot{ flex-direction:row; align-items:center; border-top:none; border-left:1px solid rgba(255,255,255,.1); padding:0 0 0 .8rem; margin-left:auto; }
+        /* 側欄轉為 sticky 頂欄：品牌 + 橫向滑動導航 + 操作掣，避免 row-wrap 擠疊令頭像/名牌同「服務」重疊、掣被切走 */
+        .m-sidebar{
+          position:sticky; top:0; z-index:30;
+          flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:.5rem;
+          width:100%; height:auto; border-radius:0; margin:0;
+          box-shadow:0 8px 24px -12px rgba(0,0,0,.35);
+        }
+        .m-side-brand{ justify-content:flex-start; }
+        .m-side-nav{ flex-direction:row; flex-wrap:nowrap; overflow-x:auto; gap:.3rem; padding-bottom:.25rem; -webkit-overflow-scrolling:touch; }
+        .m-side-nav button{ white-space:nowrap; width:auto; }
+        .m-side-foot{ flex-direction:row; align-items:center; border-left:none; border-top:1px solid rgba(255,255,255,.1); padding:.6rem 0 0; margin-left:0; }
         .m-side-logout{ width:auto; padding:.55rem .9rem; }
         .m-stats{ grid-template-columns:repeat(2,1fr); }
         .m-promise{ grid-template-columns:1fr; }
@@ -704,14 +711,14 @@
       .aq-topbar-in{ max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:.8rem 2rem; }
       .aq-logo{ display:flex; align-items:center; gap:.85rem; }
       .aq-logo img{ width:2.9rem; height:2.9rem; border-radius:50%; object-fit:cover; border:2px solid rgba(199,180,166,.45); box-shadow:0 8px 20px -10px rgba(60,50,30,.35); }
-      .aq-logo b{ font-family:var(--headserif); font-size:1.28rem; color:var(--inkd); font-weight:600; letter-spacing:.06em; }
+      .aq-logo b{ font-family:var(--headserif); font-size:1.28rem; color:var(--inkd); font-weight:600; letter-spacing:.06em; white-space:nowrap; }
       .aq-logo span{ display:block; font-size:.62rem; letter-spacing:.3em; color:var(--taupe); font-weight:600; }
-      .aq-links{ display:flex; align-items:center; gap:2.3rem; }
+      .aq-links{ display:flex; align-items:center; gap:1.3rem; }
       .aq-links ::selection{ background:transparent; }
-      .aq-links a{ font-size:.92rem; color:var(--insoft); font-weight:600; position:relative; padding:.3rem 0; }
+      .aq-links a{ font-size:.86rem; color:var(--insoft); font-weight:600; position:relative; padding:.3rem 0; white-space:nowrap; }
       .aq-links a::after{ content:""; position:absolute; left:0; right:100%; bottom:0; height:1.5px; background:var(--moss); transition:right .3s ease; }
       .aq-links a:hover{ color:var(--mossd); } .aq-links a:hover::after{ right:0; }
-      .aq-btn{ display:inline-flex; align-items:center; gap:.55rem; font-weight:600; font-size:.88rem; letter-spacing:.04em; padding:.72rem 1.6rem; border-radius:999px; transition:all .28s ease; border:none; cursor:pointer; }
+      .aq-btn{ display:inline-flex; align-items:center; gap:.55rem; font-weight:600; font-size:.86rem; letter-spacing:.04em; padding:.72rem 1.4rem; border-radius:999px; transition:all .28s ease; border:none; cursor:pointer; white-space:nowrap; }
       .aq-btn-solid{ background:linear-gradient(135deg,#7C6353,#654E45); color:#fff; box-shadow:0 14px 30px -14px rgba(101,78,69,.85); }
       .aq-btn-solid:hover{ transform:translateY(-2px); box-shadow:0 18px 38px -14px rgba(101,78,69,.95); }
       .aq-btn-line{ border:1.5px solid rgba(101,78,69,.6); color:var(--mossd); background:transparent; }
@@ -799,9 +806,9 @@
       .aq-about-circle::before{ content:""; position:absolute; inset:1.15rem; border-radius:inherit; border:1.5px dashed rgba(199,180,166,.7); }
       .aq-about-circle::after{ content:""; position:absolute; inset:2.2rem; border-radius:inherit; background:rgba(246,239,231,.35); }
       .aq-about-circle i{ position:relative; z-index:1; color:var(--mossd); font-size:clamp(4rem,8vw,6.2rem); text-shadow:0 14px 26px rgba(90,115,79,.35); }
-      .aq-about-stamp{ position:absolute; left:-1.5rem; top:6%; z-index:3; width:6rem; height:6rem; border-radius:50%; background:rgba(246,239,231,.96); border:1px dashed rgba(199,180,166,.75); display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotate(-10deg); font-family:var(--headserif); color:var(--tauped); box-shadow:0 18px 40px -18px rgba(80,60,45,.5); }
-      .aq-about-stamp b{ font-size:1.15rem; font-weight:600; line-height:1.15; }
-      .aq-about-stamp span{ font-size:.5rem; letter-spacing:.22em; margin-top:.1rem; }
+      .aq-about-stamp{ position:absolute; left:-1.8rem; top:6%; z-index:3; width:7rem; height:7rem; border-radius:50%; background:rgba(246,239,231,.96); border:1px dashed rgba(199,180,166,.75); display:flex; flex-direction:column; align-items:center; justify-content:center; transform:rotate(-10deg); font-family:var(--headserif); color:var(--tauped); box-shadow:0 18px 40px -18px rgba(80,60,45,.5); }
+      .aq-about-stamp b{ font-size:.95rem; font-weight:600; line-height:1.1; white-space:nowrap; }
+      .aq-about-stamp span{ font-size:.55rem; letter-spacing:.12em; margin-top:.1rem; white-space:nowrap; }
       .aq-about h2{ font-family:var(--headserif); font-size:clamp(1.9rem,3.6vw,2.8rem); color:var(--inkd); margin:0 0 1.3rem; letter-spacing:.04em; }
       .aq-about p{ color:var(--insoft); font-size:.98rem; line-height:2; margin:0 0 1.1rem; }
       .aq-points{ margin-top:1.8rem; display:grid; gap:.9rem; }
@@ -1186,8 +1193,8 @@
   <body class="bg-gradient-to-br from-slate-50 to-slate-100 text-slate-800">
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出（防止原始範本閃現） -->
     <div id="boot-splash" aria-hidden="true">
-      <div class="boot-logo">{{ t('寶') }}</div>
-      <div class="boot-name">{{ t('寶天醫館') }}</div>
+      <div class="boot-logo">寶</div>
+      <div class="boot-name">寶天醫館</div>
       <div class="boot-sub">NATURAL HEALING</div>
       <div class="boot-ring"></div>
     </div>
@@ -2545,7 +2552,7 @@
           <div class="m-side-brand">
             <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天醫館')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events: none; user-select: none; -webkit-user-drag: none;">
             <div>
-              <h1>{{ t('寶天醫館') }}<span style="color:var(--p400);font-weight:600;font-size:.85em;">JR</span></h1>
+              <h1>{{ t('寶天醫館') }}<span style="color:var(--p400);font-weight:600;font-size:.85em;"> JR</span></h1>
               <small>{{ t('智慧預約 · 醫療分流') }}</small>
             </div>
           </div>
