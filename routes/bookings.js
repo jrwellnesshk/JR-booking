@@ -144,6 +144,10 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       if (exc.type === 'full_day_closed' || exc.type === 'red_day') {
         return { ok: false, error: `${exc.name || '紅字日'}暫停預約`, code: 'exception' };
       }
+      if (exc.type === 'doctor_leave') {
+        // 全診所休診（doctor_user_id IS NULL）→ 全日封鎖公開預約／落單
+        return { ok: false, error: `${exc.name || '全診所休診'}暫停預約`, code: 'doctor_leave_clinic' };
+      }
       if (exc.type === 'special_hours') {
         const open = timeToMinutes(exc.time_open);
         const close = timeToMinutes(exc.time_close);
@@ -1522,6 +1526,14 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
                 days[r.date][r.doctor_id] = { totalSlots: r.total, availableSlots: r.avail, working: r.avail > 0 };
               });
               (leaves || []).forEach(l => {
+                if (!l.name) {
+                  // 全診所休診（doctor_user_id IS NULL）→ 所有醫師當日標記 leave
+                  if (!days[l.exception_date]) days[l.exception_date] = {};
+                  docList.forEach(d => {
+                    days[l.exception_date][d.id] = Object.assign(days[l.exception_date][d.id] || {}, { leave: true, working: false });
+                  });
+                  return;
+                }
                 const did = (docList.find(d => d.name === l.name) || {}).id;
                 if (did) {
                   if (!days[l.exception_date]) days[l.exception_date] = {};
