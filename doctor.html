@@ -1004,13 +1004,13 @@
                   @click="setSlotSubView('booking')"
                   :class="slotSubView==='booking' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'"
                   class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                ><i class="fas fa-clipboard-list mr-1"></i>預約</button>
+                ><i class="fas fa-table-cells mr-1"></i>時段網格</button>
                 <button
                   type="button"
                   @click="setSlotSubView('leave')"
                   :class="slotSubView==='leave' ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-700'"
                   class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                ><i class="fas fa-calendar-xmark mr-1"></i>假期表</button>
+                ><i class="fas fa-calendar-xmark mr-1"></i>預約／假期</button>
               </div>
             </div>
 
@@ -1057,17 +1057,7 @@
                     :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'"
                   >
                     <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
-                    <div v-if="slotSubView==='booking'" class="mt-0.5 w-full flex flex-wrap gap-0.5 justify-center">
-                      <span
-                        v-for="dname in (slotMonthApptDocs[cell.date] || [])"
-                        :key="dname"
-                        class="inline-block max-w-full truncate px-1 rounded text-[9px] leading-4 font-medium"
-                        :style="{ backgroundColor: doctorColorByName(dname), color: '#fff' }"
-                        :title="dname + '（有預約）'"
-                      >{{ dname }}</span>
-                      <span v-if="!(slotMonthApptDocs[cell.date] || []).length" class="block w-6 h-1.5 rounded-full bg-slate-100 mx-auto"></span>
-                    </div>
-                    <div v-else class="flex flex-col gap-0.5 mt-0.5 w-full">
+                    <div class="flex flex-col gap-0.5 mt-0.5 w-full">
                       <span
                         v-for="bar in cell.bars"
                         :key="bar.id"
@@ -1079,7 +1069,7 @@
                   </button>
                 </template>
               </div>
-              <p class="text-xs text-slate-400 mt-2">揸住日曆日期拖掃 → 自動揀定日期範圍；{{ slotSubView==='booking' ? '下方「時段網格」會顯示所揀日期全部醫師嘅時段，拖掃揀自己帳戶嘅格改時段，撳有預約嘅格睇該醫師預約詳情。' : '下方會顯示嗰段日期嘅預約紀錄＋每位醫師嘅假期（直接寫明醫師名），撳入去睇詳情。' }}撳單一日亦可。</p>
+              <p class="text-xs text-slate-400 mt-2">揸住日曆日期拖掃 → 自動揀定日期範圍；{{ slotSubView==='booking' ? '下方「時段網格」純粹用嚟設定時段狀態（候診／休息／放假／開放）：拖掃揀自己帳戶嘅格，再撳狀態掣。如該時段已有預約，設定「放假」或「休息」時會彈出提醒。' : '下方會顯示嗰段日期嘅預約紀錄＋每位醫師嘅假期（直接寫明醫師名），撳入去睇詳情。' }}撳單一日亦可。</p>
             </div>
 
             <!-- 日期範圍 -->
@@ -1133,7 +1123,7 @@
                             :key="dc.doctorId"
                             class="group relative px-1 py-0.5 rounded cursor-pointer transition-colors"
                             :style="allCellStyle(dc, allCellIsSel(slotAllCellByKey[d.date + '|' + time], dc))"
-                            :title="dc.name + ' ' + ((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位')))) + (dc.booked > 0 ? ' · 已有 ' + dc.booked + ' 個預約' : '') + (dc.isOwn ? '（自己帳戶，可改）' : '（其他醫師，只可查閱）')"
+                            :title="dc.name + ' ' + ((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位')))) + (dc.isOwn ? '（自己帳戶，可改）' : '（其他醫師，只可查閱）')"
                             @mousedown.prevent="startAllSelect(slotAllCellByKey[d.date + '|' + time], dc)"
                             @mouseenter="enterAllCell(slotAllCellByKey[d.date + '|' + time], dc)"
                           >
@@ -1155,26 +1145,7 @@
                 <span><span class="inline-block w-3 h-3 rounded align-middle bg-amber-200"></span> 候診</span>
                 <span><span class="inline-block w-3 h-3 rounded align-middle bg-emerald-200"></span> 開放</span>
                 <span><span class="inline-block w-3 h-3 rounded align-middle ring-2 ring-blue-500 bg-blue-100"></span> 已選取</span>
-                <span class="text-slate-400">拖掃揀自己帳戶嘅時段，再揀「放假／休息／候診／取消」；淨係改到自己，其他醫師只可查閱。</span>
-              </div>
-
-              <!-- 撳網格格：彈出該時段預約詳情 -->
-              <div v-if="slotPopover" class="fixed inset-0 z-40" @click="slotPopover = null"></div>
-              <div v-if="slotPopover" class="fixed z-50 w-64 rounded-xl shadow-xl border border-slate-200 bg-white text-sm" :style="{ left: slotPopover.x + 'px', top: slotPopover.y + 'px' }">
-                <div class="flex items-center justify-between px-3 py-2 bg-rose-50 border-b border-rose-100 rounded-t-xl">
-                  <span class="font-semibold text-rose-700"><i class="fas fa-calendar-day mr-1"></i>{{ slotPopover.date }} {{ slotPopover.time }} · {{ slotPopover.items.length }}個預約</span>
-                  <button @click="slotPopover = null" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="max-h-48 overflow-y-auto">
-                  <div v-for="b in slotPopover.items" :key="b.id" class="px-3 py-2 border-b border-slate-50 flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                      <div class="font-medium text-slate-800 truncate">{{ b.customer_name }}</div>
-                      <div class="text-xs text-slate-400 truncate">{{ b.service_name || '—' }} · {{ b.doctor_name }}</div>
-                    </div>
-                    <button @click="openSlotBookingDetail(b)" class="text-blue-600 text-xs shrink-0 hover:underline"><i class="fas fa-eye mr-0.5"></i>詳情</button>
-                  </div>
-                  <div v-if="!slotPopover.items.length" class="px-3 py-4 text-slate-400 text-center text-xs">呢個時段暫時冇預約。</div>
-                </div>
+                <span class="text-slate-400">時段網格純粹設定狀態，唔顯示預約；拖掃揀自己帳戶嘅時段，再揀「放假／休息／候診／取消」；淨係改到自己，其他醫師只可查閱。睇預約請去「預約／假期」。</span>
               </div>
             </div>
 
@@ -1851,10 +1822,8 @@
             slotDoctorId: "", // （保留向後相容；UI 唔再揀，一律顯示全部醫師）
             doctors: [], // [{ id, name, specialty }]
             doctorColors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'],
-            slotApptByDate: {}, // 預約模式：{ 'YYYY-MM-DD': [booking, ...] }（已按月／範圍擷取）
-            slotMonthAppt: {}, // 月曆每日期盼數（跟選擇醫師）{ date: count }
-            slotMonthApptDocs: {}, // 月曆每日期邊位醫師有預約（全部醫師）{ date: ['陳世昌', ...] }
-            slotPopover: null, // { x, y, date, time, items } 撳有預約嘅網格格 → 彈出該時段預約詳情
+            slotApptByDate: {}, // 預約／假期模式：{ 'YYYY-MM-DD': [booking, ...] }（用嚟顯示預約紀錄）
+            slotPopover: null, // （保留，舊制單醫師網格彈窗用；新網格唔顯示預約）
             slotToast: "",
             slotToastColor: 'slate',
             slotToastTimer: null,
@@ -2278,7 +2247,7 @@
                 }
                 return null;
               }).filter(Boolean);
-              cells.push({ date, day: dN, bars, apptCount: (this.slotMonthAppt[date] || 0) });
+              cells.push({ date, day: dN, bars });
             }
             return cells;
           },
@@ -2310,23 +2279,7 @@
                 if (data.doctors && data.doctors.length) this.doctors = data.doctors;
                 this.slotCalendar = data.days || {};
               }
-              // 月曆「預約數」badge + 「有預約嘅醫師名」清單（全部醫師）
-              const did = this.slotDoctorId ? `&doctorId=${this.slotDoctorId}` : '';
-              const ares = await fetch(`/api/bookings/doctor-appointments/range?start=${start}&end=${end}${did}`);
-              if (ares.ok) {
-                const adata = await ares.json();
-                const cnt = {};
-                const docs = {};
-                for (const b of (adata.bookings || [])) {
-                  cnt[b.appointment_date] = (cnt[b.appointment_date] || 0) + 1;
-                  if (b.doctor_name) {
-                    const darr = (docs[b.appointment_date] = docs[b.appointment_date] || []);
-                    if (!darr.includes(b.doctor_name)) darr.push(b.doctor_name);
-                  }
-                }
-                this.slotMonthAppt = cnt;
-                this.slotMonthApptDocs = docs;
-              }
+              // （月曆只顯示醫師開診／休假狀態，唔顯示預約；預約請去「預約／假期」）
             } catch (e) { console.error('載入月曆失敗', e); }
           },
           pickSlotDay(date) {
@@ -2621,20 +2574,6 @@
           },
           endAllSelect() {
             if (this.slotAllSelecting) { this.slotAllSelecting = false; }
-          },
-          async openAllPopover(row, dc) {
-            try {
-              const res = await fetch(`/api/bookings/doctor-appointments/range?start=${row.date}&end=${row.date}&doctorId=${dc.doctorId}`);
-              if (res.ok) {
-                const data = await res.json();
-                const items = (data.bookings || []).filter(b => b.appointment_time === row.time && (b.doctor_name === dc.name || String(b.doctor_user_id) === String(dc.doctorId)));
-                this.slotPopover = {
-                  x: Math.min(this._allPopX || 100, window.innerWidth - 300),
-                  y: 200,
-                  date: row.date, time: row.time, items
-                };
-              } else { this.slotToastNotif(`${row.time} 暫時冇預約。`); }
-            } catch (e) { console.error('載入該時段預約失敗', e); }
           },
           async applyAllSlotStatus(status) {
             if (this.slotSubView !== 'booking' || !this.slotSel.size) return;

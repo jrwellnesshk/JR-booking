@@ -6,10 +6,12 @@ node_modules/
 .env.*
 !.env.example
 
-# 資料庫（含生產資料，唔落 git）
+# 資料庫（含生產資料，唔落 git�?
 *.db
 *.db.*
 *.db.bak*
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 
@@ -18,12 +20,12 @@ node_modules/
 server_bg*
 npm-debug.log*
 
-# 系統 / 編輯器
+# 系統 / 編輯�?
 .DS_Store
 .vscode/
 Thumbs.db
 
-# 工具 / agent 內部狀態
+# 工具 / agent 內部狀�?
 .workbuddy/
 backup/
 
