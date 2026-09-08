@@ -1220,7 +1220,7 @@
                     <tbody>
                       <tr v-for="lv in slotLeaves" :key="lv.id" class="border-t border-slate-100">
                         <td class="px-3 py-2 text-slate-700">{{ lv.exception_date }}</td>
-                        <td class="px-3 py-2 text-slate-700"><span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: doctorColorByName(lv.doctor_name) }"></span>{{ lv.doctor_name }}</td>
+                        <td class="px-3 py-2 text-slate-700"><span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: lv.doctor_user_id ? doctorColorByName(lv.doctor_name) : '#94a3b8' }"></span>{{ lv.doctor_user_id ? lv.doctor_name : '全診所休診' }}</td>
                         <td class="px-3 py-2 text-slate-600">{{ leaveTimeLabel(lv) }}</td>
                         <td class="px-3 py-2 text-slate-600">{{ lv.reason || '請假' }}</td>
                         <td class="px-3 py-2"><span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="leaveBadge(lv).cls">{{ leaveBadge(lv).text }}</span></td>

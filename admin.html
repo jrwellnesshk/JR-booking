@@ -3059,7 +3059,27 @@
             <div class="bg-white rounded-xl shadow-lg p-4">
               <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h3 class="font-bold text-slate-800"><i class="fas fa-clipboard-check mr-2 text-amber-600"></i>醫師請假審批（{{ leaveApprovals.length }}）</h3>
-                <button @click="loadAdminLeaveQueue()" class="text-xs text-slate-500 hover:text-slate-700"><i class="fas fa-rotate mr-1"></i>重新整理</button>
+                <div class="flex items-center gap-2">
+                  <button @click="showClinicForm = !showClinicForm" class="text-xs px-2 py-1 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50"><i class="fas fa-hospital mr-1"></i>全診所休診</button>
+                  <button @click="loadAdminLeaveQueue()" class="text-xs text-slate-500 hover:text-slate-700"><i class="fas fa-rotate mr-1"></i>重新整理</button>
+                </div>
+              </div>
+              <!-- 全診所休診申請 -->
+              <div v-if="showClinicForm" class="mb-3 rounded-xl border border-dashed border-slate-300 p-3 bg-slate-50">
+                <p class="text-xs text-slate-500 mb-2">申請全診所休診：批核後會關閉所有醫師嗰日時段並通知客人。</p>
+                <div class="flex flex-wrap items-end gap-2">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">日期 *</label>
+                    <input v-model="clinicLeave.date" type="date" :min="todayStr" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <div class="flex-1 min-w-[180px]">
+                    <label class="block text-xs text-slate-500 mb-1">原因</label>
+                    <input v-model="clinicLeave.reason" placeholder="例如：公眾假期 / 診所活動" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <button @click="submitClinicLeave" :disabled="clinicBusy" class="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-700 disabled:opacity-50"><i v-if="clinicBusy" class="fas fa-spinner fa-spin mr-1"></i>提交</button>
+                  <button @click="showClinicForm=false" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-600 text-sm hover:bg-slate-300">取消</button>
+                </div>
+                <p v-if="clinicResult" class="text-xs mt-2" :class="clinicResult.ok ? 'text-emerald-700' : 'text-red-600'"><i :class="clinicResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" class="mr-1"></i>{{ clinicResult.message }}</p>
               </div>
               <div v-if="leaveApprovalsLoading" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
               <div v-else-if="!leaveApprovals.length" class="text-center py-8 text-slate-400">
@@ -3069,8 +3089,8 @@
                 <div v-for="lv in leaveApprovals" :key="lv.id" class="border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
                   <div class="flex-1 min-w-[220px]">
                     <p class="font-medium text-slate-800">
-                      <span class="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" :style="{ backgroundColor: doctorColorByName(lv.doctor_name) }"></span>
-                      {{ lv.doctor_name }}
+                      <span class="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" :style="{ backgroundColor: lv.doctor_user_id ? doctorColorByName(lv.doctor_name) : '#94a3b8' }"></span>
+                      {{ lv.doctor_user_id ? lv.doctor_name : '全診所休診' }}
                       <span class="text-xs text-slate-400 ml-2">{{ lv.exception_date }}（週{{ weekdayLabel(lv.exception_date) }}）</span>
                     </p>
                     <p class="text-xs text-slate-500 mt-1">
@@ -7166,6 +7186,10 @@
             slotDoctorId: "",
             leaveApprovals: [],
             leaveApprovalsLoading: false,
+            showClinicForm: false,
+            clinicLeave: { date: "", reason: "" },
+            clinicBusy: false,
+            clinicResult: null,
             slotView: 'week',
             slotRangeStart: new Date().toISOString().slice(0, 10),
             slotRangeEnd: new Date().toISOString().slice(0, 10),
@@ -9859,16 +9883,43 @@ phone: this.addUserForm.phone,
             finally { this.leaveApprovalsLoading = false; }
           },
           async approveLeave(lv) {
-            if (!confirm(`批准 ${lv.doctor_name} 於 ${lv.exception_date} 嘅請假？\n（將關閉其時段、按設定通知客人並轉嫁預約至補位醫師）`)) return;
+            const who = lv.doctor_user_id ? `${lv.doctor_name} 於 ${lv.exception_date}` : `全診所休診 ${lv.exception_date}`;
+            if (!confirm(`批准 ${who} 嘅請假？\n（將關閉時段、按設定通知客人${lv.reassigned_to ? '並轉嫁預約至補位醫師' : ''}）`)) return;
             try {
               const res = await fetch(`/api/admin/doctor/my-leaves/${lv.id}/approve`, {
                 method: "POST",
                 headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
               });
               const data = await res.json();
-              if (res.ok && data.ok) { this.loadAdminLeaveQueue(); this.loadSlotCalendar(); }
+              if (res.ok && data.ok) {
+                this.loadAdminLeaveQueue(); this.loadSlotCalendar();
+                let msg = `已批准${lv.doctor_user_id ? '' : '（全診所休診）'}：${data.affected_count} 筆受影響預約`;
+                if (data.reassigned_count) msg += `，已轉嫁 ${data.reassigned_count} 筆畀補位醫師`;
+                if (data.skipped_count) msg += `；另有 ${data.skipped_count} 筆因補位醫師該時段唔可用／已滿而未能轉嫁，已改為通知客人改期`;
+                alert(msg);
+              }
               else alert(data.error || "批准失敗");
             } catch (e) { alert("網絡錯誤"); }
+          },
+          async submitClinicLeave() {
+            if (!this.clinicLeave.date) { alert("請選擇日期"); return; }
+            this.clinicBusy = true; this.clinicResult = null;
+            try {
+              const res = await fetch("/api/admin/doctor/my-leave", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
+                body: JSON.stringify({ exception_date: this.clinicLeave.date, reason: this.clinicLeave.reason || "", clinicWide: true })
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) {
+                this.clinicResult = { ok: true, message: data.message || "已提交全診所休診，待批核" };
+                this.clinicLeave = { date: "", reason: "" };
+                this.loadAdminLeaveQueue();
+              } else {
+                this.clinicResult = { ok: false, message: data.error || "提交失敗" };
+              }
+            } catch (e) { this.clinicResult = { ok: false, message: "網絡錯誤" }; }
+            finally { this.clinicBusy = false; }
           },
           async rejectLeave(lv) {
             if (!confirm(`拒絕 ${lv.doctor_name} 於 ${lv.exception_date} 嘅請假？`)) return;
