@@ -433,7 +433,7 @@
               <button @click="docTab='bookings'" :class="docTab==='bookings' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-list mr-2"></i>預約列表
               </button>
-              <button @click="docTab='schedule'; loadMyLeaves()" :class="docTab==='schedule' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+              <button @click="docTab='schedule'; loadMyLeaves(); loadScheduleDocs()" :class="docTab==='schedule' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-calendar-xmark mr-2"></i>排程／請假
               </button>
               <button @click="docTab='attendance'; loadMyHr()" :class="docTab==='attendance' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
@@ -705,6 +705,13 @@
               </h3>
               <div class="flex flex-wrap items-end gap-3 m-sticky">
                 <div>
+                  <label class="block text-xs text-slate-500 mb-1">請假醫師</label>
+                  <select v-model="leaveForm.doctorUserId" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]">
+                    <option value="">自己（{{ doctorInfo ? doctorInfo.name : '' }}）</option>
+                    <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
+                  </select>
+                </div>
+                <div>
                   <label class="block text-xs text-slate-500 mb-1">請假日期 *</label>
                   <input v-model="leaveForm.date" type="date" :min="todayStr"
                     class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
@@ -720,7 +727,7 @@
                 </label>
                 <label class="flex items-center gap-2 text-sm text-slate-700 pb-2">
                   <input type="checkbox" v-model="leaveForm.cancel" class="w-4 h-4">
-                  同時自動取消該日我嘅預約
+                  同時自動取消該日{{ leaveForm.doctorUserId ? doctorName(leaveForm.doctorUserId) + '嘅' : '我嘅' }}預約
                 </label>
                 <button @click="submitLeave" :disabled="leaveBusy"
                   class="px-5 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-700 disabled:opacity-50">
@@ -987,13 +994,38 @@
             </div>
           </div>
 
-          <!-- ==== 醫師時段管理（Google 日曆式拖掃）==== -->
+          <!-- ==== 醫師時段管理（全診所視角 + 拖掃）==== -->
           <div v-if="docTab==='timeslots'" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>我的時段管理</h2>
-              <div class="flex items-center gap-2">
-                <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>週（一至日）</button>
-                <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>日</button>
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>時段管理</h2>
+              <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                <button
+                  type="button"
+                  @click="setSlotSubView('booking')"
+                  :class="slotSubView==='booking' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-slate-700'"
+                  class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                ><i class="fas fa-clipboard-list mr-1"></i>預約</button>
+                <button
+                  type="button"
+                  @click="setSlotSubView('leave')"
+                  :class="slotSubView==='leave' ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-700'"
+                  class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                ><i class="fas fa-calendar-xmark mr-1"></i>假期表</button>
+              </div>
+            </div>
+
+            <!-- 🎨 醫師顏色圖例（唔再揀醫師；顏色自動跟返醫師列表同步） -->
+            <div class="bg-white rounded-xl shadow-lg p-4">
+              <p class="text-sm font-medium text-slate-700 mb-2"><i class="fas fa-palette text-emerald-600 mr-2"></i>醫師顏色（新增醫師會同步顯示）</p>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="doc in doctors"
+                  :key="doc.id"
+                  class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100 text-sm text-slate-600 flex items-center gap-1.5"
+                >
+                  <span class="inline-block w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: doctorColor(doc.id) }"></span>{{ doc.name }}
+                </span>
+                <span v-if="!doctors.length" class="text-sm text-slate-400">未有醫師資料</span>
               </div>
             </div>
 
@@ -1010,17 +1042,44 @@
               <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
                 <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
               </div>
-              <div class="grid grid-cols-7 gap-1">
+              <div class="grid grid-cols-7 gap-1" style="user-select:none" @mouseleave="endCalSelect" @mouseup="endCalSelect">
                 <template v-for="(cell, idx) in slotCalendarDays()" :key="idx">
                   <div v-if="!cell" class="aspect-square"></div>
-                  <button v-else type="button" @click="pickSlotDay(cell.date)" class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative" :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'">
+                  <button
+                    v-else
+                    type="button"
+                    @mousedown.prevent="startCalSelect(cell.date)"
+                    @mouseenter="extendCalSelect(cell.date)"
+                    @mouseup.stop="endCalSelect()"
+                    @touchstart.prevent="startCalSelect(cell.date)"
+                    @touchend.prevent="endCalSelect()"
+                    class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative"
+                    :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'"
+                  >
                     <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
-                    <span v-if="cell.working" class="mt-0.5 w-6 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span v-else-if="cell.leave" class="mt-0.5 w-6 h-1.5 rounded-full bg-slate-300"></span>
+                    <div v-if="slotSubView==='booking'" class="mt-0.5 w-full flex flex-wrap gap-0.5 justify-center">
+                      <span
+                        v-for="dname in (slotMonthApptDocs[cell.date] || [])"
+                        :key="dname"
+                        class="inline-block max-w-full truncate px-1 rounded text-[9px] leading-4 font-medium"
+                        :style="{ backgroundColor: doctorColorByName(dname), color: '#fff' }"
+                        :title="dname + '（有預約）'"
+                      >{{ dname }}</span>
+                      <span v-if="!(slotMonthApptDocs[cell.date] || []).length" class="block w-6 h-1.5 rounded-full bg-slate-100 mx-auto"></span>
+                    </div>
+                    <div v-else class="flex flex-col gap-0.5 mt-0.5 w-full">
+                      <span
+                        v-for="bar in cell.bars"
+                        :key="bar.id"
+                        class="h-1.5 rounded-full"
+                        :style="{ backgroundColor: bar.color }"
+                        :title="(doctors.find(d => d.id == bar.id) || {}).name + (bar.leave ? '（休假）' : '：' + bar.count + ' 個開放時段')"
+                      ></span>
+                    </div>
                   </button>
                 </template>
               </div>
-              <p class="text-xs text-slate-400 mt-2">撳日曆中嘅日子 → 下方網格會顯示嗰段日期嘅時段；撳住拖掃多個方格可批量選取。</p>
+              <p class="text-xs text-slate-400 mt-2">揸住日曆日期拖掃 → 自動揀定日期範圍；{{ slotSubView==='booking' ? '下方「時段網格」會顯示所揀日期全部醫師嘅時段，拖掃揀自己帳戶嘅格改時段，撳有預約嘅格睇該醫師預約詳情。' : '下方會顯示嗰段日期嘅預約紀錄＋每位醫師嘅假期（直接寫明醫師名），撳入去睇詳情。' }}撳單一日亦可。</p>
             </div>
 
             <!-- 日期範圍 -->
@@ -1033,59 +1092,165 @@
                 <label class="block text-xs font-medium text-slate-500 mb-1">至（年／月／日）</label>
                 <input type="date" v-model="slotRangeEnd" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
               </div>
-              <p class="text-xs text-slate-400 self-center">目前顯示：{{ slotView==='week' ? '該週（一至日）' : '所揀範圍' }} · 每格 15 分鐘</p>
+              <p class="text-xs text-slate-400 self-center">列出所揀日期範圍，顯示全部醫師嘅預約／假期。</p>
             </div>
 
-            <!-- 拖掃網格 + 操作掣 -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
-              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格（拖掃選取）</h3>
+            <!-- 預約模式：全部醫師時段網格（拖掃揀自己帳戶改時段；有預約格撳入睇詳情） -->
+            <div v-if="slotSubView==='booking'" class="bg-white rounded-xl shadow-lg p-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }} 日 × {{ slotAllTimes.length }} 時段 · 全部醫師；淨係可以修改自己帳戶）</span></h3>
                 <div class="flex flex-wrap items-center gap-2">
-                  <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>加入</button>
-                  <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
-                  <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
-                  <button @click="applySlotStatus('blank')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>取消（空白）</button>
-                  <button v-if="slotDirtyCount" @click="confirmSlotChanges" :disabled="slotBusy" class="px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-blue-600 disabled:opacity-40"><i class="fas fa-check mr-1"></i>確認儲存（{{ slotDirtyCount }}）</button>
+                  <button @click="applyAllSlotStatus('leave')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-violet-600 disabled:opacity-40"><i class="fas fa-plane-departure mr-1"></i>放假</button>
+                  <button @click="applyAllSlotStatus('rest')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
+                  <button @click="applyAllSlotStatus('waiting')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
+                  <button @click="applyAllSlotStatus('open')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>取消（還原開放）</button>
+                  <button v-if="slotDirtyCount" @click="confirmAllSlotChanges" :disabled="slotBusy" class="px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-blue-600 disabled:opacity-40"><i class="fas fa-check mr-1"></i>確認儲存（{{ slotDirtyCount }}）</button>
+                  <span v-if="slotSelCount" class="text-xs text-slate-500">已選 {{ slotSelCount }} 格</span>
                 </div>
               </div>
-
-              <div v-if="slotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
-              <div v-else-if="!slotDays.length" class="text-center py-10 text-slate-500">
-                <i class="fas fa-calendar-times text-4xl mb-3"></i><p>暫無時段資料，請揀選日期。</p>
+              <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mb-2"><i class="fas fa-check-circle mr-1"></i>已儲存！</p>
+              <div v-if="slotBusy" class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
+              <div v-else-if="!slotAllGrid.length" class="text-center py-10 text-slate-500">
+                <i class="fas fa-calendar-times text-4xl mb-3"></i><p>暫無時段資料，請揀選日期範圍。</p>
               </div>
-              <div v-else class="overflow-x-auto" @mouseleave="endSlotSelect" @mouseup="endSlotSelect">
-                <table class="border-collapse select-none" style="user-select:none">
+              <div v-else class="overflow-x-auto select-none" @mouseleave="endAllSelect" @mouseup="endAllSelect" style="user-select:none">
+                <table class="border-collapse" style="border-spacing:0">
                   <thead>
                     <tr class="bg-slate-100">
                       <th class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 sticky left-0 bg-slate-100 z-10">時間</th>
-                      <th v-for="d in slotDays" :key="d.date" class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 min-w-[92px]">
+                      <th v-for="d in slotAllDays" :key="d.date" class="border border-slate-200 px-1 py-2 text-xs font-semibold text-slate-700 min-w-[120px]">
                         <div>{{ d.label }}</div><div class="text-[10px] text-slate-400">{{ d.dow }}</div>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(time, ti) in slotTimeList" :key="time">
+                    <tr v-for="time in slotAllTimes" :key="time">
                       <td class="border border-slate-200 px-2 py-1 font-mono text-xs font-bold text-slate-500 sticky left-0 bg-white z-10">{{ time }}</td>
-                      <td v-for="(d, di) in slotDays" :key="d.date + time"
-                          @mousedown.prevent="startSlotSelect(di, ti)"
-                          @mouseenter="enterSlotCell(di, ti)"
-                          class="border border-slate-200 px-1 py-1 text-center cursor-pointer transition-colors"
-                          :class="slotCellClass(di, ti, d.cells[ti])">
-                        <span class="text-[10px] leading-none block">{{ slotCellText(d.cells[ti]) }}</span>
+                      <td v-for="d in slotAllDays" :key="d.date + time" class="border border-slate-200 p-0.5 align-top">
+                        <div class="flex flex-col gap-0.5 min-h-[26px]">
+                          <div
+                            v-for="dc in (slotAllCellByKey[d.date + '|' + time] || { docs: [] }).docs"
+                            :key="dc.doctorId"
+                            class="group relative px-1 py-0.5 rounded cursor-pointer transition-colors"
+                            :style="allCellStyle(dc, allCellIsSel(slotAllCellByKey[d.date + '|' + time], dc))"
+                            :title="dc.name + ' ' + ((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位')))) + (dc.booked > 0 ? ' · 已有 ' + dc.booked + ' 個預約' : '') + (dc.isOwn ? '（自己帳戶，可改）' : '（其他醫師，只可查閱）')"
+                            @mousedown.prevent="startAllSelect(slotAllCellByKey[d.date + '|' + time], dc)"
+                            @mouseenter="enterAllCell(slotAllCellByKey[d.date + '|' + time], dc)"
+                          >
+                            <span class="flex items-center gap-1 text-[10px] leading-none font-medium text-slate-600">
+                              <span v-if="dc.isOwn" class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: doctorColor(dc.doctorId) }"></span>
+                              <span class="truncate">{{ dc.name }}</span>
+                            </span>
+                          </div>
+                          <span v-if="!(slotAllCellByKey[d.date + '|' + time] || { docs: [] }).docs.length" class="text-[10px] text-slate-200 px-1">—</span>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
               <div class="flex flex-wrap gap-3 mt-3 text-xs text-slate-500">
-                <span><span class="inline-block w-3 h-3 rounded bg-emerald-200 align-middle"></span> 加入（開放）</span>
-                <span><span class="inline-block w-3 h-3 rounded bg-rose-200 align-middle"></span> 休息</span>
-                <span><span class="inline-block w-3 h-3 rounded bg-amber-200 align-middle"></span> 候診</span>
-                <span><span class="inline-block w-3 h-3 rounded bg-slate-200 align-middle"></span> 取消（空白）</span>
-                <span><span class="inline-block w-3 h-3 rounded ring-2 ring-blue-500 bg-blue-100 align-middle"></span> 已選取</span>
+                <span><span class="inline-block w-3 h-3 rounded align-middle bg-violet-300"></span> 放假</span>
+                <span><span class="inline-block w-3 h-3 rounded align-middle bg-rose-200"></span> 休息</span>
+                <span><span class="inline-block w-3 h-3 rounded align-middle bg-amber-200"></span> 候診</span>
+                <span><span class="inline-block w-3 h-3 rounded align-middle bg-emerald-200"></span> 開放</span>
+                <span><span class="inline-block w-3 h-3 rounded align-middle ring-2 ring-blue-500 bg-blue-100"></span> 已選取</span>
+                <span class="text-slate-400">拖掃揀自己帳戶嘅時段，再揀「放假／休息／候診／取消」；淨係改到自己，其他醫師只可查閱。</span>
               </div>
-              <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mt-2"><i class="fas fa-check-circle mr-1"></i>已儲存！</p>
+
+              <!-- 撳網格格：彈出該時段預約詳情 -->
+              <div v-if="slotPopover" class="fixed inset-0 z-40" @click="slotPopover = null"></div>
+              <div v-if="slotPopover" class="fixed z-50 w-64 rounded-xl shadow-xl border border-slate-200 bg-white text-sm" :style="{ left: slotPopover.x + 'px', top: slotPopover.y + 'px' }">
+                <div class="flex items-center justify-between px-3 py-2 bg-rose-50 border-b border-rose-100 rounded-t-xl">
+                  <span class="font-semibold text-rose-700"><i class="fas fa-calendar-day mr-1"></i>{{ slotPopover.date }} {{ slotPopover.time }} · {{ slotPopover.items.length }}個預約</span>
+                  <button @click="slotPopover = null" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="max-h-48 overflow-y-auto">
+                  <div v-for="b in slotPopover.items" :key="b.id" class="px-3 py-2 border-b border-slate-50 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="font-medium text-slate-800 truncate">{{ b.customer_name }}</div>
+                      <div class="text-xs text-slate-400 truncate">{{ b.service_name || '—' }} · {{ b.doctor_name }}</div>
+                    </div>
+                    <button @click="openSlotBookingDetail(b)" class="text-blue-600 text-xs shrink-0 hover:underline"><i class="fas fa-eye mr-0.5"></i>詳情</button>
+                  </div>
+                  <div v-if="!slotPopover.items.length" class="px-3 py-4 text-slate-400 text-center text-xs">呢個時段暫時冇預約。</div>
+                </div>
+              </div>
             </div>
+
+            <!-- 假期表：所揀日期範圍內嘅預約紀錄＋全部醫師請假（唔再有時段網格） -->
+            <div v-if="slotSubView==='leave'" class="space-y-6">
+              <!-- 該日／範圍嘅預約紀錄（全部醫師） -->
+              <div class="bg-white rounded-xl shadow-lg p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-day mr-2 text-rose-600"></i>預約紀錄（{{ slotApptList.length }}）</h3>
+                  <div class="text-xs text-slate-500">{{ slotRangeStart }} 至 {{ slotRangeEnd }} · 全部醫師</div>
+                </div>
+                <div v-if="!slotApptList.length" class="text-center py-8 text-slate-400">
+                  <i class="fas fa-calendar-day text-3xl mb-2"></i><p>呢段日期範圍暫無預約。</p>
+                </div>
+                <div v-else class="overflow-y-auto max-h-96 border border-slate-100 rounded-xl">
+                  <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-slate-50 z-10">
+                      <tr class="text-slate-500 text-xs">
+                        <th class="px-3 py-2 text-left">日期</th>
+                        <th class="px-3 py-2 text-left">時間</th>
+                        <th class="px-3 py-2 text-left">服務</th>
+                        <th class="px-3 py-2 text-left">醫師</th>
+                        <th class="px-3 py-2 text-left">狀態</th>
+                        <th class="px-3 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="b in slotApptList" :key="b.id" class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" @click="openSlotBookingDetail(b)">
+                        <td class="px-3 py-2 text-slate-700">{{ b.appointment_date }}</td>
+                        <td class="px-3 py-2 text-slate-700 font-mono text-xs">{{ b.appointment_time }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ b.service_name || '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700"><span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: b.bd_name }"></span>{{ b.doctor_name }}</td>
+                        <td class="px-3 py-2"><span :class="statusClass(b.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">{{ statusLabel(b.status) }}</span></td>
+                        <td class="px-3 py-2 text-right text-blue-600 text-xs"><i class="fas fa-chevron-right"></i></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 全部醫師請假列表 -->
+              <div class="bg-white rounded-xl shadow-lg p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-plane-departure mr-2 text-purple-600"></i>醫師請假（{{ slotLeaves.length }}）</h3>
+                  <div class="text-xs text-slate-500">{{ slotRangeStart }} 至 {{ slotRangeEnd }} · 全部醫師</div>
+                </div>
+                <div v-if="slotLeavesLoading" class="text-center py-8 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
+                <div v-else-if="!slotLeaves.length" class="text-center py-8 text-slate-400">
+                  <i class="fas fa-calendar-xmark text-3xl mb-2"></i><p>呢段日期範圍冇醫師請假。</p>
+                </div>
+                <div v-else class="overflow-y-auto max-h-96 border border-slate-100 rounded-xl">
+                  <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-slate-50 z-10">
+                      <tr class="text-slate-500 text-xs">
+                        <th class="px-3 py-2 text-left">日期</th>
+                        <th class="px-3 py-2 text-left">醫師</th>
+                        <th class="px-3 py-2 text-left">原因</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="lv in slotLeaves" :key="lv.id" class="border-t border-slate-100">
+                        <td class="px-3 py-2 text-slate-700">{{ lv.exception_date }}</td>
+                        <td class="px-3 py-2 text-slate-700"><span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: doctorColorByName(lv.doctor_name) }"></span>{{ lv.doctor_name }}</td>
+                        <td class="px-3 py-2 text-slate-600">{{ lv.reason || '請假' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 時段處理提示 -->
+          <div v-if="slotToast" class="fixed top-4 right-4 z-[60] rounded-xl shadow-lg border px-4 py-3 text-sm max-w-sm"
+            :class="slotToastColor === 'rose' ? 'bg-rose-50 border-rose-200 text-rose-700' : (slotToastColor === 'amber' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-700')">
+            {{ slotToast }}
           </div>
 
           <!-- ==== 醫師自助 ESS（階段三）==== -->
@@ -1338,7 +1503,7 @@
         <!-- 手機版底部導航列 -->
         <nav class="m-bnav">
           <button @click="docTab='bookings'; sidebarOpen=false" :class="docTab==='bookings' ? 'on' : ''"><i class="fas fa-list"></i><span>預約</span></button>
-          <button @click="docTab='schedule'; loadMyLeaves(); sidebarOpen=false" :class="docTab==='schedule' ? 'on' : ''"><i class="fas fa-calendar-xmark"></i><span>排程</span></button>
+          <button @click="docTab='schedule'; loadMyLeaves(); loadScheduleDocs(); sidebarOpen=false" :class="docTab==='schedule' ? 'on' : ''"><i class="fas fa-calendar-xmark"></i><span>排程</span></button>
           <button @click="docTab='attendance'; loadMyHr(); sidebarOpen=false" :class="docTab==='attendance' ? 'on' : ''"><i class="fas fa-clock"></i><span>考勤</span></button>
           <button @click="docTab='timeslots'; openMySlots(); sidebarOpen=false" :class="docTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>時段</span></button>
           <button @click="docTab='ess'; loadEss(); sidebarOpen=false" :class="docTab==='ess' ? 'on' : ''"><i class="fas fa-user-cog"></i><span>自助</span></button>
@@ -1407,8 +1572,12 @@
 
           <!-- 操作按鈕 -->
           <div class="flex flex-wrap gap-2 mt-6">
-            <button
-              v-if="selectedBooking.status === 'confirmed'"
+            <div v-if="!selectedBookingOwn" class="w-full text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+              <i class="fas fa-lock mr-1"></i>呢個係其他醫師嘅預約，只可查閱。
+            </div>
+            <template v-if="selectedBookingOwn">
+              <button
+                v-if="selectedBooking.status === 'confirmed'"
               @click="updateStatus(selectedBooking.id, 'visited'); showDetailModal = false"
               class="flex-1 min-w-[90px] bg-teal-500 text-white py-2 rounded-lg hover:bg-teal-600 text-sm"
             >
@@ -1456,6 +1625,7 @@
             >
               <i class="fas fa-file-medical mr-1"></i>病歴管理
             </button>
+            </template>
             <button
               @click="showDetailModal = false"
               class="flex-1 min-w-[90px] bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 text-sm"
@@ -1640,6 +1810,10 @@
     <script>
       const { createApp } = Vue;
 
+      const pad2 = (n) => String(n).padStart(2, '0');
+      const localDateStr = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+      const localMonthStr = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+
       createApp({
         data() {
           return {
@@ -1671,26 +1845,43 @@
             // 分頁：bookings=預約列表 / schedule=排程請假
             docTab: "bookings",
 
-            // 🗓️ 時段管理（Google 日曆式拖掃）
-            slotView: 'week', // 'week' = 一至日；'day' = 所揀範圍
-            slotRangeStart: new Date().toISOString().slice(0, 10),
-            slotRangeEnd: new Date().toISOString().slice(0, 10),
-            slotCalendarMonth: new Date().toISOString().slice(0, 7),
+            // 🗓️ 時段管理（揀日期範圍 → 顯示全部醫師嘅預約＋假期；唔再揀單一醫師）
+            slotView: 'day', // 'day' = 所揀範圍（預設）；'week' 為舊制一至日
+            slotSubView: 'booking', // 'booking' = 預約模式（預約清單）／'leave' = 假期表模式（預約紀錄＋假期）
+            slotDoctorId: "", // （保留向後相容；UI 唔再揀，一律顯示全部醫師）
+            doctors: [], // [{ id, name, specialty }]
+            doctorColors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'],
+            slotApptByDate: {}, // 預約模式：{ 'YYYY-MM-DD': [booking, ...] }（已按月／範圍擷取）
+            slotMonthAppt: {}, // 月曆每日期盼數（跟選擇醫師）{ date: count }
+            slotMonthApptDocs: {}, // 月曆每日期邊位醫師有預約（全部醫師）{ date: ['陳世昌', ...] }
+            slotPopover: null, // { x, y, date, time, items } 撳有預約嘅網格格 → 彈出該時段預約詳情
+            slotToast: "",
+            slotToastColor: 'slate',
+            slotToastTimer: null,
+            slotRangeStart: localDateStr(new Date()),
+            slotRangeEnd: localDateStr(new Date()),
+            slotCalendarMonth: localMonthStr(new Date()),
             slotCalendar: {}, // { 'YYYY-MM-DD': { doctorId: { availableSlots, totalSlots, working, leave } } }
-            slotDays: [], // [{ date, label, dow, cells:[{time,status,booked,capacity}] }]
+            slotDays: [], // [{ date, label, dow, cells:[{time,status,booked,capacity}] }]（網格已停用，保留向後相容）
             slotTimeList: [], // ['10:30', ...]
-            slotBusy: false,
+            slotAllGrid: [], // 全部醫師網格：[{ date, time, docs:[{ doctorId, name, isOwn, status, booked, capacity }] }]
+            slotSel: new Set(), // 拖掃選取（key）
+            slotSelCount: 0,
+            slotDirty: new Set(),
+            slotDirtyCount: 0,
             slotSelecting: false,
             slotAnchor: null,
             slotHead: null,
-            slotSel: new Set(),
-            slotDirty: new Set(),
-            slotSelCount: 0,
-            slotDirtyCount: 0,
+            slotAllSelecting: false,
+            allDirtyStatus: new Map(),
+            slotLeaves: [], // 假期表：所揀範圍內嘅全部醫師請假 [{ id, date, doctor_id, doctor_name, reason }]
+            slotLeavesLoading: false,
+            slotBusy: false,
+            calDragging: false,
             slotSavedFlash: false,
 
             // 排程／請假
-            leaveForm: { date: "", reason: "", notify: true, cancel: false },
+            leaveForm: { date: "", reason: "", notify: true, cancel: false, doctorUserId: "" },
             leaveBusy: false,
             leaveResult: null,
             myLeaves: [],
@@ -1748,10 +1939,52 @@
         },
 
         computed: {
+          isOwnDoctor() {
+            return !!(this.doctorInfo && this.slotDoctorId && Number(this.slotDoctorId) === Number(this.doctorInfo.id));
+          },
+          selectedBookingOwn() {
+            return !!(this.selectedBooking && this.doctorUser && Number(this.selectedBooking.doctor_user_id) === Number(this.doctorUser.id));
+          },
+          slotApptList() {
+            if (!this.slotRangeStart || !this.slotRangeEnd) return [];
+            const ids = this.slotDoctorId ? [Number(this.slotDoctorId)] : null;
+            const out = [];
+            for (const date of Object.keys(this.slotApptByDate || {})) {
+              if (date < this.slotRangeStart || date > this.slotRangeEnd) continue;
+              for (const b of this.slotApptByDate[date]) {
+                if (ids && !ids.includes(Number(b.doctor_user_id))) continue;
+                out.push({ ...b, bd_name: this.doctorColorByName(b.doctor_name) });
+              }
+            }
+            return out.sort((a, b) => (a.appointment_date.localeCompare(b.appointment_date) || a.appointment_time.localeCompare(b.appointment_time)));
+          },
+          // 🆕 全部醫師網格：分組（日期欄／時間列）
+          slotAllDays() {
+            const seen = [], keys = new Set();
+            for (const r of (this.slotAllGrid || [])) {
+              if (!keys.has(r.date)) { keys.add(r.date); seen.push(r.date); }
+            }
+            const wn = ['日', '一', '二', '三', '四', '五', '六'];
+            return seen.map(d => {
+              const dt = new Date(d + 'T00:00:00');
+              return { date: d, label: d.slice(5), dow: '週' + wn[dt.getDay()] };
+            });
+          },
+          slotAllTimes() {
+            const seen = [], keys = new Set();
+            for (const r of (this.slotAllGrid || [])) {
+              if (!keys.has(r.time)) { keys.add(r.time); seen.push(r.time); }
+            }
+            return seen;
+          },
+          slotAllCellByKey() {
+            const m = {};
+            for (const r of (this.slotAllGrid || [])) m[r.date + '|' + r.time] = r;
+            return m;
+          },
           isPartTime() {
             return !!(this.doctorUser && this.doctorUser.employment_type === 'part');
-          },
-          currentDateStr() {
+          },          currentDateStr() {
             return new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
           },
           todayStr() {
@@ -1949,8 +2182,83 @@
           // ==================== 醫師時段管理 ====================
           // ==================== 時段管理（Google 日曆式拖掃）====================
           openMySlots() {
+            // 不再自動揀醫師；一律顯示全部
+            this.loadAllData();
+          },
+          async setSlotSubView(view) {
+            this.slotSubView = view;
+            if (view === 'booking') {
+              await this.loadSlotAllGrid();
+              await this.syncAppointments();
+            } else {
+              this.loadSlotLeaves();
+            }
             this.loadSlotCalendar();
-            this.loadSlotGrid();
+          },
+          onSlotDoctorChange() {
+            if (this.slotSubView === 'booking') { this.loadSlotAllGrid(); this.syncAppointments(); }
+            else this.loadSlotLeaves();
+            this.loadSlotCalendar();
+          },
+          onSlotRangeChange() {
+            if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart;
+            if (this.slotSubView === 'booking') { this.loadSlotAllGrid(); this.syncAppointments(); }
+            else this.loadSlotLeaves();
+            this.loadSlotCalendar();
+          },
+          // 預約模式：擷取範圍內預約清單（全部 or 指定醫師）
+          async syncAppointments() {
+            if (!this.slotRangeStart || !this.slotRangeEnd) return;
+            try {
+              const did = this.slotDoctorId ? `&doctorId=${this.slotDoctorId}` : '';
+              const res = await fetch(`/api/bookings/doctor-appointments/range?start=${this.slotRangeStart}&end=${this.slotRangeEnd}${did}`);
+              if (res.ok) {
+                const data = await res.json();
+                const map = {};
+                for (const b of (data.bookings || [])) (map[b.appointment_date] = map[b.appointment_date] || []).push(b);
+                this.slotApptByDate = map;
+              }
+            } catch (e) { console.error('載入預約清單失敗', e); }
+          },
+          // 假期表：載入所揀範圍內全部醫師嘅請假紀錄
+          async loadSlotLeaves() {
+            if (!this.slotRangeStart || !this.slotRangeEnd) { this.slotLeaves = []; return; }
+            this.slotLeavesLoading = true;
+            try {
+              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${this.slotRangeStart}&end=${this.slotRangeEnd}`);
+              if (!res.ok) { this.slotLeaves = []; return; }
+              const data = await res.json();
+              const docMap = {};
+              (data.doctors || []).forEach(d => { docMap[d.id] = d.name; });
+              const leaves = [];
+              for (const [date, dayDocs] of Object.entries(data.days || {})) {
+                for (const [docId, info] of Object.entries(dayDocs)) {
+                  if (info.leave) {
+                    leaves.push({ id: `${date}-${docId}`, exception_date: date, doctor_id: Number(docId), doctor_name: docMap[Number(docId)] || `醫師${docId}` });
+                  }
+                }
+              }
+              leaves.sort((a, b) => a.exception_date.localeCompare(b.exception_date) || a.doctor_name.localeCompare(b.doctor_name));
+              this.slotLeaves = leaves;
+            } catch (e) { this.slotLeaves = []; }
+            finally { this.slotLeavesLoading = false; }
+          },
+          openSlotBookingDetail(b) {
+            this.selectedBooking = b;
+            this.showDetailModal = true;
+          },
+          doctorName(id) {
+            return (this.doctors.find(d => Number(d.id) === Number(id)) || {}).name || '';
+          },
+          doctorColorByName(name) {
+            const d = this.doctors.find(x => x.name === name);
+            return d ? this.doctorColor(Number(d.id)) : '#94a3b8';
+          },
+          slotToastNotif(msg, color = 'slate') {
+            this.slotToast = msg;
+            this.slotToastColor = color;
+            if (this.slotToastTimer) clearTimeout(this.slotToastTimer);
+            this.slotToastTimer = setTimeout(() => { this.slotToast = ""; }, 6000);
           },
           slotCalendarDays() {
             const [y, m] = this.slotCalendarMonth.split('-').map(Number);
@@ -1959,14 +2267,24 @@
             const daysInMonth = new Date(y, m, 0).getDate();
             const cells = [];
             for (let i = 0; i < startDow; i++) cells.push(null);
-            const myId = this.doctorInfo ? this.doctorInfo.id : null;
+            const showDocs = this.slotDoctorId ? [this.slotDoctorId] : this.doctors.map(d => d.id);
             for (let dN = 1; dN <= daysInMonth; dN++) {
               const date = `${this.slotCalendarMonth}-${String(dN).padStart(2, '0')}`;
-              const info = (this.slotCalendar || {})[date];
-              const myInfo = myId != null ? (info || {})[myId] : null;
-              cells.push({ date, day: dN, working: !!(myInfo && myInfo.working && !myInfo.leave), leave: !!(myInfo && myInfo.leave) });
+              const dayInfo = (this.slotCalendar || {})[date] || {};
+              const bars = showDocs.map(id => {
+                const info = dayInfo[id];
+                if (info && (info.working || info.leave)) {
+                  return { id: Number(id), color: info.leave ? '#9ca3af' : this.doctorColor(Number(id)), leave: !!info.leave, count: info.availableSlots };
+                }
+                return null;
+              }).filter(Boolean);
+              cells.push({ date, day: dN, bars, apptCount: (this.slotMonthAppt[date] || 0) });
             }
             return cells;
+          },
+          doctorColor(id) {
+            const idx = this.doctors.findIndex(d => d.id === id);
+            return this.doctorColors[(idx >= 0 ? idx : 0) % this.doctorColors.length];
           },
           prevSlotMonth() {
             const [y, m] = this.slotCalendarMonth.split('-').map(Number);
@@ -1981,24 +2299,59 @@
             this.loadSlotCalendar();
           },
           async loadSlotCalendar() {
-            if (!this.doctorInfo) return;
             try {
               const [y, m] = this.slotCalendarMonth.split('-').map(Number);
               const start = `${this.slotCalendarMonth}-01`;
               const lastDay = new Date(y, m, 0).getDate();
               const end = `${this.slotCalendarMonth}-${String(lastDay).padStart(2, '0')}`;
               const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${start}&end=${end}`);
-              if (res.ok) { const data = await res.json(); this.slotCalendar = data.days || {}; }
+              if (res.ok) {
+                const data = await res.json();
+                if (data.doctors && data.doctors.length) this.doctors = data.doctors;
+                this.slotCalendar = data.days || {};
+              }
+              // 月曆「預約數」badge + 「有預約嘅醫師名」清單（全部醫師）
+              const did = this.slotDoctorId ? `&doctorId=${this.slotDoctorId}` : '';
+              const ares = await fetch(`/api/bookings/doctor-appointments/range?start=${start}&end=${end}${did}`);
+              if (ares.ok) {
+                const adata = await ares.json();
+                const cnt = {};
+                const docs = {};
+                for (const b of (adata.bookings || [])) {
+                  cnt[b.appointment_date] = (cnt[b.appointment_date] || 0) + 1;
+                  if (b.doctor_name) {
+                    const darr = (docs[b.appointment_date] = docs[b.appointment_date] || []);
+                    if (!darr.includes(b.doctor_name)) darr.push(b.doctor_name);
+                  }
+                }
+                this.slotMonthAppt = cnt;
+                this.slotMonthApptDocs = docs;
+              }
             } catch (e) { console.error('載入月曆失敗', e); }
           },
           pickSlotDay(date) {
             this.slotRangeStart = date;
             this.slotRangeEnd = date;
-            this.loadSlotGrid();
+            if (this.slotSubView === 'booking') { this.loadSlotAllGrid(); this.syncAppointments(); }
+            else this.loadSlotLeaves();
+            this.loadSlotCalendar();
           },
-          onSlotRangeChange() {
-            if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart;
-            this.loadSlotGrid();
+          startCalSelect(date) {
+            this.calDragging = true;
+            this.slotRangeStart = date;
+            this.slotRangeEnd = date;
+          },
+          extendCalSelect(date) {
+            if (!this.calDragging) return;
+            if (date < this.slotRangeStart) this.slotRangeStart = date;
+            else if (date > this.slotRangeEnd) this.slotRangeEnd = date;
+          },
+          endCalSelect() {
+            if (!this.calDragging) return;
+            this.calDragging = false;
+            if (this.slotSubView === 'booking') { this.loadSlotAllGrid(); this.syncAppointments(); }
+            else this.loadSlotLeaves();
+            this.loadSlotCalendar();
           },
           slotDaysInRange() {
             const start = new Date(this.slotRangeStart + 'T00:00:00');
@@ -2006,16 +2359,17 @@
               const dow = (start.getDay() + 6) % 7;
               const mon = new Date(start); mon.setDate(start.getDate() - dow);
               const arr = [];
-              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(dd.toISOString().slice(0, 10)); }
+              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(localDateStr(dd)); }
               return arr;
             }
             const end = new Date(this.slotRangeEnd + 'T00:00:00');
             const arr = []; let cur = new Date(start);
-            while (cur <= end && arr.length < 31) { arr.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+            while (cur <= end && arr.length < 31) { arr.push(localDateStr(cur)); cur.setDate(cur.getDate() + 1); }
             return arr;
           },
           async loadSlotGrid() {
-            if (!this.doctorInfo) return;
+            const myId = this.slotDoctorId ? parseInt(this.slotDoctorId, 10) : null;
+            if (myId == null) { this.slotDays = []; this.slotTimeList = []; this.slotSel = new Set(); this.slotDirty = new Set(); this.slotSelCount = 0; this.slotDirtyCount = 0; return; }
             this.slotBusy = true;
             this.slotSel = new Set(); this.slotDirty = new Set();
             this.slotSelCount = 0; this.slotDirtyCount = 0;
@@ -2025,7 +2379,6 @@
               const firstJson = await (await fetch(`/api/bookings/doctor-time-slots/${days[0]}`)).json();
               const timeList = [...(firstJson.morningSlots || []), ...(firstJson.afternoonSlots || [])];
               this.slotTimeList = timeList;
-              const myId = this.doctorInfo.id;
               const wn = ['日', '一', '二', '三', '四', '五', '六'];
               const out = [];
               for (let i = 0; i < days.length; i++) {
@@ -2045,7 +2398,95 @@
             } catch (e) { console.error('載入時段網格失敗', e); }
             finally { this.slotBusy = false; }
           },
+          // 🆕 全部醫師網格（月＝日期／欄＝時間）：每個格顯示各位醫師嘅狀態；淨係自己帳戶可修改
+          async loadSlotAllGrid() {
+            const myId = this.doctorInfo ? Number(this.doctorInfo.id) : null;
+            const days = this.slotDaysInRange();
+            this.slotBusy = true;
+            this.slotSel = new Set(); this.slotDirty = new Set();
+            this.slotSelCount = 0; this.slotDirtyCount = 0;
+            try {
+              if (!days.length) { this.slotAllGrid = []; this.slotBusy = false; return; }
+              const wn = ['日', '一', '二', '三', '四', '五', '六'];
+              if (!this.doctors.length) {
+                try {
+                  const r0 = await fetch(`/api/bookings/doctor-time-slots/range?start=${days[0]}&end=${days[days.length - 1]}`);
+                  const d0 = await r0.json();
+                  if (d0.doctors && d0.doctors.length) this.doctors = d0.doctors;
+                } catch (e) {}
+              }
+              const docRows = this.doctors.length ? this.doctors : [];
+              const result = [];
+              for (let i = 0; i < days.length; i++) {
+                const date = days[i];
+                const r = await fetch(`/api/bookings/doctor-time-slots/${date}`);
+                const djson = r.ok ? await r.json() : { slots: {} };
+                const timeSlots = [...(djson.morningSlots || []), ...(djson.afternoonSlots || [])];
+                if (i === 0) this.slotTimeList = timeSlots;
+                for (const time of timeSlots) {
+                  const docs = [];
+                  for (const doc of docRows) {
+                    const ds = ((djson.slots || {})[time] || {})[doc.id] || {};
+                    const status = ds.status || (ds.is_available === false ? 'blank' : 'open');
+                    docs.push({
+                      doctorId: Number(doc.id),
+                      name: doc.name,
+                      isOwn: myId != null && Number(doc.id) === myId,
+                      status,
+                      booked: ds.current_bookings || 0,
+                      capacity: ds.max_capacity || 1,
+                    });
+                  }
+                  result.push({ date, time, docs });
+                }
+              }
+              this.slotAllGrid = result;
+            } catch (e) { console.error('載入全部醫師網格失敗', e); }
+            finally { this.slotBusy = false; }
+          },
+          cellPress(di, ti, ev) {
+            const cell = this.slotDays[di] && this.slotDays[di].cells[ti];
+            if (!cell) return;
+            if (this.slotSubView === 'booking' || cell.booked > 0) {
+              this.openCellPopover(di, ti, ev);
+              return;
+            }
+            if (!this.isOwnDoctor) { this.slotToastNotif('其他醫師嘅時段只可查閱，唔可以修改。', 'amber'); return; }
+            this.startSlotSelect(di, ti);
+          },
+          async openCellPopover(di, ti, ev) {
+            const day = this.slotDays[di];
+            if (!day) return;
+            const cell = day.cells[ti];
+            if (!cell || cell.booked < 1) {
+              this.slotPopover = null;
+              this.slotToastNotif(`${day.date} ${cell ? cell.time : ''} 暫時冇預約。`);
+              return;
+            }
+            const date = day.date;
+            const did = `&doctorId=${this.slotDoctorId}`;
+            try {
+              const res = await fetch(`/api/bookings/doctor-appointments/range?start=${date}&end=${date}${did}`);
+              if (res.ok) {
+                const data = await res.json();
+                const items = (data.bookings || []).filter(b => b.appointment_time === cell.time);
+                if (items.length) {
+                  const map = { ...(this.slotApptByDate || {}) };
+                  map[date] = items;
+                  this.slotApptByDate = map;
+                  this.slotPopover = {
+                    x: Math.min(ev.clientX + 12, window.innerWidth - 280),
+                    y: Math.min(ev.clientY + 12, window.innerHeight - 240),
+                    date, time: cell.time, items
+                  };
+                } else {
+                  this.slotToastNotif(`${date} ${cell.time} 目前冇預約。`);
+                }
+              }
+            } catch (e) { console.error('載入該時段預約失敗', e); }
+          },
           startSlotSelect(di, ti) {
+            if (this.slotSubView === 'booking' || !this.isOwnDoctor) return;
             this.slotSelecting = true;
             this.slotAnchor = { di, ti };
             this.slotHead = { di, ti };
@@ -2053,7 +2494,7 @@
             this.slotSelCount = 1;
           },
           enterSlotCell(di, ti) {
-            if (!this.slotSelecting) return;
+            if (!this.slotSelecting || this.slotSubView === 'booking') return;
             this.slotHead = { di, ti };
             this.computeSel();
           },
@@ -2064,11 +2505,16 @@
             const d0 = Math.min(a.di, b.di), d1 = Math.max(a.di, b.di);
             const t0 = Math.min(a.ti, b.ti), t1 = Math.max(a.ti, b.ti);
             const set = new Set();
-            for (let di = d0; di <= d1; di++) for (let ti = t0; ti <= t1; ti++) set.add(di + '-' + ti);
+            for (let di = d0; di <= d1; di++) for (let ti = t0; ti <= t1; ti++) {
+              const cell = this.slotDays[di] && this.slotDays[di].cells[ti];
+              if (cell && cell.booked > 0) continue; // 有預約嘅格唔列入拖掃選取
+              set.add(di + '-' + ti);
+            }
             this.slotSel = set;
             this.slotSelCount = set.size;
           },
           applySlotStatus(status) {
+            if (this.slotSubView !== 'leave' || !this.isOwnDoctor) return;
             if (!this.slotSel.size) return;
             this.slotSel.forEach(key => {
               const [di, ti] = key.split('-').map(Number);
@@ -2089,14 +2535,20 @@
           },
           slotCellText(cell) {
             if (!cell) return '';
-            if (cell.booked > 0) return '約' + cell.booked;
             if (cell.status === 'open') return '開';
             if (cell.status === 'rest') return '休';
             if (cell.status === 'waiting') return '候';
             return '×';
           },
+          slotCellTitle(cell) {
+            if (!cell) return '';
+            if (cell.booked > 0) return `${cell.time} 已有 ${cell.booked} 個預約，撳一下睇詳情`;
+            const st = { open: '開放', rest: '休息', waiting: '候診' }[cell.status] || '空位';
+            return `${cell.time} ${st}`;
+          },
           async confirmSlotChanges() {
-            if (!this.doctorInfo) return;
+            if (!this.slotDoctorId || !this.isOwnDoctor || this.slotSubView !== 'leave') return;
+            const doctorId = parseInt(this.slotDoctorId, 10);
             this.slotBusy = true;
             try {
               const slots = [];
@@ -2104,7 +2556,7 @@
                 const [di, ti] = key.split('-').map(Number);
                 const day = this.slotDays[di]; if (!day) return;
                 const cell = day.cells[ti]; if (!cell) return;
-                slots.push({ date: day.date, time: cell.time, doctor_id: this.doctorInfo.id, status: cell.status, max_capacity: cell.capacity });
+                slots.push({ date: day.date, time: cell.time, doctor_id: doctorId, status: cell.status, max_capacity: cell.capacity });
               });
               const res = await fetch('/api/bookings/doctor-time-slots/batch', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slots })
@@ -2120,6 +2572,136 @@
             finally { this.slotBusy = false; }
           },
 
+          // ============ 全部醫師網格（預約視圖）：拖掃揀自己帳戶嘅時段 ============
+          allCellKey(row, dc) {
+            return `${row.date}|${row.time}|${dc.doctorId}`;
+          },
+          allCellIsSel(row, dc) {
+            return this.slotSel.has(this.allCellKey(row, dc));
+          },
+          allCellStatusDoc(row, dc) {
+            const key = this.allCellKey(row, dc);
+            const over = this.slotDirty.has(key);
+            return over ? (this.allDirtyStatus.get(key) || dc.status) : dc.status;
+          },
+          allCellStyle(dc, sel) {
+            let s = {};
+            if (dc.status === 'leave') {
+              s = { backgroundColor: 'rgba(139,92,246,0.22)', border: '1px solid rgba(139,92,246,0.55)' };
+            } else if (dc.status === 'open') {
+              s = { backgroundColor: 'rgba(16,185,129,0.20)', border: '1px solid rgba(16,185,129,0.5)' };
+            } else if (dc.status === 'rest') {
+              s = { backgroundColor: 'rgba(244,63,94,0.18)', border: '1px solid rgba(244,63,94,0.5)' };
+            } else if (dc.status === 'waiting') {
+              s = { backgroundColor: 'rgba(245,158,11,0.22)', border: '1px solid rgba(245,158,11,0.5)' };
+            } else {
+              s = { backgroundColor: 'rgba(148,163,184,0.15)', border: '1px solid rgba(148,163,184,0.4)' };
+            }
+            if (sel) { s = { backgroundColor: 'rgba(59,130,246,0.35)', border: '2px solid #3b82f6' }; }
+            return s;
+          },
+          startAllSelect(row, dc) {
+            if (this.slotSubView !== 'booking') return;
+            if (!dc.isOwn) { this.slotToastNotif('其他醫師嘅時段只可查閱，唔可以修改。', 'amber'); return; }
+            if (!this.slotAllSelecting) {
+              this.slotAllSelecting = true;
+              this.slotAllAnchor = row.time;
+              this.slotSel = new Set([this.allCellKey(row, dc)]);
+              this.slotSelCount = 1;
+            } else {
+              this.slotSel.add(this.allCellKey(row, dc));
+              this.slotSelCount = this.slotSel.size;
+            }
+          },
+          enterAllCell(row, dc) {
+            if (!this.slotAllSelecting || this.slotSubView !== 'booking') return;
+            if (!dc.isOwn) return;
+            this.slotSel.add(this.allCellKey(row, dc));
+            this.slotSelCount = this.slotSel.size;
+          },
+          endAllSelect() {
+            if (this.slotAllSelecting) { this.slotAllSelecting = false; }
+          },
+          async openAllPopover(row, dc) {
+            try {
+              const res = await fetch(`/api/bookings/doctor-appointments/range?start=${row.date}&end=${row.date}&doctorId=${dc.doctorId}`);
+              if (res.ok) {
+                const data = await res.json();
+                const items = (data.bookings || []).filter(b => b.appointment_time === row.time && (b.doctor_name === dc.name || String(b.doctor_user_id) === String(dc.doctorId)));
+                this.slotPopover = {
+                  x: Math.min(this._allPopX || 100, window.innerWidth - 300),
+                  y: 200,
+                  date: row.date, time: row.time, items
+                };
+              } else { this.slotToastNotif(`${row.time} 暫時冇預約。`); }
+            } catch (e) { console.error('載入該時段預約失敗', e); }
+          },
+          async applyAllSlotStatus(status) {
+            if (this.slotSubView !== 'booking' || !this.slotSel.size) return;
+            if (!this.allDirtyStatus) this.allDirtyStatus = new Map();
+            const affected = [];
+            this.slotSel.forEach(key => {
+              const [date, time, did] = key.split('|');
+              if (Number(did) !== Number(this.doctorInfo && this.doctorInfo.id)) return;
+              const cell = this.slotAllGrid.find(r => r.date === date && r.time === time);
+              if (!cell) return;
+              const dc = cell.docs.find(x => String(x.doctorId) === String(did));
+              if (!dc) return;
+              if (dc.booked > 0) affected.push({ date, time, booked: dc.booked });
+            });
+            // 放假／休息撞正有預約 → 提醒
+            if ((status === 'leave' || status === 'rest') && affected.length) {
+              const warn = `你嘅 ${affected.length} 個時段已有預約，揀「${status === 'leave' ? '放假' : '休息'}」會令該時段暫停接受預約。\n已經有預約嘅時段：\n` +
+                affected.map(a => `• ${a.date} ${a.time}（${a.booked} 筆預約）`).join('\n') +
+                `\n\n確定要繼續？現有預約唔會自動取消，病人仍可應診，但新客唔可以再約呢啲時段。`;
+              if (!confirm(warn)) { this.slotSel = new Set(); this.slotAllSelecting = false; this.slotSelCount = 0; return; }
+            }
+            this.slotSel.forEach(key => {
+              const [date, time, did] = key.split('|');
+              if (Number(did) !== Number(this.doctorInfo && this.doctorInfo.id)) return;
+              const cell = this.slotAllGrid.find(r => r.date === date && r.time === time);
+              if (!cell) return;
+              const dc = cell.docs.find(x => String(x.doctorId) === String(did));
+              if (!dc) return;
+              dc.status = status;
+              this.allDirtyStatus.set(key, status);
+              this.slotDirty.add(key);
+            });
+            this.slotSel = new Set(); this.slotAllSelecting = false;
+            this.slotSelCount = 0; this.slotDirtyCount = this.slotDirty.size;
+          },
+          async confirmAllSlotChanges() {
+            if (!this.slotDirty.size || this.slotSubView !== 'booking') return;
+            this.slotBusy = true;
+            try {
+              const slots = [];
+              this.slotDirty.forEach(key => {
+                const [date, time, did] = key.split('|');
+                const cell = this.slotAllGrid.find(r => r.date === date && r.time === time);
+                if (!cell) return;
+                const dc = cell.docs.find(x => String(x.doctorId) === String(did));
+                if (!dc) return;
+                slots.push({ date, time, doctor_id: Number(did) || this.doctorInfo.id, status: dc.status, max_capacity: dc.capacity });
+              });
+              const res = await fetch('/api/bookings/doctor-time-slots/batch', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slots })
+              });
+              if (res.ok) {
+                this.slotDirty = new Set(); this.allDirtyStatus = new Map();
+                this.slotDirtyCount = 0; this.slotSavedFlash = true;
+                setTimeout(() => { this.slotSavedFlash = false; }, 2500);
+                this.loadAllData();
+              } else { alert('儲存失敗'); }
+            } catch (e) { alert('儲存失敗：' + e.message); }
+            finally { this.slotBusy = false; }
+          },
+          loadAllData() {
+            this.loadSlotCalendar();
+            this.loadSlotAllGrid();
+            this.syncAppointments();
+            this.loadSlotLeaves();
+          },
+
           // ==================== 排程／請假 ====================
           weekdayLabel(ds) {
             if (!ds) return "";
@@ -2127,6 +2709,16 @@
             const d = new Date(ds + "T00:00:00");
             if (isNaN(d.getTime())) return "";
             return "星期" + names[d.getDay()];
+          },
+
+          async loadScheduleDocs() {
+            try {
+              const res = await fetch(`/api/bookings/doctor-time-slots/range?start=${this.slotCalendarMonth}-01&end=${this.slotCalendarMonth}-28`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.doctors && data.doctors.length) this.doctors = data.doctors;
+              }
+            } catch (e) { console.error('載入醫師列表失敗', e); }
           },
 
           async loadMyLeaves() {
@@ -2146,7 +2738,8 @@
 
           async submitLeave() {
             if (!this.leaveForm.date) { alert("請選擇請假日期"); return; }
-            if (!confirm(`確定申請 ${this.leaveForm.date} 請假？`)) return;
+            const lvName = this.leaveForm.doctorUserId ? this.doctorName(this.leaveForm.doctorUserId) : (this.doctorInfo ? this.doctorInfo.name : '自己');
+            if (!confirm(`確定為 ${lvName} 申請 ${this.leaveForm.date} 請假？`)) return;
             this.leaveBusy = true;
             this.leaveResult = null;
             try {
@@ -2155,6 +2748,7 @@
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
                 body: JSON.stringify({
                   exception_date: this.leaveForm.date,
+                  doctorUserId: this.leaveForm.doctorUserId || undefined,
                   reason: this.leaveForm.reason || "",
                   notifyWhatsapp: this.leaveForm.notify,
                   cancelBookings: this.leaveForm.cancel,
@@ -2164,8 +2758,8 @@
               if (resp.ok && data.ok) {
                 this.leaveResult = {
                   ok: true,
-                  message: `${data.exception_date} 請假已登記。` +
-                    (data.affected_count ? `該日你有 ${data.affected_count} 筆預約受影響` + (data.cancelled ? `，已自動取消 ${data.cancelled} 筆。` : "，如需改期請聯絡職員。") : "該日冇預約受影響。"),
+                  message: `${data.exception_date} ${lvName} 請假已登記。` +
+                    (data.affected_count ? `該日 ${lvName} 有 ${data.affected_count} 筆預約受影響` + (data.cancelled ? `，已自動取消 ${data.cancelled} 筆。` : "，如需改期請聯絡職員。") : "該日冇預約受影響。"),
                   affected: data.affected || [],
                   notified: data.notified,
                 };
@@ -2174,6 +2768,7 @@
                 this.leaveForm.cancel = false;
                 this.loadMyLeaves();
                 this.loadBookings();
+                this.loadSlotCalendar();
               } else {
                 this.leaveResult = { ok: false, message: data.error || "申請失敗" };
               }

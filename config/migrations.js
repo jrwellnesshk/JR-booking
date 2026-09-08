@@ -858,6 +858,42 @@ function runMigrations(db) {
       }
     });
   });
+
+  // ==================================================================
+  // 🔗 醫師帳戶 ↔ doctors 表自動連結（自癒）
+  // 若醫生登入帳戶冇對應 doctors 記錄（user_id 為 NULL／冇匹配），
+  // 先按姓名匹配現有醫師，冇就自動建立連結，令醫生入口嘅
+  // 時段管理／返工月曆／預約列表正常運作（否則 doctorInfo 一直係空）。
+  // ==================================================================
+  db.all("SELECT id, name FROM users WHERE role='doctor' ORDER BY id", (e1, docUsers) => {
+    if (e1 || !docUsers || !docUsers.length) return;
+    let di = 0;
+    const next = () => {
+      const u = docUsers[di++];
+      if (!u) return;
+      db.get("SELECT id FROM doctors WHERE user_id=? LIMIT 1", [u.id], (e2, linked) => {
+        if (e2) return next();
+        if (linked) return next();
+        db.get("SELECT id FROM doctors WHERE name=? AND is_active=1 LIMIT 1", [u.name], (e3, matched) => {
+          if (e3) return next();
+          if (matched) {
+            db.run("UPDATE doctors SET user_id=? WHERE id=?", [u.id, matched.id], (e4) => {
+              if (e4) return next();
+              console.log(`✅ 醫師帳戶「${u.name}」已關聯診所醫師（id=${matched.id}）`);
+              next();
+            });
+          } else {
+            db.run("INSERT INTO doctors (name, specialty, is_active, user_id) VALUES (?, '醫師', 1, ?)", [u.name, u.id], function (e5) {
+              if (e5) return next();
+              console.log(`✅ 醫師帳戶「${u.name}」已建立診所醫師記錄（id=${this.lastID}）`);
+              next();
+            });
+          }
+        });
+      });
+    };
+    next();
+  });
 }
 
 module.exports = { runMigrations };

@@ -265,7 +265,7 @@ async function waitServer(base) {
     await context.close();
   }
 
-  // 2) Doctor：時段 grid
+  // 2) Doctor：時段管理（網格＋日曆顯示醫師名＋假期表模式）
   if (doctor) {
     const { context, page } = await authPage(browser, doctor);
     const getErrs = await collectErrors(page);
@@ -273,11 +273,18 @@ async function waitServer(base) {
     await sleep(2500);
     await clickByText(page, '時段管理');
     await sleep(3000);
-    const dayD = await clickCalendarDay(page);
-    await sleep(4000);
-    const cellsD = await countGridCells(page);
-    out.push({ role: 'doctor', view: 'timeslots', clickedDay: dayD, tdCount: cellsD, errors: getErrs() });
-    console.log('doctor timeslots tdCount=', cellsD, 'day=', dayD);
+    let dayD = null, hasGrid = false, hasLeaveMode = false, hasLeaveSections = false;
+    try { dayD = await clickCalendarDay(page); } catch (e) {}
+    await sleep(3000);
+    hasGrid = (await countGridCells(page)) > 0;
+    hasLeaveMode = await clickByText(page, '假期表');
+    await sleep(2500);
+    hasLeaveSections = await page.evaluate(() => {
+      const h3s = [...document.querySelectorAll('h3')].map((h) => h.textContent.trim());
+      return h3s.some((t) => t.includes('預約紀錄')) && h3s.some((t) => t.includes('醫師請假'));
+    });
+    out.push({ role: 'doctor', view: 'timeslots', clickedDay: dayD, hasGrid, hasLeaveMode, hasLeaveSections, errors: getErrs() });
+    console.log('doctor timeslots', JSON.stringify({ dayD, hasGrid, hasLeaveMode, hasLeaveSections }));
     await context.close();
   }
 
@@ -352,7 +359,7 @@ async function waitServer(base) {
     ['available-children ok', out.some((o) => o.test === 'available-children' && o.ok)],
     ['admin family tree', out.some((o) => o.role === 'admin' && o.view === 'family-connect' && o.treeVisible && o.childCount > 0)],
     ['admin timeslots grid', out.some((o) => o.role === 'admin' && o.view === 'timeslots' && o.tdCount > 0)],
-    ['doctor timeslots grid', out.some((o) => o.role === 'doctor' && o.view === 'timeslots' && o.tdCount > 0)],
+    ['doctor timeslots grid', out.some((o) => o.role === 'doctor' && o.view === 'timeslots' && o.hasGrid && o.hasLeaveMode && o.hasLeaveSections)],
     ['staff timeslots grid', out.some((o) => o.role === 'staff' && o.view === 'timeslots' && o.tdCount > 0)],
     ['customer coupons memberNo', out.some((o) => o.role === 'customer' && o.view === 'coupons' && o.memberNo)],
     ['customer coupons redeemInput', out.some((o) => o.role === 'customer' && o.view === 'coupons' && o.redeemInput)],

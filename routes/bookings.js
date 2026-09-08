@@ -1384,8 +1384,11 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   // ===== 醫師時段管理 API =====
   
   // 獲取指定日期的醫師時段狀態
-  router.get("/doctor-time-slots/:date", (req, res) => {
+  router.get("/doctor-time-slots/:date", (req, res, next) => {
     const { date } = req.params;
+
+    // 子路由（如 range）唔係日期 → 交俾後續 handler 處理
+    if (date === 'range' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return next();
     
     // 先獲取診所設定的營業時間
     db.all("SELECT setting_key, setting_value FROM clinic_settings", (err, settingsRows) => {
@@ -1477,6 +1480,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
                       is_available: dbSlot ? dbSlot.is_available === 1 : true,
                       current_bookings: booking ? booking.count : 0,
                       max_capacity: dbSlot ? dbSlot.max_capacity : 1, // 每個醫師每時段預設最多1人
+                      status: dbSlot ? (dbSlot.status || 'open') : 'open',
                       notes: dbSlot ? dbSlot.notes : ''
                     };
                   });
@@ -1532,6 +1536,44 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     });
   });
 
+  // 🆕 診所月曆：一段日期內嘅預約（月曆預約數＋範圍清單，可篩選醫師）｜管理員／醫師／員工
+  router.get("/doctor-appointments/range", requireAuth, requireRole('admin', 'doctor', 'staff'), (req, res) => {
+    const { start, end, doctorId } = req.query;
+    if (!start || !end) return res.status(400).json({ error: "缺少開始或結束日期" });
+    const runQuery = (extraWhere, params) => {
+      db.all(
+        `SELECT b.*, s.name AS service_name, u.name AS doctor_name
+         FROM bookings b
+         LEFT JOIN services s ON b.service_id = s.id
+         LEFT JOIN users u ON u.id = b.doctor_user_id
+         WHERE b.appointment_date >= ? AND b.appointment_date <= ? ${extraWhere}
+         ORDER BY b.appointment_date ASC, b.appointment_time ASC`,
+        params,
+        (err, rows) => {
+          if (err) return serverError(res, err);
+          res.json({ ok: true, bookings: rows || [] });
+        }
+      );
+    };
+    if (!doctorId) return runQuery('', [start, end]);
+    db.get("SELECT name FROM users WHERE id=? AND role='doctor'", [doctorId], (err, docUser) => {
+      if (err) return serverError(res, err);
+      if (docUser) {
+        runQuery('AND (b.doctor_user_id=? OR b.doctor_name=?)', [start, end, Number(doctorId), docUser.name]);
+      } else {
+        // 若係 doctors 表 id，改用醫師名稱匹配（doctor_user_id 可能對應唔到）
+        db.get("SELECT name FROM doctors WHERE id=?", [doctorId], (err2, docRow) => {
+          if (err2) return serverError(res, err2);
+          if (docRow) {
+            runQuery('AND (b.doctor_user_id=? OR b.doctor_name=?)', [start, end, Number(doctorId), docRow.name]);
+          } else {
+            runQuery('AND b.doctor_user_id=?', [start, end, Number(doctorId)]);
+          }
+        });
+      }
+    });
+  });
+
   // 更新醫師時段狀態（限管理員）
   router.put("/doctor-time-slots", requireAuth, requireRole('admin'), (req, res) => {
     const { date, time, doctor_id, is_available, status, max_capacity, notes } = req.body;
@@ -1571,7 +1613,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     let successCount = 0;
     slots.forEach(slot => {
       const st = slot.status || (slot.is_available ? 'open' : 'blank');
-      const avail = (st === 'rest' || st === 'blank') ? 0 : 1;
+      const avail = (st === 'rest' || st === 'blank' || st === 'leave') ? 0 : 1;
       stmt.run(
         slot.date,
         slot.time,

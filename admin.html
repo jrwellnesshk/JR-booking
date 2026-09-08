@@ -379,6 +379,13 @@
         border-top:2px solid rgba(192,136,117,.3); border-radius:50% 50% 0 0/12px 12px 0 0;
         transform:translateX(-50%);
       }
+      /* 其他連結（親戚）層：虛線連住 */
+      .ftree-level-links{ border:1.5px dashed rgba(126,148,118,.45); border-radius:1.6rem; padding:1.4rem 1rem .6rem; }
+      .ftree-level-links::before{ display:none; }
+      .ftree-links-head{
+        width:100%; text-align:center; font-size:.68rem; letter-spacing:.14em; color:var(--sage-700);
+        margin-top:-1.9rem; margin-bottom:0; background:#FAF5EE; padding:.25rem .9rem; border-radius:999px;
+      }
 
       .ftree-actions{
         position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem;
@@ -2286,10 +2293,15 @@
             </div>
 
             <!-- 摘要卡 -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
               <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-slate-300">
                 <p class="text-sm text-slate-500"><i class="fas fa-users mr-1 text-slate-400"></i>會員總數</p>
                 <p class="text-2xl font-bold text-slate-700 mt-1">{{ mpSummary.total || 0 }}</p>
+              </div>
+              <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-teal-400">
+                <p class="text-sm text-slate-500"><i class="fas fa-people-roof mr-1 text-teal-500"></i>家庭帳戶總數</p>
+                <p class="text-2xl font-bold text-teal-600 mt-1">{{ mpSummary.familyHeadCount || 0 }}</p>
+                <p class="text-xs text-slate-400 mt-0.5">一張單 = 一個家庭</p>
               </div>
               <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-emerald-400">
                 <p class="text-sm text-slate-500"><i class="fas fa-circle-check mr-1 text-emerald-500"></i>生效中</p>
@@ -2568,9 +2580,9 @@
                   </div>
                 </div>
 
-                <!-- 🆕 其他連結（親戚／同輩） -->
-                <div v-if="headLinks.length" class="ftree-level ftree-level-children" style="margin-top:2.4rem;">
-                  <div class="w-full text-center text-xs text-slate-400 mb-1">其他連結（親戚／同輩）</div>
+                <!-- 🆕 其他連結（親戚／同輩；含連結來源 + 連線） -->
+                <div v-if="headLinks.length" class="ftree-level ftree-level-children ftree-level-links" style="margin-top:2.4rem;">
+                  <div class="ftree-links-head"><i class="fas fa-people-arrows"></i> 親戚／其他連結（由下面連入）</div>
                   <div
                     v-for="lk in headLinks"
                     :key="lk.id"
@@ -2584,7 +2596,7 @@
                       </div>
                     </div>
                     <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
-                    <div class="ftree-meta">{{ lk.other.username }}</div>
+                    <div class="ftree-meta">{{ lk.other.username }}<template v-if="lk.linkSourceName"> · 經由 <b>{{ lk.linkSourceName }}</b></template></div>
                     <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
                     <button @click="removeHeadLink(lk)" class="ftree-unlink" title="解除連結"><i class="fas fa-unlink"></i></button>
                   </div>
@@ -2688,11 +2700,30 @@
                         <span>已選：<b>{{ adminLinkPick.name || adminLinkPick.username }}</b> <span class="text-slate-400">({{ adminLinkPick.username }})</span></span>
                         <button @click="adminLinkPick = null" class="ml-auto text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
                       </div>
-                      <select v-model="adminLinkRelation" class="w-full rounded border border-gray-300 p-2 text-sm bg-white">
-                        <option v-for="r in ['父母','子女','配偶','兄弟','姐妹','親戚','朋友','其他']" :key="r" :value="r">{{ r }}</option>
-                      </select>
+                      <div>
+                        <label class="block text-xs text-slate-500 mb-1.5"><i class="fas fa-arrows-up-down mr-1"></i>由邊個帳戶連結出去？</label>
+                        <div class="flex flex-wrap gap-1.5">
+                          <button
+                            v-for="s in adminLinkSources"
+                            :key="s.id"
+                            type="button"
+                            @click="adminLinkSourceId = (adminLinkSourceId === s.id ? null : s.id)"
+                            class="px-2.5 py-1.5 rounded-full text-xs border transition-colors"
+                            :class="(s.type === 'head' ? adminLinkSourceId === null : adminLinkSourceId === s.id) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'"
+                            :title="'由 ' + s.name + ' 連結'"
+                          >{{ s.name }} <span class="opacity-70">· {{ s.badge }}</span></button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">第 1 個（無底色）＝由主帳戶出；撳任何一個子帳戶＝由佢出，關係圖會由佢連過去</p>
+                      </div>
+                      <div>
+                        <label class="block text-xs text-slate-500 mb-1.5"><i class="fas fa-people-roof mr-1"></i>關係（親戚）</label>
+                        <select v-model="adminLinkRelation" class="w-full rounded border border-gray-300 p-2 text-sm bg-white">
+                          <option v-for="r in adminLinkRelationOptions" :key="r.key" :value="r.key">{{ r.label }}</option>
+                        </select>
+                      </div>
                       <input v-if="adminLinkRelation === '其他'" v-model="adminLinkCustomRelation" placeholder="請輸入關係說明" class="w-full rounded border border-gray-300 p-2 text-sm">
                       <p v-if="adminLinkError" class="text-red-500 text-xs">{{ adminLinkError }}</p>
+                      <p v-if="adminLinkMessage" class="text-emerald-700 text-xs bg-emerald-50 border border-emerald-200 rounded px-2 py-2">{{ adminLinkMessage }}</p>
                       <button :disabled="adminLinkBusy" @click="createAdminAccountLink" class="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 disabled:opacity-60">
                         <i v-if="adminLinkBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-link mr-1"></i>連結
                       </button>
@@ -2955,6 +2986,13 @@
                   <label class="block text-xs font-medium text-slate-500 mb-1">至（年／月／日）</label>
                   <input type="date" v-model="slotRangeEnd" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
                 </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1"><i class="fas fa-user-md text-emerald-600 mr-1"></i>選擇醫師</label>
+                  <select v-model="slotDoctorId" @change="loadSlotGrid()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white min-w-[150px]">
+                    <option value="">全部醫師</option>
+                    <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
+                  </select>
+                </div>
                 <div class="flex items-center gap-2 self-center">
                   <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>週（一至日）</button>
                   <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>日</button>
@@ -2964,16 +3002,12 @@
 
               <!-- 拖掃網格 + 操作掣 -->
               <div v-if="!slotDoctorId" class="text-center py-10 text-slate-400">
-                <i class="fas fa-user-md text-4xl mb-3"></i><p>請先喺右上「選擇方框」或上面醫師列揀選一位醫師。</p>
+                <i class="fas fa-user-md text-4xl mb-3"></i><p>請先喺上方醫師列，或日期揀選旁嘅「選擇醫師」框，揀選一位醫師。</p>
               </div>
               <template v-else>
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格（拖掃選取）</h3>
                   <div class="flex flex-wrap items-center gap-2">
-                    <select v-model="slotDoctorId" @change="loadSlotGrid()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white">
-                      <option value="">選擇方框（醫師）</option>
-                      <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
-                    </select>
                     <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>加入</button>
                     <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
                     <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
@@ -7015,11 +7049,15 @@
             // 🆕 連結帳戶（統一左/右框）搜尋狀態
             adminLinkBusy: false,
             adminLinkError: '',
+            adminLinkMessage: '',
             adminLinkSearchQ: '',
             adminLinkSearching: false,
             adminLinkSearchResults: [],
             adminLinkPick: null,
-            adminLinkRelation: '朋友',
+            // 連結來源（null = 主帳戶；數字 = 子帳戶 id）
+            adminLinkSourceId: null,
+            // 關係：key 可選預設關係或親戚（表弟/姨媽/姑姐…）；『其他』再填自訂
+            adminLinkRelation: '表弟',
             adminLinkCustomRelation: '',
             // 🆕 家庭計劃 / 單號 / 成員
             familyDetail: { plan: null, invoiceNo: null, headMemberNo: null, children: [] },
@@ -7412,7 +7450,53 @@ addUserForm: {
             });
             return out;
           },
-          // 🔒 分層密碼政策提示（跟隨新增帳號所選角色）
+          // 🔗 連結來源可選項：主帳戶 ＋ 每個已連結子帳戶（揀咗之後搜尋／連結都跟返個來源）
+          adminLinkSources() {
+            const head = this.selectedFamilyHead;
+            if (!head) return [];
+            const out = [{ id: head.id, name: head.name, username: head.username, type: 'head', badge: '主帳戶' }];
+            (head.members || []).forEach(m => {
+              out.push({ id: m.id, name: m.name, username: m.username, type: 'member', badge: '家庭成員' });
+            });
+            (this.headLinks || []).forEach(lk => {
+              out.push({ id: lk.other.id, name: lk.other.name || lk.other.username, username: lk.other.username, type: 'link', badge: lk.customRelation || lk.relation || '連結' });
+            });
+            return out;
+          },
+          // 🔗 親戚關係下拉選項（淨係親戚／家庭關係；選『其他』再自行填寫）
+          adminLinkRelationOptions() {
+            return [
+              { key: '父母', label: '父母' },
+              { key: '子女', label: '子女' },
+              { key: '配偶', label: '配偶' },
+              { key: '兄弟', label: '兄弟' },
+              { key: '姐妹', label: '姐妹' },
+              { key: '表弟', label: '表弟' },
+              { key: '表妹', label: '表妹' },
+              { key: '表哥', label: '表哥' },
+              { key: '表姐', label: '表姐' },
+              { key: '堂弟', label: '堂弟' },
+              { key: '堂妹', label: '堂妹' },
+              { key: '堂哥', label: '堂哥' },
+              { key: '堂姐', label: '堂姐' },
+              { key: '姨媽', label: '姨媽（母姨）' },
+              { key: '姑姐', label: '姑姐（父姊）' },
+              { key: '姑母', label: '姑母（父妹）' },
+              { key: '舅父', label: '舅父（母兄／弟）' },
+              { key: '伯父', label: '伯父（父兄）' },
+              { key: '叔父', label: '叔父（父弟）' },
+              { key: '嬸母', label: '嬸母（叔之妻）' },
+              { key: '其他', label: '其他（自行填寫）' }
+            ];
+          },
+          // 🔗 依所選 key 決定送出嘅 relation + custom
+          adminLinkSelectedRel() {
+            const presets = ['父母', '子女', '配偶', '兄弟', '姐妹'];
+            const key = this.adminLinkRelation;
+            if (key === '其他') return { relation: '其他', custom: '' };
+            if (presets.includes(key)) return { relation: key, custom: '' };
+            return { relation: '親戚', custom: key };
+          },
           passwordRuleHint() {
             const r = this.addUserForm.role;
             return (r === 'staff' || r === 'doctor' || r === 'admin')
@@ -8650,9 +8734,11 @@ async handleLogin() {
             this.adminLinkSearchQ = '';
             this.adminLinkSearchResults = [];
             this.adminLinkPick = null;
-            this.adminLinkRelation = '朋友';
+            this.adminLinkSourceId = null;
+            this.adminLinkRelation = '表弟';
             this.adminLinkCustomRelation = '';
             this.adminLinkError = '';
+            this.adminLinkMessage = '';
             this.loadHeadLinks(head.id);
             this.loadFamilyDetail(head);
           },
@@ -8699,7 +8785,10 @@ async handleLogin() {
             if (!kw || !head) { this.adminLinkSearchResults = []; return; }
             this.adminLinkSearching = true;
             try {
+              // 來源＝所揀子帳戶時：以子帳戶身份排除已連嘅人，同時排除成個家庭已有人
+              const src = this.adminLinkSourceId || head.id;
               const p = new URLSearchParams({ q: kw, excludeHeadId: head.id });
+              if (src !== head.id) p.set('excludeUserId', src);
               const res = await fetch(`/api/membership/account-links/search?${p.toString()}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
               });
@@ -8716,7 +8805,8 @@ async handleLogin() {
             this.adminLinkSearchResults = [];
             this.adminLinkSearchQ = '';
             this.adminLinkError = '';
-            this.adminLinkRelation = '朋友';
+            this.adminLinkMessage = '';
+            this.adminLinkRelation = '表弟';
             this.adminLinkCustomRelation = '';
           },
 
@@ -8767,15 +8857,36 @@ async handleLogin() {
             } catch (e) { alert('服務暫時不可用'); }
           },
 
-          // 🆕 載入戶主嘅 account_links（過濾家庭子女，只顯示親戚／同輩）
+          // 🆕 載入家庭每個成員（含主帳戶）嘅 account_links，過濾家庭內成員，帶返連結來源
           async loadHeadLinks(headId) {
             try {
-              const res = await fetch(`/api/membership/account-links?userId=${encodeURIComponent(headId)}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
-              });
-              const data = await res.json().catch(() => ({ links: [] }));
               const childIds = new Set((this.selectedFamilyHead.members || []).map(m => m.id));
-              this.headLinks = (data.links || []).filter(lk => !childIds.has(lk.other.id));
+              const srcNames = {};
+              srcNames[headId] = this.selectedFamilyHead ? this.selectedFamilyHead.name : '主帳戶';
+              (this.selectedFamilyHead.members || []).forEach(m => { srcNames[m.id] = m.name; });
+              // 逐個撳：主帳戶 + 每個子女（戶主可得子女嘅連結）
+              const fetchOne = async (uid) => {
+                const res = await fetch(`/api/membership/account-links?userId=${encodeURIComponent(uid)}`, {
+                  headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+                });
+                const data = await res.json().catch(() => ({ links: [] }));
+                return (data.links || []).filter(lk => !childIds.has(lk.other.id));
+              };
+              const all = await Promise.all([headId, ...childIds].map(fetchOne));
+              const merged = new Map();
+              all.forEach((links, idx) => {
+                const srcId = [headId, ...childIds][idx];
+                links.forEach(lk => {
+                  const key = lk.other.id;
+                  if (!merged.has(key)) {
+                    merged.set(key, { ...lk, linkSourceId: srcId, linkSourceName: srcNames[srcId] || '主帳戶' });
+                  } else if (srcId === headId) {
+                    // 主帳戶自己嘅連結優先標做來源
+                    merged.set(key, { ...lk, linkSourceId: srcId, linkSourceName: srcNames[srcId] || '主帳戶' });
+                  }
+                });
+              });
+              this.headLinks = [...merged.values()];
             } catch (e) {
               this.headLinks = [];
             }
@@ -8790,19 +8901,27 @@ async handleLogin() {
                 headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
               });
               const data = await res.json().catch(() => ({}));
-              if (res.ok && data.ok) this.loadHeadLinks(this.selectedFamilyHead.id);
+              if (res.ok && data.ok) {
+                this.loadHeadLinks(this.selectedFamilyHead.id);
+                this.loadFamilyDetail(this.selectedFamilyHead);
+                this.loadFamilyTree();
+              }
               else alert(data.error || '解除失敗');
             } catch (e) { alert('服務暫時不可用'); }
           },
 
-          // 🆕 管理員：統一右框，以所選主帳戶為來源 A 連結目標帳戶 B（該主帳戶自動轉 family）
+          // 🆕 管理員：統一右框，以所揀來源（主帳戶或子帳戶）連結目標帳戶 B（來源帳戶自動轉 family）
           async createAdminAccountLink() {
             this.adminLinkError = '';
+            this.adminLinkMessage = '';
             const head = this.selectedFamilyHead;
             const headId = head ? head.id : null;
             if (!headId) { this.adminLinkError = '請先喺上方家庭樹撳選一個主帳戶'; return; }
             if (!this.adminLinkPick) { this.adminLinkError = '請先搜尋並揀選要連結嘅帳戶'; return; }
-            if (this.adminLinkRelation === '其他' && !(this.adminLinkCustomRelation || '').trim()) {
+            const source = (this.adminLinkSources || []).find(s => (s.type === 'head' ? this.adminLinkSourceId === null : this.adminLinkSourceId === s.id));
+            const fromId = source ? source.id : headId;
+            const rel = this.adminLinkSelectedRel;
+            if (rel.relation === '其他' && !(this.adminLinkCustomRelation || '').trim()) {
               this.adminLinkError = '請輸入關係說明'; return;
             }
             this.adminLinkBusy = true;
@@ -8811,22 +8930,30 @@ async handleLogin() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
                 body: JSON.stringify({
-                  fromUserId: headId,
+                  fromUserId: fromId,
                   targetUsername: this.adminLinkPick.username,
-                  relation: this.adminLinkRelation,
-                  customRelation: this.adminLinkRelation === '其他' ? this.adminLinkCustomRelation.trim() : undefined
+                  relation: rel.relation,
+                  customRelation: (rel.relation === '親戚' || rel.relation === '其他') ? (rel.custom || this.adminLinkCustomRelation || '').trim() : undefined
                 })
               });
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.ok) {
+                const srcLabel = source ? source.name : (head ? head.name : '');
+                const targetLabel = this.adminLinkPick.name || this.adminLinkPick.username;
                 this.adminLinkPick = null;
-                this.adminLinkRelation = '朋友';
+                this.adminLinkRelation = '表弟';
                 this.adminLinkCustomRelation = '';
                 this.adminLinkSearchQ = '';
                 this.adminLinkSearchResults = [];
                 if (head) head.membership_tier = 'family';
-                this.loadHeadLinks(headId);
-                this.loadFamilyDetail(head);
+                this.loadFamilyTree().then(() => {
+                  // 揀返同一個戶主，刷新關係圖連線
+                  const h = this.familyTree.tree.find(x => x.id === headId);
+                  if (h) this.selectFamilyHead(h);
+                  else { this.loadHeadLinks(headId); this.loadFamilyDetail(head); }
+                });
+                this.adminLinkMessage = `✅ 已由「${srcLabel}」連結「${targetLabel}」${rel.relation === '親戚' ? '（' + rel.custom + '）' : ''}`;
+                this.adminLinkError = '';
               } else {
                 this.adminLinkError = data.error || '連結失敗';
               }

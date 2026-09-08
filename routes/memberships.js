@@ -65,22 +65,62 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     db.run(sql, params, function (err) { err ? reject(err) : resolve(this); });
   });
 
-  // 🏠 家庭計劃 A/B/C + 跟死全家嘅單號（FAM-1001 順序）
-  // 總人數 = 戶主 + 子女：A(1-2) / B(3-9) / C(10 人以上)
+  // 🏠 家庭計劃 A/B/C + 跟死全家嘅單號（JRA/JRB/JRC 順序；A→JRA、B→JRB、C→JRC）
+  // 單號每個計劃對應自己嘅 prefix，一張單 = 一個家庭帳戶
+  const PLAN_INVOICE_PREFIX = { A: 'JRA', B: 'JRB', C: 'JRC' };
+  const familyInvoicePrefix = (plan) => PLAN_INVOICE_PREFIX[plan] || 'JRA';
+
+  // 收集家庭所有成員 id：戶主 + family_links 子女 + 戶主/子女經 account_links 連結嘅親戚
+  // （account_links 嘅人一樣計入張家庭單，呢個先符合「連結後喺張單入邊」）
+  async function getFamilyMemberIds(headId) {
+    const ids = new Set([Number(headId)]);
+    const childrenRows = await q("SELECT child_user_id FROM family_links WHERE parent_user_id=?", [headId]);
+    for (const r of childrenRows) ids.add(Number(r.child_user_id));
+    const memPids = [...ids];
+    if (memPids.length) {
+      const ph = memPids.map(() => '?').join(',');
+      const links = await q(
+        `SELECT user_a, user_b FROM account_links WHERE user_a IN (${ph}) OR user_b IN (${ph})`,
+        [...memPids, ...memPids]);
+      for (const l of links) { ids.add(l.user_a); ids.add(l.user_b); }
+    }
+    return [...ids];
+  }
+
+  // 計家庭總人數 → 計劃（A:1-2 / B:3-9 / C:10+）
+  async function computeFamilyPlan(headId) {
+    const memIds = await getFamilyMemberIds(headId);
+    const total = memIds.length;
+    return { total, plan: total <= 2 ? 'A' : (total <= 9 ? 'B' : 'C') };
+  }
+
+  // 生成下一個家庭單號（全 prefix 共一條順序，1001 起）
+  async function nextFamilyInvoiceNo(plan) {
+    const prefix = familyInvoicePrefix(plan);
+    const maxRow = await q1("SELECT COALESCE(MAX(CAST(SUBSTR(invoice_no,5) AS INTEGER)),1000) AS m FROM family_invoices");
+    return prefix + '-' + (maxRow.m + 1);
+  }
+
   async function syncFamilyPlan(headId) {
-    const children = await q1("SELECT COUNT(*) AS c FROM family_links WHERE parent_user_id=?", [headId]);
-    const total = 1 + (children ? children.c : 0);
-    const plan = total <= 2 ? 'A' : (total <= 9 ? 'B' : 'C');
+    const { total, plan } = await computeFamilyPlan(headId);
     await run("UPDATE users SET family_plan=? WHERE id=?", [plan, headId]);
     const exist = await q1("SELECT id, invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
+    const desiredPrefix = familyInvoicePrefix(plan);
     if (!exist) {
-      const maxRow = await q1("SELECT COALESCE(MAX(CAST(SUBSTR(invoice_no,5) AS INTEGER)),1000) AS m FROM family_invoices");
-      const nextNo = 'FAM-' + (maxRow.m + 1);
+      const nextNo = await nextFamilyInvoiceNo(plan);
       await run("INSERT INTO family_invoices (invoice_no, family_head_id, plan) VALUES (?,?,?)", [nextNo, headId, plan]);
-    } else if (exist.invoice_no) {
+    } else if (!exist.invoice_no || !String(exist.invoice_no).startsWith(desiredPrefix + '-')) {
+      // 計劃改變（A→B→C）→ 換返對應 prefix，維持同一張單（同一順序段，避免撞號）
+      const numStart = String(exist.invoice_no).indexOf('-') + 1;
+      const baseNum = numStart > 0 ? String(exist.invoice_no).slice(numStart) : '';
+      let nextNo = desiredPrefix + '-' + (baseNum || '1001');
+      const dup = await q1("SELECT id FROM family_invoices WHERE invoice_no=? AND family_head_id<>?", [nextNo, headId]);
+      if (dup) nextNo = await nextFamilyInvoiceNo(plan);
+      await run("UPDATE family_invoices SET plan=?, invoice_no=? WHERE family_head_id=?", [plan, nextNo, headId]);
+    } else {
       await run("UPDATE family_invoices SET plan=? WHERE family_head_id=?", [plan, headId]);
     }
-    return plan;
+    return { plan, total };
   }
 
   const activateSubscription = async (userId, tier, paymentId) => {
@@ -816,7 +856,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const user = req.user;
       const { targetUsername, targetPhone, relation, customRelation, fromUserId, fromUsername } = req.body || {};
       if (!relation || !RELATION_PRESETS.includes(relation)) return res.status(400).json({ error: '請選擇有效的關係類型' });
-      const displayRelation = relation === '其他' ? String(customRelation || '').trim() : null;
+      const displayRelation = String(customRelation || '').trim() || null;
       if (relation === '其他' && !displayRelation) return res.status(400).json({ error: '請輸入關係說明' });
 
       // 決定連結來源帳戶 fromId（fromUserId 數字 或 fromUsername 文字；管理員可用 fromUsername 代指 A）
@@ -837,8 +877,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
       // 解析目標帳戶
       let target = null;
-      if (targetUsername) target = await q1("SELECT id, username, name, role FROM users WHERE username=? COLLATE NOCASE", [String(targetUsername).trim()]);
-      else if (targetPhone) target = await q1("SELECT id, username, name, role FROM users WHERE phone=?", [String(targetPhone).trim()]);
+      if (targetUsername) target = await q1("SELECT id, username, name, role, family_head_id, membership_tier FROM users WHERE username=? COLLATE NOCASE", [String(targetUsername).trim()]);
+      else if (targetPhone) target = await q1("SELECT id, username, name, role, family_head_id, membership_tier FROM users WHERE phone=?", [String(targetPhone).trim()]);
       if (!target) return res.status(404).json({ error: '找不到該帳戶（請檢查用戶名或電話）' });
       if (target.role !== 'customer') return res.status(400).json({ error: '只能連結客戶帳戶' });
       if (Number(target.id) === Number(fromId)) return res.status(400).json({ error: '唔可以連結自己' });
@@ -847,10 +887,24 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const existing = await q1("SELECT id FROM account_links WHERE user_a=? AND user_b=?", [a, b]);
       if (existing) return res.status(409).json({ error: '呢兩個帳戶已經連結咗' });
 
+      // 搵出來源帳戶所屬嘅家庭戶主（來源係家庭子女→跟戶主；否則自己做戶主）
+      const fromUser = await q1("SELECT id, role, family_head_id, membership_tier FROM users WHERE id=?", [fromId]);
+      if (!fromUser) return res.status(404).json({ error: '找不到帳戶 A' });
+      const headId = (fromUser.family_head_id && Number(fromUser.family_head_id) !== Number(fromId))
+        ? Number(fromUser.family_head_id)
+        : Number(fromId);
+
+      // 🔒 目標屬於另一個家庭 → 拒絕（避免一個帳戶出現喺兩張單）
+      if (target.family_head_id && Number(target.family_head_id) !== Number(headId)) {
+        return res.status(409).json({ error: '對方已經屬於另一個家庭帳戶，唔可以再連結' });
+      }
+
       const ins = await run(
         "INSERT INTO account_links (user_a, user_b, relation, custom_relation, initiated_by, created_at) VALUES (?,?,?,?,?,?)",
         [a, b, relation, displayRelation, user.id, new Date().toISOString()]);
-      // 「一連即轉」：連接第一個成員即將來源主帳戶升為 family（只對 customer；管理員代連時升被選主帳戶）
+
+      // 「一連即轉」：連結後雙方都入張家庭單。來源主帳戶（管理員代連時係被選來源）升 family
+      // 目標帳戶亦要升 family + 綁返戶主，等佢喺張單入邊（用户第 5 項要求：連結後應升級）
       const ownerId = (user.role === 'admin') ? fromId : user.id;
       const owner = await q1("SELECT id, role, membership_tier FROM users WHERE id=?", [ownerId]);
       let ownerUpgradedToFamily = false;
@@ -858,7 +912,19 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         await run("UPDATE users SET membership_tier='family' WHERE id=?", [ownerId]);
         ownerUpgradedToFamily = true;
       }
-      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id, ownerUpgradedToFamily });
+      let targetUpgradedToFamily = false;
+      if (target.role === 'customer' && target.membership_tier !== 'family') {
+        await run("UPDATE users SET membership_tier='family' WHERE id=?", [target.id]);
+        targetUpgradedToFamily = true;
+      }
+      // 目標帳戶綁返戶主（等佢喺張單入邊）
+      if (!target.family_head_id || Number(target.family_head_id) !== Number(headId)) {
+        const curHead = await q1("SELECT family_head_id FROM users WHERE id=?", [target.id]);
+        if (!curHead || !curHead.family_head_id) await run("UPDATE users SET family_head_id=? WHERE id=?", [headId, target.id]);
+      }
+      // 重算計劃 + 確保張單存在（新成員都會入張單）
+      await syncFamilyPlan(headId);
+      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id, ownerUpgradedToFamily, targetUpgradedToFamily, headId });
     } catch (e) {
       console.error('連結帳戶失敗:', e);
       res.status(500).json({ error: '連結失敗' });
@@ -925,6 +991,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
           [pid, pid, pid, pid]);
         if (!remain) {
           await run("UPDATE users SET membership_tier='general' WHERE id=? AND membership_tier='family'", [pid]);
+        } else {
+          // 仲有連結 → 重算計劃（人數可能縮減到另一個計劃）
+          const row = await q1("SELECT id, family_head_id, membership_tier FROM users WHERE id=?", [pid]);
+          if (row && Number(row.family_head_id) === Number(pid) && row.membership_tier === 'family') {
+            await syncFamilyPlan(pid);
+          }
         }
       }
       res.json({ ok: true });
@@ -947,6 +1019,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         const allowed = req.user.role === 'admin' || (await canLinkAs(req.user, req.query.excludeHeadId));
         if (!allowed) return res.status(403).json({ error: '沒有權限搜尋該帳戶' });
         me = Number(req.query.excludeHeadId);
+      }
+      if (req.query.excludeUserId) {
+        const allowed = req.user.role === 'admin' || (Number(req.query.excludeUserId) === Number(req.user.id)) ||
+          (await canLinkAs(req.user, req.query.excludeUserId));
+        if (!allowed) return res.status(403).json({ error: '沒有權限搜尋該帳戶' });
+        me = Number(req.query.excludeUserId);
       }
       const rows = await q(
         `SELECT u.id, u.username, u.name, u.membership_tier, u.phone

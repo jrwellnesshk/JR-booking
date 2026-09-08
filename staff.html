@@ -1233,17 +1233,27 @@
                 <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
                   <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
                 </div>
-                <div class="grid grid-cols-7 gap-1">
+                <div class="grid grid-cols-7 gap-1" style="user-select:none" @mouseleave="endCalSelect" @mouseup="endCalSelect">
                   <template v-for="(cell, idx) in slotCalendarDays()" :key="idx">
                     <div v-if="!cell" class="aspect-square"></div>
-                    <button v-else type="button" @click="pickSlotDay(cell.date)" class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative" :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'">
+                    <button
+                      v-else
+                      type="button"
+                      @mousedown.prevent="startCalSelect(cell.date)"
+                      @mouseenter="extendCalSelect(cell.date)"
+                      @mouseup.stop="endCalSelect()"
+                      @touchstart.prevent="startCalSelect(cell.date)"
+                      @touchend.prevent="endCalSelect()"
+                      class="aspect-square border rounded-lg p-1 flex flex-col items-center justify-start hover:border-emerald-400 hover:bg-emerald-50 transition-colors relative"
+                      :class="(slotRangeStart<=cell.date && cell.date<=slotRangeEnd) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'"
+                    >
                       <span class="text-xs font-medium text-slate-600">{{ cell.day }}</span>
                       <span v-if="cell.working" class="mt-0.5 w-6 h-1.5 rounded-full bg-emerald-500"></span>
                       <span v-else-if="cell.leave" class="mt-0.5 w-6 h-1.5 rounded-full bg-slate-300"></span>
                     </button>
                   </template>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">撳日曆中嘅日子 → 下方網格會顯示嗰段日期嘅時段；撳住拖掃多個方格可批量選取。</p>
+                <p class="text-xs text-slate-400 mt-2">揸住日曆日期拖掃 → 自動揀定日期範圍，下方網格會顯示該段日期嘅時段；撳單一日亦可。</p>
               </div>
 
               <!-- 日期範圍 -->
@@ -2067,6 +2077,7 @@
             slotDays: [],
             slotTimeList: [],
             slotBusy: false,
+            calDragging: false,
             slotSelecting: false,
             slotAnchor: null,
             slotHead: null,
@@ -2269,6 +2280,21 @@
             } catch (e) { console.error('載入月曆失敗', e); }
           },
           pickSlotDay(date) { this.slotRangeStart = date; this.slotRangeEnd = date; this.loadSlotGrid(); },
+          startCalSelect(date) {
+            this.calDragging = true;
+            this.slotRangeStart = date;
+            this.slotRangeEnd = date;
+          },
+          extendCalSelect(date) {
+            if (!this.calDragging) return;
+            if (date < this.slotRangeStart) this.slotRangeStart = date;
+            else if (date > this.slotRangeEnd) this.slotRangeEnd = date;
+          },
+          endCalSelect() {
+            if (!this.calDragging) return;
+            this.calDragging = false;
+            this.loadSlotGrid();
+          },
           onSlotRangeChange() { if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart; this.loadSlotGrid(); },
           slotDaysInRange() {
             const start = new Date(this.slotRangeStart + 'T00:00:00');

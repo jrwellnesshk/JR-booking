@@ -118,6 +118,7 @@ const runSuite = (file) => new Promise((resolve) => {
   if (!only || only === 'cross') suites.push('_qa_cross_test.js');
   if (!only || only === 'ui') suites.push('_qa_ui_check.js');
   if (!only || only === 'smoke') suites.push('_qa_runtime_smoke.js');
+  if (!only || only === 'doctor') suites.push('_qa_doctor_timeslots.js');
 
   const results = [];
   for (const s of suites) results.push(await runSuite(s));

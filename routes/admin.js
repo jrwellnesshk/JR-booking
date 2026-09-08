@@ -468,8 +468,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   // 醫師查看自己的預約（需提供 doctor userId）
   // 醫師查看自己的預約（管理員可指定 userId 查看特定醫師）
   router.get("/doctor/bookings", requireAuth, requireRole('admin', 'doctor'), (req, res) => {
-    // 管理員可指定其他醫師，醫師只能看自己
-    const userId = (req.user.role === 'admin' && req.query.userId) ? req.query.userId : req.user.id;
+    // 管理員／醫師都可指定其他醫師（診所共享排程）、唔指明就自己
+    const userId = (req.query.userId && ['admin', 'doctor'].includes(req.user.role)) ? req.query.userId : req.user.id;
     const { date, status } = req.query;
 
     // 驗證是醫師角色
@@ -1001,9 +1001,9 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
   // ==================== 🩺 醫師自助排程／請假 ====================
 
-  // GET /api/admin/doctor/my-leaves — 醫師查看自己即將請假日子（管理員可代查）
+  // GET /api/admin/doctor/my-leaves — 醫師查看即將請假日子（管理員／醫師可代查）
   router.get("/doctor/my-leaves", requireAuth, requireRole('doctor', 'admin'), (req, res) => {
-    const targetId = (req.user.role === 'admin' && req.query.doctorUserId) ? Number(req.query.doctorUserId) : req.user.id;
+    const targetId = (req.query.doctorUserId && ['admin', 'doctor'].includes(req.user.role)) ? Number(req.query.doctorUserId) : req.user.id;
     const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD（本地時區）
     db.all(
       `SELECT e.*, u.name AS doctor_name FROM exceptions e LEFT JOIN users u ON e.doctor_user_id = u.id
@@ -1017,9 +1017,12 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     );
   });
 
-  // POST /api/admin/doctor/my-leave — 醫師申請自己請假（自動通知受影響客戶，可選取消預約）
+  // POST /api/admin/doctor/my-leave — 醫師申請請假（預設自己，可代其他醫師請假；自動通知受影響客戶，可選取消預約）
   router.post("/doctor/my-leave", requireAuth, requireRole('doctor', 'admin'), async (req, res) => {
     const { exception_date, reason, notifyWhatsapp = true, cancelBookings = false } = req.body || {};
+    const doctorUserId = (req.body && req.body.doctorUserId && ['admin', 'doctor'].includes(req.user.role))
+      ? Number(req.body.doctorUserId)
+      : req.user.id;
     if (!exception_date || !/^\d{4}-\d{2}-\d{2}$/.test(exception_date)) {
       return res.status(400).json({ error: '請選擇請假日期' });
     }
@@ -1030,20 +1033,20 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
 
     try {
       const doctor = await new Promise((resolve) => {
-        db.get("SELECT id, name FROM users WHERE id=?", [req.user.id], (e, r) => resolve(r || null));
+        db.get("SELECT id, name, role FROM users WHERE id=? AND role='doctor'", [doctorUserId], (e, r) => resolve(r || null));
       });
       if (!doctor) return res.status(404).json({ error: '找不到醫師帳戶' });
 
       // 1. 記錄請假（同一日重複申請 → 更新原因）
       await new Promise((resolve, reject) => {
         db.get("SELECT id FROM exceptions WHERE exception_date=? AND type='doctor_leave' AND doctor_user_id=?",
-          [exception_date, req.user.id], (e, row) => {
+          [exception_date, doctorUserId], (e, row) => {
             if (e) return reject(e);
             if (row) {
               db.run("UPDATE exceptions SET reason=?, created_by=? WHERE id=?", [reason || '', req.user.id, row.id], (e2) => e2 ? reject(e2) : resolve());
             } else {
               db.run(`INSERT INTO exceptions (exception_date, name, type, reason, doctor_user_id, created_by) VALUES (?,?,?,?,?,?)`,
-                [exception_date, `${doctor.name}請假`, 'doctor_leave', reason || '', req.user.id, req.user.id],
+                [exception_date, `${doctor.name}請假`, 'doctor_leave', reason || '', doctorUserId, req.user.id],
                 (e2) => e2 ? reject(e2) : resolve());
             }
           });
@@ -1056,7 +1059,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           `SELECT b.*, s.name AS service_name FROM bookings b LEFT JOIN services s ON s.id=b.service_id
            WHERE b.appointment_date=? AND (b.doctor_user_id=? OR b.doctor_name=?) AND b.status IN ${activeStatuses}
            ORDER BY b.appointment_time`,
-          [exception_date, req.user.id, doctor.name],
+          [exception_date, doctorUserId, doctor.name],
           (e, rows) => e ? reject(e) : resolve(rows || [])
         );
       });
@@ -1086,7 +1089,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           db.run(
             `UPDATE bookings SET status='cancelled', notes=COALESCE(notes,'') || ' [醫師請假自動取消]', updated_at=CURRENT_TIMESTAMP
              WHERE appointment_date=? AND (doctor_user_id=? OR doctor_name=?) AND status IN ${activeStatuses}`,
-            [exception_date, req.user.id, doctor.name],
+            [exception_date, doctorUserId, doctor.name],
             (e) => e ? reject(e) : resolve()
           );
         });
@@ -1110,17 +1113,14 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
   });
 
-  // DELETE /api/admin/doctor/my-leaves/:id — 醫師取消自己未來嘅請假（回復應診）
+  // DELETE /api/admin/doctor/my-leaves/:id — 取消未來嘅請假（回復應診；管理員／醫師）
   router.delete("/doctor/my-leaves/:id", requireAuth, requireRole('doctor', 'admin'), (req, res) => {
     const id = Number(req.params.id);
     const todayStr = new Date().toLocaleDateString('sv-SE');
     db.get("SELECT * FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (err, exc) => {
       if (err) return serverError(res, err);
       if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
-      // 管理員可刪任何；醫師只可刪自己
-      if (req.user.role !== 'admin' && Number(exc.doctor_user_id) !== Number(req.user.id)) {
-        return res.status(403).json({ error: '只可以取消自己嘅請假' });
-      }
+      // 非管理員唔可以刪過去嘅請假
       if (req.user.role !== 'admin' && exc.exception_date < todayStr) {
         return res.status(400).json({ error: '過去嘅請假記錄不可以刪除' });
       }
@@ -1420,7 +1420,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     return { code: 'pending', label: '未開通・待繳費' };
   }
 
-  // 取得會員單號（家庭用 FAM-xxxx；個人 premium 用 MEM-xxxx）
+  // 取得會員單號（家庭用 JRA/JRB/JRC-xxxx 按計劃；個人 premium 用 MEM-xxxx）
+  const FAMILY_PLAN_PREFIX = { A: 'JRA', B: 'JRB', C: 'JRC' };
   async function resolveInvoiceNo(user) {
     const isFamily = (user.membership_tier || 'general') === 'family';
     if (isFamily) {
@@ -1428,7 +1429,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       let inv = await mq1("SELECT invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
       if (!inv) {
         const maxRow = await mq1("SELECT COALESCE(MAX(CAST(SUBSTR(invoice_no,5) AS INTEGER)),1000) AS m FROM family_invoices");
-        const nextNo = 'FAM-' + (maxRow.m + 1);
+        const prefix = FAMILY_PLAN_PREFIX[user.family_plan || 'A'] || 'JRA';
+        const nextNo = prefix + '-' + (maxRow.m + 1);
         await mrun("INSERT INTO family_invoices (invoice_no, family_head_id, plan) VALUES (?,?,?)", [nextNo, headId, user.family_plan || 'A']);
         inv = { invoice_no: nextNo };
       }
@@ -1524,6 +1526,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         overdue: members.filter(m => m.accountStatus === 'overdue').length,
         cancelled: members.filter(m => m.accountStatus === 'cancelled').length,
         free: members.filter(m => m.accountStatus === 'free').length,
+        // 家庭帳戶總數：一張單 = 一個家庭帳戶（以 family_invoices 單數計）
+        familyHeadCount: (await mq1("SELECT COUNT(*) AS c FROM family_invoices"))?.c || 0,
         monthlyRecurring: members.filter(m => m.accountStatus === 'active' || m.accountStatus === 'expiring')
           .reduce((s, m) => s + (m.amount || 0), 0)
       };
