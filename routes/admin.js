@@ -50,8 +50,10 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     let { password } = req.body;
 
     // 驗證必填欄位（密碼可省略：由後端自動生成強隨機暫時密碼）
-    if (!username || !name || !phone) {
-      return res.status(400).json({ error: "缺少必要欄位（用戶名、姓名、電話為必填）" });
+    const b = req.body || {};
+    const missingFields = ['username', 'name', 'phone'].filter(k => !b[k]);
+    if (missingFields.length) {
+      return res.status(400).json({ error: "缺少必要欄位：" + missingFields.join('、'), missing: missingFields });
     }
 
     // 驗證角色
@@ -1066,7 +1068,12 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       const doctor = isClinic ? null : await new Promise((resolve) => {
         db.get("SELECT id, name, role FROM users WHERE id=? AND role='doctor'", [doctorUserId], (e, r) => resolve(r || null));
       });
-      if (!isClinic && !doctor) return res.status(404).json({ error: '找不到醫師帳戶' });
+      if (!isClinic && !doctor) {
+        if (req.user.role === 'admin' && !reqDoctorUserId) {
+          return res.status(400).json({ error: '管理員申請非全診所請假時，請指定 doctorUserId，或設定 clinicWide=true 申請全診所休診' });
+        }
+        return res.status(404).json({ error: '找不到醫師帳戶' });
+      }
 
       // 受影響預約（俾醫師/管理員先知範圍；pending 階段未生效）
       const activeStatuses = "('pending','confirmed','in-progress','in-treatment','visited','dispensing')";

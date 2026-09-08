@@ -236,9 +236,9 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
       return res.status(400).json({ error: "姓名必須包含中文字符" });
     }
 
-    // 驗證電話格式
-    if (!/^\d{8}$/.test(phone)) {
-      return res.status(400).json({ error: "請輸入有效的 8 位電話號碼" });
+    // 驗證電話格式（接受香港 8 位 / 國際格式如 +6012-3456789 / (852) 9123 4567 / 6012 3456 789）
+    if (!/^[+\d(][\d\s\-()]{4,19}$/.test(phone)) {
+      return res.status(400).json({ error: "請輸入有效的電話號碼（香港 8 位或含國際區號）" });
     }
 
     // 驗證電郵格式（選填，如有填寫則需有效）

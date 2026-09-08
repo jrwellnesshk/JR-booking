@@ -440,9 +440,13 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const result = { whatsapp: false, error: null };
     try {
       if (!whatsappService.isConfigured()) { result.error = 'WhatsApp 未配置'; return result; }
-      if (!phone || !/^\d{8}$/.test(String(phone))) { result.error = '家長電話無效'; return result; }
-      let formatted = String(phone);
-      if (!formatted.startsWith('+')) formatted = '+852' + formatted.replace(/^852/, '');
+      if (!phone || !/^[+\d(][\d\s\-()]{4,19}$/.test(String(phone))) { result.error = '家長電話無效'; return result; }
+      let formatted = String(phone).trim();
+      if (!formatted.startsWith('+')) {
+        const digitsOnly = formatted.replace(/[^\d]/g, '');
+        if (digitsOnly.length === 8) formatted = '+852' + digitsOnly;
+        // 非 8 位（國際號碼）保持原樣，交由 WhatsApp 服務處理
+      }
       const message = [
         `【寶天醫館】${title}`,
         '',
@@ -544,10 +548,10 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     // 🛠️ 電話容錯：自動清走空格／橫線等分隔符（例如「6123 4567」→「61234567」）
     const cleanPhone = (p) => String(p || '').replace(/[\s\-–—]/g, '');
     const childPhone = cleanPhone(phone) || cleanPhone(head.phone);
-    if (!childPhone || !/^\d{8}$/.test(childPhone)) {
+    if (!childPhone || !/^[+\d(][\d\s\-()]{4,19}$/.test(childPhone)) {
       return res.status(400).json({
         error: phone
-          ? '請輸入有效的 8 位電話號碼（只須數字）'
+          ? '請輸入有效的電話號碼（香港 8 位或含國際區號）'
           : `監護人（${head.name}）電話號碼無效或不存在，請為子帳戶提供 8 位電話號碼`
       });
     }
@@ -619,7 +623,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const hashed = require('bcrypt').hashSync(tempPassword, 10);
       await run("UPDATE users SET password=?, must_change_password=1 WHERE id=?", [hashed, child.id]);
 
-      const targetPhone = (child.phone && /^\d{8}$/.test(String(child.phone))) ? child.phone : headPhone;
+      const isValidPhone = (p) => p && /^[+\d(][\d\s\-()]{4,19}$/.test(String(p));
+      const targetPhone = isValidPhone(child.phone) ? child.phone : headPhone;
       const notified = await sendChildCredentials(targetPhone, '子帳戶暫時密碼已重設', child.name, child.username, tempPassword);
 
       res.json({

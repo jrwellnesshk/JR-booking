@@ -1574,10 +1574,23 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
     );
   };
 
+  // 🆕 預設上一個月（每月 7 號出上月糧，管理員多數查上月）
+  function prevMonthRange() {
+    const d = new Date();
+    d.setDate(0); // 上個月最後一日
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const last = String(d.getDate()).padStart(2, '0');
+    return [`${y}-${m}-01`, `${y}-${m}-${last}`];
+  }
+
   router.get("/payroll", requireAuth, requireRole('admin'), (req, res) => {
-    const from = req.query.from || "";
-    const to = req.query.to || "";
-    if (!from || !to) return res.status(400).json({ error: "請提供日期範圍 from / to" });
+    let from = req.query.from || "";
+    let to = req.query.to || "";
+    if (!from || !to) {
+      const [df, dt] = prevMonthRange();
+      from = from || df; to = to || dt;
+    }
     calcPayroll(from, to, (err, data) => {
       if (err) return serverError(res, err);
       res.json({ from, to, workdays: data.workdays, report: data.rows });
@@ -1586,9 +1599,12 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
 
   // 匯出 CSV（含 BOM 俾 Excel 開中文）
   router.get("/payroll/export", requireAuth, requireRole('admin'), (req, res) => {
-    const from = req.query.from || "";
-    const to = req.query.to || "";
-    if (!from || !to) return res.status(400).json({ error: "請提供日期範圍 from / to" });
+    let from = req.query.from || "";
+    let to = req.query.to || "";
+    if (!from || !to) {
+      const [df, dt] = prevMonthRange();
+      from = from || df; to = to || dt;
+    }
     calcPayroll(from, to, (err, data) => {
       if (err) return serverError(res, err);
       const head = ["姓名", "角色", "出勤日數", "總工時", "OT小時", "應發薪金(HKD)"];
