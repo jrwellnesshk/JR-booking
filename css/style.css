@@ -105,13 +105,15 @@ body {
 }
 
 .calendar-day.holiday {
-  background-color: #fff7ed;
-  color: #ea580c;
+  background-color: #fee2e2;
+  color: #dc2626;
   cursor: not-allowed;
+  font-weight: 700;
+  border: 1px solid #fca5a5;
 }
 
 .calendar-day.holiday:hover {
-  background-color: #ffedd5;
+  background-color: #fecaca;
 }
 
 .calendar-day.working-holiday {

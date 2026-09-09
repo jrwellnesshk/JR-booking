@@ -17,13 +17,13 @@
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="zh_HK" />
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
-    <link rel="stylesheet" href="css/tailwind.css" />
+    <link rel="stylesheet" href="css/tailwind.css?v=20260909" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <!-- 外部樣式表 -->
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style.css?v=20260909" />
     <!-- 🎨 Momence 設計系統 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -2115,8 +2115,8 @@
                     v-for="day in calendarDays"
                     :key="day.date"
                     @click="selectCalendarDate(day)"
-                    :class="['calendar-day','text-center','cursor-pointer','py-2', day.isCurrentMonth ? '' : 'disabled', day.isPast ? 'past' : '', day.isToday ? 'today' : '', day.isClosed ? 'closed' : '', day.isHoliday ? 'holiday' : '', day.isMonthClosed ? 'month-closed' : '', day.date === selectedDate ? 'selected' : '']"
-                  >{{ day.day }}</div>
+                    :class="['calendar-day','text-center','cursor-pointer','py-2', day.isCurrentMonth ? '' : 'disabled', day.isPast ? 'past' : '', day.isToday ? 'today' : '', day.isClosed ? 'closed' : '', day.isHoliday ? 'holiday' : '', day.isMonthClosed ? 'month-closed' : '',                     day.date === selectedDate ? 'selected' : '']"
+                  >{{ day.day }}<span v-if="day.isHoliday && day.isCurrentMonth && !day.isPast" class="text-xs block font-medium" style="color:#dc2626;">{{ t('紅日') }}</span></div>
                 </div>
               </div>
               <div>
@@ -4583,7 +4583,7 @@
                         {{ day.day }}
                         <span v-if="day.isMonthClosed && day.isCurrentMonth && !day.isPast" class="text-xs block text-gray-500 font-medium">{{ t('鎖') }}</span>
                         <span v-else-if="day.isWorkingHoliday && day.isCurrentMonth && !day.isPast" class="text-xs block text-emerald-600 font-medium">{{ t('營') }}</span>
-                        <span v-else-if="day.isHoliday && day.isCurrentMonth && !day.isPast" class="text-xs block text-orange-600 font-medium">{{ t('假') }}</span>
+                        <span v-else-if="day.isHoliday && day.isCurrentMonth && !day.isPast" class="text-xs block font-medium" style="color:#dc2626;">{{ t('紅日') }}</span>
                         <span v-else-if="day.isClosed && day.isCurrentMonth && !day.isPast" class="text-xs block text-red-500">{{ t('休') }}</span>
                       </div>
                     </div>
@@ -5519,7 +5519,7 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260821"></script>
     <script src="js/i18n.js?v=20260908"></script>
-    <script src="js/app.js?v=20260821"></script>
+    <script src="js/app.js?v=20260909"></script>
     <script>
       (function () {
         var container = document.getElementById('aq-hscroll');

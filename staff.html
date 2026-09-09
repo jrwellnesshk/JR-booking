@@ -8,12 +8,12 @@
     <meta http-equiv="Expires" content="0" />
     <title>員工版面 - 寶天醫館</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
-    <link rel="stylesheet" href="css/tailwind.css" />
+    <link rel="stylesheet" href="css/tailwind.css?v=20260909" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="js/auth-fetch.js"></script>
+    <link rel="stylesheet" href="css/style.css?v=20260909" />
+    <script src="js/auth-fetch.js?v=20260909"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
       [v-cloak]{ display:none !important; }
@@ -556,7 +556,7 @@
                     (c.isToday ? 'border-indigo-400 bg-indigo-50/60 cursor-pointer hover:bg-slate-50' : 'border-slate-200 cursor-pointer hover:bg-slate-50'))">
                   <template v-if="c">
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold" :class="c.holiday ? 'text-red-500' : (c.isToday ? 'text-indigo-600' : 'text-slate-500')">{{ c.day }}<span v-if="c.holiday" class="ml-0.5 text-[9px] text-red-400 font-normal">休</span></span>
+                      <span class="text-xs font-bold" :class="c.holiday ? '' : (c.isToday ? 'text-indigo-600' : 'text-slate-500')" :style="c.holiday ? 'color:#dc2626' : ''">{{ c.day }}<span v-if="c.holiday" class="ml-0.5 text-[9px] font-normal" style="color:#dc2626;">紅日</span></span>
                       <span v-if="c.count" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white bg-emerald-600">{{ c.count }}</span>
                     </div>
                     <div v-if="c.count" class="mt-2 flex flex-wrap gap-0.5">

@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
-    <script src="js/auth-fetch.js"></script>
+    <script src="js/auth-fetch.js?v=20260909"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -367,8 +367,8 @@
                 <span class="w-2.5 h-2.5 rounded-full" :class="leaveTypeDot(key)"></span>{{ label }}
               </span>
             </template>
-            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700">
-              <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>紅日（公眾假期 · 全公司放假）
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-red-700">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>紅日（公眾假期 · 全公司放假）
             </span>
           </div>
 
@@ -382,13 +382,13 @@
               <div class="grid grid-cols-7">
                 <div v-for="(cell,i) in calCells" :key="i"
                      class="min-h-[108px] border-b border-r border-[rgba(199,180,166,.18)] p-2 align-top"
-                     :class="cell ? (isToday(cell.date) ? 'bg-[rgba(99,124,93,.08)]' : (cell.holiday ? 'bg-[rgba(225,29,72,.07)]' : '')) : 'bg-[rgba(199,180,166,.05)]'">
+                     :class="cell ? (isToday(cell.date) ? 'bg-[rgba(99,124,93,.08)]' : (cell.holiday ? 'bg-[rgba(220,38,38,.08)]' : '')) : 'bg-[rgba(199,180,166,.05)]'">
                   <template v-if="cell">
                     <div class="flex items-center justify-between mb-1">
-                      <span class="text-xs font-semibold" :class="isToday(cell.date)?'text-[#637c5d]':(cell.holiday?'text-rose-700':'text-ink')">{{ cell.day }}</span>
+                      <span class="text-xs font-semibold" :class="isToday(cell.date)?'text-[#637c5d]':(cell.holiday?'text-red-700':'text-ink')">{{ cell.day }}</span>
                       <span v-if="isToday(cell.date)" class="text-[9px] font-bold text-white bg-[#637c5d] rounded-full px-1.5 py-0.5">今日</span>
                     </div>
-                    <div v-if="cell.holiday" class="mb-1 flex items-center gap-1 text-[10px] font-bold text-white bg-rose-600 rounded px-1.5 py-0.5" :title="cell.holiday">
+                    <div v-if="cell.holiday" class="mb-1 flex items-center gap-1 text-[10px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5" :title="cell.holiday">
                       <i class="fas fa-circle text-[6px]"></i><span class="truncate">紅日 · {{ cell.holiday }}</span>
                     </div>
                     <div class="space-y-1">
