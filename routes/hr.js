@@ -140,7 +140,9 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
         Object.keys(days).forEach((d) =>
           days[d].sort((a, b) => String(a.name).localeCompare(String(b.name), "zh-Hant"))
         );
-        res.json({ year, month: parseInt(month, 10), days, legend: leaveTypeLabel });
+        // 紅日（香港公眾假期）：公司逢紅日都放假
+        const holidays = getHolidaysInRange(start, end).map((h) => ({ date: h.date, name: h.name }));
+        res.json({ year, month: parseInt(month, 10), days, legend: leaveTypeLabel, holidays });
       }
     );
   });

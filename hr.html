@@ -123,7 +123,7 @@
           <button class="navbtn" :class="{active:view==='leaves'}" @click="switchView('leaves')"><i class="fas fa-calendar-plus w-4"></i>請假管理<span v-if="pendingLeaveCount>0" class="ml-auto bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pendingLeaveCount }}</span></button>
           <button class="navbtn" :class="{active:view==='roster'}" @click="switchView('roster')"><i class="fas fa-id-badge w-4"></i>員工名冊</button>
           <button class="navbtn" :class="{active:view==='schedule'}" @click="switchView('schedule')"><i class="fas fa-calendar-check w-4"></i>排班管理</button>
-          <button class="navbtn" :class="{active:view==='leave-calendar'}" @click="switchView('leave-calendar')"><i class="fas fa-calendar-day w-4"></i>員工假期日曆</button>
+          <button class="navbtn" :class="{active:view==='leave-calendar'}" @click="switchView('leave-calendar')"><i class="fas fa-calendar-day w-4"></i>員工假期</button>
           <button class="navbtn" :class="{active:view==='payroll'}" @click="switchView('payroll')"><i class="fas fa-money-bill-wave w-4"></i>出糧</button>
           <button class="navbtn" :class="{active:view==='manual'}" @click="switchView('manual')"><i class="fas fa-edit w-4"></i>補打卡</button>
         </nav>
@@ -346,8 +346,8 @@
         <section v-if="view==='leave-calendar'">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">員工假期日曆</h1>
-              <p class="text-sm text-taupe mt-1">一眼睇晒全員邊日放假，游標停喺名上面可睇原因</p>
+              <h1 class="text-2xl font-bold text-ink">員工假期</h1>
+              <p class="text-sm text-taupe mt-1">一眼睇晒全員邊日放假；紅日（香港公眾假期）全公司放假，會標成紅色</p>
             </div>
             <div class="flex items-center gap-2">
               <button class="btn btn-ghost !px-3" @click="prevCalMonth"><i class="fas fa-chevron-left"></i></button>
@@ -367,6 +367,9 @@
                 <span class="w-2.5 h-2.5 rounded-full" :class="leaveTypeDot(key)"></span>{{ label }}
               </span>
             </template>
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>紅日（公眾假期 · 全公司放假）
+            </span>
           </div>
 
           <!-- 日曆 -->
@@ -379,11 +382,14 @@
               <div class="grid grid-cols-7">
                 <div v-for="(cell,i) in calCells" :key="i"
                      class="min-h-[108px] border-b border-r border-[rgba(199,180,166,.18)] p-2 align-top"
-                     :class="cell ? (isToday(cell.date) ? 'bg-[rgba(99,124,93,.08)]' : '') : 'bg-[rgba(199,180,166,.05)]'">
+                     :class="cell ? (isToday(cell.date) ? 'bg-[rgba(99,124,93,.08)]' : (cell.holiday ? 'bg-[rgba(225,29,72,.07)]' : '')) : 'bg-[rgba(199,180,166,.05)]'">
                   <template v-if="cell">
                     <div class="flex items-center justify-between mb-1">
-                      <span class="text-xs font-semibold" :class="isToday(cell.date)?'text-[#637c5d]':'text-ink'">{{ cell.day }}</span>
+                      <span class="text-xs font-semibold" :class="isToday(cell.date)?'text-[#637c5d]':(cell.holiday?'text-rose-700':'text-ink')">{{ cell.day }}</span>
                       <span v-if="isToday(cell.date)" class="text-[9px] font-bold text-white bg-[#637c5d] rounded-full px-1.5 py-0.5">今日</span>
+                    </div>
+                    <div v-if="cell.holiday" class="mb-1 flex items-center gap-1 text-[10px] font-bold text-white bg-rose-600 rounded px-1.5 py-0.5" :title="cell.holiday">
+                      <i class="fas fa-circle text-[6px]"></i><span class="truncate">紅日 · {{ cell.holiday }}</span>
                     </div>
                     <div class="space-y-1">
                       <div v-for="(lv,k) in cell.leaves.slice(0,3)" :key="k"
@@ -652,7 +658,7 @@
             // manual
             mEmp:'', mDate:'', mIn:'', mOut:'', mType:'full', mNote:'', manualMsg:'', manualOk:false,
             // 員工假期日曆
-            calYear: (new Date()).getFullYear(), calMonth: (new Date()).getMonth()+1, calDays:{}, calLoading:false, calLegend:{},
+            calYear: (new Date()).getFullYear(), calMonth: (new Date()).getMonth()+1, calDays:{}, calHolidays:{}, calLoading:false, calLegend:{},
           };
         },
         computed: {
@@ -679,7 +685,7 @@
             for(let i=0;i<firstDow;i++) cells.push(null);
             for(let d=1; d<=total; d++){
               const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-              cells.push({ date:ds, day:d, leaves:this.calDays[ds]||[] });
+              cells.push({ date:ds, day:d, leaves:this.calDays[ds]||[], holiday:this.calHolidays[ds]||null });
             }
             while(cells.length%7!==0) cells.push(null);
             return cells;
@@ -828,6 +834,7 @@
               this.calYear = j.year; this.calMonth = j.month;
               this.calDays = j.days || {};
               this.calLegend = j.legend || {};
+              const hm = {}; (j.holidays || []).forEach(h => { hm[h.date] = h.name; }); this.calHolidays = hm;
             } catch(e){ this.toastErr(e); } finally { this.calLoading=false; }
           },
           prevCalMonth(){ let m=this.calMonth-1, y=this.calYear; if(m<1){ m=12; y--; } this.calYear=y; this.calMonth=m; this.loadLeaveCalendar(); },
