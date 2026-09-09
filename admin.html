@@ -7670,14 +7670,18 @@ addUserForm: {
             if (!head) return { parentLevel: [], headGeneration: [] };
             const links = this.headLinks || [];
 
-            const relKey = (lk) => String(lk.customRelation || lk.relation || '').toLowerCase();
-            const spouseKeys = ['配偶', 'spouse', 'partner', '丈夫', '妻子', '老公', '太太', 'husband', 'wife'];
-            const childKeys = ['子女', 'child', 'children', '兒子', '女兒', '仔', '女', 'son', 'daughter'];
-            const parentKeys = ['父母', 'parent', '爸爸', '媽媽', '父', '母', 'father', 'mother', 'dad', 'mom'];
+            // 分類關鍵字：同時睇 relation（系統枚舉）同 customRelation（用家自訂）
+            // 避免「父母」被 custom「阿爸／阿媽」遮蓋，導致父母落到戶主同一層
+            const relOf = (lk) => String(lk.relation || '').toLowerCase();
+            const custOf = (lk) => String(lk.customRelation || '').toLowerCase();
+            const either = (lk, keys) => keys.some(k => relOf(lk).includes(k) || custOf(lk).includes(k));
+            const spouseKeys = ['配偶', 'spouse', 'partner', '丈夫', '妻子', '老公', '太太', '老婆', '伴侶', 'husband', 'wife'];
+            const childKeys = ['子女', 'child', 'children', '兒子', '女兒', '仔', '囝', '囡', 'son', 'daughter'];
+            const parentKeys = ['父母', 'parent', '爸爸', '媽媽', '父親', '母親', '阿爸', '阿媽', '老豆', '老母', '祖父', '祖母', '爺', '嫲', 'father', 'mother', 'dad', 'mom'];
 
-            const isSpouse = (lk) => spouseKeys.includes(relKey(lk));
-            const isChild = (lk) => childKeys.includes(relKey(lk));
-            const isParent = (lk) => parentKeys.includes(relKey(lk));
+            const isSpouse = (lk) => either(lk, spouseKeys);
+            const isChild = (lk) => either(lk, childKeys);
+            const isParent = (lk) => either(lk, parentKeys);
 
             // 經由戶主嘅連結
             const spouseLink = links.find(lk => isSpouse(lk) && lk.linkSourceName === head.name);
