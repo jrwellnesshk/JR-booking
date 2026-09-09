@@ -112,7 +112,7 @@
       button:active{ transform:scale(.98); }
       input,select,textarea{ font-family:var(--body); }
       .m-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:4px; background:var(--n100); border-radius:1rem; margin-bottom:1.8rem; }
-      .m-tabs button{ padding:.62rem; font-size:.85rem; font-weight:600; border-radius:.85rem; color:var(--n500); transition:all .22s ease; }
+      .m-tabs button{ display:inline-flex; align-items:center; justify-content:center; gap:.4rem; white-space:nowrap; padding:.62rem; font-size:.85rem; font-weight:600; border-radius:.85rem; color:var(--n500); transition:all .22s ease; }
       .m-tabs button:hover{ color:var(--n700); }
       .m-tabs button.active{ background:#fff; color:var(--p600); box-shadow:0 6px 18px -8px rgba(28,27,64,.25); }
       .m-field label{ display:flex; align-items:center; gap:.4rem; font-size:.85rem; font-weight:600; color:var(--n700); margin-bottom:.55rem; }
@@ -1321,7 +1321,7 @@
               <button type="button" class="aq-lang-toggle" @click="setLang(lang === 'en' ? 'zh-TW' : 'en')" :title="t('請選擇語言 / Please select language')" :aria-label="t('請選擇語言 / Please select language')">
                 <i class="fas fa-globe"></i><span>{{ lang === 'en' ? '中文' : 'EN' }}</span>
               </button>
-              <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-seedling"></i><span class="aq-cta-label">{{ t('頂欄預約') }}</span></a>
+              <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-seedling"></i><span class="aq-cta-label">{{ t('初體驗預約') }}</span></a>
             </div>
           </div>
         </div>
@@ -1526,7 +1526,7 @@
               </div>
               <div class="aq-login-card">
             <div class="m-card-head" style="margin-bottom:1.4rem;">
-              <h2>{{ loginRole === 'customer' ? '會員登入' : loginRole === 'doctor' ? '醫師登入' : '員工 / 管理員登入' }}</h2>
+              <h2>{{ loginRole === 'customer' ? t('會員登入') : loginRole === 'doctor' ? t('醫師登入') : t('員工 / 管理員登入') }}</h2>
               <p>{{ t('歡迎回來，請登入您的帳戶') }}</p>
             </div>
 
