@@ -6,7 +6,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 
-module.exports = (db) => {
+module.exports = (db, { requireAuth } = {}) => {
 
   // 🔒 AI 分流寫入限速（防未登入用戶灌爆 ai_consultation_logs）
   const aiWriteLimiter = rateLimit({
@@ -18,7 +18,7 @@ module.exports = (db) => {
   });
 
   // 取得症狀分類列表
-  router.get("/categories", (req, res) => {
+  router.get("/categories", requireAuth, (req, res) => {
     const lang = req.query.lang || 'zh_hant';
     db.all("SELECT * FROM symptom_categories ORDER BY id", [], (err, rows) => {
       if (err) return serverError(res, err);
@@ -37,7 +37,7 @@ module.exports = (db) => {
   });
 
   // 開始問診（取得第一個問題）
-  router.post("/start-consultation", aiWriteLimiter, (req, res) => {
+  router.post("/start-consultation", requireAuth, aiWriteLimiter, (req, res) => {
     const { category_id, lang = 'zh_hant' } = req.body;
     
     if (!category_id) {
@@ -88,7 +88,7 @@ module.exports = (db) => {
   });
 
   // 提交答案並取得下一題
-  router.post("/submit-answer", aiWriteLimiter, (req, res) => {
+  router.post("/submit-answer", requireAuth, aiWriteLimiter, (req, res) => {
     const { session_id, category_id, question_id, option_ids, lang = 'zh_hant' } = req.body;
 
     if (!session_id || !question_id || !option_ids) {
@@ -185,7 +185,7 @@ module.exports = (db) => {
   });
 
   // 取得建議結果
-  router.get("/get-recommendation", (req, res) => {
+  router.get("/get-recommendation", requireAuth, (req, res) => {
     const { session_id, category_id, lang = 'zh_hant' } = req.query;
 
     // 🆕 缺 session_id 時回熱門症狀/推薦列表（唔好 400 整死前端）

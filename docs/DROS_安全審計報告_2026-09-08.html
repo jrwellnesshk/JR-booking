@@ -129,17 +129,17 @@ if (isDev) {
   <div class="card">
     <p><b>DROS 透鏡</b>：能力混寫（本應登入後使用嘅能力對匿名開放）+ 治理不一致。</p>
     <pre><span class="c">// routes/ai.js</span>
-module.exports = (db) =&gt; {                                  <span class="c">// :9  無 auth 依賴</span>
-router.get(<span class="s">"/categories"</span>, (req,res)=&gt;{...});             <span class="c">// :21 無 requireAuth</span>
-router.post(<span class="s">"/start-consultation"</span>, aiWriteLimiter,...);  <span class="c">// :40 只得頻限</span>
-router.post(<span class="s">"/submit-answer"</span>, aiWriteLimiter,...);        <span class="c">// :91 只得頻限</span>
-router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});     <span class="c">// :188 無 requireAuth</span></pre>
-    <p>風險低（規則式、唔寫 PII），但接 LLM 後有成本/濫用面；與「會員才能用 AI 推薦」假設不一致。建議加 <code>optionalAuth</code> 並於文檔聲明公開性。</p>
+module.exports = (db, { requireAuth } = {}) =&gt; {                                  <span class="c">// :9 收返傳入嘅 auth</span>
+router.get(<span class="s">"/categories"</span>, requireAuth, (req,res)=&gt;{...});             <span class="c">// :21 加 requireAuth</span>
+router.post(<span class="s">"/start-consultation"</span>, requireAuth, aiWriteLimiter,...);  <span class="c">// :40 加 requireAuth</span>
+router.post(<span class="s">"/submit-answer"</span>, requireAuth, aiWriteLimiter,...);        <span class="c">// :91 加 requireAuth</span>
+router.get(<span class="s">"/get-recommendation"</span>, requireAuth, (req,res)=&gt;{...});     <span class="c">// :188 加 requireAuth</span></pre>
+    <p>四個路由原先均無 <code>requireAuth</code>（修復狀態見第 7 節 F3）。風險低（規則式、唔寫 PII），但接 LLM 後有成本/濫用面；與「會員才能用 AI 推薦」假設不一致。已按用戶確認加 <code>requireAuth</code>（非 <code>optionalAuth</code>，因全 repo 無生產 frontend caller，唔影響功能）。</p>
   </div>
 
   <h3><span class="badge lo">Low</span>F4 — legacy <code>/api/find-user-id</code> 帳戶枚舉面</h3>
   <div class="card">
-    <p><code>name + phone → 回傳 username</code> 嘅 legacy 端點，速率限制 30/15min。低風險，但配合 F1（需 target username/phone）可收窄攻擊所需資訊。建議退役或強化至 login 同等鎖定策略。</p>
+    <p><code>auth.js:638</code>（<code>/api/auth/find-user-id</code>，name+email→username）與 <code>server.js:555</code>（<code>/api/find-user-id</code>，name+phone→username）兩個實作，均 rate-limited 30/15min。經查證係 <b>live 功能</b>——<code>js/app.js:2386</code> 用於「搵返 username」恢復流程。需兩個識別因子 + 限速，枚舉風險低。用戶決定<b>保持現狀</b>（原「退役」建議會破壞功能，已撤銷）。</p>
   </div>
 
   <h2>3. Anti-Stub 正面清單（已驗證「真嘅」控制）</h2>
@@ -164,8 +164,8 @@ router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});  
     <tr><th>優先</th><th>項</th><th>嚴重度</th><th>工作量</th></tr>
     <tr><td>P0</td><td>F1：移除/守衛 account-links 免費 family 升級 + 修正 840 註解</td><td>High</td><td>小</td></tr>
     <tr><td>P1</td><td>F2：收緊 isDev 條件，重設碼絕不回傳響應體</td><td>Medium</td><td>小</td></tr>
-    <tr><td>P2</td><td>F3：AI 路由加 optionalAuth 並聲明公開性</td><td>Low</td><td>小</td></tr>
-    <tr><td>P3</td><td>F4：退役或強化 legacy find-user-id</td><td>Low</td><td>小</td></tr>
+    <tr><td>P2</td><td>F3：AI 路由加 requireAuth（已修，見第 7 節）</td><td>Low</td><td>小</td></tr>
+    <tr><td>P3</td><td>F4：保持現狀（live 恢復功能，低風險，用戶決定唔改）</td><td>Low</td><td>小</td></tr>
     <tr><td>P-</td><td>補安全屬性單元測試（防偽測試）</td><td>Info</td><td>中</td></tr>
   </table>
 
@@ -179,7 +179,7 @@ router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});  
     <tr><td>general 非家庭連結禁止非「初體驗」預約</td><td>memberships.js:1183-1184</td></tr>
     <tr><td>membership_required 閘門</td><td>bookings.js:317</td></tr>
     <tr><td>DEV FALLBACK 回傳 verification_code</td><td>auth.js:548-556</td></tr>
-    <tr><td>AI 路由全無認證</td><td>ai.js:9,21,40,91,188</td></tr>
+    <tr><td>AI 路由原全無認證（已修：:9 收返 {requireAuth} 並加到 4 路由）</td><td>ai.js:9,21,40,91,188</td></tr>
     <tr><td>verifyAdminPassword 真實二次驗證（非 stub）</td><td>admin.js:19-43</td></tr>
     <tr><td>對象級授權 isOwnerOrStaff</td><td>bookings.js:25,708,715,723,735,906,916</td></tr>
   </table>
@@ -190,7 +190,8 @@ router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});  
     <p><b>840 行註解修正（文檔，非邏輯）</b>：原註解寫「account_links 唔影響會員級別」同實作自相矛盾（DROS Declared≠Implemented）。已改為準確描述「連結後會升 family 會籍」，以文檔修正解決矛盾，而唔改邏輯。</p>
     <p><b>F2（已修，保留）</b>：<code>routes/auth.js:548</code> <code>isDev</code> 收緊為只判 <code>NODE_ENV !== 'production'</code>（移除 <code>!process.env.EMAIL_PASS</code>）；DEV FALLBACK 只將重設碼寫入 server log，響應體不再含 <code>verification_code</code>。純安全修復，唔影響正常流程（生產環境經 SMTP 寄出；SMTP 未配置則重設流程安全失敗返 500，唔再洩漏）。</p>
     <p><b>驗證（沙盒 scenario.db, PORT=4188）</b>：起 server + <code>_t_auditfix.js</code> 實測 —— ① account-links 連結後雙方升 <code>family</code>（預期行為復原，PASS）；② <code>send-reset-code</code> 響應體無 <code>verification_code</code> 鍵（PASS）。exit=0。</p>
-    <p><b>F3 / F4（建議，未實施）</b>：用戶指示「建議先問」，故只列建議：F3 可加 <code>optionalAuth</code> 到 <code>ai.js</code> 路由（需改 module signature，屬邏輯改動，待確認）；F4 可退役 legacy <code>find-user-id</code> 枚舉端點（移除功能，待確認）。</p>
+    <p><b>F3（已修，保留）</b>：<code>routes/ai.js</code> 改 signature 為 <code>(db,{requireAuth})=&gt;</code>，並將 <code>requireAuth</code> 加到 4 個路由（:21/:40/:91/:188）。關閉「server.js:360 傳咗 auth 但 ai.js:9 丟棄」嘅 declared≠implemented 缺口。沙盒驗證（fresh DB, PORT=4194）：未登入 <code>/api/ai/categories</code>→401、登入後→200。因全 repo 無生產 frontend caller（得 test/e2e 用），唔影響現有功能。</p>
+    <p><b>F4（保持現狀）</b>：經查證 <code>/api/find-user-id</code> 係 live username 恢復功能（<code>js/app.js:2386</code> 用），有兩個 rate-limited + 兩因子實作（<code>auth.js:638</code> name+email / <code>server.js:555</code> name+phone），枚舉風險低。用戶決定唔改。原報告「退役」建議已撤銷（會破壞功能）。</p>
   </div>
 
 </div>
