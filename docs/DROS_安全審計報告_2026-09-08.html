@@ -147,6 +147,11 @@ router.get(<span class="s">"/get-recommendation"</span>, requireAuth, (req,res)=
     <p><code>POST /api/membership/cancel</code>（memberships.js:278）只查 <code>role==='customer'</code>，<b>冇查 caller 係咪家庭戶主</b>。<code>cancelUserSubscription</code>（:188-202）+ <code>familyService.detachAllChildren</code>（family.js:82-94）對非 head 家庭成員只降自己 general（<code>detachAllChildren(sub)=0</code>、清自己 <code>family_head_id</code>），唔拆全家。經用戶確認設計：<b>戶主退訂拆走全家子女連結、全部降 general；子帳戶吾可以退訂，只可以付錢</b>。故非 head 成員 call <code>/cancel</code> 係設計落差。已修：① 後端 guard（memberships.js:286-289，403「只有家庭戶主可以取消訂閱；子帳戶只可繼續供款，不可退訂」）；② 前端隨藏子帳戶取消掣（index.html:3729-3746）+ 加「你是家庭成員，只可繼續供款，不可取消訂閱」提示；③ <code>cancelSubscription</code> client 防禦（app.js:2019-2024）。沙盒驗證：子帳戶 <code>/cancel</code>→403、戶主 <code>/cancel</code>→200（<code>detached:1</code>、family_links 清空）。</p>
   </div>
 
+  <h3><span class="badge lo">Low</span>F6 — 家庭計劃「重複付款」防禦（一張單一個付款人）</h3>
+  <div class="card">
+    <p><code>POST /api/membership/checkout</code>（memberships.js:248）原對所有登入客戶開放，家庭成員各自 checkout 會各開自己嘅 Stripe subscription（<code>family_invoices</code> 張單冇 payer 欄，未能識別「邊個喺供」），造成重複付款，違反「是但一個帳戶俾錢張單就完成」。已加 guard（memberships.js:257-278）：<code>tier==='family'</code> 時查全家成員（<code>getFamilyMemberIds</code>）有冇其他成員已 active family subscription；有就 400「你的家庭計劃已有成員供款中，無需重複付款」（code <code>FAMILY_ALREADY_PAID</code>，附 <code>payerName</code>）。現有付款人（head）自己重 checkout 會被豁免（可續費/replace）；家庭無人供時其他成員可接手付款。沙盒驗證（fresh DB, PORT=4204 + dummy Stripe key）：子帳戶 checkout→400（FAMILY_ALREADY_PAID, payerName=Head User）、head 重 checkout→500（非 400）、head 失效後子帳戶接手→500（非 400）。</p>
+  </div>
+
   <h2>3. Anti-Stub 正面清單（已驗證「真嘅」控制）</h2>
   <div class="row">
     <div class="pill"><b>✅ JWT 撤銷鏈</b>SESSION_SECRET 缺漏 production 退出；timingSafeEqual；jti 撤銷 + user_revoked 持久化。</div>
@@ -172,6 +177,7 @@ router.get(<span class="s">"/get-recommendation"</span>, requireAuth, (req,res)=
     <tr><td>P2</td><td>F3：AI 路由加 requireAuth（已修，見第 7 節）</td><td>Low</td><td>小</td></tr>
     <tr><td>P3</td><td>F4：保持現狀（live 恢復功能，低風險，用戶決定唔改）</td><td>Low</td><td>小</td></tr>
     <tr><td>P4</td><td>F5：子帳戶退訂 guard + UI（已修，見第 7 節）</td><td>Low</td><td>小</td></tr>
+    <tr><td>P5</td><td>F6：家庭計劃重複付款防禦（checkout guard，已修，見第 7 節）</td><td>Low</td><td>小</td></tr>
     <tr><td>P-</td><td>補安全屬性單元測試（防偽測試）</td><td>Info</td><td>中</td></tr>
   </table>
 
@@ -199,6 +205,7 @@ router.get(<span class="s">"/get-recommendation"</span>, requireAuth, (req,res)=
     <p><b>F3（已修，保留）</b>：<code>routes/ai.js</code> 改 signature 為 <code>(db,{requireAuth})=&gt;</code>，並將 <code>requireAuth</code> 加到 4 個路由（:21/:40/:91/:188）。關閉「server.js:360 傳咗 auth 但 ai.js:9 丟棄」嘅 declared≠implemented 缺口。沙盒驗證（fresh DB, PORT=4194）：未登入 <code>/api/ai/categories</code>→401、登入後→200。因全 repo 無生產 frontend caller（得 test/e2e 用），唔影響現有功能。</p>
     <p><b>F4（保持現狀）</b>：經查證 <code>/api/find-user-id</code> 係 live username 恢復功能（<code>js/app.js:2386</code> 用），有兩個 rate-limited + 兩因子實作（<code>auth.js:638</code> name+email / <code>server.js:555</code> name+phone），枚舉風險低。用戶決定唔改。原報告「退役」建議已撤銷（會破壞功能）。</p>
     <p><b>F5（已修，保留）</b>：家庭單取消語義按用戶確認設計執行——戶主退訂拆全家（code 原已如此，非漏洞）；但 <code>/cancel</code> 原冇查 head，子帳戶可自助退訂自己（違反「子帳戶只可供款、不可退訂」）。已加三層防禦：後端 guard（memberships.js:286-289，403）、前端隨藏子帳戶取消掣 + 提示（index.html:3729-3746）、<code>cancelSubscription</code> client 防禦（app.js:2019-2024）。沙盒驗證（fresh DB, PORT=4202）：子帳戶 <code>/cancel</code>→403、戶主 <code>/cancel</code>→200（<code>detached:1</code>，family_links 清空，child/head 全部降 general）。</p>
+    <p><b>F6（已修，保留）</b>：家庭計劃「一張單一個付款人」防禦。<code>POST /api/membership/checkout</code>（memberships.js:248）原對所有客戶開放，家庭成員各自 checkout 會各開自己嘅 Stripe subscription（<code>family_invoices</code> 無 payer 欄），造成重複付款，違反「是但一個帳戶俾錢張單就完成」。已加 guard（memberships.js:257-278）：<code>tier==='family'</code> 時查全家成員有冇其他成員已 active family subscription，有就 400 <code>FAMILY_ALREADY_PAID</code>（附 <code>payerName</code>）；現有付款人自己重 checkout 豁免（可續費/replace），家庭無人供時其他成員可接手。沙盒驗證（fresh DB, PORT=4204 + dummy Stripe key）：子帳戶 checkout→400（payerName=Head User）、head 重 checkout→500（非 400）、head 失效後子帳戶接手→500（非 400）。</p>
   </div>
 
 </div>

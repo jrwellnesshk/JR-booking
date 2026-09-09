@@ -254,7 +254,27 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       return res.status(503).json({ error: '支付服務未設定（請在 .env 設定 STRIPE_SECRET_KEY）', code: 'stripe_not_configured' });
     }
     try {
-      const fullUser = await q1("SELECT id, username, name, email, phone, stripe_customer_id FROM users WHERE id=?", [user.id]);
+      const fullUser = await q1("SELECT id, username, name, email, phone, stripe_customer_id, family_head_id FROM users WHERE id=?", [user.id]);
+      // 🔒 家庭計劃「一張單一個付款人」：若家庭已有人供緊款，擋第二個付款人（符「是但一個俾錢張單就完成」）
+      if (tier === 'family') {
+        const headId = (fullUser.family_head_id && Number(fullUser.family_head_id) !== Number(fullUser.id))
+          ? Number(fullUser.family_head_id) : Number(fullUser.id);
+        const memberIds = await getFamilyMemberIds(headId);
+        if (memberIds.length) {
+          const ph = memberIds.map(() => '?').join(',');
+          const activePayer = await q1(
+            `SELECT user_id FROM subscriptions WHERE user_id IN (${ph}) AND status='active' AND tier='family' AND user_id != ? LIMIT 1`,
+            [...memberIds, fullUser.id]);
+          if (activePayer) {
+            const payer = await q1("SELECT name, username FROM users WHERE id=?", [activePayer.user_id]);
+            return res.status(400).json({
+              error: '你的家庭計劃已有成員供款中，無需重複付款；如要接手供款，請先由現有付款人取消訂閱。',
+              code: 'FAMILY_ALREADY_PAID',
+              payerName: (payer && (payer.name || payer.username)) || '家庭成員'
+            });
+          }
+        }
+      }
       const customerId = await getOrCreateCustomer(stripe, fullUser);
       const priceId = await getOrCreatePrice(stripe, tier);
       const baseUrl = process.env.SITE_URL || `http://localhost:${process.env.PORT || 4000}`;
