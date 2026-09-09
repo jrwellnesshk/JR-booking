@@ -184,9 +184,17 @@ router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});  
     <tr><td>對象級授權 isOwnerOrStaff</td><td>bookings.js:25,708,715,723,735,906,916</td></tr>
   </table>
 
+  <h2>7. 修復狀態（2026-09-08 已執行）</h2>
+  <div class="card">
+    <p><b>F1（已修）</b>：<code>routes/memberships.js</code> 移除 <code>POST /account-links</code> 內嘅免費 <code>family</code> 升級（原 :923-936 段）、<code>family_head_id</code> 綁定同 <code>syncFamilyPlan</code> 呼叫，令 account_links 回復「純關係圖」語義（符合 :840 註解）。家庭會籍只經 Stripe <code>applyActiveSubscription</code> 取得，付費閘門 <code>membership_required</code> 不再被自助連結繞過。</p>
+    <p><b>F2（已修）</b>：<code>routes/auth.js:548</code> <code>isDev</code> 收緊為只判 <code>NODE_ENV !== 'production'</code>（移除 <code>!process.env.EMAIL_PASS</code>）；DEV FALLBACK 只將重設碼寫入 server log，響應體不再含 <code>verification_code</code>。生產環境若 SMTP 未配置則重設流程返 500（安全失敗，唔再洩漏）。</p>
+    <p><b>驗證（沙盒 scenario.db, PORT=4188）</b>：起 server + <code>_t_auditfix.js</code> 實測 —— ① general 用戶自助 account-links 到另一 general 用戶，雙方 <code>membership_tier</code> 維持 <code>general</code>（PASS）；② <code>send-reset-code</code> 響應體無 <code>verification_code</code> 鍵（PASS）。exit=0。</p>
+    <p><b>F3 / F4（未做）</b>：低風險，留待確認。F3 需改 <code>ai.js</code> module signature 注入 <code>optionalAuth</code>；F4 為退役 legacy <code>find-user-id</code> 枚舉端點。</p>
+  </div>
+
 </div>
 <footer>
-  寶天醫館預約系統 · DROS 隱性安全審計 · 2026-09-08 · 唯讀源碼審查，未做任何修改或部署變更。
+  寶天醫館預約系統 · DROS 隱性安全審計 · 2026-09-08 · 審計 + F1/F2 修復已執行並經沙盒驗證。
 </footer>
 </body>
 </html>

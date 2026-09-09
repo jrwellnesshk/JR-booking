@@ -543,17 +543,18 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
                   `INSERT INTO password_reset_logs (username, action, ip_address, success, details) VALUES (?, 'send_code', ?, 0, ?)`,
                   [user.username, clientIP, '郵件發送失敗：' + (emailResult.error || 'unknown')]
                 );
-                // 🔧 Dev/sandbox fallback：若 SMTP 未配置，唔好 500 整死流程
-                //    —— 印驗證碼到 console + 返 200（前端可正常完成 reset 流程）
-                const isDev = process.env.NODE_ENV !== 'production' || !process.env.EMAIL_PASS;
+                // 🔧 Dev/sandbox fallback：若 SMTP 未配置，唔好 500 整死流程。
+                //    驗證碼只可印到 server log / 管理員後台，絕對唔可以返落響應體
+                //    （否則任何環境漏設 EMAIL_PASS 都會洩漏重設碼 → 帳戶接管，DROS 審計 F2）。
+                const isDev = process.env.NODE_ENV !== 'production';
                 if (isDev) {
                   console.warn(`[DEV FALLBACK] 驗證碼 ${verificationCode} 已生成（無法寄出電郵 — ${emailResult.error || 'smtp 未配置'}）。Username=${user.username}, Email=${user.email}`);
+                  console.warn(`[DEV FALLBACK] 請於管理員後台或 DB password_reset_logs 查閱驗證碼；此碼切勿經 API 回傳。`);
                   return res.json({
                     ok: true,
                     message: "驗證碼已生成（沙盒模式：請查 server log 或管理員後台取得）",
                     expiresAt: expiresAt,
-                    dev_fallback: true,
-                    verification_code: verificationCode
+                    dev_fallback: true
                   });
                 }
                 res.status(500).json({ error: "發送驗證碼失敗，請稍後再試或聯絡職員" });
