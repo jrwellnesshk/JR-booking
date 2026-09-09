@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>寶天醫館預約系統 — DROS 隱性安全審計報告 (2026-09-08)</title>
+<style>
+  :root{
+    --bg:#F0E4D2; --surface:#F5E5D5; --surface2:#E5E8D9;
+    --sage:#7E9476; --sage-d:#3E5240; --sage-l:#A8B89A;
+    --brown:#5D4037; --brown-d:#3E2A1E; --ink:#3E2A1E;
+    --red:#B23A48; --orange:#C8743A; --yellow:#C9A227; --green:#5E8C5A;
+    --line:#D9C7AE;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Serif TC",Georgia,"Songti TC",serif;
+       background:var(--bg);color:var(--ink);line-height:1.7;padding:0 0 64px}
+  .wrap{max-width:920px;margin:0 auto;padding:0 22px}
+  header{background:linear-gradient(135deg,var(--sage-d),var(--brown-d));
+         color:#F5E5D5;padding:40px 22px 32px;margin-bottom:30px}
+  header .inner{max-width:920px;margin:0 auto}
+  header h1{margin:0 0 8px;font-size:26px;letter-spacing:.5px}
+  header .sub{opacity:.85;font-size:14px}
+  h2{margin:38px 0 14px;font-size:21px;color:var(--brown-d);
+     border-left:6px solid var(--sage);padding-left:12px}
+  h3{margin:24px 0 8px;font-size:17px;color:var(--brown)}
+  p,li{font-size:15px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+        padding:18px 20px;margin:14px 0;box-shadow:0 2px 10px rgba(62,42,30,.06)}
+  .badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;
+         border-radius:999px;color:#fff;vertical-align:middle;margin-right:8px}
+  .hi{background:var(--red)} .med{background:var(--orange)}
+  .lo{background:var(--yellow);color:#3E2A1E} .ok{background:var(--green)}
+  code{background:#efe2cf;padding:1px 6px;border-radius:6px;font-size:13px;
+       font-family:ui-monospace,Consolas,monospace;color:var(--brown-d)}
+  pre{background:#2c2017;color:#f3e6d4;padding:14px 16px;border-radius:10px;
+      overflow:auto;font-size:12.5px;line-height:1.55}
+  pre .c{color:#A8B89A} pre .k{color:#E0A87E} pre .s{color:#cfe0b8}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--surface2);color:var(--brown-d)}
+  tr:nth-child(even) td{background:rgba(229,232,217,.4)}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .pill{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--line);
+        border-radius:14px;padding:16px}
+  .pill b{display:block;font-size:13px;color:var(--sage-d);margin-bottom:4px}
+  .note{background:#FBF3E6;border-left:5px solid var(--yellow);padding:12px 16px;
+        border-radius:8px;font-size:14px;margin:14px 0}
+  footer{max-width:920px;margin:40px auto 0;padding:18px 22px;color:var(--brown);
+         font-size:12.5px;opacity:.8;border-top:1px solid var(--line)}
+  a{color:var(--sage-d)}
+</style>
+</head>
+<body>
+<header><div class="inner">
+  <h1>寶天醫館預約系統 — DROS 隱性安全審計報告</h1>
+  <div class="sub">審計日期 2026-09-08 ｜ 方法論：DROS（Anti-Stub / GBAI / Declared≠Implemented≠Verified / 能力混寫 / 偽測試）｜ 性質：唯讀源碼審查</div>
+</div></header>
+
+<div class="wrap">
+
+  <div class="card">
+    <h3 style="margin-top:0">一句話總結</h3>
+    <p>治理基線明顯高於一般水平（JWT 撤銷、對象級授權、上傳過濾、靜態攔截都係真貨）。但發現 <b>1 項 High 級隱性授權缺陷 + 1 項 Medium 級資訊暴露</b>，核心都係「聲稱與實作自相矛盾」──最經典一處係<b>同一個 function 入面，註解講「account_links 唔影響會員級別」，代碼卻把雙方免費升做付費 <code>family</code> 會籍</b>。</p>
+  </div>
+
+  <h2>1. 審計範圍與已驗證工件</h2>
+  <table>
+    <tr><th>文件</th><th>狀態</th><th>說明</th></tr>
+    <tr><td><code>server.js</code></td><td>已讀全</td><td>靜態攔截、uploads 雙重認證 + 所有權</td></tr>
+    <tr><td><code>services/jwt.js</code></td><td>已讀全</td><td>SESSION_SECRET 缺漏 production 退出；jti 撤銷持久化</td></tr>
+    <tr><td><code>middlewares/auth.js</code></td><td>已讀全</td><td>requireAuth / requireRole / optionalAuth</td></tr>
+    <tr><td><code>routes/auth.js</code></td><td>已讀全</td><td><b>DEV FALLBACK 回傳重設碼</b></td></tr>
+    <tr><td><code>routes/users.js</code></td><td>已讀全</td><td>isSelfOrAdmin + adminPassword 二次驗證</td></tr>
+    <tr><td><code>routes/medicalRecords.js</code></td><td>已讀全</td><td>doctorOwnsTarget / customer 只睇自己</td></tr>
+    <tr><td><code>routes/ai.js</code></td><td>已讀全</td><td><b>全部路由無 requireAuth</b></td></tr>
+    <tr><td><code>routes/admin.js</code></td><td>部分讀</td><td><b>二次驗證中間件係真貨，非 stub</b></td></tr>
+    <tr><td><code>routes/memberships.js</code></td><td>已讀全</td><td><b>account-links 免費升 family 會籍</b></td></tr>
+    <tr><td><code>routes/bookings.js</code></td><td>重點行</td><td>isOwnerOrStaff + membership_required 閘門</td></tr>
+    <tr><td><code>services/captcha.js</code></td><td>已讀全</td><td>測試後門僅非 production 生效（良好）</td></tr>
+  </table>
+  <p class="note">全 repo grep <code>v-html|innerHTML|eval(</code>：live 頁（index/admin/doctor/hr/staff.html）<b>無 server 數據灌入 HTML 嘅 sink</b>；<code>design/*.html</code> 的 innerHTML 屬 mockup 原型，非部署代碼。node_modules 匹配全部為第三方內部代碼，與本審計無關。</p>
+
+  <h2>2. 發現（Findings）</h2>
+
+  <h3><span class="badge hi">High</span>F1 — account-links 自助連結 = 免費 family 會籍升級，繞過付費閘門</h3>
+  <div class="card">
+    <p><b>DROS 透鏡</b>：Declared ≠ Implemented（同一 function 自相矛盾）+ GBAI 治理邊界違反（社交關係圖被授予付費特權）。</p>
+    <p><b>聲稱（代碼註解，已驗證）</b>：</p>
+    <pre><span class="c">// routes/memberships.js:840</span>
+<span class="c">// 與 family_links（家庭訂閱父→子）分開：account_links 係純關係圖，唔影響會員級別／保險。</span></pre>
+    <p><b>實作（同一 function，已驗證）</b>：</p>
+    <pre><span class="c">// :861-862  端點只要求 requireAuth（任何已登入用戶）</span>
+router.post(<span class="s">'/account-links'</span>, requireAuth, async (req, res) =&gt; {
+
+<span class="c">// :896-901  目標按 username 或 phone 解析，僅要求 role='customer'、非自己</span>
+if (targetUsername) target = <span class="k">await</span> q1(<span class="s">"... WHERE username=? COLLATE NOCASE"</span>, [...]);
+else if (targetPhone) target = <span class="k">await</span> q1(<span class="s">"... WHERE phone=?"</span>, [...]);
+if (target.role !== <span class="s">'customer'</span>) <span class="k">return</span> ...;
+if (Number(target.id) === Number(fromId)) <span class="k">return</span> ...;   <span class="c">// 只防連結自己</span>
+
+<span class="c">// :923-936  「一連即轉」：雙方自動升 family</span>
+if (owner && owner.role === <span class="s">'customer'</span> && owner.membership_tier !== <span class="s">'family'</span>) {
+  <span class="k">await</span> run(<span class="s">"UPDATE users SET membership_tier='family' WHERE id=?"</span>, [ownerId]);   <span class="c">// 928-930</span>
+}
+if (target.role === <span class="s">'customer'</span> && target.membership_tier !== <span class="s">'family'</span>) {
+  <span class="k">await</span> run(<span class="s">"UPDATE users SET membership_tier='family' WHERE id=?"</span>, [target.id]);  <span class="c">// 933-935</span>
+}
+<span class="k">await</span> syncFamilyPlan(headId);   <span class="c">// 943 生成發票（但無向 caller 收費）</span></pre>
+    <p><b>漏洞本質</b>：① 任何已登入 <code>general</code> 客戶，只要帶 <code>{targetUsername:&lt;任意已知客戶&gt;}</code> 即可令自己同對方升 <code>family</code>；② <code>family</code> 係付費會籍，<code>membership_required</code> 閘門（bookings.js:317、memberships.js:1183-1184）規定 general 只可預約「初體驗」，升級後<b>免費解鎖全部服務</b>；③ 全程無 Stripe / 無職員確認；④ 利用面低，只需目標 username 或 phone（可經 F4 枚舉取得）。</p>
+    <p><b>為何係「隱性」</b>：項目記憶原記載「account_links 唔影響等級/保險/訂閱」，與實際代碼直接矛盾；矛盾甚至寫喺相鄰代碼行（840 註解 vs 928-935 實作）。</p>
+    <p><b>修復</b>：A）刪除 928-936 升級邏輯，令 account_links 真係只係關係圖；或 B）若產品真要「連結即升級」，加 <code>requireRole('staff','admin')</code> 或 Stripe 確認，並修正 840 行註解。補測試斷言「general 用戶自助 account-links 後 tier 維持 general」。</p>
+  </div>
+
+  <h3><span class="badge med">Medium</span>F2 — 重設密碼驗證碼於非 production 經 DEV FALLBACK 回傳客戶端</h3>
+  <div class="card">
+    <p><b>DROS 透鏡</b>：Anti-Stub 環境守衛不完整（條件含「SMTP 未配置」→ 即使 production 部署若漏設 EMAIL_PASS 亦觸發）。</p>
+    <pre><span class="c">// routes/auth.js:548-556  （/api/auth/send-reset-code 內）</span>
+const isDev = process.env.NODE_ENV !== <span class="s">'production'</span> || !process.env.EMAIL_PASS;
+if (isDev) {
+  console.warn(<span class="s">`[DEV FALLBACK] 驗證碼 ${verificationCode} 已生成...`</span>);
+  <span class="k">return</span> res.json({ ok: <span class="k">true</span>, ..., dev_fallback: <span class="k">true</span>, verification_code: verificationCode });
+}</pre>
+    <p>當 <code>NODE_ENV !== 'production'</code> <b>或</b> <code>!EMAIL_PASS</code> 時，6 位重設碼寫入響應體。若 staging 用 <code>NODE_ENV=development</code> 或 production 漏設 <code>EMAIL_PASS</code>，即洩漏 → 攻擊者完成重設 → <b>帳戶接管</b>。</p>
+    <p><b>修復</b>：<code>isDev</code> 只應由 <code>NODE_ENV</code> 決定，唔應含 <code>!EMAIL_PASS</code>；縱使 DEV 模式，驗證碼亦只寫 server log，絕不回傳響應體。</p>
+  </div>
+
+  <h3><span class="badge lo">Low</span>F3 — AI 問診路由全公開，無認證</h3>
+  <div class="card">
+    <p><b>DROS 透鏡</b>：能力混寫（本應登入後使用嘅能力對匿名開放）+ 治理不一致。</p>
+    <pre><span class="c">// routes/ai.js</span>
+module.exports = (db) =&gt; {                                  <span class="c">// :9  無 auth 依賴</span>
+router.get(<span class="s">"/categories"</span>, (req,res)=&gt;{...});             <span class="c">// :21 無 requireAuth</span>
+router.post(<span class="s">"/start-consultation"</span>, aiWriteLimiter,...);  <span class="c">// :40 只得頻限</span>
+router.post(<span class="s">"/submit-answer"</span>, aiWriteLimiter,...);        <span class="c">// :91 只得頻限</span>
+router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});     <span class="c">// :188 無 requireAuth</span></pre>
+    <p>風險低（規則式、唔寫 PII），但接 LLM 後有成本/濫用面；與「會員才能用 AI 推薦」假設不一致。建議加 <code>optionalAuth</code> 並於文檔聲明公開性。</p>
+  </div>
+
+  <h3><span class="badge lo">Low</span>F4 — legacy <code>/api/find-user-id</code> 帳戶枚舉面</h3>
+  <div class="card">
+    <p><code>name + phone → 回傳 username</code> 嘅 legacy 端點，速率限制 30/15min。低風險，但配合 F1（需 target username/phone）可收窄攻擊所需資訊。建議退役或強化至 login 同等鎖定策略。</p>
+  </div>
+
+  <h2>3. Anti-Stub 正面清單（已驗證「真嘅」控制）</h2>
+  <div class="row">
+    <div class="pill"><b>✅ JWT 撤銷鏈</b>SESSION_SECRET 缺漏 production 退出；timingSafeEqual；jti 撤銷 + user_revoked 持久化。</div>
+    <div class="pill"><b>✅ admin 二次驗證</b>admin.js:19-43 verifyAdminPassword 真查 DB + 比對登入密碼，敏感操作均掛載。非 stub。</div>
+  </div>
+  <div class="row">
+    <div class="pill"><b>✅ 對象級授權</b>bookings isOwnerOrStaff（GET/PUT/DELETE /:id）；medicalRecords doctorOwnsTarget；users isSelfOrAdmin。</div>
+    <div class="pill"><b>✅ 上傳安全</b>multer + MIME 白名單 + 隨機檔名 + .. 拒絕；BLOCKED_STATIC 攔截 .env/.db/_ 前綴。</div>
+  </div>
+  <div class="row">
+    <div class="pill"><b>✅ 頻限鏈</b>全局 500/15min、login 20/(account+IP)、鎖定 5 次、captcha 冷卻 1 分；測試後門僅非 production。</div>
+    <div class="pill"><b>✅ XSS / 註冊</b>live 頁無 v-html sink；allow_public_registration 預設關閉。</div>
+  </div>
+
+  <h2>4.「偽測試」風險提示</h2>
+  <div class="note">現有 <code>QA_12persona報告.*</code> 為 persona / UI 流程測試，<b>未發現任何自動化測試斷言</b>：① account-links 唔會提升 tier；② 非 production 重設碼唔回傳；③ bookings/medicalRecords 對象級授權。⚠️ 「測試全綠」唔等於「安全屬性成立」——典型偽測試騙局。建議補上述斷言。</div>
+
+  <h2>5. 優先修復順序</h2>
+  <table>
+    <tr><th>優先</th><th>項</th><th>嚴重度</th><th>工作量</th></tr>
+    <tr><td>P0</td><td>F1：移除/守衛 account-links 免費 family 升級 + 修正 840 註解</td><td>High</td><td>小</td></tr>
+    <tr><td>P1</td><td>F2：收緊 isDev 條件，重設碼絕不回傳響應體</td><td>Medium</td><td>小</td></tr>
+    <tr><td>P2</td><td>F3：AI 路由加 optionalAuth 並聲明公開性</td><td>Low</td><td>小</td></tr>
+    <tr><td>P3</td><td>F4：退役或強化 legacy find-user-id</td><td>Low</td><td>小</td></tr>
+    <tr><td>P-</td><td>補安全屬性單元測試（防偽測試）</td><td>Info</td><td>中</td></tr>
+  </table>
+
+  <h2>6. 附錄：證據索引（file:line）</h2>
+  <table>
+    <tr><th>工件</th><th>位置</th></tr>
+    <tr><td>聲稱「account_links 唔影響會員級別」</td><td>memberships.js:840</td></tr>
+    <tr><td>端點僅 requireAuth</td><td>memberships.js:861-862</td></tr>
+    <tr><td>目標按 username/phone 解析、只防連自己</td><td>memberships.js:896-901</td></tr>
+    <tr><td>雙方升 family + syncFamilyPlan</td><td>memberships.js:923-936</td></tr>
+    <tr><td>general 非家庭連結禁止非「初體驗」預約</td><td>memberships.js:1183-1184</td></tr>
+    <tr><td>membership_required 閘門</td><td>bookings.js:317</td></tr>
+    <tr><td>DEV FALLBACK 回傳 verification_code</td><td>auth.js:548-556</td></tr>
+    <tr><td>AI 路由全無認證</td><td>ai.js:9,21,40,91,188</td></tr>
+    <tr><td>verifyAdminPassword 真實二次驗證（非 stub）</td><td>admin.js:19-43</td></tr>
+    <tr><td>對象級授權 isOwnerOrStaff</td><td>bookings.js:25,708,715,723,735,906,916</td></tr>
+  </table>
+
+</div>
+<footer>
+  寶天醫館預約系統 · DROS 隱性安全審計 · 2026-09-08 · 唯讀源碼審查，未做任何修改或部署變更。
+</footer>
+</body>
+</html>
