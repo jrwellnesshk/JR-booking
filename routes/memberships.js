@@ -729,6 +729,45 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // 🆕 GET /api/membership/family-payment — 家庭計劃供款狀態（戶主/子成員都可查）
+  // 用途：dashboard 顯示中性「家庭計劃生效中」+ 子帳戶「接手供款」掣；不回傳付款人姓名（用戶要求中性文案）
+  // 狀態：
+  //   hasActivePayer=true  → 全家有人供緊款（頭或接手咗嘅子帳戶）
+  //   canTakeOver=true     → 子帳戶（非戶主）+ 全家無人供款 → 可以接手供款（startCheckout('family')）
+  router.get('/family-payment', requireAuth, async (req, res) => {
+    try {
+      const u = await q1("SELECT id, username, name, membership_tier, family_head_id FROM users WHERE id=?", [req.user.id]);
+      if (!u) return res.status(404).json({ error: '帳戶不存在' });
+      const isHead = Number(u.family_head_id) === Number(u.id);
+      const headId = Number(u.family_head_id) || Number(u.id);
+      const famIds = await getFamilyMemberIds(headId);
+      // 搵全家有冇人供緊款（active family subscription）
+      let hasActivePayer = false;
+      let amIPayer = false;
+      if (famIds.length) {
+        const ph = famIds.map(() => '?').join(',');
+        const payers = await q(
+          `SELECT user_id FROM subscriptions WHERE user_id IN (${ph}) AND status='active' AND tier='family'`,
+          famIds);
+        hasActivePayer = payers.length > 0;
+        amIPayer = payers.some(p => Number(p.user_id) === Number(u.id));
+      }
+      const canTakeOver = (u.membership_tier || 'general') === 'family' && !isHead && !hasActivePayer;
+      res.json({
+        ok: true,
+        isHead,
+        headId,
+        memberCount: famIds.length,
+        hasActivePayer,
+        amIPayer,
+        canTakeOver
+      });
+    } catch (e) {
+      console.error('查詢家庭供款狀態失敗:', e.message);
+      res.status(500).json({ error: '系統錯誤' });
+    }
+  });
+
   // 🆕 同時接受 POST + PUT，hide / private / is_private 任一字段都接受
   const privacyHandler = async (req, res) => {
     try {

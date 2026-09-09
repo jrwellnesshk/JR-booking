@@ -184,6 +184,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const upgrading = ref(false);
           const cancellingSub = ref(false);
           const familyList = ref({ children: [] });
+          // 🆕 F7：家庭計劃供款狀態（中性文案「家庭計劃生效中」+ 子帳戶接手掣）
+          const familyPayment = ref(null);
           const selectedChildBookings = ref(null);
           // 🆕 通用帳戶連結（親戚／同輩／朋友，客人自助連結）
           const accountLinks = ref([]);
@@ -1775,6 +1777,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               familyList.value = { children: data.children || [] };
               realTier.value = data.tier || 'general';
               loadAccountLinks();
+              loadFamilyPayment();
             } catch (e) {
               console.warn('無法載入會員資料', e);
               membership.value.loading = false;
@@ -1798,6 +1801,22 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               accountLinks.value = [];
             } finally {
               linkLoading.value = false;
+            }
+          };
+
+          // 🆕 F7：載入家庭計劃供款狀態（戶主/子成員都可查；用於 dashboard 顯示「家庭計劃生效中」+ 子帳戶接手掣）
+          const loadFamilyPayment = async () => {
+            if (!currentMember.value?.dbId) return;
+            try {
+              const res = await fetch(`${API_URL}/membership/family-payment`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              if (!res.ok) throw new Error('status');
+              const data = await res.json();
+              familyPayment.value = data || null;
+            } catch (e) {
+              console.warn('無法載入家庭供款狀態', e);
+              familyPayment.value = null;
             }
           };
 
@@ -4541,8 +4560,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             upgrading,
             cancellingSub,
             familyList,
+            familyPayment,
             selectedChildBookings,
             loadMyMembership,
+            loadFamilyPayment,
             startCheckout,
             cancelSubscription,
             activateFamily,

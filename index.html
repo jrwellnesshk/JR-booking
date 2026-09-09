@@ -3742,6 +3742,44 @@
                       <i class="fas fa-info-circle mr-1"></i>你是家庭成員（子帳戶），只可繼續供款，不可取消訂閱；取消家庭計劃須由家庭戶主辦理。
                     </p>
                   </div>
+                  <!-- 🆕 F7：家庭計劃供款狀態（中性「家庭計劃生效中」+ 子帳戶接手供款掣；不顯示付款人名） -->
+                  <div v-if="membership.tier === 'family' && familyPayment" class="mt-4 rounded-xl border p-4"
+                       :style="familyPayment.hasActivePayer ? 'background:#EAF6EC;border-color:#9CCBA6;' : 'background:#FFF8E6;border-color:#F0D9A8;'">
+                    <div class="flex flex-wrap items-center gap-3">
+                      <div class="flex-1 min-w-[220px]">
+                        <div class="font-bold flex items-center" :style="familyPayment.hasActivePayer ? 'color:#2f6b3a;' : 'color:#8a6d1f;'">
+                          <i class="fas mr-2" :class="familyPayment.hasActivePayer ? 'fa-house-circle-check' : 'fa-house-circle-exclamation'"></i>
+                          {{ familyPayment.hasActivePayer ? '家庭計劃生效中' : '家庭計劃待供款' }}
+                        </div>
+                        <p class="text-sm mt-1" :style="familyPayment.hasActivePayer ? 'color:#3c7a47;' : 'color:#9a7b28;'">
+                          <template v-if="familyPayment.isHead && familyPayment.hasActivePayer">你是家庭戶主，家庭計劃正在供款中，全家成員均可使用全部家庭服務。</template>
+                          <template v-else-if="familyPayment.isHead && !familyPayment.hasActivePayer">家庭計劃暫未完成供款，請盡快續費以維持全家服務。</template>
+                          <template v-else-if="familyPayment.hasActivePayer">你已納入家庭計劃，可使用全部家庭服務（服務由家庭計劃覆蓋）。</template>
+                          <template v-else>家庭計劃暫無人供款，你可以接手供款，讓全家繼續使用家庭服務。</template>
+                        </p>
+                      </div>
+                      <!-- 子帳戶接手供款掣（非戶主 + 全家無人供款） -->
+                      <button
+                        v-if="familyPayment.canTakeOver"
+                        class="px-5 py-2.5 rounded-lg text-white font-bold"
+                        style="background:linear-gradient(135deg,var(--p600),var(--p500));"
+                        :disabled="upgrading"
+                        @click="startCheckout('family')"
+                      >
+                        <i class="fas fa-hand-holding-dollar mr-2"></i>{{ upgrading ? '處理中...' : '接手供款（家庭計劃 $16,800 / 月）' }}
+                      </button>
+                      <!-- 戶主續費掣（戶主 + 全家無人供款） -->
+                      <button
+                        v-else-if="familyPayment.isHead && !familyPayment.hasActivePayer"
+                        class="px-5 py-2.5 rounded-lg text-white font-bold"
+                        style="background:linear-gradient(135deg,var(--p600),var(--p500));"
+                        :disabled="upgrading"
+                        @click="startCheckout('family')"
+                      >
+                        <i class="fas fa-sync mr-2"></i>{{ upgrading ? '處理中...' : '續費家庭計劃 $16,800 / 月' }}
+                      </button>
+                    </div>
+                  </div>
                   <p class="text-xs text-gray-400 mt-2">
                     <i class="fas fa-circle-info mr-1"></i>{{ t('如需轉數快／銀行入數／現金付款，請致電 2555-1136 或親臨診所。升級、降級與取消月費計劃均可在本頁自助辦理。') }}</p>
                   <p class="text-xs mt-2 rounded-lg p-2.5" style="background:#FFF8E6;color:#8a6d1f;">
