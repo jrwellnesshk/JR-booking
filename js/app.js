@@ -217,11 +217,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           // 🆕 連結來源可選項：自己 + 已連結嘅帳戶（子女 / account_links 對方），對應用家「揀已連結 A 再搜尋 B」
           const myLinkSources = computed(() => {
             const src = [];
-            if (currentMember.value) src.push({ id: currentMemberId.value, name: (currentMemberName.value || '我自己') + '（我自己）' });
-            (myFamilyChildren.value || []).forEach(c => src.push({ id: c.id, name: `${c.name || c.username || '子女'}（子女）` }));
+            if (currentMember.value) src.push({ id: currentMemberId.value, name: (currentMemberName.value || t('我自己')) + t('（我自己）') });
+            (myFamilyChildren.value || []).forEach(c => src.push({ id: c.id, name: `${c.name || c.username || t('子女')}${t('（子女）')}` }));
             (accountLinks.value || []).forEach(lk => {
               const o = lk.other;
-              if (o && o.id && !src.some(s => s.id === o.id)) src.push({ id: o.id, name: `${o.name || o.username}（已連結）` });
+              if (o && o.id && !src.some(s => s.id === o.id)) src.push({ id: o.id, name: `${o.name || o.username}${t('（已連結）')}` });
             });
             return src;
           });
@@ -264,11 +264,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 fetch(`${API_URL}/content/cases`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/texts`).then(r => r.ok ? r.json() : {})
               ]);
-              siteAnnouncements.value = a || [];
-              siteVideos.value = v || [];
+              siteAnnouncements.value = (a || []).filter(Boolean);
+              siteVideos.value = (v || []).filter(Boolean);
               siteSocial.value = s || {};
-              siteReviews.value = r || [];
-              siteCases.value = cs || [];
+              siteReviews.value = (r || []).filter(Boolean);
+              siteCases.value = (cs || []).filter(Boolean);
               siteTexts.value = tx || {};
             } catch (e) { console.error("載入官網內容失敗:", e); }
           };
@@ -278,7 +278,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             forumLoading.value = true;
             try {
               const resp = await fetch(`${API_URL}/content/forum/posts`);
-              if (resp.ok) forumPosts.value = await resp.json();
+              if (resp.ok) forumPosts.value = (await resp.json()).filter(Boolean);
             } catch (e) { console.error("載入討論區失敗:", e); }
             finally { forumLoading.value = false; }
           };
@@ -288,7 +288,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const openForumPost = async (post) => {
             try {
               const resp = await fetch(`${API_URL}/content/forum/posts/${post.id}`);
-              if (resp.ok) activeForumPost.value = await resp.json();
+              if (resp.ok) {
+                const d = await resp.json();
+                if (d && Array.isArray(d.replies)) d.replies = d.replies.filter(Boolean);
+                activeForumPost.value = d;
+              }
             } catch (e) { console.error("載入帖子失敗:", e); }
           };
 

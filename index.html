@@ -977,6 +977,10 @@
         .aq-hero-title{ flex-direction:column; gap:.9rem; }
         .aq-philosophy{ padding:5rem 1.2rem; }
         .aq-doc{ padding:1.8rem 1.4rem; }
+        /* 手機：登入框係 flex item，min-width:auto 唔肯縮 → 爆出 viewport；解咒 + 唔過界 */
+        .aq-login-frame{ min-width:0; max-width:100%; }
+        /* 手機：英雄區裝飾印章過大，縮到唔溢出（純裝飾，透明度低） */
+        .aq-hero-brandmark{ transform:translateY(-50%) scale(.5); opacity:.12; }
       }
       @media (prefers-reduced-motion:reduce){ .aq-float-card:hover{ transform:none; } .aq-doc:hover{ transform:none; } }
 
@@ -1553,12 +1557,12 @@
               <div class="m-field">
                 <label>
                   <i class="fas fa-id-card mr-1" style="color:var(--p400)"></i>
-                  {{ loginRole === 'customer' ? '會員ID' : '用戶名' }}
+                  {{ loginRole === 'customer' ? t('會員ID') : t('用戶名') }}
                 </label>
                 <input
                   type="text"
                   v-model="loginId"
-                  :placeholder="loginRole === 'customer' ? '請輸入您的會員ID' : '請輸入用戶名'"
+                  :placeholder="loginRole === 'customer' ? t('請輸入您的會員ID') : t('請輸入用戶名')"
                 />
               </div>
               <div class="m-field">
@@ -1673,7 +1677,7 @@
               <div class="mc-touch">
                 <b><i class="fas fa-headset"></i>{{ t('即時聯絡診所') }}</b>
                 <p v-if="siteSocial.clinic_phone">查詢／預約：{{ siteSocial.clinic_phone }}</p>
-                <p v-if="siteSocial.clinic_hours">營業時間：{{ siteSocial.clinic_hours }}</p>
+                <p v-if="siteSocial.clinic_hours">{{ t('營業時間') }}：{{ siteSocial.clinic_hours }}</p>
                 <p v-if="siteSocial.clinic_address">{{ siteSocial.clinic_address }}</p>
               </div>
             </div>
@@ -2050,7 +2054,7 @@
             <div class="m-step-line" :class="step >= 2 ? 'done' : ''"></div>
             <div class="m-step">
               <div class="m-dot" :class="step >= 2 ? 'done' : ''">2</div>
-              <span class="m-step-label" :class="step >= 2 ? 'on' : ''">選時間</span>
+              <span class="m-step-label" :class="step >= 2 ? 'on' : ''">{{ t('選時間') }}</span>
             </div>
             <div class="m-step-line" :class="step >= 3 ? 'done' : ''"></div>
             <div class="m-step">
@@ -2083,7 +2087,7 @@
                 <div class="text-slate-600 text-sm mb-3">{{ service.short }}</div>
                 <div class="flex justify-between items-center">
                   <span class="m-price">HKD ${{ service.price }}</span>
-                  <span class="m-chip gray">{{ service.duration }} 分鐘</span>
+                  <span class="m-chip gray">{{ service.duration }} {{ t('分鐘') }}</span>
                 </div>
               </div>
             </div>
@@ -2634,7 +2638,7 @@
                 v-if="realTier && realTier !== 'general'"
                 class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-bold"
                 :class="realTier === 'family' ? 'bg-amber-400 text-black' : 'bg-emerald-400 text-black'"
-              >{{ realTier === 'family' ? '家庭' : '高級' }}</span>
+              >{{ realTier === 'family' ? t('家庭') : t('高級') }}</span>
             </button>
             <button
               @click="setView('coupons')"
@@ -2679,7 +2683,7 @@
                 <span v-else class="m-side-avatar">{{ userAvatar && !userAvatar.startsWith('/') ? userAvatar : '🙂' }}</span>
                 <div class="min-w-0">
                   <b class="truncate">{{ currentMember.name }}</b>
-                  <span>{{ tierLabel }}</span>
+                  <span>{{ t(tierLabel) }}</span>
                 </div>
               </div>
             <button type="button" @click="setLang(lang === 'en' ? 'zh-TW' : 'en')" class="m-side-logout" :title="t('請選擇語言 / Please select language')">
@@ -3062,7 +3066,7 @@
                       style="background:linear-gradient(135deg,var(--p600),var(--p500));box-shadow:0 12px 26px -14px var(--p500);"
                     >
                       <i class="fas fa-paper-plane mr-2"></i>
-                      {{ isSubmittingFeedback ? '提交中...' : '提交意見' }}
+                      {{ isSubmittingFeedback ? t('提交中...') : t('提交意見') }}
                     </button>
                   </div>
                 </div>
@@ -3388,10 +3392,10 @@
                 <div v-if="privacyIsChild" class="rounded-lg p-4 m-box border border-amber-200" style="background:#fffbeb;">
                   <h3 class="font-semibold text-slate-700 mb-1 flex items-center">
                     <i class="fas fa-eye-slash mr-2" style="color:#d97706;"></i>{{ t('私隱設定（家庭帳戶）') }}</h3>
-                  <p class="text-xs text-slate-500 mb-3">你係「{{ privacyHeadName }}」家庭帳戶嘅子成員。開啟以下開關，主帳戶將唔能夠查看你的病歷、預約紀錄及個人資料（18 歲以上適用）。</p>
+                  <p class="text-xs text-slate-500 mb-3">{{ t('你係「') }}{{ privacyHeadName }}{{ t('」家庭帳戶嘅子成員。開啟以下開關，主帳戶將唔能夠查看你的病歷、預約紀錄及個人資料（18 歲以上適用）。') }}</p>
                   <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
                     <span class="flex items-center gap-2 text-sm text-slate-700">
-                      <i class="fas fa-user-secret text-amber-500"></i>唔俾主帳戶（{{ privacyHeadName }}）睇我資料
+                      <i class="fas fa-user-secret text-amber-500"></i>{{ t('唔俾主帳戶（') }}{{ privacyHeadName }}{{ t('）睇我資料') }}
                       <span v-if="hideFromHead" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('已隱藏') }}</span>
                       <span v-else class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t('公開中') }}</span>
                     </span>
@@ -3481,7 +3485,7 @@
                       style="background:#25D366;"
                       :disabled="whatsappPrefsSaving"
                     >
-                      <i class="fas fa-save mr-1"></i>{{ whatsappPrefsSaving ? '儲存中...' : '儲存偏好' }}
+                      <i class="fas fa-save mr-1"></i>{{ whatsappPrefsSaving ? t('儲存中...') : t('儲存偏好') }}
                     </button>
                     <span v-if="whatsappPrefsSaved" class="text-sm text-green-600">
                       <i class="fas fa-check-circle mr-1"></i>{{ t('已儲存') }}</span>
@@ -3642,7 +3646,7 @@
                     <div class="text-2xl font-bold mt-1">
                       <span :class="membership.insurance ? 'text-green-600' : 'text-red-500'">
                         <i class="fas" :class="membership.insurance ? 'fa-shield-halved' : 'fa-shield'"></i>
-                        {{ membership.insurance ? '已覆蓋' : '未覆蓋' }}
+                        {{ membership.insurance ? t('已覆蓋') : t('未覆蓋') }}
                       </span>
                     </div>
                   </div>
@@ -3650,7 +3654,7 @@
                     <div class="text-sm text-gray-500">{{ t('個人資料') }}</div>
                     <div class="text-2xl font-bold mt-1">
                       <span :class="membership.profile_completed ? 'text-green-600' : 'text-amber-500'">
-                        {{ membership.profile_completed ? '已完成' : '未完成' }}
+                        {{ membership.profile_completed ? t('已完成') : t('未完成') }}
                       </span>
                     </div>
                   </div>
@@ -3715,7 +3719,7 @@
                         :disabled="!upgradeTier || upgrading"
                         @click="startCheckout(upgradeTier)"
                       >
-                        <i class="fas fa-credit-card mr-2"></i>{{ upgrading ? '處理中...' : (upgradeTier ? ('以 Stripe 付款升級至「' + (upgradeTier === 'family' ? '家庭會員' : '高級會員') + '」 $' + (upgradeTier === 'family' ? '16,800' : '8,800')) : '請先點選上方一個方案') }}
+                        <i class="fas fa-credit-card mr-2"></i>{{ upgrading ? t('處理中...') : (upgradeTier ? (t('以 Stripe 付款升級至「') + (upgradeTier === 'family' ? t('家庭會員') : t('高級會員')) + t('」 $') + (upgradeTier === 'family' ? '16,800' : '8,800')) : t('請先點選上方一個方案')) }}
                       </button>
                       <span class="text-xs text-gray-400"><i class="fas fa-shield-halved mr-1"></i>{{ t('Stripe 安全付款：Visa / Mastercard / Apple Pay / Google Pay') }}</span>
                     </template>
@@ -3740,7 +3744,7 @@
                 <!-- 家庭帳戶 -->
                 <div class="rounded-xl border border-gray-200 p-5">
                   <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-people-roof text-indigo-500 mr-2"></i>{{ t('家庭帳戶') }}</h3>
-                  <p class="text-sm text-gray-500 mb-4">{{ familyHint }}</p>
+                  <p class="text-sm text-gray-500 mb-4">{{ t(familyHint) }}</p>
 
                   <div v-if="membership.tier === 'family' && !membership.isFamilyHead" class="mt-2">
                     <button
@@ -3803,7 +3807,7 @@
 
                   <!-- 非家庭戶主提示 -->
                   <p v-if="membership.parent" class="text-sm text-gray-500 mt-3">
-                    <i class="fas fa-link mr-1"></i>哩個帳戶已加入家人嘅家庭帳戶（{{ membership.parent.name }}）
+                    <i class="fas fa-link mr-1"></i>{{ t('哩個帳戶已加入家人嘅家庭帳戶') }}（{{ membership.parent.name }}）
                   </p>
                 </div>
 
@@ -3817,7 +3821,7 @@
                     <div class="rounded-xl bg-gray-50 p-4">
                       <div class="flex items-center justify-between mb-2">
                         <b class="text-sm">{{ t('已連結帳戶') }}</b>
-                        <span class="text-xs text-gray-400">{{ accountLinks.length }} 個</span>
+                        <span class="text-xs text-gray-400">{{ accountLinks.length }}{{ t(' 個') }}</span>
                       </div>
                       <div v-if="linkLoading" class="text-gray-400 text-sm py-6 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入連結中...') }}</div>
                       <div v-else-if="accountLinks.length === 0" class="text-sm text-gray-400 py-6 text-center">{{ t('仲未連結任何帳戶。') }}</div>
@@ -3825,16 +3829,16 @@
                         <div v-for="lk in accountLinks" :key="lk.id" class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-2.5 text-sm">
                           <div class="flex items-center gap-2 min-w-0">
                             <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs overflow-hidden flex-shrink-0">
-                              <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" class="w-full h-full object-cover" alt="">
-                              <span v-else>{{ (lk.other.name || lk.other.username || '?').slice(0,1) }}</span>
+                              <img v-if="lk.other && lk.other.avatar_url" :src="lk.other.avatar_url" class="w-full h-full object-cover" alt="">
+                              <span v-else>{{ ((lk.other && (lk.other.name || lk.other.username)) || '?').slice(0,1) }}</span>
                             </div>
                             <div class="min-w-0">
-                              <b class="truncate block">{{ lk.other.name || lk.other.username }}</b>
-                              <span class="text-xs text-gray-400">{{ lk.other.username }}</span>
+                              <b class="truncate block">{{ (lk.other && (lk.other.name || lk.other.username)) || '—' }}</b>
+                              <span class="text-xs text-gray-400">{{ lk.other && lk.other.username }}</span>
                             </div>
                           </div>
                           <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <span class="text-xs px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600">{{ lk.customRelation || lk.relation }}</span>
+                            <span class="text-xs px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600">{{ t(lk.customRelation || lk.relation) }}</span>
                             <button class="text-xs px-2 py-1 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100" @click="removeAccountLink(lk)"><i class="fas fa-unlink mr-0.5"></i>{{ t('解除') }}</button>
                           </div>
                         </div>
@@ -3885,7 +3889,7 @@
                       <div v-if="linkTargetName" class="mt-2 space-y-2">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                           <select v-model="linkForm.relation" class="rounded border border-gray-300 p-2 text-sm bg-white">
-                            <option v-for="r in linkRelationOptions" :key="r" :value="r">{{ r }}</option>
+                            <option v-for="r in linkRelationOptions" :key="r" :value="r">{{ t(r) }}</option>
                           </select>
                           <select v-model="linkForm.fromUserId" class="rounded border border-gray-300 p-2 text-sm bg-white" :title="t('以邊個身份連結')">
                             <option v-for="s in myLinkSources" :key="s.id" :value="s.id">{{ s.name }}</option>
@@ -3894,7 +3898,7 @@
                         <input v-if="linkForm.relation === '其他'" v-model="linkForm.customRelation" :placeholder="t('請輸入關係說明（例如：表哥、契姐）')" class="w-full rounded border border-gray-300 p-2 text-sm">
                         <p v-if="linkError" class="text-red-500 text-xs">{{ linkError }}</p>
                         <button class="w-full px-4 py-2 rounded-lg text-white font-bold text-sm disabled:opacity-60" style="background:linear-gradient(135deg,var(--p600),var(--p500));" :disabled="linkBusy" @click="createAccountLink">
-                          <i v-if="linkBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-plus mr-1"></i>{{ linkBusy ? '連結中...' : '連結帳戶' }}
+                          <i v-if="linkBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-plus mr-1"></i>{{ linkBusy ? t('連結中...') : t('連結帳戶') }}
                         </button>
                       </div>
                     </div>
@@ -3919,7 +3923,7 @@
                 <div class="text-2xl font-bold mt-1" style="color:var(--p700);">
                   {{ currentMember && currentMember.phone ? currentMember.phone : '—' }}
                 </div>
-                <div class="text-xs text-gray-400 mt-1">會員編號 = 你的手機號碼</div>
+                <div class="text-xs text-gray-400 mt-1">{{ t('會員編號 = 你的手機號碼') }}</div>
               </div>
 
               <!-- 剩餘免費診症 -->
@@ -3945,7 +3949,7 @@
                     :disabled="couponBusy || !couponRedeemCode.trim()"
                     @click="redeemCoupon"
                   >
-                    <i class="fas fa-bolt mr-1"></i>{{ couponBusy ? '啟用中...' : '啟用優惠券' }}
+                    <i class="fas fa-bolt mr-1"></i>{{ couponBusy ? t('啟用中...') : t('啟用優惠券') }}
                   </button>
                 </div>
                 <p v-if="couponMsg" class="text-sm mt-2" :class="couponMsgType === 'ok' ? 'text-green-600' : 'text-red-500'">
@@ -4345,7 +4349,7 @@
               <!-- Hero 歡迎區 -->
               <div class="m-hero">
                 <span class="m-hero-badge"><i class="fas fa-spa"></i> {{ t('寶天醫館 · JR Medical') }}</span>
-                <h2>{{ currentMember.name }}，歡迎回來</h2>
+                <h2>{{ currentMember.name }}{{ t('，歡迎回來') }}</h2>
                 <p>{{ t('以千年中醫智慧結合現代精準科技，為您度身訂造個人化養生與治療方案，悉心守護每一刻健康。') }}</p>
                 <div class="m-hero-actions">
                   <button class="m-hero-btn m-hero-btn-primary" @click="setView('booking')"><i class="fas fa-calendar-plus"></i>{{ t('立即預約') }}</button>
@@ -4407,12 +4411,12 @@
                 <div class="m-step-line" :class="step >= 2 ? 'done' : ''"></div>
                 <div class="m-step">
                   <div class="m-dot" :class="step >= 2 ? 'done' : ''">2</div>
-                  <span class="m-step-label" :class="step >= 2 ? 'on' : ''">選時間</span>
+                  <span class="m-step-label" :class="step >= 2 ? 'on' : ''">{{ t('選時間') }}</span>
                 </div>
                 <div class="m-step-line" :class="step >= 3 ? 'done' : ''"></div>
                 <div class="m-step">
                   <div class="m-dot" :class="step >= 3 ? 'done' : ''">3</div>
-                  <span class="m-step-label" :class="step >= 3 ? 'on' : ''">資料</span>
+                  <span class="m-step-label" :class="step >= 3 ? 'on' : ''">{{ t('資料') }}</span>
                 </div>
                 <div class="m-step-line" :class="step === 4 ? 'done' : ''"></div>
                 <div class="m-step">
@@ -4427,7 +4431,7 @@
               <div v-if="step === 1">
                 <h2 class="m-panel-head">
                   <i class="fas fa-concierge-bell mr-2"></i>{{ t('請選擇治療服務') }}<span class="ml-2 text-sm text-gray-500"
-                    >(共 {{ SERVICES.length || 0 }} 項服務)</span
+                    >{{ t('（共 ') }}{{ SERVICES.length || 0 }}{{ t(' 項服務）') }}</span
                   >
                 </h2>
 
@@ -4465,7 +4469,7 @@
                     <div class="flex justify-between items-center">
                       <span class="m-price">HKD ${{ service.price }}</span>
                       <span class="m-chip gray">
-                        {{ service.duration }} 分鐘
+                        {{ service.duration }} {{ t('分鐘') }}
                       </span>
                     </div>
                   </div>
@@ -4880,7 +4884,7 @@
                 <div class="m-info-card">
                   <i class="fas fa-clock"></i>
                   <b>{{ t('營業時間') }}</b>
-                  <span>每日 10:00 - 20:00（公眾假期照常）</span>
+                  <span>{{ t('每日 10:00 - 20:00（公眾假期照常）') }}</span>
                 </div>
                 <div class="m-info-card">
                   <i class="fas fa-phone-alt"></i>
@@ -4936,7 +4940,7 @@
               <div class="m-about-list">
                 <div class="m-about-item">
                   <i class="fas fa-clock"></i>
-                  <div><b>{{ t('營業時間') }}</b><span>每日 10:00 - 20:00（公眾假期照常）</span></div>
+                  <div><b>{{ t('營業時間') }}</b><span>{{ t('每日 10:00 - 20:00（公眾假期照常）') }}</span></div>
                 </div>
                 <div class="m-about-item">
                   <i class="fas fa-phone-alt"></i>
@@ -4955,7 +4959,7 @@
                   <i class="fas fa-binoculars mr-2"></i>{{ t('即時預約狀況') }}</h3>
                 <div class="flex items-center text-xs text-slate-500">
                   <i class="fas fa-sync-alt mr-1" :class="{ 'animate-spin': isRefreshingStatus }"></i>
-                  <span>{{ autoRefreshCountdown }}秒後更新</span>
+                  <span>{{ autoRefreshCountdown }}{{ t('秒後自動更新') }}</span>
                 </div>
               </div>
               <div class="space-y-4">
@@ -4985,7 +4989,7 @@
                         'bg-red-100 text-red-700': getDoctorAvailableSlots(doctor.id) <= getTotalSlots() * 0.2
                       }"
                     >
-                      {{ getDoctorAvailableSlots(doctor.id) > getTotalSlots() * 0.5 ? '充裕' : (getDoctorAvailableSlots(doctor.id) > getTotalSlots() * 0.2 ? '適中' : '緊張') }}
+                      {{ getDoctorAvailableSlots(doctor.id) > getTotalSlots() * 0.5 ? t('充裕') : (getDoctorAvailableSlots(doctor.id) > getTotalSlots() * 0.2 ? t('適中') : t('緊張')) }}
                     </div>
                   </div>
                   
@@ -5038,7 +5042,7 @@
                 style="background:var(--p50);color:var(--p700);"
               >
                 <i class="fas fa-sync-alt mr-2" :class="{ 'animate-spin': isRefreshingStatus }"></i>
-                {{ isRefreshingStatus ? '更新中...' : '立即刷新' }}
+                {{ isRefreshingStatus ? t('更新中...') : t('立即刷新') }}
               </button>
             </div>
 
@@ -5052,7 +5056,7 @@
                   <div>
                     <div class="font-medium">{{ t('推拿治療床') }}</div>
                     <div class="text-sm text-slate-600">
-                      {{ TOTAL_BEDS.tuina }} 張可用
+                      {{ TOTAL_BEDS.tuina }} {{ t('張可用') }}
                     </div>
                   </div>
                 </div>
@@ -5061,7 +5065,7 @@
                   <div>
                     <div class="font-medium">{{ t('針灸治療床') }}</div>
                     <div class="text-sm text-slate-600">
-                      {{ TOTAL_BEDS.acup }} 張可用
+                      {{ TOTAL_BEDS.acup }} {{ t('張可用') }}
                     </div>
                   </div>
                 </div>
@@ -5070,7 +5074,7 @@
                   <div>
                     <div class="font-medium">{{ t('專業醫師') }}</div>
                     <div class="text-sm text-slate-600">
-                      {{ totalDoctors }} 位服務中
+                      {{ totalDoctors }} {{ t('位服務中') }}
                     </div>
                   </div>
                 </div>
