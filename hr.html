@@ -123,6 +123,7 @@
           <button class="navbtn" :class="{active:view==='leaves'}" @click="switchView('leaves')"><i class="fas fa-calendar-plus w-4"></i>請假管理<span v-if="pendingLeaveCount>0" class="ml-auto bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pendingLeaveCount }}</span></button>
           <button class="navbtn" :class="{active:view==='roster'}" @click="switchView('roster')"><i class="fas fa-id-badge w-4"></i>員工名冊</button>
           <button class="navbtn" :class="{active:view==='schedule'}" @click="switchView('schedule')"><i class="fas fa-calendar-check w-4"></i>排班管理</button>
+          <button class="navbtn" :class="{active:view==='leave-calendar'}" @click="switchView('leave-calendar')"><i class="fas fa-calendar-day w-4"></i>員工假期日曆</button>
           <button class="navbtn" :class="{active:view==='payroll'}" @click="switchView('payroll')"><i class="fas fa-money-bill-wave w-4"></i>出糧</button>
           <button class="navbtn" :class="{active:view==='manual'}" @click="switchView('manual')"><i class="fas fa-edit w-4"></i>補打卡</button>
         </nav>
@@ -338,6 +339,65 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
+
+        <!-- 員工假期日曆 -->
+        <section v-if="view==='leave-calendar'">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-bold text-ink">員工假期日曆</h1>
+              <p class="text-sm text-taupe mt-1">一眼睇晒全員邊日放假，游標停喺名上面可睇原因</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-ghost !px-3" @click="prevCalMonth"><i class="fas fa-chevron-left"></i></button>
+              <div class="text-center min-w-[140px]">
+                <div class="font-bold text-ink">{{ calYear }} 年 {{ calMonth }} 月</div>
+                <button class="text-xs text-taupe hover:text-[#7e5140]" @click="calToToday">回到本月</button>
+              </div>
+              <button class="btn btn-ghost !px-3" @click="nextCalMonth"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+
+          <!-- 圖例 -->
+          <div class="card mb-4 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span class="text-xs text-taupe font-semibold">假別：</span>
+            <template v-for="(label,key) in calLegend" :key="key">
+              <span class="inline-flex items-center gap-1.5 text-xs font-medium" :class="leaveTypeChip(key)">
+                <span class="w-2.5 h-2.5 rounded-full" :class="leaveTypeDot(key)"></span>{{ label }}
+              </span>
+            </template>
+          </div>
+
+          <!-- 日曆 -->
+          <div class="card overflow-hidden">
+            <div v-if="calLoading" class="p-10 text-center text-taupe"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
+            <template v-else>
+              <div class="grid grid-cols-7 bg-[rgba(199,180,166,.15)]">
+                <div v-for="w in calWeekHeaders" :key="w" class="th !text-center !font-bold !text-[#8B7D6B]">{{ w }}</div>
+              </div>
+              <div class="grid grid-cols-7">
+                <div v-for="(cell,i) in calCells" :key="i"
+                     class="min-h-[108px] border-b border-r border-[rgba(199,180,166,.18)] p-2 align-top"
+                     :class="cell ? (isToday(cell.date) ? 'bg-[rgba(99,124,93,.08)]' : '') : 'bg-[rgba(199,180,166,.05)]'">
+                  <template v-if="cell">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-semibold" :class="isToday(cell.date)?'text-[#637c5d]':'text-ink'">{{ cell.day }}</span>
+                      <span v-if="isToday(cell.date)" class="text-[9px] font-bold text-white bg-[#637c5d] rounded-full px-1.5 py-0.5">今日</span>
+                    </div>
+                    <div class="space-y-1">
+                      <div v-for="(lv,k) in cell.leaves.slice(0,3)" :key="k"
+                           class="text-[11px] leading-tight rounded-md px-1.5 py-1 font-medium truncate" :class="leaveTypeChip(lv.leave_type)"
+                           :title="lv.name + ' · ' + lv.leave_type_label + (lv.reason ? (' — ' + lv.reason) : '')">
+                        <i class="fas fa-umbrella-beach mr-1 opacity-70"></i>{{ lv.name }}
+                      </div>
+                      <div v-if="cell.leaves.length > 3" class="text-[10px] text-taupe pl-1">+{{ cell.leaves.length - 3 }} 人…</div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              <div v-if="calTotalLeaves === 0" class="px-5 py-10 text-center text-taupe">呢個月暫時冇已批准嘅假期 🎉</div>
+            </template>
           </div>
         </section>
 
@@ -591,6 +651,8 @@
             showHrModal: false, hrBusy: false, hrForm: {}, hrMsg:'', hrOk:false,
             // manual
             mEmp:'', mDate:'', mIn:'', mOut:'', mType:'full', mNote:'', manualMsg:'', manualOk:false,
+            // 員工假期日曆
+            calYear: (new Date()).getFullYear(), calMonth: (new Date()).getMonth()+1, calDays:{}, calLoading:false, calLegend:{},
           };
         },
         computed: {
@@ -608,11 +670,26 @@
           attTypeLabel(){ return (t)=>({full:'全日',half:'半日',fieldwork:'外勤',training:'培訓'}[t]||'全日'); },
           attTypePill(){ return (t)=>({full:'bg-moss-100 text-moss-700',half:'bg-sky-100 text-sky-700',fieldwork:'bg-orange-100 text-orange-700',training:'bg-purple-100 text-purple-700'}[t]||'bg-gray-100 text-gray-600'); },
           rateLabel(){ return (r)=> (r.hourly_rate&&r.hourly_rate>0)?('時薪 $'+r.hourly_rate):(r.basic_salary&&r.basic_salary>0)?('月薪 $'+r.basic_salary):'—'; },
+          calWeekHeaders(){ return ['日','一','二','三','四','五','六']; },
+          calCells(){
+            const y=this.calYear, m=this.calMonth;
+            const firstDow=new Date(y,m-1,1).getDay();
+            const total=new Date(y,m,0).getDate();
+            const cells=[];
+            for(let i=0;i<firstDow;i++) cells.push(null);
+            for(let d=1; d<=total; d++){
+              const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+              cells.push({ date:ds, day:d, leaves:this.calDays[ds]||[] });
+            }
+            while(cells.length%7!==0) cells.push(null);
+            return cells;
+          },
+          calTotalLeaves(){ return Object.values(this.calDays).reduce((n,a)=>n+(a?a.length:0),0); },
         },
         methods: {
           today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; },
           prevMonth(){ const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; },
-          switchView(v){ this.view=v; if(v==='overview')this.loadToday(); if(v==='report'){ if(!this.repFrom){const d=new Date();this.repFrom=this.today().slice(0,8)+'01';this.repTo=this.today();} this.loadReport(); } if(v==='history'){ if(!this.histFrom){ this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today(); } this.loadHistory(); } if(v==='exceptions')this.loadExceptions(); if(v==='leaves')this.loadLeaves(true); if(v==='roster')this.loadRoster(); if(v==='schedule')this.loadSchedule(); if(v==='payroll'){ if(!this.payMonth)this.payMonth=this.prevMonth(); this.loadPayroll(); } },
+          switchView(v){ this.view=v; if(v==='overview')this.loadToday(); if(v==='report'){ if(!this.repFrom){const d=new Date();this.repFrom=this.today().slice(0,8)+'01';this.repTo=this.today();} this.loadReport(); } if(v==='history'){ if(!this.histFrom){ this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today(); } this.loadHistory(); } if(v==='exceptions')this.loadExceptions(); if(v==='leaves')this.loadLeaves(true); if(v==='roster')this.loadRoster(); if(v==='schedule')this.loadSchedule(); if(v==='payroll'){ if(!this.payMonth)this.payMonth=this.prevMonth(); this.loadPayroll(); } if(v==='leave-calendar')this.loadLeaveCalendar(); },
           async api(url, opts={}){
             const r = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers||{}) } });
             const j = await r.json().catch(()=>({}));
@@ -743,6 +820,22 @@
             if(!this.mEmp||!this.mDate){ this.manualMsg='請選擇員工及日期'; this.manualOk=false; return; }
             try { const j = await this.api('/api/hr/attendance', { method:'POST', body: JSON.stringify({ user_id:Number(this.mEmp), attendance_date:this.mDate, clock_in:this.mIn||null, clock_out:this.mOut||null, attendance_type:this.mType, note:this.mNote }) }); this.manualMsg=j.message; this.manualOk=true; } catch(e){ this.manualMsg=e.message; this.manualOk=false; }
           },
+          // ===== 員工假期日曆 =====
+          async loadLeaveCalendar(){
+            this.calLoading=true;
+            try {
+              const j = await this.api(`/api/hr/leave-calendar?year=${this.calYear}&month=${String(this.calMonth).padStart(2,'0')}`);
+              this.calYear = j.year; this.calMonth = j.month;
+              this.calDays = j.days || {};
+              this.calLegend = j.legend || {};
+            } catch(e){ this.toastErr(e); } finally { this.calLoading=false; }
+          },
+          prevCalMonth(){ let m=this.calMonth-1, y=this.calYear; if(m<1){ m=12; y--; } this.calYear=y; this.calMonth=m; this.loadLeaveCalendar(); },
+          nextCalMonth(){ let m=this.calMonth+1, y=this.calYear; if(m>12){ m=1; y++; } this.calYear=y; this.calMonth=m; this.loadLeaveCalendar(); },
+          calToToday(){ const d=new Date(); this.calYear=d.getFullYear(); this.calMonth=d.getMonth()+1; this.loadLeaveCalendar(); },
+          isToday(ds){ return ds===this.today(); },
+          leaveTypeChip(t){ return ({annual:'bg-moss-100 text-moss-700',sick:'bg-sky-100 text-sky-700',personal:'bg-amber-100 text-amber-700',statutory:'bg-purple-100 text-purple-700',personal_other:'bg-gray-100 text-gray-600'})[t]||'bg-gray-100 text-gray-600'; },
+          leaveTypeDot(t){ return ({annual:'bg-moss-600',sick:'bg-sky-500',personal:'bg-amber-500',statutory:'bg-purple-500',personal_other:'bg-gray-400'})[t]||'bg-gray-400'; },
           toastErr(e){ console.error(e); alert(e.message); },
           handleLogout(){ localStorage.removeItem('jwtToken'); localStorage.removeItem('adminUser'); window.location.href='admin.html'; },
         },

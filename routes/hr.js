@@ -98,6 +98,54 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
   };
 
   // ==================================================================
+  // 員工假期日曆：全員「已批准」請假，按日展開，供 HR 一眼睇晒邊日邊人放假
+  // 返回 { year, month, days:{ "YYYY-MM-DD":[{name,role,leave_type,leave_type_label,reason}] }, legend }
+  // ==================================================================
+  router.get("/leave-calendar", requireAuth, requireRole('admin'), (req, res) => {
+    const now = new Date();
+    const year = req.query.year ? parseInt(req.query.year, 10) : now.getFullYear();
+    const month = req.query.month
+      ? String(req.query.month).padStart(2, "0")
+      : String(now.getMonth() + 1).padStart(2, "0");
+    const ym = `${year}-${month}`;
+    const daysInMonth = new Date(year, parseInt(month, 10), 0).getDate();
+    const start = `${ym}-01`;
+    const end = `${ym}-${String(daysInMonth).padStart(2, "0")}`;
+    db.all(
+      `SELECT lr.user_id, lr.name AS lr_name, lr.role AS lr_role, lr.leave_type, lr.start_date, lr.end_date, lr.reason,
+              u.name AS user_name, u.role AS user_role
+       FROM leave_requests lr LEFT JOIN users u ON u.id=lr.user_id
+       WHERE lr.status='approved' AND lr.end_date>=? AND lr.start_date<=?`,
+      [start, end],
+      (err, rows) => {
+        if (err) return serverError(res, err);
+        const days = {};
+        (rows || []).forEach((l) => {
+          const s = l.start_date < start ? start : l.start_date;
+          const e = l.end_date > end ? end : l.end_date;
+          const name = l.user_name || l.lr_name || "—";
+          const role = l.user_role || l.lr_role || "";
+          const typeLabel = leaveTypeLabel[l.leave_type] || l.leave_type;
+          dateRange(s, e).forEach((d) => {
+            if (!days[d]) days[d] = [];
+            days[d].push({
+              name,
+              role,
+              leave_type: l.leave_type,
+              leave_type_label: typeLabel,
+              reason: l.reason || "",
+            });
+          });
+        });
+        Object.keys(days).forEach((d) =>
+          days[d].sort((a, b) => String(a.name).localeCompare(String(b.name), "zh-Hant"))
+        );
+        res.json({ year, month: parseInt(month, 10), days, legend: leaveTypeLabel });
+      }
+    );
+  });
+
+  // ==================================================================
   // 🗓️ 排班 / 營業日曆（階段一）
   // 優先次序：診所休診日 > 員工逐日例外(is_off/time) > 員工預設時間 > 全局 10:00-19:00
   // ==================================================================
