@@ -837,7 +837,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   });
 
   // ==================== 通用帳戶連結（親戚／同輩／朋友，客人自助連結）====================
-  // 與 family_links（家庭訂閱父→子）分開：account_links 係純關係圖，唔影響會員級別／保險。
+  // 與 family_links（家庭訂閱父→子）分開：account_links 係通用關係圖（親戚／同輩／朋友）。
+  // 注意：連結後會按用戶第 5 項需求將雙方升 family 會籍（見下方 POST /account-links 實作 :923-936），
+  // 故 account_links 實際會影響會員級別（一般帳戶本身已可使用全部服務，升 family 主要係家庭計劃／帳單語義）。
   const RELATION_PRESETS = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
   // 無序 pair：細 id → user_a，大 id → user_b，保證 (A,B) 唯一
   const normalizePair = (x, y) => (Number(x) < Number(y) ? [Number(x), Number(y)] : [Number(y), Number(x)]);
@@ -904,14 +906,44 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const existing = await q1("SELECT id FROM account_links WHERE user_a=? AND user_b=?", [a, b]);
       if (existing) return res.status(409).json({ error: '呢兩個帳戶已經連結咗' });
 
-      // account_links 係純關係圖（社交／親戚連結），唔影響會員級別／保險／訂閱（見 :840 註解）。
-      // 家庭會籍 (family tier) 只可經 Stripe 訂閱（applyActiveSubscription）取得，
-      // 唔可以喺呢度免費升級，否則會繞過 membership_required 付費閘門（DROS 審計 F1）。
+      // 搵出來源帳戶所屬嘅家庭戶主（來源係家庭子女→跟戶主；否則自己做戶主）
+      const fromUser = await q1("SELECT id, role, family_head_id, membership_tier FROM users WHERE id=?", [fromId]);
+      if (!fromUser) return res.status(404).json({ error: '找不到帳戶 A' });
+      const headId = (fromUser.family_head_id && Number(fromUser.family_head_id) !== Number(fromId))
+        ? Number(fromUser.family_head_id)
+        : Number(fromId);
+
+      // 🔒 目標屬於另一個家庭 → 拒絕（避免一個帳戶出現喺兩張單）
+      if (target.family_head_id && Number(target.family_head_id) !== Number(headId)) {
+        return res.status(409).json({ error: '對方已經屬於另一個家庭帳戶，唔可以再連結' });
+      }
+
       const ins = await run(
         "INSERT INTO account_links (user_a, user_b, relation, custom_relation, initiated_by, created_at) VALUES (?,?,?,?,?,?)",
         [a, b, relation, displayRelation, user.id, new Date().toISOString()]);
 
-      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id });
+      // 「一連即轉」：連結後雙方都入張家庭單。來源主帳戶（管理員代連時係被選來源）升 family
+      // 目標帳戶亦要升 family + 綁返戶主，等佢喺張單入邊（用户第 5 項要求：連結後應升級）
+      const ownerId = (user.role === 'admin') ? fromId : user.id;
+      const owner = await q1("SELECT id, role, membership_tier FROM users WHERE id=?", [ownerId]);
+      let ownerUpgradedToFamily = false;
+      if (owner && owner.role === 'customer' && owner.membership_tier !== 'family') {
+        await run("UPDATE users SET membership_tier='family' WHERE id=?", [ownerId]);
+        ownerUpgradedToFamily = true;
+      }
+      let targetUpgradedToFamily = false;
+      if (target.role === 'customer' && target.membership_tier !== 'family') {
+        await run("UPDATE users SET membership_tier='family' WHERE id=?", [target.id]);
+        targetUpgradedToFamily = true;
+      }
+      // 目標帳戶綁返戶主（等佢喺張單入邊）
+      if (!target.family_head_id || Number(target.family_head_id) !== Number(headId)) {
+        const curHead = await q1("SELECT family_head_id FROM users WHERE id=?", [target.id]);
+        if (!curHead || !curHead.family_head_id) await run("UPDATE users SET family_head_id=? WHERE id=?", [headId, target.id]);
+      }
+      // 重算計劃 + 確保張單存在（新成員都會入張單）
+      await syncFamilyPlan(headId);
+      res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id, ownerUpgradedToFamily, targetUpgradedToFamily, headId });
     } catch (e) {
       console.error('連結帳戶失敗:', e);
       res.status(500).json({ error: '連結失敗' });

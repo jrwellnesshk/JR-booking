@@ -184,12 +184,13 @@ router.get(<span class="s">"/get-recommendation"</span>, (req,res)=&gt;{...});  
     <tr><td>對象級授權 isOwnerOrStaff</td><td>bookings.js:25,708,715,723,735,906,916</td></tr>
   </table>
 
-  <h2>7. 修復狀態（2026-09-08 已執行）</h2>
+  <h2>7. 修復狀態（2026-09-08 更新）</h2>
   <div class="card">
-    <p><b>F1（已修）</b>：<code>routes/memberships.js</code> 移除 <code>POST /account-links</code> 內嘅免費 <code>family</code> 升級（原 :923-936 段）、<code>family_head_id</code> 綁定同 <code>syncFamilyPlan</code> 呼叫，令 account_links 回復「純關係圖」語義（符合 :840 註解）。家庭會籍只經 Stripe <code>applyActiveSubscription</code> 取得，付費閘門 <code>membership_required</code> 不再被自助連結繞過。</p>
-    <p><b>F2（已修）</b>：<code>routes/auth.js:548</code> <code>isDev</code> 收緊為只判 <code>NODE_ENV !== 'production'</code>（移除 <code>!process.env.EMAIL_PASS</code>）；DEV FALLBACK 只將重設碼寫入 server log，響應體不再含 <code>verification_code</code>。生產環境若 SMTP 未配置則重設流程返 500（安全失敗，唔再洩漏）。</p>
-    <p><b>驗證（沙盒 scenario.db, PORT=4188）</b>：起 server + <code>_t_auditfix.js</code> 實測 —— ① general 用戶自助 account-links 到另一 general 用戶，雙方 <code>membership_tier</code> 維持 <code>general</code>（PASS）；② <code>send-reset-code</code> 響應體無 <code>verification_code</code> 鍵（PASS）。exit=0。</p>
-    <p><b>F3 / F4（未做）</b>：低風險，留待確認。F3 需改 <code>ai.js</code> module signature 注入 <code>optionalAuth</code>；F4 為退役 legacy <code>find-user-id</code> 枚舉端點。</p>
+    <p><b>F1（非漏洞，已還原）</b>：經產品負責人澄清——「一般帳戶不嬲都可以用到全部服務」，即唔存在審計假設嘅「付費閘門」；account-links 連結後升 <code>family</code> 係用戶第 5 項需求（代碼 :923-936），屬預期行為，唔構成權限提升。初版 <code>fix:security</code> commit（<code>c04a426</code>）移除咗呢段升級邏輯、改咗功能邏輯，已<b>還原</b>以遵守「唔好改功能邏輯」原則。<code>membership_required</code> 閘門（bookings.js:317 / memberships.js:1183）維持唔動。</p>
+    <p><b>840 行註解修正（文檔，非邏輯）</b>：原註解寫「account_links 唔影響會員級別」同實作自相矛盾（DROS Declared≠Implemented）。已改為準確描述「連結後會升 family 會籍」，以文檔修正解決矛盾，而唔改邏輯。</p>
+    <p><b>F2（已修，保留）</b>：<code>routes/auth.js:548</code> <code>isDev</code> 收緊為只判 <code>NODE_ENV !== 'production'</code>（移除 <code>!process.env.EMAIL_PASS</code>）；DEV FALLBACK 只將重設碼寫入 server log，響應體不再含 <code>verification_code</code>。純安全修復，唔影響正常流程（生產環境經 SMTP 寄出；SMTP 未配置則重設流程安全失敗返 500，唔再洩漏）。</p>
+    <p><b>驗證（沙盒 scenario.db, PORT=4188）</b>：起 server + <code>_t_auditfix.js</code> 實測 —— ① account-links 連結後雙方升 <code>family</code>（預期行為復原，PASS）；② <code>send-reset-code</code> 響應體無 <code>verification_code</code> 鍵（PASS）。exit=0。</p>
+    <p><b>F3 / F4（建議，未實施）</b>：用戶指示「建議先問」，故只列建議：F3 可加 <code>optionalAuth</code> 到 <code>ai.js</code> 路由（需改 module signature，屬邏輯改動，待確認）；F4 可退役 legacy <code>find-user-id</code> 枚舉端點（移除功能，待確認）。</p>
   </div>
 
 </div>
