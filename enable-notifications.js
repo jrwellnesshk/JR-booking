@@ -2,7 +2,13 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'clinic.db');
+const fs = require('fs');
+// clinic.db 係舊路徑，DB 合併後統一用 database.db；可用 DB_PATH 環境變數覆蓋。
+const candidates = [path.join(__dirname, 'clinic.db'), path.join(__dirname, 'database.db')];
+const dbPath =
+  process.env.DB_PATH ||
+  candidates.find((p) => fs.existsSync(p)) ||
+  path.join(__dirname, 'database.db');
 console.log('資料庫路徑:', dbPath);
 
 const db = new sqlite3.Database(dbPath, (err) => {

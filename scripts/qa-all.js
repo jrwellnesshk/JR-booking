@@ -35,9 +35,15 @@ const QA_LIVE = path.join(QA_DIR, 'qa-live.db');
 
 async function prepareQaDb() {
   if (process.env.DB_PATH) return;   // 有人指明 DB 就唔郁
-  const base = path.join(ROOT, 'data', 'database.db');
-  if (!fs.existsSync(base)) {
-    console.error(`❌ 缺少基礎快照 ${base}，無法製備 QA 庫`);
+  // 基礎快照：優先用 data/database.db；DB 合併後 data/ 只剩 holidays-cache.json，
+  // 所以退回根目錄嘅 database.db（只會被複製去 temp 做 QA master，唔會改動 live）。
+  const candidates = [
+    path.join(ROOT, 'data', 'database.db'),
+    path.join(ROOT, 'database.db'),
+  ];
+  const base = candidates.find((p) => fs.existsSync(p));
+  if (!base) {
+    console.error(`❌ 缺少基礎快照（試過：${candidates.join('、')}），無法製備 QA 庫`);
     process.exit(1);
   }
   fs.mkdirSync(QA_DIR, { recursive: true });
