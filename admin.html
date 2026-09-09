@@ -301,18 +301,70 @@
         color:var(--taupe-500); letter-spacing:.18em; margin-top:.25rem;
       }
 
-      .ftree-level{ position:relative; display:flex; justify-content:center; gap:2.2rem; margin:1.6rem 0; z-index:1; }
-      .ftree-level-grand{ margin-bottom:2.4rem; }
-      .ftree-level-parent{ margin-bottom:2.8rem; }
-      .ftree-level-children{ gap:1.2rem; flex-wrap:wrap; }
+      /* === 家庭帳戶樹狀圖（多層家族樹 + 連接線）=== */
+      .ftree-gen, .ftree-gen ul{
+        margin:0; padding:0; list-style:none;
+        position:relative;
+      }
+      .ftree-gen{
+        display:flex; justify-content:center;
+        padding-top:2.2rem;
+      }
+      .ftree-gen > li{
+        float:left; text-align:center;
+        position:relative;
+        padding:2.2rem .7rem 0 .7rem;
+      }
+      /* 水平連接線 + 垂直到子節點 */
+      .ftree-gen > li::before, .ftree-gen > li::after{
+        content:''; position:absolute; top:0; right:50%;
+        width:50%; height:2.2rem;
+        border-top:2px solid rgba(192,136,117,.38); z-index:0;
+      }
+      .ftree-gen > li::after{
+        right:auto; left:50%;
+        border-left:2px solid rgba(192,136,117,.38);
+      }
+      .ftree-gen > li:only-child::after, .ftree-gen > li:only-child::before{ display:none; }
+      .ftree-gen > li:first-child::before, .ftree-gen > li:last-child::after{ border:0 none; }
+      .ftree-gen > li:last-child::before{
+        border-right:2px solid rgba(192,136,117,.38);
+        border-radius:0 10px 0 0;
+      }
+      .ftree-gen > li:first-child::after{ border-radius:10px 0 0 0; }
+      /* 從上一層中央落下嘅垂線 */
+      .ftree-gen ul::before{
+        content:''; position:absolute; top:0; left:50%;
+        border-left:2px solid rgba(192,136,117,.38);
+        width:0; height:2.2rem; z-index:0;
+      }
+      .ftree-gen-root > li > .ftree-couple + ul::before{ display:none; }
 
+      /* 夫婦並排 wrapper */
+      .ftree-couple{
+        display:inline-flex; gap:1.4rem; position:relative; justify-content:center;
+        padding:0 .6rem;
+      }
+      .ftree-couple .ftree-node{ position:relative; }
+      .ftree-couple::before{
+        content:''; position:absolute; top:33%; left:20%; right:20%; height:2px;
+        background:rgba(192,136,117,.42); z-index:1;
+      }
+      .ftree-couple::after{
+        content:''; position:absolute; left:50%; top:33%; bottom:-2.2rem; width:2px;
+        background:rgba(192,136,117,.42); transform:translateX(-50%); z-index:1;
+      }
+
+      .ftree-node-wrapper{ display:inline-block; position:relative; z-index:2; }
       .ftree-node{
-        position:relative; display:flex; flex-direction:column; align-items:center;
-        text-align:center; transition:transform .2s ease;
+        position:relative; display:inline-flex; flex-direction:column; align-items:center;
+        text-align:center; transition:transform .2s ease; z-index:2;
       }
       .ftree-node:hover{ transform:translateY(-3px); }
       .ftree-node[data-role="head"] .ftree-avatar-wrap{ width:96px; height:96px; }
+      .ftree-node[data-role="relative"] .ftree-avatar-wrap{ width:78px; height:78px; }
       .ftree-node[data-role="child"] .ftree-avatar-wrap{ width:68px; height:68px; }
+      .ftree-node[data-role="extended"] .ftree-avatar-wrap{ width:60px; height:60px; }
       .ftree-node[data-role="placeholder"] .ftree-avatar-wrap{ width:76px; height:76px; }
       .ftree-avatar-wrap{
         position:relative; border-radius:50%;
@@ -323,6 +375,12 @@
         padding:6px;
         background:linear-gradient(135deg, #C08875, #A8B89A, #C08875);
         background-size:200% 200%; animation:ftreeShimmer 5s ease infinite;
+      }
+      .ftree-node[data-role="relative"] .ftree-avatar-wrap{
+        background:linear-gradient(135deg, #E5E8D9, #CCD2BC);
+      }
+      .ftree-node[data-role="extended"] .ftree-avatar-wrap{
+        background:linear-gradient(135deg, #F5E5D5, #EFD2BD);
       }
       .ftree-avatar{
         width:100%; height:100%; border-radius:50%;
@@ -336,12 +394,15 @@
         background:linear-gradient(135deg, rgba(245,229,213,.6), rgba(232,201,181,.4));
         border:2px dashed rgba(192,136,117,.4); color:rgba(94,64,55,.5); font-size:1.6rem;
       }
+      .ftree-node[data-role="extended"] .ftree-avatar{ font-size:1.15rem; }
       .ftree-avatar img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
       .ftree-name{
         margin-top:.55rem; font-weight:600; color:var(--taupe-800); font-size:.85rem; line-height:1.25;
         max-width:110px; word-break:break-word;
       }
       .ftree-node[data-role="head"] .ftree-name{ font-size:1rem; color:var(--taupe-800); }
+      .ftree-node[data-role="relative"] .ftree-name{ color:var(--sage-700); }
+      .ftree-node[data-role="extended"] .ftree-name{ font-size:.78rem; color:var(--taupe-700); }
       .ftree-meta{
         font-size:.7rem; color:var(--taupe-500); margin-top:.15rem; line-height:1.3;
       }
@@ -358,41 +419,22 @@
       }
       .ftree-unlink:hover{ color:#fff; background:rgba(180,69,58,.85); border-color:rgba(180,69,58,.85); }
 
-      /* 連接線 */
-      .ftree-branch-v, .ftree-branch-h{ position:absolute; background:rgba(192,136,117,.35); z-index:0; }
-      .ftree-branch-v{ width:2px; }
-      .ftree-branch-h{ height:2px; }
-      .ftree-level-grand::after{
-        content:''; position:absolute; left:50%; bottom:-2.4rem; width:2px; height:2.4rem;
-        background:linear-gradient(to bottom, rgba(192,136,117,.35), rgba(192,136,117,.15)); transform:translateX(-50%);
+      /* 延伸連結層（第四代）用虛線 */
+      .ftree-gen-ext{ padding-top:1.6rem; }
+      .ftree-gen-ext > li{ padding-top:1.6rem; }
+      .ftree-gen-ext > li::before, .ftree-gen-ext > li::after{
+        border-top:1.5px dashed rgba(126,148,118,.45);
       }
-      .ftree-level-parent::before{
-        content:''; position:absolute; left:50%; top:-2.8rem; width:2px; height:2.8rem;
-        background:linear-gradient(to bottom, rgba(192,136,117,.2), rgba(192,136,117,.35)); transform:translateX(-50%);
-      }
-      .ftree-level-parent::after{
-        content:''; position:absolute; left:50%; bottom:-2.8rem; width:2px; height:2.8rem;
-        background:linear-gradient(to bottom, rgba(192,136,117,.35), rgba(192,136,117,.2)); transform:translateX(-50%);
-      }
-      .ftree-level-children::before{
-        content:''; position:absolute; left:50%; top:-2.8rem; width:60%; max-width:420px; height:2px;
-        border-top:2px solid rgba(192,136,117,.3); border-radius:50% 50% 0 0/12px 12px 0 0;
-        transform:translateX(-50%);
-      }
-      /* 其他連結（親戚）層：虛線連住 */
-      .ftree-level-links{ border:1.5px dashed rgba(126,148,118,.45); border-radius:1.6rem; padding:1.4rem 1rem .6rem; }
-      .ftree-level-links::before{ display:none; }
-      .ftree-links-head{
-        width:100%; text-align:center; font-size:.68rem; letter-spacing:.14em; color:var(--sage-700);
-        margin-top:-1.9rem; margin-bottom:0; background:#FAF5EE; padding:.25rem .9rem; border-radius:999px;
-      }
+      .ftree-gen-ext > li::after{ border-left:1.5px dashed rgba(126,148,118,.45); }
+      .ftree-gen-ext > li:last-child::before{ border-right:1.5px dashed rgba(126,148,118,.45); }
+      .ftree-gen-ext ul::before{ border-left:1.5px dashed rgba(126,148,118,.45); height:1.6rem; }
 
       .ftree-actions{
-        position:relative; z-index:1; display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem;
+        position:relative; z-index:3; display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem;
         margin-top:1.6rem; padding-top:1.2rem; border-top:1px dashed rgba(192,136,117,.25);
       }
       .ftree-note{
-        position:relative; z-index:1; text-align:center; font-size:.75rem; color:var(--taupe-500);
+        position:relative; z-index:3; text-align:center; font-size:.75rem; color:var(--taupe-500);
         margin-top:.9rem;
       }
 
@@ -403,20 +445,24 @@
       }
 
       @media (max-width: 767px){
-        .ftree-canvas{ padding:1.4rem .9rem; border-radius:1.4rem; }
+        .ftree-canvas{ padding:1.4rem .6rem; border-radius:1.4rem; }
         .ftree-title{ font-size:1.25rem; }
-        .ftree-level{ gap:1.1rem; margin:1.1rem 0; }
-        .ftree-level-grand{ margin-bottom:1.6rem; }
-        .ftree-level-parent{ margin-bottom:1.9rem; }
-        .ftree-level-grand::after{ bottom:-1.6rem; height:1.6rem; }
-        .ftree-level-parent::before{ top:-1.9rem; height:1.9rem; }
-        .ftree-level-parent::after{ bottom:-1.9rem; height:1.9rem; }
-        .ftree-level-children::before{ width:75%; }
-        .ftree-node[data-role="head"] .ftree-avatar-wrap{ width:76px; height:76px; }
-        .ftree-node[data-role="child"] .ftree-avatar-wrap{ width:56px; height:56px; }
-        .ftree-node[data-role="placeholder"] .ftree-avatar-wrap{ width:60px; height:60px; }
-        .ftree-name{ font-size:.78rem; max-width:84px; }
-        .ftree-meta{ font-size:.65rem; }
+        .ftree-gen{ padding-top:1.6rem; }
+        .ftree-gen > li{ padding:1.6rem .35rem 0 .35rem; }
+        .ftree-gen > li::before, .ftree-gen > li::after{ height:1.6rem; }
+        .ftree-gen ul::before{ height:1.6rem; }
+        .ftree-couple{ gap:.7rem; padding:0 .3rem; }
+        .ftree-couple::before{ left:15%; right:15%; }
+        .ftree-couple::after{ bottom:-1.6rem; height:1.6rem; }
+        .ftree-node[data-role="head"] .ftree-avatar-wrap{ width:70px; height:70px; }
+        .ftree-node[data-role="relative"] .ftree-avatar-wrap{ width:58px; height:58px; }
+        .ftree-node[data-role="child"] .ftree-avatar-wrap{ width:52px; height:52px; }
+        .ftree-node[data-role="extended"] .ftree-avatar-wrap{ width:46px; height:46px; }
+        .ftree-node[data-role="placeholder"] .ftree-avatar-wrap{ width:56px; height:56px; }
+        .ftree-name{ font-size:.72rem; max-width:72px; }
+        .ftree-node[data-role="extended"] .ftree-name{ font-size:.65rem; max-width:62px; }
+        .ftree-meta{ font-size:.6rem; }
+        .ftree-tag{ font-size:.55rem; }
       }
     </style>
   <style>
@@ -728,7 +774,7 @@
                 :class="currentView === 'timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
                 class="w-full text-left px-4 py-2 rounded-lg transition-colors"
               >
-                <i class="fas fa-clock mr-2"></i>時段管理
+                <i class="fas fa-clock mr-2"></i>醫生時段管理
               </button>
               <button
                 @click="currentView = 'clinic-settings'; loadClinicSettings(); loadServices(); loadDoctors();"
@@ -2521,86 +2567,212 @@
                   <small>{{ selectedFamilyHead.name }} 的家庭帳戶</small>
                 </div>
 
-                <!-- 祖父母層（預留三代入口） -->
-                <div class="ftree-level ftree-level-grand">
-                  <div class="ftree-node" data-role="placeholder">
-                    <div class="ftree-avatar-wrap">
-                      <div class="ftree-avatar"><i class="fas fa-user"></i></div>
-                    </div>
-                    <div class="ftree-name">上一代<br><span class="text-[10px] opacity-70">（預留）</span></div>
-                    <span class="ftree-tag sage">祖父</span>
-                  </div>
-                  <div class="ftree-node" data-role="placeholder">
-                    <div class="ftree-avatar-wrap">
-                      <div class="ftree-avatar"><i class="fas fa-user"></i></div>
-                    </div>
-                    <div class="ftree-name">上一代<br><span class="text-[10px] opacity-70">（預留）</span></div>
-                    <span class="ftree-tag sage">祖母</span>
-                  </div>
-                </div>
-
-                <!-- 父母層（戶主） -->
-                <div class="ftree-level ftree-level-parent">
-                  <div class="ftree-node" data-role="head">
-                    <div class="ftree-avatar-wrap">
-                      <div class="ftree-avatar">
-                        <img v-if="selectedFamilyHead.avatar_url" :src="selectedFamilyHead.avatar_url" :alt="selectedFamilyHead.name">
-                        <i v-else class="fas fa-crown"></i>
+                <ul class="ftree-gen ftree-gen-root">
+                  <li>
+                    <!-- 祖父母層（預留） -->
+                    <div class="ftree-couple">
+                      <div class="ftree-node" data-role="placeholder">
+                        <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
+                        <div class="ftree-name">上一代<br><span class="text-[10px] opacity-70">（預留）</span></div>
+                        <span class="ftree-tag sage">祖父</span>
+                      </div>
+                      <div class="ftree-node" data-role="placeholder">
+                        <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
+                        <div class="ftree-name">上一代<br><span class="text-[10px] opacity-70">（預留）</span></div>
+                        <span class="ftree-tag sage">祖母</span>
                       </div>
                     </div>
-                    <div class="ftree-name">{{ selectedFamilyHead.name }}</div>
-                    <div class="ftree-meta">{{ selectedFamilyHead.username }} · {{ selectedFamilyHead.members.length }} 位成員</div>
-                    <span class="ftree-tag" :class="selectedFamilyHead.membership_tier === 'family' ? '' : 'adult'">
-                      {{ selectedFamilyHead.membership_tier === 'family' ? '家庭會員' : (selectedFamilyHead.membership_tier || 'general') }}
-                    </span>
-                  </div>
-                </div>
 
-                <!-- 子女層（家庭成員） -->
-                <div v-if="selectedFamilyHead.members.length === 0" class="text-center text-sm text-slate-400 py-6">沒有家庭成員</div>
-                <div v-else class="ftree-level ftree-level-children">
-                  <div
-                    v-for="m in selectedFamilyHead.members"
-                    :key="m.id"
-                    class="ftree-node"
-                    data-role="child"
-                  >
-                    <div class="ftree-avatar-wrap">
-                      <div class="ftree-avatar">
-                        <img v-if="m.avatar_url" :src="m.avatar_url" :alt="m.name">
-                        <i v-else :class="m.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
-                      </div>
-                    </div>
-                    <div class="ftree-name">{{ m.name }}</div>
-                    <div class="ftree-meta">{{ m.age }} 歲 · 預約 {{ m.booking_count || 0 }} 次</div>
-                    <span class="ftree-tag" :class="m.isAdult ? 'adult' : (m.turning18Soon ? '' : 'sage')">
-                      {{ m.isAdult ? '已成年·跟進' : (m.turning18Soon ? `快成年(${m.days_to_18}日)` : '18歲以下') }}
-                    </span>
-                    <button @click="removeFamilyMember(selectedFamilyHead, m)" class="ftree-unlink" title="移除家庭連結（帳戶保留）"><i class="fas fa-unlink"></i></button>
-                  </div>
-                </div>
+                    <!-- 父母層：經由戶主連入嘅「父母」關係 -->
+                    <ul v-if="familyTreeData.parentLevel.length" class="ftree-gen">
+                      <li v-for="gp in familyTreeData.parentLevel" :key="gp.id">
+                        <div class="ftree-node" data-role="relative">
+                          <div class="ftree-avatar-wrap">
+                            <div class="ftree-avatar">
+                              <img v-if="gp.primary.avatar_url" :src="gp.primary.avatar_url" :alt="gp.primary.name">
+                              <i v-else class="fas fa-user"></i>
+                            </div>
+                          </div>
+                          <div class="ftree-name">{{ gp.primary.name || gp.primary.username }}</div>
+                          <div class="ftree-meta">{{ gp.primary.username }}</div>
+                          <span class="ftree-tag sage">{{ gp.relation }}</span>
+                        </div>
 
-                <!-- 🆕 其他連結（親戚／同輩；含連結來源 + 連線） -->
-                <div v-if="headLinks.length" class="ftree-level ftree-level-children ftree-level-links" style="margin-top:2.4rem;">
-                  <div class="ftree-links-head"><i class="fas fa-people-arrows"></i> 親戚／其他連結（由下面連入）</div>
-                  <div
-                    v-for="lk in headLinks"
-                    :key="lk.id"
-                    class="ftree-node"
-                    data-role="child"
-                  >
-                    <div class="ftree-avatar-wrap">
-                      <div class="ftree-avatar">
-                        <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
-                        <i v-else class="fas fa-user"></i>
-                      </div>
-                    </div>
-                    <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
-                    <div class="ftree-meta">{{ lk.other.username }}<template v-if="lk.linkSourceName"> · 經由 <b>{{ lk.linkSourceName }}</b></template></div>
-                    <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
-                    <button @click="removeHeadLink(lk)" class="ftree-unlink" title="解除連結"><i class="fas fa-unlink"></i></button>
-                  </div>
-                </div>
+                        <!-- 戶主層 -->
+                        <ul class="ftree-gen">
+                          <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
+                            <div class="ftree-node-wrapper">
+                              <div v-if="parent.type === 'couple'" class="ftree-couple">
+                                <!-- 戶主 -->
+                                <div class="ftree-node" data-role="head">
+                                  <div class="ftree-avatar-wrap">
+                                    <div class="ftree-avatar">
+                                      <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                      <i v-else class="fas fa-crown"></i>
+                                    </div>
+                                  </div>
+                                  <div class="ftree-name">{{ parent.primary.name }}</div>
+                                  <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} 位成員</div>
+                                  <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
+                                    {{ parent.primary.membership_tier === 'family' ? '家庭會員' : (parent.primary.membership_tier || 'general') }}
+                                  </span>
+                                </div>
+                                <!-- 配偶 -->
+                                <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
+                                  <div class="ftree-avatar-wrap">
+                                    <div class="ftree-avatar">
+                                      <img v-if="parent.spouse && parent.spouse.avatar_url" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
+                                      <i v-else class="fas fa-user"></i>
+                                    </div>
+                                  </div>
+                                  <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : '配偶' }}</div>
+                                  <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : '（待連結）' }}</div>
+                                  <span class="ftree-tag sage">{{ parent.spouse ? (parent.spouseRelation || '配偶') : '待連結' }}</span>
+                                </div>
+                              </div>
+                              <!-- 其他經由戶主連入嘅親屬 -->
+                              <div v-else class="ftree-node" data-role="relative">
+                                <div class="ftree-avatar-wrap">
+                                  <div class="ftree-avatar">
+                                    <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                    <i v-else class="fas fa-user"></i>
+                                  </div>
+                                </div>
+                                <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
+                                <div class="ftree-meta">{{ parent.primary.username }}</div>
+                                <span class="ftree-tag sage">{{ parent.relation }}</span>
+                              </div>
+                            </div>
+
+                            <!-- 子女層 -->
+                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
+                              <li v-for="child in parent.children" :key="child.id">
+                                <div class="ftree-node" data-role="child">
+                                  <div class="ftree-avatar-wrap">
+                                    <div class="ftree-avatar">
+                                      <img v-if="child.avatar_url" :src="child.avatar_url" :alt="child.name">
+                                      <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
+                                    </div>
+                                  </div>
+                                  <div class="ftree-name">{{ child.name }}</div>
+                                  <div class="ftree-meta">{{ child.age }} 歲 · 預約 {{ child.booking_count || 0 }} 次</div>
+                                  <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
+                                    {{ child.isAdult ? '已成年·跟進' : (child.turning18Soon ? `快成年(${child.days_to_18}日)` : '18歲以下') }}
+                                  </span>
+                                  <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" title="移除家庭連結（帳戶保留）"><i class="fas fa-unlink"></i></button>
+                                </div>
+                                <!-- 延伸連結（由子女連出） -->
+                                <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
+                                  <li v-for="lk in child.extendedLinks" :key="lk.id">
+                                    <div class="ftree-node" data-role="extended">
+                                      <div class="ftree-avatar-wrap">
+                                        <div class="ftree-avatar">
+                                          <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                                          <i v-else class="fas fa-user"></i>
+                                        </div>
+                                      </div>
+                                      <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
+                                      <div class="ftree-meta">{{ lk.other.username }}</div>
+                                      <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
+                                      <button @click="removeHeadLink(lk)" class="ftree-unlink" title="解除連結"><i class="fas fa-unlink"></i></button>
+                                    </div>
+                                  </li>
+                                </ul>
+                              </li>
+                            </ul>
+                            <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">沒有家庭成員</div>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+
+                    <!-- 無父母連結：戶主層直接喺祖父母下面 -->
+                    <ul v-else class="ftree-gen">
+                      <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
+                        <div class="ftree-node-wrapper">
+                          <div v-if="parent.type === 'couple'" class="ftree-couple">
+                            <!-- 戶主 -->
+                            <div class="ftree-node" data-role="head">
+                              <div class="ftree-avatar-wrap">
+                                <div class="ftree-avatar">
+                                  <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                  <i v-else class="fas fa-crown"></i>
+                                </div>
+                              </div>
+                              <div class="ftree-name">{{ parent.primary.name }}</div>
+                              <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} 位成員</div>
+                              <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
+                                {{ parent.primary.membership_tier === 'family' ? '家庭會員' : (parent.primary.membership_tier || 'general') }}
+                              </span>
+                            </div>
+                            <!-- 配偶 -->
+                            <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
+                              <div class="ftree-avatar-wrap">
+                                <div class="ftree-avatar">
+                                  <img v-if="parent.spouse && parent.spouse.avatar_url" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
+                                  <i v-else class="fas fa-user"></i>
+                                </div>
+                              </div>
+                              <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : '配偶' }}</div>
+                              <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : '（待連結）' }}</div>
+                              <span class="ftree-tag sage">{{ parent.spouse ? (parent.spouseRelation || '配偶') : '待連結' }}</span>
+                            </div>
+                          </div>
+                          <!-- 其他經由戶主連入嘅親屬 -->
+                          <div v-else class="ftree-node" data-role="relative">
+                            <div class="ftree-avatar-wrap">
+                              <div class="ftree-avatar">
+                                <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                <i v-else class="fas fa-user"></i>
+                              </div>
+                            </div>
+                            <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
+                            <div class="ftree-meta">{{ parent.primary.username }}</div>
+                            <span class="ftree-tag sage">{{ parent.relation }}</span>
+                          </div>
+                        </div>
+
+                        <!-- 子女層 -->
+                        <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
+                          <li v-for="child in parent.children" :key="child.id">
+                            <div class="ftree-node" data-role="child">
+                              <div class="ftree-avatar-wrap">
+                                <div class="ftree-avatar">
+                                  <img v-if="child.avatar_url" :src="child.avatar_url" :alt="child.name">
+                                  <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
+                                </div>
+                              </div>
+                              <div class="ftree-name">{{ child.name }}</div>
+                              <div class="ftree-meta">{{ child.age }} 歲 · 預約 {{ child.booking_count || 0 }} 次</div>
+                              <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
+                                {{ child.isAdult ? '已成年·跟進' : (child.turning18Soon ? `快成年(${child.days_to_18}日)` : '18歲以下') }}
+                              </span>
+                              <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" title="移除家庭連結（帳戶保留）"><i class="fas fa-unlink"></i></button>
+                            </div>
+                            <!-- 延伸連結（由子女連出） -->
+                            <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
+                              <li v-for="lk in child.extendedLinks" :key="lk.id">
+                                <div class="ftree-node" data-role="extended">
+                                  <div class="ftree-avatar-wrap">
+                                    <div class="ftree-avatar">
+                                      <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                                      <i v-else class="fas fa-user"></i>
+                                    </div>
+                                  </div>
+                                  <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
+                                  <div class="ftree-meta">{{ lk.other.username }}</div>
+                                  <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
+                                  <button @click="removeHeadLink(lk)" class="ftree-unlink" title="解除連結"><i class="fas fa-unlink"></i></button>
+                                </div>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                        <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">沒有家庭成員</div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
 
                 <div class="ftree-actions">
                   <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>加子女</button>
@@ -2910,7 +3082,7 @@
 
           <!-- 時段管理 -->
           <div v-if="currentView === 'timeslots'" class="space-y-6">
-            <h2 class="text-2xl font-bold text-slate-800">預約時段管理</h2>
+            <h2 class="text-2xl font-bold text-slate-800">醫生時段管理</h2>
 
             <!-- 🩺 醫師選擇列 -->
             <div class="bg-white rounded-xl shadow-lg p-4">
@@ -7491,6 +7663,71 @@ addUserForm: {
               (h.name || '').toLowerCase().includes(q) ||
               (h.username || '').toLowerCase().includes(q)
             );
+          },
+          // 🌳 家庭帳戶：分層樹狀結構（自動按關係分層：配偶並排、子女向下、父母向上、兄弟姊妹橫向）
+          familyTreeData() {
+            const head = this.selectedFamilyHead;
+            if (!head) return { parentLevel: [], headGeneration: [] };
+            const links = this.headLinks || [];
+
+            const relKey = (lk) => String(lk.customRelation || lk.relation || '').toLowerCase();
+            const spouseKeys = ['配偶', 'spouse', 'partner', '丈夫', '妻子', '老公', '太太', 'husband', 'wife'];
+            const childKeys = ['子女', 'child', 'children', '兒子', '女兒', '仔', '女', 'son', 'daughter'];
+            const parentKeys = ['父母', 'parent', '爸爸', '媽媽', '父', '母', 'father', 'mother', 'dad', 'mom'];
+
+            const isSpouse = (lk) => spouseKeys.includes(relKey(lk));
+            const isChild = (lk) => childKeys.includes(relKey(lk));
+            const isParent = (lk) => parentKeys.includes(relKey(lk));
+
+            // 經由戶主嘅連結
+            const spouseLink = links.find(lk => isSpouse(lk) && lk.linkSourceName === head.name);
+            const parentLinks = links.filter(lk => isParent(lk) && lk.linkSourceName === head.name);
+            const siblingLinks = links.filter(lk => {
+              if (lk === spouseLink) return false;
+              if (isChild(lk) || isParent(lk)) return false;
+              return lk.linkSourceName === head.name;
+            });
+
+            // 經由子女嘅延伸連結
+            const childLinkMap = {};
+            (head.members || []).forEach(m => { childLinkMap[m.id] = []; });
+            links.forEach(lk => {
+              const member = (head.members || []).find(m => lk.linkSourceName === m.name);
+              if (member) childLinkMap[member.id].push(lk);
+            });
+
+            const headCouple = {
+              id: 'head-couple',
+              type: 'couple',
+              primary: head,
+              spouse: spouseLink ? spouseLink.other : null,
+              spouseRelation: spouseLink ? (spouseLink.customRelation || spouseLink.relation) : null,
+              children: (head.members || []).map(m => ({ ...m, extendedLinks: childLinkMap[m.id] || [] })),
+              isHead: true
+            };
+
+            const headGeneration = [headCouple];
+            siblingLinks.forEach(lk => {
+              headGeneration.push({
+                id: 'link-' + lk.id,
+                type: 'single',
+                primary: lk.other,
+                relation: lk.customRelation || lk.relation,
+                children: [],
+                isHead: false
+              });
+            });
+
+            const parentLevel = parentLinks.map(lk => ({
+              id: 'parent-link-' + lk.id,
+              type: 'single',
+              primary: lk.other,
+              relation: lk.customRelation || lk.relation,
+              children: [],
+              isHead: false
+            }));
+
+            return { parentLevel, headGeneration };
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
           headSubAccounts() {
