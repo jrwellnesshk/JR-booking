@@ -1,5 +1,21 @@
-// holidays.js - 香港公眾假期計算模組
-// 包含固定假期和農曆假期（使用預計算的農曆日期）
+const fs = require('fs');
+const path = require('path');
+
+// holidays.js - 香港公眾假期模組
+// 優先使用香港政府 1823 官方公眾假期 JSON feed（每年由官方更新，公布咗就自動 update）
+// 斷網 / 首次無 cache 時，fallback 返下方預計算（lunar 對照表）嘅計算法
+//
+// 官方來源（繁中）：https://www.1823.gov.hk/common/ical/tc.json
+//   結構為 iCal-JSON：{ vcalendar:[{ vevent:[{ dtstart:["20250101",{value:"DATE"}], summary:"一月一日" }, ...] }] }
+//   dtstart[0] = "YYYYMMDD"，summary = 假期中文名
+const CACHE_PATH = path.join(__dirname, '..', 'data', 'holidays-cache.json');
+const SOURCE_URL = 'https://www.1823.gov.hk/common/ical/tc.json';
+const REFRESH_MS = 24 * 60 * 60 * 1000; // 每日自動刷新一次
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // cache 超過 7 日就當 stale
+
+// 運行期 cache：{ fetchedAt, byYear: { "2026": [{date,name,name_en}] } }
+let cache = { fetchedAt: 0, byYear: {} };
+let refreshTimer = null;
 
 /**
  * 香港公眾假期列表
@@ -157,7 +173,7 @@ function getSubstituteHoliday(dateStr, existingHolidays = []) {
  * @param {number} year - 年份
  * @returns {Array} 假期列表，每個項目包含 date 和 name
  */
-function getHongKongHolidays(year) {
+function computeHolidays(year) {
   const holidays = [];
   const holidayDates = new Set(); // 用於追踪已添加的日期
 
@@ -373,11 +389,104 @@ function getHolidaysInRange(startDate, endDate) {
   return allHolidays.filter(h => h.date >= startDate && h.date <= endDate);
 }
 
+/**
+ * 解析 1823 官方 iCal-JSON feed → byYear map
+ * 結構：{ vcalendar:[{ vevent:[{ dtstart:["20250101",{value:"DATE"}], summary:"一月一日" }] }] }
+ * dtstart[0] = "YYYYMMDD"，summary = 假期中文名
+ */
+function parse1823(json) {
+  const byYear = {};
+  try {
+    const cal = json && json.vcalendar && json.vcalendar[0];
+    const vevent = cal && cal.vevent;
+    const events = Array.isArray(vevent) ? vevent : (vevent ? [vevent] : []);
+    events.forEach((ev) => {
+      const raw = Array.isArray(ev.dtstart) ? ev.dtstart[0] : ev.dtstart;
+      if (!raw || typeof raw !== 'string' || raw.length < 8) return;
+      const ds = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+      const name = ev.summary || '公眾假期';
+      const y = raw.slice(0, 4);
+      if (!byYear[y]) byYear[y] = [];
+      byYear[y].push({ date: ds, name, name_en: name });
+    });
+    Object.keys(byYear).forEach((y) => byYear[y].sort((a, b) => a.date.localeCompare(b.date)));
+  } catch (e) { /* ignore parse errors */ }
+  return byYear;
+}
+
+function loadCache() {
+  try {
+    if (fs.existsSync(CACHE_PATH)) {
+      const parsed = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf8'));
+      cache = { fetchedAt: parsed.fetchedAt || 0, byYear: parsed.byYear || {} };
+    }
+  } catch (e) { cache = { fetchedAt: 0, byYear: {} }; }
+}
+
+function saveCache() {
+  try {
+    const dir = path.dirname(CACHE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CACHE_PATH, JSON.stringify(cache), 'utf8');
+  } catch (e) { /* ignore */ }
+}
+
+/**
+ * 從香港政府 1823 官方來源 live fetch 公眾假期，寫入本地 cache。
+ * 失敗（斷網 / 來源掛咗）就保留舊 cache；無 cache 則下次靠硬編碼計算法 fallback。
+ * 政府每逢公布新假期（每年更新 / 特別假期），下個刷新周期自動反映，無需人手改 lunar 表。
+ */
+async function refreshHolidays() {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(SOURCE_URL, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const json = JSON.parse(text.replace(/^﻿/, '')); // strip UTF-8 BOM
+    const byYear = parse1823(json);
+    if (!Object.keys(byYear).length) throw new Error('解析到 0 個假期');
+    cache = { fetchedAt: Date.now(), byYear };
+    saveCache();
+    console.log(`[holidays] 已從政府官方來源更新公眾假期，涵蓋年份: ${Object.keys(byYear).join(', ')}`);
+  } catch (e) {
+    console.warn('[holidays] 無法從政府來源更新公眾假期（沿用 cache / 硬編碼計算）:', e.message);
+  }
+}
+
+/**
+ * 公開取假期的 wrapper：優先用 live cache，無 cache 嘅年份 fallback 硬編碼計算法。
+ */
+function getHongKongHolidays(year) {
+  const y = String(year);
+  if (cache.byYear[y] && cache.byYear[y].length) return cache.byYear[y];
+  return computeHolidays(year);
+}
+
+/**
+ * 啟動：load cache → 如空 / 過期就 refresh（fire-and-forget）→ 每日定時刷新。
+ */
+function initHolidays() {
+  loadCache();
+  const empty = !cache.byYear || Object.keys(cache.byYear).length === 0;
+  const stale = cache.fetchedAt && (Date.now() - cache.fetchedAt > CACHE_MAX_AGE_MS);
+  if (empty || stale) refreshHolidays();
+  if (!refreshTimer) {
+    refreshTimer = setInterval(refreshHolidays, REFRESH_MS);
+    if (refreshTimer.unref) refreshTimer.unref();
+  }
+}
+
+initHolidays();
+
 module.exports = {
   getHongKongHolidays,
+  computeHolidays,
   isHoliday,
   getHolidaysForMonth,
   getHolidaysInRange,
   addDays,
-  getDayOfWeek
+  getDayOfWeek,
+  initHolidays
 };
