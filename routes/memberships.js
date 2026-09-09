@@ -285,6 +285,10 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       if ((fullUser.membership_tier || 'general') === 'general') {
         return res.json({ ok: true, already: true, message: '您目前係一般會員，無需要取消' });
       }
+      // 🔒 子帳戶（非戶主家庭成員）不可自行退訂，只可繼續供款
+      if (fullUser.membership_tier === 'family' && Number(fullUser.family_head_id) !== Number(fullUser.id)) {
+        return res.status(403).json({ error: '只有家庭戶主可以取消訂閱；子帳戶只可繼續供款，不可退訂' });
+      }
       const detached = await cancelUserSubscription(fullUser);
       res.json({
         ok: true,

@@ -2016,6 +2016,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           };
 
           const cancelSubscription = async () => {
+            // 🔒 子帳戶不可自行退訂（正常 UI 已隱藏掣，呢度再擋一次做防禦）
+            if (membership.value.tier === 'family' && !membership.value.isFamilyHead) {
+              alert('只有家庭戶主可以取消訂閱；子帳戶只可繼續供款，不可退訂。');
+              return;
+            }
             const isFamily = membership.value.tier === 'family';
             const kidsCount = (familyList.value.children || []).length;
             const msg = isFamily

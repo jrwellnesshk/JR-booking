@@ -3727,13 +3727,20 @@
                       <span class="text-sm text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>{{ t('您已經係最高級別「家庭會員」，感謝支持！') }}</span>
                     </template>
                     <button
-                      v-if="membership.tier !== 'general' && membership.subStatus === 'active'"
+                      v-if="membership.tier !== 'general' && membership.subStatus === 'active' && (membership.tier !== 'family' || membership.isFamilyHead)"
                       class="px-5 py-2.5 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50"
                       :disabled="cancellingSub"
                       @click="cancelSubscription()"
                     >
                       <i class="fas fa-times-circle mr-2"></i>{{ cancellingSub ? '處理中...' : '取消月費計劃（降級為一般會員）' }}
                     </button>
+                    <p
+                      v-if="membership.tier === 'family' && !membership.isFamilyHead && membership.subStatus === 'active'"
+                      class="text-xs mt-2 rounded-lg p-2.5"
+                      style="background:#FFF8E6;color:#8a6d1f;"
+                    >
+                      <i class="fas fa-info-circle mr-1"></i>你是家庭成員（子帳戶），只可繼續供款，不可取消訂閱；取消家庭計劃須由家庭戶主辦理。
+                    </p>
                   </div>
                   <p class="text-xs text-gray-400 mt-2">
                     <i class="fas fa-circle-info mr-1"></i>{{ t('如需轉數快／銀行入數／現金付款，請致電 2555-1136 或親臨診所。升級、降級與取消月費計劃均可在本頁自助辦理。') }}</p>
