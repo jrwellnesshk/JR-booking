@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>寶天醫館 · 五帳戶綜合審計報告 (2026-09-10)</title>
+<style>
+  :root{ --cream:#F0E4D2; --peach:#EFD2BD; --sage:#7E9476; --sage-d:#3E5240; --brown:#5D4037; --brown-d:#3E2A1E; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Serif TC",-apple-system,"PingFang TC",serif;background:var(--cream);color:var(--brown-d);line-height:1.7}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 20px 64px}
+  header{background:linear-gradient(135deg,var(--sage),var(--sage-d));color:#fff;border-radius:18px;padding:28px 32px;box-shadow:0 8px 24px rgba(62,82,64,.25)}
+  header h1{margin:0 0 6px;font-size:26px}
+  header p{margin:2px 0;opacity:.95;font-size:14px}
+  h2{margin-top:40px;padding-bottom:8px;border-bottom:3px solid var(--sage);color:var(--sage-d);font-size:21px}
+  h3{color:var(--brown);margin-top:24px;font-size:17px}
+  table{width:100%;border-collapse:collapse;margin:14px 0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(62,42,30,.08)}
+  th,td{border:1px solid #e3d6c5;padding:9px 12px;text-align:left;font-size:14px;vertical-align:top}
+  th{background:#f7ecdc;color:var(--brown-d);font-weight:700}
+  .ok{color:#2e7d32;font-weight:700}
+  .warn{color:#b26a00;font-weight:700}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .p-med{background:#fde7c4;color:#8a5a00}
+  .p-low{background:#e6efe2;color:#3E5240}
+  .p-info{background:#e8eef6;color:#2a4d80}
+  .card{background:#fff;border-radius:14px;padding:18px 22px;margin:16px 0;box-shadow:0 2px 10px rgba(62,42,30,.08)}
+  code{background:#f3e9da;padding:1px 6px;border-radius:5px;font-size:13px}
+  .summary td:first-child{font-weight:700;width:200px}
+  ul{margin:8px 0 8px 4px;padding-left:20px}
+  li{margin:4px 0}
+  .foot{margin-top:48px;text-align:center;font-size:12px;color:#8a7a68}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>寶天醫館 · 五帳戶綜合審計報告</h1>
+  <p>客人（含家庭）／員工／醫師／管理員／HR 系統</p>
+  <p>日期 2026-09-10 ｜ 方法：代碼審計 + 實機 Puppeteer 端到端</p>
+  <p>8 維度：功能完整性・逐功能試用・互聯性・優化・必須修復・建議・缺陷/Bug・極端審計</p>
+</header>
+
+<h2>Executive Summary</h2>
+<div class="card summary">
+<table class="summary">
+  <tr><td>5 帳戶登入</td><td class="ok">✅ 全部 login OK</td></tr>
+  <tr><td>Portal 掛載</td><td class="ok">✅ 5 頁 mount（語言掣渲染）</td></tr>
+  <tr><td>英文切換</td><td class="ok">✅ 浮動 中文/EN 掣有效（localStorage.lang + body.lang-en）</td></tr>
+  <tr><td>頁面錯誤</td><td class="ok">✅ 5 頁 pageErrors=0，無真實 console error</td></tr>
+  <tr><td>前後端連通</td><td class="ok">✅ 各 role-scoped API 實測 HTTP 200</td></tr>
+  <tr><td>權限閘門</td><td class="ok">✅ 所有 admin/HR 路由掛 requireAuth + requireRole；敏感操作加 2FA</td></tr>
+  <tr><td>主要發現</td><td class="warn">⚠️ 文檔權限表與代碼不符 ｜ HR 無獨立角色 ｜ EN 深層 UI 仍 fallback 中文</td></tr>
+</table>
+<p><b>結論</b>：五帳戶功能完整、前後端連通健全、權限閘門到位，<b>無 P0/P1 崩潰級缺陷</b>。需跟進者為文檔與代碼權限不一致、EN 覆蓋率兩項非緊急改善。</p>
+</div>
+
+<h2>① 功能完整性</h2>
+<table>
+  <tr><th>帳戶</th><th>核心功能</th><th>完整性</th></tr>
+  <tr><td>客人（含家庭）</td><td>公開官網、AI 問診、訪客初體驗預約、會員登入、分級預約、我的預約/病歷、會員/家庭計劃、優惠券、設定、AI 客服、反饋、討論區</td><td class="ok">✅ 完整</td></tr>
+  <tr><td>員工</td><td>預約列表/日曆、全店病歷(只讀)、考勤打卡、ESS 自助、時段月曆(含補位)、客戶帳戶管理</td><td class="ok">✅ 完整</td></tr>
+  <tr><td>醫師</td><td>自己名下預約、排程/請假、打卡、自己時段月曆、ESS、寫病歷(限自己單)</td><td class="ok">✅ 完整</td></tr>
+  <tr><td>管理員</td><td>儀表板、預約/初體驗、收入、用戶、會員付款、家庭樹、病歷、時段(審批/補位/全診所休診)、診所設定、系統、審計、反饋、通知、網站內容、考勤(HR全店)</td><td class="ok">✅ 完整（16+ 功能區）</td></tr>
+  <tr><td>HR 系統</td><td>出勤今日/報表/歷史/異常、請假審批、員工名冊/啟停/改密、排班審批、薪資報表+匯出、手動出勤、假期曆</td><td class="ok">✅ 完整</td></tr>
+</table>
+
+<h2>② 逐功能試用（實機 E2E）</h2>
+<table>
+  <tr><th>角色</th><th>login</th><th>mount</th><th>EN</th><th>role-scoped API</th><th>pageErr</th></tr>
+  <tr><td>admin</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td>bookings 200*</td><td class="ok">0</td></tr>
+  <tr><td>staff</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td>staff-bookings 200</td><td class="ok">0</td></tr>
+  <tr><td>doctor</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td>doctor-bookings 200</td><td class="ok">0</td></tr>
+  <tr><td>hr</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td>/api/hr/today 200</td><td class="ok">0</td></tr>
+  <tr><td>customer</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td>/api/membership/family 200</td><td class="ok">0</td></tr>
+</table>
+<p class="warn">* 自動化探針初時對 admin 打 <code>/api/admin/bookings</code>(404)、staff/doctor 未帶妥 token(401)；改用正確 URL + curl 帶 Bearer token 實測均 200，證實為探針誤差，非功能缺陷。客戶頁自動化時出現 <code>恢復登入狀態失敗</code> console error —— 經查為測試腳本將 <code>userToken</code> 注入成 raw JWT 所致；正式 login 流程 <code>app.js:1580</code> 會 <code>JSON.stringify(userObject)</code> 存入，復原邏輯 <code>app.js:4083</code> 有 catch 保護，<b>非真實 bug</b>。</p>
+
+<h2>③ 互聯性</h2>
+<ul>
+  <li><b>共享 HR 自我服務</b>：staff/doctor/admin 三種角色 frontend 都 call 同一組 <code>/api/hr/my-*</code> 與 <code>/clock-in</code>/<code>/clock-out</code>（<code>routes/hr.js</code> 閘 <code>requireRole('staff','doctor','admin')</code>）。✅ 一致。</li>
+  <li><b>家庭帳戶互聯</b>：staff portal 可 <code>POST /api/membership/family/register</code>、<code>/family/add</code>、<code>/family/reset-child-password</code>；客戶 portal 可查 <code>/api/membership/family</code>。戶主代約子女、查子女病歷受 18+ 隱私開關控制。</li>
+  <li><b>請假 → 補位鏈</b>：醫師請假 → admin 審批 → 標 <code>needs_arrange</code> → staff/admin 落實補位 → 通知客人。跨 role 流程閉環完整。</li>
+  <li><b>會員 → 訂閱 → 付款</b>：升級/家庭計劃 → Stripe checkout（out of scope）→ 狀態回寫 <code>membership_tier</code>。F6 重複付款 guard、<code>family_invoices</code> 一單模型已落地。</li>
+</ul>
+<div class="card">
+  <h3>⚠️ HR 「第五個帳戶」角色模型</h3>
+  <p><code>hr.html</code> 並<b>無獨立 <code>hr</code> role</b>。<code>routes/hr.js</code> 的 admin-only 端點（<code>/employees</code>、<code>/today</code>、<code>/history</code>、<code>/report</code>、<code>/exceptions</code>、<code>/attendance</code>、<code>/leaves/all</code>+review、<code>/schedules/*</code>、<code>/roster</code> approve/reject、<code>/payroll(+export)</code>）全部 <code>requireRole('admin')</code>；self 端點開放 <code>staff/doctor/admin</code>。即：<b>「HR 系統」帳戶＝持有 admin（或 staff 做自我服務）嘅用戶經 <code>hr.html</code> 操作</b>，並非獨立角色。審計上無問題，但建議文檔明確寫清。</p>
+</div>
+
+<h2>④ 優化</h2>
+<ol>
+  <li><b>EN 覆蓋率</b>：Part 1 譯咗 ~272 個高頻 login/nav key，<code>js/i18n.js</code> 共 1625 key，深層 UI（收入報表欄、HR 薪資表、病歷欄位等）仍 fallback 中文。EN 模式下呢啲位置會中英夾雜。建議排期補譯。</li>
+  <li><b><code>?v=</code> cache-busting</b>：已喺 Part 1 bump 到 <code>?v=20260910</code>；日後改 <code>js/i18n.js</code> 要記得再 bump。</li>
+  <li><b>文檔與代碼同步</b>：見 ⑥/⑦。</li>
+</ol>
+
+<h2>⑤ 必須修復</h2>
+<p class="ok">本輪審計未發現 P0/P1 崩潰級或安全級必須即修項。權限、連通、掛載均健康。唯一「必修」屬文檔準確性（見 ⑦），唔影響運行但會誤導維運。</p>
+
+<h2>⑥ 建議</h2>
+<ol>
+  <li>更新 <code>使用情況_四帳戶.md</code> 權限表：staff 實際可經 <code>requireRole('admin','staff')</code>+<code>verifyAdminPassword</code> 做 user 增/改密/備註（見 ⑦）。改為「員工可在輸入 admin 密碼(2FA)後代辦用戶管理」。</li>
+  <li>文檔標明 HR 角色模型：hr.html 由 admin/staff 使用，無獨立 hr role。</li>
+  <li>EN 深層補譯：優先補收入報表、HR 薪資/出勤、病歷表單標籤。</li>
+  <li><code>userToken</code> 復原防禦（低優先）：<code>app.js:4083</code> 已 catch，可加 <code>savedUser.startsWith('eyJ')</code> 早退避免日誌噪音。</li>
+</ol>
+
+<h2>⑦ 缺陷／邏輯／Bug</h2>
+<table>
+  <tr><th>#</th><th>嚴重</th><th>項目</th><th>說明</th><th>處置</th></tr>
+  <tr><td>D1</td><td><span class="pill p-med">中(文檔)</span></td><td>權限表與代碼不符</td><td><code>使用情況_四帳戶.md</code> 寫「員工不可用戶管理」，但 <code>routes/admin.js:48/152/199/256</code> 均 <code>requireRole('admin','staff')</code>+<code>verifyAdminPassword</code>；<code>staff.html</code> 確實 call <code>/api/admin/users</code>。代碼係有意委派（需 2FA），文檔過時</td><td>更新文檔</td></tr>
+  <tr><td>D2</td><td><span class="pill p-low">低</span></td><td>HR 角色認知</td><td>無獨立 hr role，hr.html 由 admin/staff 用；外間易誤解</td><td>文檔澄清</td></tr>
+  <tr><td>D3</td><td><span class="pill p-low">低</span></td><td>客戶復原登入日誌噪音</td><td>若 <code>userToken</code> 被寫成 raw JWT（非正常流程），<code>app.js:4083</code> JSON.parse 拋錯並 catch；不影響功能</td><td>可加早退判斷</td></tr>
+  <tr><td>D4</td><td><span class="pill p-info">資訊</span></td><td>自動化探針誤差</td><td>admin <code>/api/admin/bookings</code>(404)、staff/doctor 未帶 token(401) 係測試腳本 URL/時序問題，curl 帶 token 實測 200</td><td>非缺陷，已澄清</td></tr>
+</table>
+
+<h2>⑧ 極端審計</h2>
+<ul>
+  <li><b>前後端連通</b>：實測 5 角色 role-scoped API 全 200；16+ 個 <code>routes/*.js</code> 全掛 <code>requireAuth</code>，無匿名可達寫操作。</li>
+  <li><b>邏輯合理性</b>：家庭一張單模型、F6 重複付款 guard、F5 子帳戶退訂 guard、F7 接手供款 —— 經既有 F-series 審計確認為預期設計（非漏洞）。</li>
+  <li><b>安全漏洞（概覽，詳見 <code>DROS_安全審計報告_2026-09-08</code>）</b>：權限閘門完備；<code>CAPTCHA_TEST_BYPASS</code> 後門只非 production 生效（本輪用 development 合法啟用）；敏感操作均 2FA；無發現 IDOR／越權讀取／CORS 濫用（smoke 層面）。</li>
+  <li><b>隱藏問題</b>：無。唯一潛在混淆點係 D1/D2 文檔與角色模型，已列建議跟進。</li>
+</ul>
+
+<h2>附錄：測試憑證與證據</h2>
+<div class="card">
+<ul>
+  <li>server：<code>PORT=4455 DB_PATH=./_audit_test.db NODE_ENV=development CAPTCHA_TEST_BYPASS=test999 ALLOW_UNSAFE_START=1</code></li>
+  <li>帳號：admin / testdoctor / teststaff / testcustomer（密碼 <code>Test1234!</code>，由 <code>_audit_test.db</code> 重置）</li>
+  <li>實機結果 JSON：<code>_audit_results.json</code>；截圖：<code>_audit_shots/{role}_{zh,en}.png</code></li>
+  <li>curl 實測：<code>/api/admin/staff/bookings?userId=3</code>(staff token)→200；<code>/api/admin/doctor/bookings?userId=2</code>(doctor token)→200；<code>/api/hr/today</code>(admin)→200；<code>/api/membership/family</code>(customer)→200</li>
+</ul>
+<p>測試產物（<code>_audit_test.db</code> / <code>_audit_*.cjs</code> / <code>_audit_shots/</code> / <code>_audit_results.json</code> / <code>_audit_server.log</code>）為一次性審計副產物，按 repo 慣例清理（唔 commit）。</p>
+</div>
+
+<div class="foot">寶天醫館 booking-aurora · 五帳戶綜合審計 · 2026-09-10</div>
+</div>
+</body>
+</html>
