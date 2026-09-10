@@ -41,6 +41,17 @@ for (const k of Object.keys(MAP)) {
   if (!(k in merged)) { merged[k] = MAP[k]; }
 }
 
+// 3. 深層 UI 翻譯：填補所有仍為 null 嘅 key（Part 1 範圍擴展：一次過補曬 652 個）
+const DEEP = require('./_i18n_deep.cjs');
+let deepFilled = 0;
+const deepKeys = new Set();
+for (const [k, en] of DEEP) {
+  if (deepKeys.has(k)) continue; // 跳過重複
+  deepKeys.add(k);
+  if (merged[k] == null && en) { merged[k] = en; deepFilled++; }
+  else if (!(k in merged) && en) { merged[k] = en; deepFilled++; }
+}
+
 // 寫回（保留原本 window.I18N_EN = 頭；用 ' = ' 避免命中 line 2 註解）
 const idx = code.indexOf('window.I18N_EN =');
 const header = idx >= 0 ? code.slice(0, idx) : '';
@@ -49,4 +60,4 @@ const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const body = keys.map(k => `  '${esc(k)}': ${merged[k] == null ? 'null' : `'${esc(merged[k])}'`},`).join('\n');
 const out = `${header}window.I18N_EN = {\n${body}\n};\n`;
 fs.writeFileSync(DICT, out, 'utf8');
-console.log(`✅ 字典同步完成：總 key ${keys.length}（原 ${Object.keys(existing).length}），本輪新譯 ${translated}，新增 fallback null ${added}`);
+console.log(`✅ 字典同步完成：總 key ${keys.length}（原 ${Object.keys(existing).length}），本輪新譯 ${translated}，新增 fallback null ${added}，深層補譯 ${deepFilled}`);
