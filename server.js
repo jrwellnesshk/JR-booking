@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 寶天醫館預約系統 - 主伺服器
  * 精簡版：所有 API 已模組化到 routes/ 資料夾
  */
@@ -148,14 +148,41 @@ const globalLimiter = rateLimit({
 
 // ==================== 中間件配置 ====================
 
-// 🔒 安全回應標頭（helmet）
-// CSP 關閉：頁面使用 Vue CDN + 大量 inline script/style，開啟會全面破壞前端
-// CORP 關閉：允許圖片/檔案被合法跨站引用（如 WhatsApp 預覽）
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginResourcePolicy: false,
-  crossOriginEmbedderPolicy: false,
-}));
+// 🔒 生產環境啟用基本 CSP
+//    現階段仍需 unsafe-inline / CDN（Vue 內聯 script + Tailwind CDN），
+//    仲需要 'unsafe-eval'：Vue 用緊 in-DOM 模板 + 完整版 (vue.global.prod.js)，
+//    模板編譯器會用 new Function()（即 eval）compile 模板，冇呢個 directive
+//    成個 #app 會 mount 唔到（空白頁 / EvalError）。要再收緊必先拆走 in-DOM
+//    模板、改 pre-compile (vue-loader)，建議獨立改造，避免一次過整死前端。
+if (process.env.NODE_ENV === 'production') {
+  app.use(helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://cdn.tailwindcss.com", "https://unpkg.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "https://cdn.tailwindcss.com"],
+        fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", "data:"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        mediaSrc: ["'self'", "blob:"],
+        connectSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        workerSrc: ["'self'", "blob:"]
+      }
+    },
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
+} else {
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+  }));
+}
 
 // 🔒 CORS：只允許同源（localhost 開發）與 ALLOWED_ORIGINS 白名單
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
@@ -324,7 +351,7 @@ app.get('/privacy', (req, res) => {
 // ==================== 掛載 API 路由模組 ====================
 
 // 認證中間件（驗證 JWT token，提供 req.userId / req.user / req.auth）
-const { requireAuth, requireRole, optionalAuth } = createAuthMiddleware(db);
+const { requireAuth, requireRole, optionalAuth, requirePasswordUpToDate } = createAuthMiddleware(db);
 
 // 認證相關路由（註冊、登入、忘記密碼）
 // 路徑前綴: /api/auth
@@ -585,10 +612,10 @@ app.post("/api/find-user-id", legacyFindUserLimiter, (req, res) => {
 
 
 // 已登入用戶更改密碼（向後兼容 /api/reset-password-authenticated）
-// 已登入用戶修改密碼（需登入，只准改自己的密碼）
+// 已登入用戶修改密碼（需登入，只准改自己的密碼；🔒 必須驗證當前密碼）
 app.post("/api/reset-password-authenticated", requireAuth, (req, res) => {
-  const { username, newPassword, confirmPassword } = req.body;
-  
+  const { username, newPassword, confirmPassword, currentPassword } = req.body;
+
   if (!username || !newPassword) {
     return res.status(400).json({ error: "缺少必要欄位" });
   }
@@ -609,9 +636,17 @@ app.post("/api/reset-password-authenticated", requireAuth, (req, res) => {
   }
 
   // 根據 username 查找用戶
-  db.get("SELECT id FROM users WHERE username=? COLLATE NOCASE", [username], (err, user) => {
+  db.get("SELECT id, password FROM users WHERE username=? COLLATE NOCASE", [username], (err, user) => {
     if (err) return serverError(res, err);
     if (!user) return res.status(404).json({ error: "用戶不存在" });
+
+    // 🔒 與 /api/auth/change-password 一致：必須驗證當前密碼（防 token 被竊後直接改密）
+    if (!currentPassword || !verifyPassword(currentPassword, user.password)) {
+      return res.status(401).json({ error: "目前密碼不正確", field: "currentPassword" });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ error: "新密碼不可與目前密碼相同", field: "password" });
+    }
 
     const hashedPassword = hashPassword(newPassword);
     db.run("UPDATE users SET password=?, must_change_password=0 WHERE id=?", [hashedPassword, user.id], function(err) {
@@ -821,8 +856,8 @@ app.post("/api/time-slots/batch", requireAuth, requireRole('admin'), (req, res) 
   });
 });
 
-// 診所設定（向後兼容）
-app.get("/api/clinic-settings", (req, res) => {
+// 診所設定（向後兼容）— 🔒 需登入；官網公開欄位由 /api/settings/services 等提供
+app.get("/api/clinic-settings", requireAuth, (req, res) => {
   db.all("SELECT setting_key, setting_value FROM clinic_settings", [], (err, rows) => {
     if (err) return serverError(res, err);
     
@@ -858,19 +893,25 @@ app.put("/api/clinic-settings", requireAuth, requireRole('admin'), (req, res) =>
   });
 });
 
-// API 設定（向後兼容）——只公開非敏感欄位，過濾 token/key/密碼
-app.get("/api/api-settings", (req, res) => {
-  const SAFE_KEYS = ['ai_consultation_enabled', 'email_notification_enabled', 'sms_notification_enabled', 'whatsapp_notification_enabled'];
+// API 設定（向後兼容）——敏感欄位遮罩；管理員可見是否存在
+app.get("/api/api-settings", requireAuth, requireRole('admin'), (req, res) => {
+  const MASK_KEYS = new Set(['whatsapp_token', 'ai_key', 'email_pass', 'email_user']);
+  const maskValue = (v) => {
+    if (v == null || v === '') return '';
+    const s = String(v);
+    if (s.length <= 4) return '****';
+    return s.slice(0, 2) + '****' + s.slice(-2);
+  };
   db.all("SELECT setting_key, setting_value FROM api_settings", [], (err, rows) => {
     if (err) return serverError(res, err);
-    
+
     const settings = {};
     rows.forEach(row => {
-      if (SAFE_KEYS.includes(row.setting_key)) {
-        settings[row.setting_key] = row.setting_value;
-      }
+      settings[row.setting_key] = MASK_KEYS.has(row.setting_key)
+        ? maskValue(row.setting_value)
+        : row.setting_value;
     });
-    
+
     res.json(settings);
   });
 });
