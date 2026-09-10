@@ -747,6 +747,9 @@ const DEEP = [
   ['未設薪金', 'No salary set'],
   ['時薪', 'Hourly'],
   ['月薪', 'Monthly'],
+  [' 時段', ' slots'],
+  ['年', 'Year'],
+  ['月', 'Month'],
 ];
 
 module.exports = DEEP;

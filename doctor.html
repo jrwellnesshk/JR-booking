@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/auth-fetch.js"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260916"></script>
+    <script src="js/i18n.js?v=20260917"></script>
     <script src="js/i18n-runtime.js?v=20260913"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
@@ -1075,7 +1075,7 @@
             <!-- 預約模式：全部醫師時段網格（拖掃揀自己帳戶改時段；有預約格撳入睇詳情） -->
             <div v-if="slotSubView==='booking'" class="bg-white rounded-xl shadow-lg p-4">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>{{ t('時段網格') }}<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }} {{ t('日') }} × {{ slotAllTimes.length }} {{ t('時段') }} · {{ t('自己帳戶') }}）</span></h3>
+                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>{{ t('時段網格') }}<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }}{{ t(' 日') }} × {{ slotAllTimes.length }}{{ t(' 時段') }} · {{ t('自己帳戶') }}）</span></h3>
                 <div class="flex flex-wrap items-center gap-2">
                   <button @click="applyAllSlotStatus('leave')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-violet-600 disabled:opacity-40"><i class="fas fa-plane-departure mr-1"></i>{{ t('放假') }}</button>
                   <button @click="applyAllSlotStatus('rest')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>{{ t('休息') }}</button>
