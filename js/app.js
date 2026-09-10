@@ -4616,6 +4616,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             privacyMsg,
             loadPrivacyState,
             toggleHideFromHead,
+            // 🍔 手機版頂欄漢堡包選單（public 官網 .aq 頂欄使用）
+            menuOpen,
+            toggleMenu,
+            closeMenu,
           };
         },
       }).mount("#app");

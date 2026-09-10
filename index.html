@@ -748,6 +748,7 @@
       /* ---------- 頂欄 ---------- */
       .aq-topbar{ position:fixed; inset:0 0 auto 0; z-index:60; background:rgba(246,239,231,.84); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-bottom:1px solid var(--line); }
       .aq-topbar-in{ max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:.8rem 2rem; }
+      .aq-brand-group{ display:flex; align-items:center; gap:.7rem; }
       .aq-logo{ display:flex; align-items:center; gap:.85rem; }
       .aq-logo img{ width:2.9rem; height:2.9rem; border-radius:50%; object-fit:cover; border:2px solid rgba(199,180,166,.45); box-shadow:0 8px 20px -10px rgba(60,50,30,.35); }
       .aq-logo b{ font-family:var(--headserif); font-size:1.28rem; color:var(--inkd); font-weight:600; letter-spacing:.06em; white-space:nowrap; }
@@ -980,6 +981,11 @@
         .aq-doc{ padding:1.8rem 1.4rem; }
         /* 手機：登入框係 flex item，min-width:auto 唔肯縮 → 爆出 viewport；解咒 + 唔過界 */
         .aq-login-frame{ min-width:0; max-width:100%; }
+        /* 手機：漢堡包選單（cream 主題，覆蓋舊 teal dropdown 配色） */
+        .aq-menu-btn{ display:inline-flex; }
+        .aq-links.open{ display:flex; flex-direction:column; align-items:stretch; gap:.1rem; background:var(--cream); padding:.55rem 1.3rem 1rem; box-shadow:0 22px 46px -22px rgba(40,30,20,.5); border-bottom:1px solid var(--line); }
+        .aq-links.open a{ padding:.75rem .2rem; border-bottom:1px solid var(--line); color:var(--ink); }
+        .aq-links.open a:last-child{ border-bottom:none; }
         /* 手機：英雄區裝飾印章過大，縮到唔溢出（純裝飾，透明度低） */
         .aq-hero-brandmark{ transform:translateY(-50%) scale(.5); opacity:.12; }
       }
@@ -1307,10 +1313,13 @@
       <div v-if="!currentMember" class="aq">
         <div class="aq-topbar">
           <div class="aq-topbar-in">
-            <a href="#aq-top" class="aq-logo">
-              <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天醫館')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events:none;user-select:none;-webkit-user-drag:none;">
-              <span><b>{{ t('寶天醫館') }}</b><span class="aq-logo-sub" style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
-            </a>
+            <div class="aq-brand-group">
+              <button type="button" class="aq-menu-btn" @click="toggleMenu" :aria-label="t('選單')" aria-label="Menu"><i class="fas fa-bars"></i></button>
+              <a href="#aq-top" class="aq-logo">
+                <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天醫館')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events:none;user-select:none;-webkit-user-drag:none;">
+                <span><b>{{ t('寶天醫館') }}</b><span class="aq-logo-sub" style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
+              </a>
+            </div>
             <div class="aq-links" :class="{ open: menuOpen }" @click="closeMenu">
               <a href="#aq-services">{{ t('nav.服務') }}</a>
               <a href="#aq-about">{{ t('nav.關於我們') }}</a>
@@ -1322,7 +1331,6 @@
               <a href="#aq-login">{{ t('nav.會員登入') }}</a>
             </div>
             <div class="aq-topbar-right">
-              <button type="button" class="aq-menu-btn" @click="toggleMenu" :aria-label="t('選單')" aria-label="Menu"><i class="fas fa-bars"></i></button>
               <button type="button" class="aq-lang-toggle" @click="setLang(lang === 'en' ? 'zh-TW' : 'en')" :title="t('請選擇語言 / Please select language')" :aria-label="t('請選擇語言 / Please select language')">
                 <i class="fas fa-globe"></i><span>{{ lang === 'en' ? '中文' : 'EN' }}</span>
               </button>
@@ -1864,8 +1872,8 @@
           <!-- 家庭計劃與其他級別比較表 -->
           <div style="max-width:960px;margin:2.8rem auto 0;padding:0 1.5rem;">
             <h3 style="text-align:center;color:#3E2A1E;font-size:1.35rem;margin:0 0 1.2rem;letter-spacing:.05em;">{{ t('三個家庭計劃點揀？') }}</h3>
-            <div style="border-radius:1.4rem;overflow:hidden;border:1px solid #EADFD2;background:#fff;">
-              <div style="overflow-x:auto;">
+            <div style="border-radius:1.4rem;border:1px solid #EADFD2;background:#fff;">
+              <div style="overflow-x:auto;border-radius:1.4rem;-webkit-overflow-scrolling:touch;">
               <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:.9rem;">
                 <thead>
                   <tr style="background:#F5E5D5;">
