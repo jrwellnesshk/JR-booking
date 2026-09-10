@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>員工版面 - 寶天醫館</title>
+    <title>{{ t('員工版面 - 寶天醫館') }}</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <link rel="stylesheet" href="css/tailwind.css?v=20260909" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -14,6 +14,9 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <link rel="stylesheet" href="css/style.css?v=20260909" />
     <script src="js/auth-fetch.js?v=20260909"></script>
+    <link rel="stylesheet" href="css/i18n.css" />
+    <script src="js/i18n.js?v=20260910"></script>
+    <script src="js/i18n-runtime.js"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
       [v-cloak]{ display:none !important; }
@@ -310,9 +313,9 @@
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
-      <div class="boot-logo">寶</div>
-      <div class="boot-name">寶天醫館</div>
-      <div class="boot-sub">員工版</div>
+      <div class="boot-logo">{{ t('寶') }}</div>
+      <div class="boot-name">{{ t('寶天醫館') }}</div>
+      <div class="boot-sub">{{ t('員工版') }}</div>
       <div class="boot-ring"></div>
     </div>
     <script>
@@ -335,6 +338,11 @@
       })();
     </script>
     <div id="app" v-cloak>
+      <!-- 語言切換（中文 / EN） -->
+      <div class="fixed top-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur">
+        <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">中文</button>
+        <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">EN</button>
+      </div>
 
       <!-- ==================== 登入頁面 ==================== -->
       <div v-if="!isLoggedIn" class="max-w-md mx-auto py-16 px-4">
@@ -343,30 +351,30 @@
             <div class="w-20 h-20 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <i class="fas fa-user-tie text-4xl text-cyan-600"></i>
             </div>
-            <h1 class="text-2xl font-bold text-slate-800">員工登入</h1>
-            <p class="text-slate-500 text-sm mt-1">寶天醫館 · 員工管理系統</p>
+            <h1 class="text-2xl font-bold text-slate-800">{{ t('員工登入') }}</h1>
+            <p class="text-slate-500 text-sm mt-1">{{ t('寶天醫館 · 員工管理系統') }}</p>
           </div>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-2">用戶名</label>
+              <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('用戶名') }}</label>
               <input
                 type="text"
                 v-model="loginUsername"
                 @keyup.enter="handleLogin"
                 class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="請輸入用戶名"
+                :placeholder="t('請輸入用戶名')"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-2">密碼</label>
+              <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('密碼') }}</label>
               <div class="relative">
                 <input
                   :type="showPassword ? 'text' : 'password'"
                   v-model="loginPassword"
                   @keyup.enter="handleLogin"
                   class="w-full border border-slate-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="請輸入密碼"
+                  :placeholder="t('請輸入密碼')"
                 />
                 <button
                   type="button"
@@ -380,25 +388,25 @@
 
             <!-- 🔒 驗證碼 -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-2">驗證碼</label>
+              <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('驗證碼') }}</label>
               <div class="flex gap-2 items-center">
                 <input
                   type="text"
                   v-model="loginCaptchaAnswer"
                   @keyup.enter="handleLogin"
                   class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                  placeholder="請輸入圖片中的文字"
+                  :placeholder="t('請輸入圖片中的文字')"
                 />
                 <div
                   class="shrink-0 cursor-pointer"
                   @click="loadCaptcha"
-                  title="點擊重新整理驗證碼"
+                  :title="t('點擊重新整理驗證碼')"
                 >
                   <img
                     v-if="captchaUrl"
                     :src="captchaUrl"
                     class="h-11 rounded-lg border border-slate-200 bg-slate-50"
-                    alt="驗證碼"
+                    :alt="t('驗證碼')"
                   />
                 </div>
               </div>
@@ -414,7 +422,7 @@
               class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 font-medium transition-colors disabled:opacity-50"
             >
               <i v-if="isLoggingIn" class="fas fa-spinner fa-spin mr-2"></i>
-              {{ isLoggingIn ? '登入中...' : '登入' }}
+              {{ isLoggingIn ? t('登入中…') : t('登入') }}
             </button>
           </div>
         </div>
@@ -424,8 +432,8 @@
       <div v-else class="min-h-screen">
         <!-- 手機版頂部列 + 抽屜遮罩 -->
         <header class="m-topbar">
-          <button @click="sidebarOpen = !sidebarOpen" aria-label="開啟/關閉選單"><i class="fas fa-bars"></i></button>
-          <span>寶天醫館 · 員工</span>
+          <button @click="sidebarOpen = !sidebarOpen" :aria-label="t('開啟/關閉選單')"><i class="fas fa-bars"></i></button>
+          <span>{{ t('寶天醫館 · 員工') }}</span>
         </header>
         <div v-show="sidebarOpen" @click="sidebarOpen = false" class="m-overlay"></div>
 
@@ -438,7 +446,7 @@
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
               <i class="fas fa-user-tie text-emerald-400 text-3xl"></i>
               <div class="min-w-0">
-                <div class="text-sm font-bold truncate">寶天醫館 · 員工版</div>
+                <div class="text-sm font-bold truncate">{{ t('寶天醫館 · 員工版') }}</div>
                 <div class="text-xs opacity-70 truncate">{{ staffUser.name }}</div>
               </div>
             </div>
@@ -446,25 +454,19 @@
               @click="handleLogout"
               class="mt-2 mx-2 mb-2 text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
             >
-              <i class="fas fa-sign-out-alt mr-2"></i>登出
-            </button>
+              <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
             <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide" @click="sidebarOpen=false">
               <button @click="mainTab='list'" :class="mainTab==='list' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
-                <i class="fas fa-list mr-2"></i>預約列表
-              </button>
+                <i class="fas fa-list mr-2"></i>{{ t('預約列表') }}</button>
               <button @click="mainTab='calendar'; loadCalHolidays()" :class="mainTab==='calendar' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
-                <i class="fas fa-calendar-days mr-2"></i>預約日曆
-              </button>
+                <i class="fas fa-calendar-days mr-2"></i>{{ t('預約日曆') }}</button>
               <button @click="mainTab='records'; loadAllMedicalRecords()" :class="mainTab==='records' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
-                <i class="fas fa-folder-open mr-2"></i>病歷記錄
-              </button>
+                <i class="fas fa-folder-open mr-2"></i>{{ t('病歷記錄') }}</button>
               <button @click="mainTab='hr'; loadMyHr()" :class="mainTab==='hr' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
-                <i class="fas fa-clock mr-2"></i>打卡考勤
-              </button>
+                <i class="fas fa-clock mr-2"></i>{{ t('打卡考勤') }}</button>
               <button @click="mainTab='ess'; loadEss()" :class="mainTab==='ess' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
-              <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>時段管理</button>
-                <i class="fas fa-user-cog mr-2"></i>我的自助
-              </button>
+              <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>{{ t('時段管理') }}</button>
+                <i class="fas fa-user-cog mr-2"></i>{{ t('我的自助') }}</button>
             </nav>
             <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
               {{ currentDateStr }}
@@ -483,7 +485,7 @@
                   <i class="fas fa-calendar-check text-blue-600"></i>
                 </div>
                 <div>
-                  <p class="text-xs text-slate-500">今日預約</p>
+                  <p class="text-xs text-slate-500">{{ t('今日預約') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ todayBookings.length }}</p>
                 </div>
               </div>
@@ -494,7 +496,7 @@
                   <i class="fas fa-check-circle text-green-600"></i>
                 </div>
                 <div>
-                  <p class="text-xs text-slate-500">今日已完成</p>
+                  <p class="text-xs text-slate-500">{{ t('今日已完成') }}</p>
                   <p class="text-xl font-bold text-green-600">{{ todayCompletedCount }}</p>
                 </div>
               </div>
@@ -505,7 +507,7 @@
                   <i class="fas fa-clock text-amber-600"></i>
                 </div>
                 <div>
-                  <p class="text-xs text-slate-500">待診人數</p>
+                  <p class="text-xs text-slate-500">{{ t('待診人數') }}</p>
                   <p class="text-xl font-bold text-amber-600">{{ todayPendingCount }}</p>
                 </div>
               </div>
@@ -516,7 +518,7 @@
                   <i class="fas fa-calendar-alt text-purple-600"></i>
                 </div>
                 <div>
-                  <p class="text-xs text-slate-500">本週預約</p>
+                  <p class="text-xs text-slate-500">{{ t('本週預約') }}</p>
                   <p class="text-xl font-bold text-purple-600">{{ weekBookings.length }}</p>
                 </div>
               </div>
@@ -530,22 +532,22 @@
                 <button @click="calShift(-1)" class="w-9 h-9 rounded-lg border border-slate-300 hover:bg-slate-100"><i class="fas fa-chevron-left"></i></button>
                 <b class="text-lg text-slate-800 min-w-[130px] text-center">{{ calCursor.replace('-', ' 年 ') }} 月</b>
                 <button @click="calShift(1)" class="w-9 h-9 rounded-lg border border-slate-300 hover:bg-slate-100"><i class="fas fa-chevron-right"></i></button>
-                <button @click="calToday" class="ml-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700">今日</button>
+                <button @click="calToday" class="ml-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700">{{ t('今日') }}</button>
                 <select v-model="calDoctor" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">全部醫師</option>
+                  <option value="">{{ t('全部醫師') }}</option>
                   <option v-for="d in doctorOptions" :key="d">{{ d }}</option>
                 </select>
               </div>
               <div class="flex items-center gap-2 text-sm">
-                <button @click="calView='month'" :class="calView==='month' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-600'" class="px-3 py-2 rounded-lg">月曆</button>
-                <button @click="calView='year'" :class="calView==='year' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-600'" class="px-3 py-2 rounded-lg">年曆</button>
+                <button @click="calView='month'" :class="calView==='month' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-600'" class="px-3 py-2 rounded-lg">{{ t('月曆') }}</button>
+                <button @click="calView='year'" :class="calView==='year' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-600'" class="px-3 py-2 rounded-lg">{{ t('年曆') }}</button>
               </div>
             </div>
 
             <!-- 月曆 -->
             <template v-if="calView === 'month'">
               <div class="grid grid-cols-7 gap-1 mb-1 text-center text-xs font-bold text-slate-500">
-                <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-indigo-500">六</div><div class="text-red-500">日</div>
+                <div>{{ t('一') }}</div><div>{{ t('二') }}</div><div>{{ t('三') }}</div><div>{{ t('四') }}</div><div>{{ t('五') }}</div><div class="text-indigo-500">{{ t('六') }}</div><div class="text-red-500">{{ t('日') }}</div>
               </div>
               <div class="grid grid-cols-7 gap-1">
                 <div v-for="(c, ci) in calDays" :key="'c'+ci"
@@ -556,7 +558,7 @@
                     (c.isToday ? 'border-indigo-400 bg-indigo-50/60 cursor-pointer hover:bg-slate-50' : 'border-slate-200 cursor-pointer hover:bg-slate-50'))">
                   <template v-if="c">
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold" :class="c.holiday ? '' : (c.isToday ? 'text-indigo-600' : 'text-slate-500')" :style="c.holiday ? 'color:#dc2626' : ''">{{ c.day }}<span v-if="c.holiday" class="ml-0.5 text-[9px] font-normal" style="color:#dc2626;">紅日</span></span>
+                      <span class="text-xs font-bold" :class="c.holiday ? '' : (c.isToday ? 'text-indigo-600' : 'text-slate-500')" :style="c.holiday ? 'color:#dc2626' : ''">{{ c.day }}<span v-if="c.holiday" class="ml-0.5 text-[9px] font-normal" style="color:#dc2626;">{{ t('紅日') }}</span></span>
                       <span v-if="c.count" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white bg-emerald-600">{{ c.count }}</span>
                     </div>
                     <div v-if="c.count" class="mt-2 flex flex-wrap gap-0.5">
@@ -568,9 +570,9 @@
               </div>
 
               <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                <span><span class="inline-block w-3 h-3 rounded-full bg-emerald-600 mr-1"></span>有預約嘅日子（數字＝當日單數）</span>
-                <span><span class="inline-block w-3 h-3 rounded border border-indigo-400 mr-1"></span>今日</span>
-                <span><i class="fas fa-mouse-pointer mr-1"></i>點日期睇當日詳情</span>
+                <span><span class="inline-block w-3 h-3 rounded-full bg-emerald-600 mr-1"></span>{{ t('有預約嘅日子（數字＝當日單數）') }}</span>
+                <span><span class="inline-block w-3 h-3 rounded border border-indigo-400 mr-1"></span>{{ t('今日') }}</span>
+                <span><i class="fas fa-mouse-pointer mr-1"></i>{{ t('點日期睇當日詳情') }}</span>
                 <span class="ml-auto font-bold text-slate-700"><i class="fas fa-calendar-day mr-1"></i>{{ calCursor }} 合計：{{ calMonthCount }} 筆</span>
               </div>
 
@@ -578,18 +580,18 @@
                 <h4 class="font-bold text-slate-700 mb-2"><i class="far fa-calendar-check text-emerald-600 mr-1"></i>{{ calSelected }} 嘅預約（{{ calSelectedBookings.length }}）</h4>
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                   <thead><tr class="text-left text-xs text-slate-500 uppercase">
-                    <th class="py-2 pr-3">時間</th><th class="py-2 pr-3">客戶</th><th class="py-2 pr-3">電話</th><th class="py-2 pr-3">服務</th><th class="py-2 pr-3">醫師</th><th class="py-2">狀態</th>
+                    <th class="py-2 pr-3">{{ t('時間') }}</th><th class="py-2 pr-3">{{ t('客戶') }}</th><th class="py-2 pr-3">{{ t('電話') }}</th><th class="py-2 pr-3">{{ t('服務') }}</th><th class="py-2 pr-3">{{ t('醫師') }}</th><th class="py-2">{{ t('狀態') }}</th>
                   </tr></thead>
                   <tbody class="divide-y divide-gray-100">
                     <tr v-for="b in calSelectedBookings" :key="'s'+b.id">
                       <td class="py-1.5 pr-3 font-semibold">{{ b.appointment_time }}</td>
-                      <td class="py-1.5 pr-3">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></td>
+                      <td class="py-1.5 pr-3">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.customer_phone }}</td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.service_name }}</td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.doctor_name }}</td>
                       <td class="py-1.5"><span class="px-2 py-0.5 rounded-full text-xs" :class="b.status==='completed' ? 'bg-emerald-100 text-emerald-700' : (b.status==='cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700')">{{ b.status }}</span></td>
                     </tr>
-                    <tr v-if="!calSelectedBookings.length"><td colspan="6" class="py-3 text-center text-slate-400">呢日冇預約</td></tr>
+                    <tr v-if="!calSelectedBookings.length"><td colspan="6" class="py-3 text-center text-slate-400">{{ t('呢日冇預約') }}</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -597,78 +599,75 @@
 
             <!-- 年曆 -->
             <template v-else>
-              <p class="text-sm text-slate-500 mb-3"><b class="text-slate-800">{{ calCursor.slice(0,4) }} 年</b> 全年預約合計：<b class="text-emerald-600 text-lg">{{ calYearTotal }}</b> 筆（已取消唔計）</p>
+              <p class="text-sm text-slate-500 mb-3"><b class="text-slate-800">{{ calCursor.slice(0,4) }} 年</b> {{ t('全年預約合計：') }}<b class="text-emerald-600 text-lg">{{ calYearTotal }}</b> {{ t('筆（已取消唔計）') }}</p>
               <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 <div v-for="mm in calYearByMonth" :key="mm.label" class="rounded-xl border p-3 text-center" :class="mm.count > 0 ? 'border-emerald-200 bg-emerald-50/60' : 'border-slate-200'">
                   <p class="text-xs text-slate-500">{{ mm.label }}</p>
                   <p class="text-2xl font-bold" :class="mm.count > 0 ? 'text-emerald-600' : 'text-slate-300'">{{ mm.count }}</p>
                 </div>
               </div>
-              <p class="text-xs text-slate-400 mt-3"><i class="fas fa-circle-info mr-1"></i>想睇某個月每日明細：切返「月曆」，用 ‹ › 轉去嗰個月。</p>
+              <p class="text-xs text-slate-400 mt-3"><i class="fas fa-circle-info mr-1"></i>{{ t('想睇某個月每日明細：切返「月曆」，用 ‹ › 轉去嗰個月。') }}</p>
             </template>
           </div>
 
           <!-- 🏥 病歷記錄管理（全部客戶） -->
           <div v-if="mainTab==='records'" class="bg-white rounded-xl shadow p-5 mb-6">
             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-folder-open mr-2 text-emerald-600"></i>病歷記錄管理</h2>
+              <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-folder-open mr-2 text-emerald-600"></i>{{ t('病歷記錄管理') }}</h2>
               <button @click="loadAllMedicalRecords" :disabled="mrLoading"
                 class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">
-                <i v-if="mrLoading" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-sync-alt mr-1"></i>重新整理
-              </button>
+                <i v-if="mrLoading" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-sync-alt mr-1"></i>{{ t('重新整理') }}</button>
             </div>
 
             <div class="flex flex-wrap items-end gap-3 mb-4 m-sticky">
               <div>
-                <label class="block text-xs text-slate-500 mb-1">搜尋（客戶姓名／會員ID／診斷／治療）</label>
-                <input v-model="mrQuery" @keyup.enter="loadAllMedicalRecords" placeholder="例如：陳大文 / NAN000 / 針灸"
+                <label class="block text-xs text-slate-500 mb-1">{{ t('搜尋（客戶姓名／會員ID／診斷／治療）') }}</label>
+                <input v-model="mrQuery" @keyup.enter="loadAllMedicalRecords" :placeholder="t('例如：陳大文 / NAN000 / 針灸')"
                   class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-72">
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">醫師</label>
+                <label class="block text-xs text-slate-500 mb-1">{{ t('醫師') }}</label>
                 <select v-model="mrDoctor" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">全部醫師</option>
+                  <option value="">{{ t('全部醫師') }}</option>
                   <option v-for="d in doctorOptions" :key="d" :value="d">{{ d }}</option>
                 </select>
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">由（就診日期）</label>
+                <label class="block text-xs text-slate-500 mb-1">{{ t('由（就診日期）') }}</label>
                 <input v-model="mrFrom" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
               </div>
               <div>
-                <label class="block text-xs text-slate-500 mb-1">至</label>
+                <label class="block text-xs text-slate-500 mb-1">{{ t('至') }}</label>
                 <input v-model="mrTo" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
               </div>
               <button @click="loadAllMedicalRecords" :disabled="mrLoading"
                 class="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm hover:bg-slate-800 disabled:opacity-50">
-                <i class="fas fa-search mr-1"></i>搜尋
-              </button>
+                <i class="fas fa-search mr-1"></i>{{ t('搜尋') }}</button>
               <button @click="mrQuery=''; mrDoctor=''; mrFrom=''; mrTo=''; loadAllMedicalRecords()"
                 class="px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-600 text-sm hover:bg-slate-50">
-                清除
-              </button>
+                {{ t('清除') }}</button>
             </div>
 
-            <p class="text-xs text-slate-500 mb-2" v-if="!mrLoading">共 <b>{{ mrRecords.length }}</b> 筆病歷記錄（最近 {{ mrRecords.length }} 筆內）</p>
+            <p class="text-xs text-slate-500 mb-2" v-if="!mrLoading">{{ t('共') }}<b>{{ mrRecords.length }}</b> 筆病歷記錄（最近 {{ mrRecords.length }} 筆內）</p>
 
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead>
                   <tr class="text-left text-xs text-slate-500 border-b border-slate-200">
-                    <th class="py-2 pr-3">就診日期</th>
-                    <th class="py-2 pr-3">客戶</th>
-                    <th class="py-2 pr-3">醫師</th>
-                    <th class="py-2 pr-3">服務</th>
-                    <th class="py-2 pr-3">診斷</th>
-                    <th class="py-2 pr-3">治療方案</th>
-                    <th class="py-2 pr-3">進度</th>
-                    <th class="py-2 pr-3">附件</th>
+                    <th class="py-2 pr-3">{{ t('就診日期') }}</th>
+                    <th class="py-2 pr-3">{{ t('客戶') }}</th>
+                    <th class="py-2 pr-3">{{ t('醫師') }}</th>
+                    <th class="py-2 pr-3">{{ t('服務') }}</th>
+                    <th class="py-2 pr-3">{{ t('診斷') }}</th>
+                    <th class="py-2 pr-3">{{ t('治療方案') }}</th>
+                    <th class="py-2 pr-3">{{ t('進度') }}</th>
+                    <th class="py-2 pr-3">{{ t('附件') }}</th>
                     <th class="py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-if="mrLoading"><td colspan="9" class="py-8 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</td></tr>
-                  <tr v-else-if="mrRecords.length === 0"><td colspan="9" class="py-8 text-center text-slate-400">沒有病歷記錄</td></tr>
+                  <tr v-if="mrLoading"><td colspan="9" class="py-8 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入中…') }}</td></tr>
+                  <tr v-else-if="mrRecords.length === 0"><td colspan="9" class="py-8 text-center text-slate-400">{{ t('沒有病歷記錄') }}</td></tr>
                   <tr v-for="r in mrRecords" :key="r.id" class="border-b border-slate-100 hover:bg-slate-50">
                     <td class="py-2.5 pr-3 whitespace-nowrap">{{ r.appointment_date || r.record_date }}<span class="text-xs text-slate-400">{{ r.appointment_time ? ' ' + r.appointment_time.slice(0,5) : '' }}</span></td>
                     <td class="py-2.5 pr-3"><b class="text-slate-800">{{ r.customer_name || '—' }}</b><span class="block text-xs text-slate-400">{{ r.customer_username || '' }}</span></td>
@@ -682,7 +681,7 @@
                       <span v-if="r.audio_file_path"><i class="fas fa-microphone"></i></span>
                     </td>
                     <td class="py-2.5">
-                      <button @click="viewMedicalRecordDetail(r)" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium whitespace-nowrap"><i class="fas fa-eye mr-1"></i>詳情</button>
+                      <button @click="viewMedicalRecordDetail(r)" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium whitespace-nowrap"><i class="fas fa-eye mr-1"></i>{{ t('詳情') }}</button>
                     </td>
                   </tr>
                 </tbody>
@@ -708,15 +707,15 @@
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                 <div class="bg-slate-50 rounded-lg p-3">
-                  <p class="text-xs text-slate-500 mb-1">診斷</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('診斷') }}</p>
                   <p class="text-sm text-slate-800 whitespace-pre-wrap">{{ mrDetail.diagnosis || '—' }}</p>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-3">
-                  <p class="text-xs text-slate-500 mb-1">治療方案</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('治療方案') }}</p>
                   <p class="text-sm text-slate-800 whitespace-pre-wrap">{{ mrDetail.treatment_plan || '—' }}</p>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-3 md:col-span-2">
-                  <p class="text-xs text-slate-500 mb-1">備註</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('備註') }}</p>
                   <p class="text-sm text-slate-800 whitespace-pre-wrap">{{ mrDetail.notes || '—' }}</p>
                 </div>
               </div>
@@ -744,9 +743,9 @@
               </div>
 
               <div v-if="mrDetail.audio_file_path" class="mb-2">
-                <p class="text-sm font-semibold text-slate-700 mb-2"><i class="fas fa-microphone mr-1 text-emerald-600"></i>診症錄音</p>
+                <p class="text-sm font-semibold text-slate-700 mb-2"><i class="fas fa-microphone mr-1 text-emerald-600"></i>{{ t('診症錄音') }}</p>
                 <audio controls :src="mrAudioUrl(mrDetail.id)" class="w-full"></audio>
-                <a :href="mrAudioUrl(mrDetail.id)" class="text-xs text-emerald-600 hover:underline mt-1 inline-block" download><i class="fas fa-download mr-1"></i>下載錄音</a>
+                <a :href="mrAudioUrl(mrDetail.id)" class="text-xs text-emerald-600 hover:underline mt-1 inline-block" download><i class="fas fa-download mr-1"></i>{{ t('下載錄音') }}</a>
               </div>
             </div>
           </div>
@@ -757,33 +756,33 @@
             <div class="bg-white rounded-xl shadow p-5">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
-                  <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-clock text-emerald-600 mr-2"></i>今日考勤</h3>
+                  <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-clock text-emerald-600 mr-2"></i>{{ t('今日考勤') }}</h3>
                   <p class="text-sm text-slate-500">{{ hrStatus.date || '—' }}{{ hrStatus.schedule && hrStatus.schedule.off ? '（休息日）' : '' }}</p>
                 </div>
                 <div v-if="hrStatus.schedule && !hrStatus.schedule.off" class="text-sm text-slate-600">
-                  返工時間：<b class="text-slate-800">{{ hrStatus.schedule.work_start || '—' }} – {{ hrStatus.schedule.work_end || '—' }}</b>
+                  {{ t('返工時間：') }}<b class="text-slate-800">{{ hrStatus.schedule.work_start || '—' }} – {{ hrStatus.schedule.work_end || '—' }}</b>
                 </div>
               </div>
 
               <div v-if="hrStatus.schedule && hrStatus.schedule.off" class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                <p class="text-amber-700"><i class="fas fa-moon mr-1"></i>今日為休息日，無需打卡</p>
+                <p class="text-amber-700"><i class="fas fa-moon mr-1"></i>{{ t('今日為休息日，無需打卡') }}</p>
               </div>
 
               <div v-else class="flex flex-col md:flex-row md:items-center gap-4">
                 <div class="flex-1 grid grid-cols-2 gap-3 text-sm">
                   <div class="bg-slate-50 rounded-lg p-3 text-center">
-                    <p class="text-xs text-slate-500 mb-1">上班打卡</p>
+                    <p class="text-xs text-slate-500 mb-1">{{ t('上班打卡') }}</p>
                     <p class="text-lg font-bold" :class="hrStatus.attendance && hrStatus.attendance.clock_in ? 'text-emerald-600' : 'text-slate-400'">
                       {{ hrStatus.attendance && hrStatus.attendance.clock_in ? hrStatus.attendance.clock_in : '未打卡' }}
                     </p>
-                    <p v-if="hrStatus.attendance && hrStatus.attendance.is_late" class="text-xs text-rose-600 mt-1">（遲到）</p>
+                    <p v-if="hrStatus.attendance && hrStatus.attendance.is_late" class="text-xs text-rose-600 mt-1">{{ t('（遲到）') }}</p>
                   </div>
                   <div class="bg-slate-50 rounded-lg p-3 text-center">
-                    <p class="text-xs text-slate-500 mb-1">下班打卡</p>
+                    <p class="text-xs text-slate-500 mb-1">{{ t('下班打卡') }}</p>
                     <p class="text-lg font-bold" :class="hrStatus.attendance && hrStatus.attendance.clock_out ? 'text-emerald-600' : 'text-slate-400'">
                       {{ hrStatus.attendance && hrStatus.attendance.clock_out ? hrStatus.attendance.clock_out : '未打卡' }}
                     </p>
-                    <p v-if="hrStatus.attendance && hrStatus.attendance.is_early_leave" class="text-xs text-rose-600 mt-1">（早退）</p>
+                    <p v-if="hrStatus.attendance && hrStatus.attendance.is_early_leave" class="text-xs text-rose-600 mt-1">{{ t('（早退）') }}</p>
                   </div>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -792,15 +791,13 @@
                     :disabled="hrBusy || (hrStatus.attendance && hrStatus.attendance.clock_in) || hrStatus.schedule.off"
                     class="px-5 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <i class="fas fa-right-to-bracket mr-2"></i>上班打卡
-                  </button>
+                    <i class="fas fa-right-to-bracket mr-2"></i>{{ t('上班打卡') }}</button>
                   <button
                     @click="hrClockOut"
                     :disabled="hrBusy || !(hrStatus.attendance && hrStatus.attendance.clock_in) || (hrStatus.attendance && hrStatus.attendance.clock_out) || hrStatus.schedule.off"
                     class="px-5 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <i class="fas fa-right-from-bracket mr-2"></i>下班打卡
-                  </button>
+                    <i class="fas fa-right-from-bracket mr-2"></i>{{ t('下班打卡') }}</button>
                 </div>
               </div>
 
@@ -814,26 +811,26 @@
 
             <!-- 假額卡 -->
             <div class="bg-white rounded-xl shadow p-5">
-              <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fas fa-umbrella-beach text-sky-600 mr-2"></i>我的假期</h3>
-              <div v-if="!hrStatus || !hrStatus.available" class="text-sm text-slate-400">載入中...</div>
+              <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fas fa-umbrella-beach text-sky-600 mr-2"></i>{{ t('我的假期') }}</h3>
+              <div v-if="!hrStatus || !hrStatus.available" class="text-sm text-slate-400">{{ t('載入中...') }}</div>
               <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 <div class="bg-sky-50 rounded-lg p-3">
-                  <p class="text-xs text-slate-500 mb-1">年假</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('年假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.annual === -1 ? '不限' : (hrStatus.available.annual ?? 0) }}</p>
                   <p class="text-xs text-slate-400">已用 {{ hrStatus.used.annual || 0 }}</p>
                 </div>
                 <div class="bg-rose-50 rounded-lg p-3">
-                  <p class="text-xs text-slate-500 mb-1">病假</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('病假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.sick === -1 ? '不限' : (hrStatus.available.sick ?? 0) }}</p>
                   <p class="text-xs text-slate-400">已用 {{ hrStatus.used.sick || 0 }}</p>
                 </div>
                 <div class="bg-amber-50 rounded-lg p-3">
-                  <p class="text-xs text-slate-500 mb-1">事假</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('事假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal === -1 ? '不限' : (hrStatus.available.personal ?? 0) }}</p>
                   <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal || 0 }}</p>
                 </div>
                 <div class="bg-violet-50 rounded-lg p-3">
-                  <p class="text-xs text-slate-500 mb-1">其他</p>
+                  <p class="text-xs text-slate-500 mb-1">{{ t('其他') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal_other === -1 ? '不限' : (hrStatus.available.personal_other ?? 0) }}</p>
                   <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal_other || 0 }}</p>
                 </div>
@@ -842,33 +839,32 @@
 
             <!-- 申請請假 -->
             <div class="bg-white rounded-xl shadow p-5">
-              <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fas fa-file-circle-plus text-emerald-600 mr-2"></i>申請請假</h3>
+              <h3 class="text-lg font-bold text-slate-800 mb-3"><i class="fas fa-file-circle-plus text-emerald-600 mr-2"></i>{{ t('申請請假') }}</h3>
               <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <label class="block text-xs text-slate-500 mb-1">假別</label>
+                  <label class="block text-xs text-slate-500 mb-1">{{ t('假別') }}</label>
                   <select v-model="hrLeaveForm.leave_type" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                    <option value="annual">年假</option>
-                    <option value="sick">病假</option>
-                    <option value="personal">事假</option>
-                    <option value="personal_other">其他</option>
+                    <option value="annual">{{ t('年假') }}</option>
+                    <option value="sick">{{ t('病假') }}</option>
+                    <option value="personal">{{ t('事假') }}</option>
+                    <option value="personal_other">{{ t('其他') }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-xs text-slate-500 mb-1">開始日期</label>
+                  <label class="block text-xs text-slate-500 mb-1">{{ t('開始日期') }}</label>
                   <input type="date" v-model="hrLeaveForm.start_date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div>
-                  <label class="block text-xs text-slate-500 mb-1">結束日期</label>
+                  <label class="block text-xs text-slate-500 mb-1">{{ t('結束日期') }}</label>
                   <input type="date" v-model="hrLeaveForm.end_date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div>
-                  <label class="block text-xs text-slate-500 mb-1">原因</label>
-                  <input type="text" v-model="hrLeaveForm.reason" placeholder="請填寫原因" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  <label class="block text-xs text-slate-500 mb-1">{{ t('原因') }}</label>
+                  <input type="text" v-model="hrLeaveForm.reason" :placeholder="t('請填寫原因')" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                 </div>
                 <div class="col-span-1 md:col-span-4 flex items-end">
                   <button @click="submitHrLeave" :disabled="hrBusy || !hrLeaveForm.leave_type || !hrLeaveForm.start_date || !hrLeaveForm.end_date" class="w-full md:w-auto px-6 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 font-medium text-sm">
-                    <i class="fas fa-paper-plane mr-1"></i>提交假期申請
-                  </button>
+                    <i class="fas fa-paper-plane mr-1"></i>{{ t('提交假期申請') }}</button>
                 </div>
               </div>
             </div>
@@ -876,23 +872,23 @@
             <!-- 我的請假紀錄 -->
             <div class="bg-white rounded-xl shadow overflow-hidden">
               <div class="px-5 py-4 border-b border-slate-100">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-list-check text-slate-600 mr-2"></i>我的請假紀錄</h3>
+                <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-list-check text-slate-600 mr-2"></i>{{ t('我的請假紀錄') }}</h3>
               </div>
               <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                   <thead class="bg-slate-50 text-slate-500 text-xs">
                     <tr>
-                      <th class="px-4 py-3 text-left">假別</th>
-                      <th class="px-4 py-3 text-left">日期</th>
-                      <th class="px-4 py-3 text-left">天數</th>
-                      <th class="px-4 py-3 text-left">原因</th>
-                      <th class="px-4 py-3 text-left">狀態</th>
-                      <th class="px-4 py-3 text-left">操作</th>
+                      <th class="px-4 py-3 text-left">{{ t('假別') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('日期') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('天數') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('原因') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('狀態') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('操作') }}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">
                     <tr v-if="hrLeaves.length === 0">
-                      <td colspan="6" class="px-4 py-6 text-center text-slate-400">暫無請假紀錄</td>
+                      <td colspan="6" class="px-4 py-6 text-center text-slate-400">{{ t('暫無請假紀錄') }}</td>
                     </tr>
                     <tr v-for="l in hrLeaves" :key="l.id">
                       <td class="px-4 py-3">{{ l.leave_type_label || l.leave_type }}</td>
@@ -900,12 +896,12 @@
                       <td class="px-4 py-3">{{ l.days }} 日</td>
                       <td class="px-4 py-3 text-slate-600">{{ l.reason || '—' }}</td>
                       <td class="px-4 py-3">
-                        <span v-if="l.status==='approved'" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">已批准</span>
-                        <span v-else-if="l.status==='rejected'" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">已拒絕</span>
-                        <span v-else class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">待審批</span>
+                        <span v-if="l.status==='approved'" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{{ t('已批准') }}</span>
+                        <span v-else-if="l.status==='rejected'" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">{{ t('已拒絕') }}</span>
+                        <span v-else class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">{{ t('待審批') }}</span>
                       </td>
                       <td class="px-4 py-3">
-                        <button v-if="l.status==='pending'" @click="cancelHrLeave(l.id)" class="text-rose-600 hover:underline text-xs">取消</button>
+                        <button v-if="l.status==='pending'" @click="cancelHrLeave(l.id)" class="text-rose-600 hover:underline text-xs">{{ t('取消') }}</button>
                         <span v-else class="text-slate-300 text-xs">—</span>
                       </td>
                     </tr>
@@ -917,23 +913,23 @@
             <!-- 我的考勤紀錄 -->
             <div class="bg-white rounded-xl shadow overflow-hidden">
               <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-calendar-check text-slate-600 mr-2"></i>我的考勤紀錄</h3>
-                <button @click="loadMyHrRecords()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-rotate mr-1"></i>重新整理</button>
+                <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-calendar-check text-slate-600 mr-2"></i>{{ t('我的考勤紀錄') }}</h3>
+                <button @click="loadMyHrRecords()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-rotate mr-1"></i>{{ t('重新整理') }}</button>
               </div>
               <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                   <thead class="bg-slate-50 text-slate-500 text-xs">
                     <tr>
-                      <th class="px-4 py-3 text-left">日期</th>
-                      <th class="px-4 py-3 text-left">上班</th>
-                      <th class="px-4 py-3 text-left">下班</th>
-                      <th class="px-4 py-3 text-left">工時</th>
-                      <th class="px-4 py-3 text-left">狀態</th>
+                      <th class="px-4 py-3 text-left">{{ t('日期') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('上班') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('下班') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('工時') }}</th>
+                      <th class="px-4 py-3 text-left">{{ t('狀態') }}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">
                     <tr v-if="hrRecords.length === 0">
-                      <td colspan="5" class="px-4 py-6 text-center text-slate-400">暫無考勤紀錄</td>
+                      <td colspan="5" class="px-4 py-6 text-center text-slate-400">{{ t('暫無考勤紀錄') }}</td>
                     </tr>
                     <tr v-for="r in hrRecords" :key="r.id">
                       <td class="px-4 py-3">{{ r.attendance_date }}</td>
@@ -941,10 +937,10 @@
                       <td class="px-4 py-3">{{ r.clock_out || '—' }}</td>
                       <td class="px-4 py-3">{{ r.work_label || '—' }}</td>
                       <td class="px-4 py-3">
-                        <span v-if="r.is_absent" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">缺席</span>
-                        <span v-else-if="r.is_late" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">遲到</span>
-                        <span v-else-if="r.is_early_leave" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">早退</span>
-                        <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">正常</span>
+                        <span v-if="r.is_absent" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">{{ t('缺席') }}</span>
+                        <span v-else-if="r.is_late" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">{{ t('遲到') }}</span>
+                        <span v-else-if="r.is_early_leave" class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">{{ t('早退') }}</span>
+                        <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{{ t('正常') }}</span>
                         <span v-if="r.attendance_type && r.attendance_type!=='full'" class="ml-1 px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full text-xs">{{ r.attendance_type_label || r.attendance_type }}</span>
                       </td>
                     </tr>
@@ -959,53 +955,47 @@
             <div class="bg-white rounded-xl shadow p-5">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-user-cog mr-2 text-emerald-600"></i>我的自助</h2>
-                  <p class="text-sm text-slate-500">查看個人資料、返工更表、出糧單與文件</p>
+                  <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-user-cog mr-2 text-emerald-600"></i>{{ t('我的自助') }}</h2>
+                  <p class="text-sm text-slate-500">{{ t('查看個人資料、返工更表、出糧單與文件') }}</p>
                 </div>
-                <button @click="loadEss()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-sync mr-1"></i>重新整理</button>
+                <button @click="loadEss()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-sync mr-1"></i>{{ t('重新整理') }}</button>
               </div>
               <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
                 <button @click="essTab='profile'" :class="essTab==='profile' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <i class="fas fa-id-card mr-2"></i>個人資料
-                </button>
+                  <i class="fas fa-id-card mr-2"></i>{{ t('個人資料') }}</button>
                 <button v-if="isPartTime" @click="essTab='roster'; loadRosterWeek()" :class="essTab==='roster' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <i class="fas fa-calendar-check mr-2"></i>報更
-                </button>
+                  <i class="fas fa-calendar-check mr-2"></i>{{ t('報更') }}</button>
                 <button v-if="isPartTime" @click="essTab='schedule'; loadMyScheduleView()" :class="essTab==='schedule' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <i class="fas fa-calendar-alt mr-2"></i>返工更表
-                </button>
+                  <i class="fas fa-calendar-alt mr-2"></i>{{ t('返工更表') }}</button>
                 <button @click="essTab='payslip'; loadMyPayslip()" :class="essTab==='payslip' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <i class="fas fa-money-bill-wave mr-2"></i>出糧單
-                </button>
+                  <i class="fas fa-money-bill-wave mr-2"></i>{{ t('出糧單') }}</button>
                 <button @click="essTab='documents'; loadMyDocuments()" :class="essTab==='documents' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                  <i class="fas fa-folder-open mr-2"></i>文件
-                </button>
+                  <i class="fas fa-folder-open mr-2"></i>{{ t('文件') }}</button>
               </div>
 
               <!-- 報更（兼職） -->
               <div v-if="essTab==='roster'" class="pt-5">
-                <div v-if="!essRosterWeek" class="text-sm text-slate-400">載入中...</div>
+                <div v-if="!essRosterWeek" class="text-sm text-slate-400">{{ t('載入中...') }}</div>
                 <template v-else>
                   <div class="flex flex-wrap items-center justify-between gap-2 mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
                     <div>
                       <div class="text-sm font-semibold text-emerald-800">報更週：{{ essRosterWeek.week_start }}（一）至 {{ essRosterWeek.week_end }}（六）</div>
                       <div class="text-xs text-emerald-600 mt-1">截止：{{ essRosterWeek.deadline }}（星期日）前</div>
-                      <div class="text-xs text-amber-600 mt-1" v-if="!essRosterWeek.canModify">此週報更已截止或已提交，需要修改請聯絡管理員</div>
+                      <div class="text-xs text-amber-600 mt-1" v-if="!essRosterWeek.canModify">{{ t('此週報更已截止或已提交，需要修改請聯絡管理員') }}</div>
                     </div>
                     <button v-if="essRosterWeek.canModify" @click="submitRoster()" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700">
-                      <i class="fas fa-paper-plane mr-1"></i>提交報更
-                    </button>
+                      <i class="fas fa-paper-plane mr-1"></i>{{ t('提交報更') }}</button>
                   </div>
                   <div class="overflow-x-auto border border-slate-200 rounded-lg">
                     <table class="w-full text-sm">
-                      <thead><tr class="bg-slate-100 text-slate-600"><th class="px-3 py-2 text-left">日期</th><th class="px-3 py-2 text-left">返工時段</th></tr></thead>
+                      <thead><tr class="bg-slate-100 text-slate-600"><th class="px-3 py-2 text-left">{{ t('日期') }}</th><th class="px-3 py-2 text-left">{{ t('返工時段') }}</th></tr></thead>
                       <tbody>
                         <tr v-for="d in essRosterWeek.dates" :key="d.date">
                           <td class="px-3 py-2 border-t border-slate-100 font-medium text-slate-700">{{ d.date }}（{{ d.day }}）</td>
                           <td class="px-3 py-2 border-t border-slate-100">
                             <template v-if="essRosterWeek.canModify">
                               <input type="time" class="border border-slate-300 rounded-lg px-2 py-1 text-sm" v-model="essRosterSelection[d.date + '_start']" />
-                              <span class="text-slate-400 mx-1">至</span>
+                              <span class="text-slate-400 mx-1">{{ t('至') }}</span>
                               <input type="time" class="border border-slate-300 rounded-lg px-2 py-1 text-sm" v-model="essRosterSelection[d.date + '_end']" />
                             </template>
                             <span v-else class="text-slate-600">{{ rosterItemLabel(d.date) }}</span>
@@ -1019,39 +1009,39 @@
 
               <!-- 個人資料 -->
               <div v-if="essTab==='profile'" class="pt-5">
-                <div v-if="!essProfile" class="text-sm text-slate-400">載入中...</div>
+                <div v-if="!essProfile" class="text-sm text-slate-400">{{ t('載入中...') }}</div>
                 <div v-else>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label class="text-xs text-slate-500">姓名</label>
+                      <label class="text-xs text-slate-500">{{ t('姓名') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.name }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">英文名</label>
+                      <label class="text-xs text-slate-500">{{ t('英文名') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.name_en || '—' }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">用戶名</label>
+                      <label class="text-xs text-slate-500">{{ t('用戶名') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.username }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">入職日期</label>
+                      <label class="text-xs text-slate-500">{{ t('入職日期') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.hire_date || '—' }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">角色</label>
+                      <label class="text-xs text-slate-500">{{ t('角色') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.role === 'doctor' ? '醫生' : '員工' }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">身份證</label>
+                      <label class="text-xs text-slate-500">{{ t('身份證') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.id_card_masked || '—' }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">銀行戶口</label>
+                      <label class="text-xs text-slate-500">{{ t('銀行戶口') }}</label>
                       <div class="font-medium text-slate-800">{{ essProfile.bank_account_masked || '—' }}</div>
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">時薪 / 月薪</label>
+                      <label class="text-xs text-slate-500">{{ t('時薪 / 月薪') }}</label>
                       <div class="font-medium text-slate-800">
                         <span v-if="essProfile.hourly_rate">${{ Number(essProfile.hourly_rate).toFixed(0) }}/小時</span>
                         <span v-else-if="essProfile.basic_salary">${{ Number(essProfile.basic_salary).toFixed(0) }}/月</span>
@@ -1060,33 +1050,32 @@
                     </div>
                   </div>
                   <div class="h-px bg-slate-200 my-5"></div>
-                  <p class="text-sm font-semibold text-slate-700 mb-3">可修改資料</p>
+                  <p class="text-sm font-semibold text-slate-700 mb-3">{{ t('可修改資料') }}</p>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label class="text-xs text-slate-500">電話</label>
+                      <label class="text-xs text-slate-500">{{ t('電話') }}</label>
                       <input v-model="essEdit.phone" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">電郵</label>
+                      <label class="text-xs text-slate-500">{{ t('電郵') }}</label>
                       <input v-model="essEdit.email" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
                     </div>
                     <div class="sm:col-span-2">
-                      <label class="text-xs text-slate-500">地址</label>
+                      <label class="text-xs text-slate-500">{{ t('地址') }}</label>
                       <input v-model="essEdit.address" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">緊急聯絡人</label>
+                      <label class="text-xs text-slate-500">{{ t('緊急聯絡人') }}</label>
                       <input v-model="essEdit.emergency_contact" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
                     </div>
                     <div>
-                      <label class="text-xs text-slate-500">緊急聯絡電話</label>
+                      <label class="text-xs text-slate-500">{{ t('緊急聯絡電話') }}</label>
                       <input v-model="essEdit.emergency_phone" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
                     </div>
                   </div>
                   <div class="mt-5 text-right">
                     <button @click="saveMyProfile()" :disabled="essBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-50">
-                      <i class="fas fa-save mr-2"></i>儲存
-                    </button>
+                      <i class="fas fa-save mr-2"></i>{{ t('儲存') }}</button>
                   </div>
                 </div>
               </div>
@@ -1095,25 +1084,25 @@
               <div v-if="essTab==='schedule'" class="pt-5">
                 <div class="flex flex-wrap items-end gap-3 mb-4">
                   <div>
-                    <label class="text-xs text-slate-500">由</label>
+                    <label class="text-xs text-slate-500">{{ t('由') }}</label>
                     <input v-model="essSchFrom" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" @change="loadMyScheduleView" />
                   </div>
                   <div>
-                    <label class="text-xs text-slate-500">至</label>
+                    <label class="text-xs text-slate-500">{{ t('至') }}</label>
                     <input v-model="essSchTo" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm" @change="loadMyScheduleView" />
                   </div>
-                  <button @click="essSchFrom=''; essSchTo=''; loadMyScheduleView()" class="px-3 py-2 text-xs text-emerald-600 hover:underline">預設本月</button>
+                  <button @click="essSchFrom=''; essSchTo=''; loadMyScheduleView()" class="px-3 py-2 text-xs text-emerald-600 hover:underline">{{ t('預設本月') }}</button>
                 </div>
-                <div v-if="essBusy" class="text-sm text-slate-400">載入中...</div>
-                <div v-else-if="!essSchedule || !essSchedule.days || essSchedule.days.length===0" class="text-sm text-slate-400">尚無更表資料</div>
+                <div v-if="essBusy" class="text-sm text-slate-400">{{ t('載入中...') }}</div>
+                <div v-else-if="!essSchedule || !essSchedule.days || essSchedule.days.length===0" class="text-sm text-slate-400">{{ t('尚無更表資料') }}</div>
                 <div v-else class="overflow-x-auto">
                   <table class="min-w-full text-sm">
                     <thead>
                       <tr class="text-slate-500 border-b border-slate-200">
-                        <th class="text-left py-2 pr-4">日期</th>
-                        <th class="text-left py-2 pr-4">星期</th>
-                        <th class="text-left py-2 pr-4">狀態</th>
-                        <th class="text-left py-2">返工時間</th>
+                        <th class="text-left py-2 pr-4">{{ t('日期') }}</th>
+                        <th class="text-left py-2 pr-4">{{ t('星期') }}</th>
+                        <th class="text-left py-2 pr-4">{{ t('狀態') }}</th>
+                        <th class="text-left py-2">{{ t('返工時間') }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1121,8 +1110,8 @@
                         <td class="py-2 pr-4 text-slate-700">{{ d.date }}</td>
                         <td class="py-2 pr-4 text-slate-600">{{ essWeekday(d.date) }}</td>
                         <td class="py-2 pr-4">
-                          <span v-if="d.off" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">休息</span>
-                          <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">上班</span>
+                          <span v-if="d.off" class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-full text-xs">{{ t('休息') }}</span>
+                          <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{{ t('上班') }}</span>
                         </td>
                         <td class="py-2 text-slate-700">{{ d.off ? '—' : (d.work_start + ' – ' + d.work_end) }}</td>
                       </tr>
@@ -1133,57 +1122,56 @@
 
               <!-- 出糧單 -->
               <div v-if="essTab==='payslip'" class="pt-5">
-                <div v-if="essBusy" class="text-sm text-slate-400">載入中...</div>
-                <div v-else-if="!essPayslip || !essPayslip.row" class="text-sm text-slate-400">該月份尚無出糧紀錄（需已設定時薪或月薪）</div>
+                <div v-if="essBusy" class="text-sm text-slate-400">{{ t('載入中...') }}</div>
+                <div v-else-if="!essPayslip || !essPayslip.row" class="text-sm text-slate-400">{{ t('該月份尚無出糧紀錄（需已設定時薪或月薪）') }}</div>
                 <div v-else class="max-w-md">
                   <div class="bg-slate-50 rounded-xl border border-slate-200 p-5">
                     <div class="text-center pb-4 border-b border-slate-200">
-                      <div class="text-xs text-slate-500">出糧單</div>
+                      <div class="text-xs text-slate-500">{{ t('出糧單') }}</div>
                       <div class="text-xl font-bold text-slate-800">{{ essPayslip.from }} 至 {{ essPayslip.to }}</div>
                       <div class="text-sm text-slate-500">{{ essPayslip.row.name }}（{{ essPayslip.row.role === 'doctor' ? '醫生' : '員工' }}）</div>
                     </div>
                     <div class="space-y-3 pt-4 text-sm">
-                      <div class="flex justify-between"><span class="text-slate-500">應返工作天</span><span class="font-medium">{{ essPayslip.workdays }} 日</span></div>
-                      <div class="flex justify-between"><span class="text-slate-500">出勤日數</span><span class="font-medium">{{ essPayslip.row.worked_days }} 日</span></div>
-                      <div class="flex justify-between"><span class="text-slate-500">總工時</span><span class="font-medium">{{ essPayslip.row.total_label }}</span></div>
-                      <div class="flex justify-between"><span class="text-slate-500">OT 小時</span><span class="font-medium">{{ essPayslip.row.ot_hours || 0 }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">{{ t('應返工作天') }}</span><span class="font-medium">{{ essPayslip.workdays }} 日</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">{{ t('出勤日數') }}</span><span class="font-medium">{{ essPayslip.row.worked_days }} 日</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">{{ t('總工時') }}</span><span class="font-medium">{{ essPayslip.row.total_label }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">{{ t('OT 小時') }}</span><span class="font-medium">{{ essPayslip.row.ot_hours || 0 }}</span></div>
                     </div>
                     <div class="flex justify-between items-center mt-5 pt-4 border-t border-slate-200">
-                      <span class="text-slate-500 text-sm">應發薪金</span>
+                      <span class="text-slate-500 text-sm">{{ t('應發薪金') }}</span>
                       <span class="text-2xl font-extrabold text-emerald-600">${{ Number(essPayslip.row.gross).toFixed(2) }}</span>
                     </div>
                   </div>
-                  <p class="text-xs text-slate-400 mt-3">薪金按時薪或月薪自動計算，如需查詢細節請聯絡管理員。</p>
+                  <p class="text-xs text-slate-400 mt-3">{{ t('薪金按時薪或月薪自動計算，如需查詢細節請聯絡管理員。') }}</p>
                 </div>
               </div>
 
               <!-- 文件 -->
               <div v-if="essTab==='documents'" class="pt-5">
-                <p class="text-sm text-slate-500 mb-3">上傳你嘅文件（合約、證書、醫療證明等），管理員同你都可以查看。</p>
+                <p class="text-sm text-slate-500 mb-3">{{ t('上傳你嘅文件（合約、證書、醫療證明等），管理員同你都可以查看。') }}</p>
                 <div class="flex flex-wrap items-end gap-3 mb-5">
                   <div>
-                    <label class="text-xs text-slate-500">類型</label>
+                    <label class="text-xs text-slate-500">{{ t('類型') }}</label>
                     <select v-model="essDocType" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white">
-                      <option value="contract">合約</option>
-                      <option value="certificate">證書/資格</option>
-                      <option value="medical">醫療證明</option>
-                      <option value="other">其他</option>
+                      <option value="contract">{{ t('合約') }}</option>
+                      <option value="certificate">{{ t('證書/資格') }}</option>
+                      <option value="medical">{{ t('醫療證明') }}</option>
+                      <option value="other">{{ t('其他') }}</option>
                     </select>
                   </div>
                   <div class="flex-1 min-w-[200px]">
-                    <label class="text-xs text-slate-500">備註（可選）</label>
-                    <input v-model="essDocNote" placeholder="例：僱傭合約" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                    <label class="text-xs text-slate-500">{{ t('備註（可選）') }}</label>
+                    <input v-model="essDocNote" :placeholder="t('例：僱傭合約')" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
                   </div>
                   <div class="flex-1 min-w-[200px]">
-                    <label class="text-xs text-slate-500">檔案</label>
+                    <label class="text-xs text-slate-500">{{ t('檔案') }}</label>
                     <input type="file" ref="essFileInput" class="w-full block text-sm text-slate-600 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:text-emerald-700 file:font-medium" />
                   </div>
                   <button @click="uploadMyDocument()" :disabled="essBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
-                    <i class="fas fa-upload mr-2"></i>上傳
-                  </button>
+                    <i class="fas fa-upload mr-2"></i>{{ t('上傳') }}</button>
                 </div>
-                <div v-if="essBusy" class="text-sm text-slate-400">處理中...</div>
-                <div v-else-if="!essDocuments || essDocuments.length===0" class="text-sm text-slate-400">尚未上傳任何文件</div>
+                <div v-if="essBusy" class="text-sm text-slate-400">{{ t('處理中...') }}</div>
+                <div v-else-if="!essDocuments || essDocuments.length===0" class="text-sm text-slate-400">{{ t('尚未上傳任何文件') }}</div>
                 <div v-else class="space-y-2">
                   <div v-for="d in essDocuments" :key="d.id" class="flex flex-wrap items-center gap-3 border border-slate-200 rounded-lg px-4 py-3">
                     <i class="fas fa-file-alt text-emerald-600"></i>
@@ -1192,8 +1180,8 @@
                       <div class="text-xs text-slate-500">{{ essDocTypeLabel(d.doc_type) }} · {{ d.uploaded_at }}</div>
                       <div v-if="d.note" class="text-xs text-slate-500">{{ d.note }}</div>
                     </div>
-                    <a :href="d.file_path" target="_blank" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-eye mr-1"></i>查看</a>
-                    <button @click="deleteMyDocument(d)" class="text-sm text-rose-500 hover:underline"><i class="fas fa-trash mr-1"></i>刪除</button>
+                    <a :href="d.file_path" target="_blank" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-eye mr-1"></i>{{ t('查看') }}</a>
+                    <button @click="deleteMyDocument(d)" class="text-sm text-rose-500 hover:underline"><i class="fas fa-trash mr-1"></i>{{ t('刪除') }}</button>
                   </div>
                 </div>
               </div>
@@ -1203,18 +1191,18 @@
           <!-- ==== 員工時段管理（Google 日曆式拖掃）==== -->
           <div v-if="mainTab==='timeslots'" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>預約時段管理</h2>
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>{{ t('預約時段管理') }}</h2>
               <div class="flex items-center gap-2">
-                <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>週（一至日）</button>
-                <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>日</button>
+                <button @click="slotView='week'; loadSlotGrid()" :class="slotView==='week' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar-alt mr-1"></i>{{ t('週（一至日）') }}</button>
+                <button @click="slotView='day'; loadSlotGrid()" :class="slotView==='day' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"><i class="far fa-calendar mr-1"></i>{{ t('日') }}</button>
               </div>
             </div>
 
             <!-- 🩺 醫師選擇 -->
             <div class="bg-white rounded-xl shadow-lg p-4">
-              <label class="block text-sm font-medium text-slate-700 mb-2"><i class="fas fa-user-md text-emerald-600 mr-2"></i>選擇醫師</label>
+              <label class="block text-sm font-medium text-slate-700 mb-2"><i class="fas fa-user-md text-emerald-600 mr-2"></i>{{ t('選擇醫師') }}</label>
               <select v-model="slotDoctorId" @change="openSlotManager()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-full sm:w-64">
-                <option value="">請選擇醫師</option>
+                <option value="">{{ t('請選擇醫師') }}</option>
                 <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
               </select>
             </div>
@@ -1223,11 +1211,11 @@
             <div class="bg-white rounded-xl shadow-lg p-4">
               <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h3 class="font-bold text-slate-800"><i class="fas fa-clipboard-check mr-2 text-amber-600"></i>醫師請假（唯讀檢視 · {{ leaveApprovals.length }}）</h3>
-                <button @click="loadStaffLeaveQueue()" class="text-xs text-slate-500 hover:text-slate-700"><i class="fas fa-rotate mr-1"></i>重新整理</button>
+                <button @click="loadStaffLeaveQueue()" class="text-xs text-slate-500 hover:text-slate-700"><i class="fas fa-rotate mr-1"></i>{{ t('重新整理') }}</button>
               </div>
-              <div v-if="leaveApprovalsLoading" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
+              <div v-if="leaveApprovalsLoading" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入中…') }}</div>
               <div v-else-if="!leaveApprovals.length" class="text-center py-8 text-slate-400">
-                <i class="fas fa-check-circle text-3xl mb-2 text-emerald-400"></i><p>暫無醫師請假記錄。</p>
+                <i class="fas fa-check-circle text-3xl mb-2 text-emerald-400"></i><p>{{ t('暫無醫師請假記錄。') }}</p>
               </div>
               <div v-else class="space-y-3">
                 <div v-for="lv in leaveApprovals" :key="lv.id" class="border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
@@ -1250,12 +1238,12 @@
                       </span>
                     </p>
                     <div v-if="lv.doctor_user_id && (lv.status === 'pending' || (lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0))" class="mt-2 flex items-center gap-2">
-                      <label class="text-xs text-slate-500 shrink-0">補位醫師：</label>
+                      <label class="text-xs text-slate-500 shrink-0">{{ t('補位醫師：') }}</label>
                       <select v-model="lv.reassigned_to" @change="setStaffCoverDoctor(lv)" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white max-w-[150px]">
-                        <option value="">揀第二位醫師…</option>
+                        <option value="">{{ t('揀第二位醫師…') }}</option>
                         <option v-for="doc in doctors.filter(d => d.user_id && String(d.user_id) !== String(lv.doctor_user_id))" :key="doc.id" :value="String(doc.user_id)">{{ doc.name }}</option>
                       </select>
-                      <span v-if="lv.status === 'approved'" class="text-xs text-amber-600">選好後即安排落實</span>
+                      <span v-if="lv.status === 'approved'" class="text-xs text-amber-600">{{ t('選好後即安排落實') }}</span>
                     </div>
                   </div>
                 </div>
@@ -1266,7 +1254,7 @@
               <!-- 📅 月曆 -->
               <div class="bg-white rounded-xl shadow-lg p-6">
                 <div class="flex items-center justify-between mb-4">
-                  <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-alt text-emerald-600 mr-2"></i>選擇日期</h3>
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-calendar-alt text-emerald-600 mr-2"></i>{{ t('選擇日期') }}</h3>
                   <div class="flex items-center gap-2">
                     <button @click="prevSlotMonth" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm"><i class="fas fa-chevron-left"></i></button>
                     <span class="font-semibold text-slate-700 w-28 text-center">{{ slotCalendarMonth }}</span>
@@ -1274,7 +1262,7 @@
                   </div>
                 </div>
                 <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
-                  <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+                  <div>{{ t('一') }}</div><div>{{ t('二') }}</div><div>{{ t('三') }}</div><div>{{ t('四') }}</div><div>{{ t('五') }}</div><div>{{ t('六') }}</div><div>{{ t('日') }}</div>
                 </div>
                 <div class="grid grid-cols-7 gap-1" style="user-select:none" @mouseleave="endCalSelect" @mouseup="endCalSelect">
                   <template v-for="(cell, idx) in slotCalendarDays()" :key="idx">
@@ -1296,17 +1284,17 @@
                     </button>
                   </template>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">揸住日曆日期拖掃 → 自動揀定日期範圍，下方網格會顯示該段日期嘅時段；撳單一日亦可。</p>
+                <p class="text-xs text-slate-400 mt-2">{{ t('揸住日曆日期拖掃 → 自動揀定日期範圍，下方網格會顯示該段日期嘅時段；撳單一日亦可。') }}</p>
               </div>
 
               <!-- 日期範圍 -->
               <div class="bg-white rounded-xl shadow-lg p-4 flex flex-wrap items-end gap-4">
                 <div>
-                  <label class="block text-xs font-medium text-slate-500 mb-1">由（年／月／日）</label>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('由（年／月／日）') }}</label>
                   <input type="date" v-model="slotRangeStart" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
                 </div>
                 <div>
-                  <label class="block text-xs font-medium text-slate-500 mb-1">至（年／月／日）</label>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">{{ t('至（年／月／日）') }}</label>
                   <input type="date" v-model="slotRangeEnd" @change="onSlotRangeChange" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm" />
                 </div>
                 <p class="text-xs text-slate-400 self-center">目前顯示：{{ slotView==='week' ? '該週（一至日）' : '所揀範圍' }} · 每格 15 分鐘</p>
@@ -1315,25 +1303,25 @@
               <!-- 拖掃網格 + 操作掣 -->
               <div class="bg-white rounded-xl shadow-lg p-6">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>時段網格（拖掃選取）</h3>
+                  <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>{{ t('時段網格（拖掃選取）') }}</h3>
                   <div class="flex flex-wrap items-center gap-2">
-                    <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>加入</button>
-                    <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>休息</button>
-                    <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>候診</button>
-                    <button @click="applySlotStatus('blank')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>取消（空白）</button>
+                    <button @click="applySlotStatus('open')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 disabled:opacity-40"><i class="fas fa-plus mr-1"></i>{{ t('加入') }}</button>
+                    <button @click="applySlotStatus('rest')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>{{ t('休息') }}</button>
+                    <button @click="applySlotStatus('waiting')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-amber-500 disabled:opacity-40"><i class="fas fa-hourglass-half mr-1"></i>{{ t('候診') }}</button>
+                    <button @click="applySlotStatus('blank')" :disabled="!slotSelCount" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-200 text-slate-700 disabled:opacity-40"><i class="fas fa-eraser mr-1"></i>{{ t('取消（空白）') }}</button>
                     <button v-if="slotDirtyCount" @click="confirmSlotChanges" :disabled="slotBusy" class="px-4 py-1.5 rounded-lg text-sm font-bold text-white bg-blue-600 disabled:opacity-40"><i class="fas fa-check mr-1"></i>確認儲存（{{ slotDirtyCount }}）</button>
                   </div>
                 </div>
 
-                <div v-if="slotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>載入中…</div>
+                <div v-if="slotBusy" class="text-center py-6 text-slate-400"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中…') }}</div>
                 <div v-else-if="!slotDays.length" class="text-center py-10 text-slate-500">
-                  <i class="fas fa-calendar-times text-4xl mb-3"></i><p>暫無時段資料，請揀選日期。</p>
+                  <i class="fas fa-calendar-times text-4xl mb-3"></i><p>{{ t('暫無時段資料，請揀選日期。') }}</p>
                 </div>
                 <div v-else class="overflow-x-auto" @mouseleave="endSlotSelect" @mouseup="endSlotSelect">
                   <table class="border-collapse select-none" style="user-select:none">
                     <thead>
                       <tr class="bg-slate-100">
-                        <th class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 sticky left-0 bg-slate-100 z-10">時間</th>
+                        <th class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 sticky left-0 bg-slate-100 z-10">{{ t('時間') }}</th>
                         <th v-for="d in slotDays" :key="d.date" class="border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 min-w-[92px]">
                           <div>{{ d.label }}</div><div class="text-[10px] text-slate-400">{{ d.dow }}</div>
                         </th>
@@ -1354,17 +1342,17 @@
                   </table>
                 </div>
                 <div class="flex flex-wrap gap-3 mt-3 text-xs text-slate-500">
-                  <span><span class="inline-block w-3 h-3 rounded bg-emerald-200 align-middle"></span> 加入（開放）</span>
-                  <span><span class="inline-block w-3 h-3 rounded bg-rose-200 align-middle"></span> 休息</span>
-                  <span><span class="inline-block w-3 h-3 rounded bg-amber-200 align-middle"></span> 候診</span>
-                  <span><span class="inline-block w-3 h-3 rounded bg-slate-200 align-middle"></span> 取消（空白）</span>
-                  <span><span class="inline-block w-3 h-3 rounded ring-2 ring-blue-500 bg-blue-100 align-middle"></span> 已選取</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-emerald-200 align-middle"></span> {{ t('加入（開放）') }}</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-rose-200 align-middle"></span> {{ t('休息') }}</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-amber-200 align-middle"></span> {{ t('候診') }}</span>
+                  <span><span class="inline-block w-3 h-3 rounded bg-slate-200 align-middle"></span> {{ t('取消（空白）') }}</span>
+                  <span><span class="inline-block w-3 h-3 rounded ring-2 ring-blue-500 bg-blue-100 align-middle"></span> {{ t('已選取') }}</span>
                 </div>
-                <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mt-2"><i class="fas fa-check-circle mr-1"></i>已儲存！</p>
+                <p v-if="slotSavedFlash" class="text-emerald-600 text-sm mt-2"><i class="fas fa-check-circle mr-1"></i>{{ t('已儲存！') }}</p>
               </div>
             </template>
             <div v-else class="bg-white rounded-xl shadow p-8 text-center text-slate-400">
-              <i class="fas fa-user-md text-4xl mb-3"></i><p>請先選擇一位醫師以管理佢嘅時段。</p>
+              <i class="fas fa-user-md text-4xl mb-3"></i><p>{{ t('請先選擇一位醫師以管理佢嘅時段。') }}</p>
             </div>
           </div>
 
@@ -1372,7 +1360,7 @@
           <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow p-4 mb-6">
             <div class="flex flex-wrap items-center gap-3">
               <div class="flex items-center gap-2">
-                <label class="text-sm font-medium text-slate-700">日期：</label>
+                <label class="text-sm font-medium text-slate-700">{{ t('日期：') }}</label>
                 <input
                   type="date"
                   v-model="selectedDate"
@@ -1385,43 +1373,39 @@
                   @click="setToday"
                   class="px-3 py-2 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 border border-purple-200"
                 >
-                  今日
-                </button>
+                  {{ t('今日') }}</button>
                 <button
                   @click="setTomorrow"
                   class="px-3 py-2 text-sm bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200"
                 >
-                  明日
-                </button>
+                  {{ t('明日') }}</button>
                 <button
                   @click="clearDateFilter"
                   class="px-3 py-2 text-sm bg-slate-50 text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200"
                 >
-                  全部
-                </button>
+                  {{ t('全部') }}</button>
               </div>
               <div class="flex items-center gap-2 ml-auto">
-                <label class="text-sm font-medium text-slate-700">狀態：</label>
+                <label class="text-sm font-medium text-slate-700">{{ t('狀態：') }}</label>
                 <select
                   v-model="statusFilter"
                   class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="">全部</option>
-                  <option value="confirmed">已確認</option>
-                  <option value="visited">已到訪</option>
-                  <option value="in-treatment">治療中</option>
-                  <option value="dispensing">配藥中</option>
-                  <option value="completed">已完成</option>
-                  <option value="no-show">未到場</option>
-                  <option value="cancelled">已取消</option>
+                  <option value="">{{ t('全部') }}</option>
+                  <option value="confirmed">{{ t('已確認') }}</option>
+                  <option value="visited">{{ t('已到訪') }}</option>
+                  <option value="in-treatment">{{ t('治療中') }}</option>
+                  <option value="dispensing">{{ t('配藥中') }}</option>
+                  <option value="completed">{{ t('已完成') }}</option>
+                  <option value="no-show">{{ t('未到場') }}</option>
+                  <option value="cancelled">{{ t('已取消') }}</option>
                 </select>
               </div>
               <button
                 @click="loadBookings"
                 class="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
-                <i class="fas fa-sync mr-1"></i>重新整理
-              </button>
+                <i class="fas fa-sync mr-1"></i>{{ t('重新整理') }}</button>
             </div>
           </div>
 
@@ -1429,32 +1413,29 @@
           <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
             <button @click="familyPanelOpen = !familyPanelOpen" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
               <span class="font-semibold text-slate-800">
-                <i class="fas fa-user-friends mr-2 text-indigo-500"></i>家庭子帳戶管理（18 歲以下）
-              </span>
+                <i class="fas fa-user-friends mr-2 text-indigo-500"></i>{{ t('家庭子帳戶管理（18 歲以下）') }}</span>
               <i :class="familyPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-slate-400"></i>
             </button>
 
             <div v-if="familyPanelOpen" class="px-6 pb-6 space-y-4 border-t border-slate-100">
               <!-- 建立子帳戶 -->
               <div class="pt-4">
-                <p class="text-sm font-medium text-slate-700 mb-2">建立子帳戶</p>
+                <p class="text-sm font-medium text-slate-700 mb-2">{{ t('建立子帳戶') }}</p>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <input v-model="familyForm.parentUsername" placeholder="家長會員ID 或 中文姓名 *" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.name" placeholder="子女中文姓名 *" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.birth_date" type="date" :max="todayStr" title="出生日期 *（必須 18 歲以下，請完整揀選年/月/日）" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.phone" placeholder="電話（可選，預設用家長電話收 WhatsApp）" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.parentUsername" :placeholder="t('家長會員ID 或 中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.name" :placeholder="t('子女中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.birth_date" type="date" :max="todayStr" :title="t('出生日期 *（必須 18 歲以下，請完整揀選年/月/日）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.phone" :placeholder="t('電話（可選，預設用家長電話收 WhatsApp）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div class="flex gap-2 mt-3">
                   <button @click="registerFamilyChild"
                     :disabled="familyBusy"
                     class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
                     <i v-if="familyBusy" class="fas fa-spinner fa-spin mr-1"></i>
-                    <i v-else class="fas fa-user-plus mr-1"></i>建立子帳戶
-                  </button>
+                    <i v-else class="fas fa-user-plus mr-1"></i>{{ t('建立子帳戶') }}</button>
                   <button @click="loadFamilyChildren" :disabled="familyBusy || !(familyForm.parentUsername || '').trim()"
                     class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50">
-                    <i class="fas fa-search mr-1"></i>查詢此家庭成員
-                  </button>
+                    <i class="fas fa-search mr-1"></i>{{ t('查詢此家庭成員') }}</button>
                 </div>
                 <p v-if="familyFormHint" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
                   <i class="fas fa-exclamation-circle mr-1"></i>{{ familyFormHint }}
@@ -1463,43 +1444,41 @@
                 <!-- 🔗 連結成年家庭成員（18 歲以上，連結現有帳戶） -->
                 <div class="flex flex-wrap items-end gap-3 mt-3 pt-3 border-t border-slate-100">
                   <div>
-                    <label class="block text-xs text-slate-500 mb-1">成年成員帳戶名</label>
-                    <input v-model="familyLinkForm.childUsername" placeholder="例如 ADT18" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-44">
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('成年成員帳戶名') }}</label>
+                    <input v-model="familyLinkForm.childUsername" :placeholder="t('例如 ADT18')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-44">
                   </div>
                   <div>
-                    <label class="block text-xs text-slate-500 mb-1">出生日期（用嚟計年齡）</label>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('出生日期（用嚟計年齡）') }}</label>
                     <input v-model="familyLinkForm.childBirthDate" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
                   </div>
                   <button @click="linkAdultFamily" :disabled="familyBusy || !familyForm.parentUsername || !familyLinkForm.childUsername || !familyLinkForm.childBirthDate"
                     class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 disabled:opacity-50">
-                    <i class="fas fa-link mr-1"></i>連結到家庭
-                  </button>
-                  <span class="text-xs text-slate-400 self-center">18 歲以上成員唔會自動開戶，需已有帳戶先連結得到。</span>
+                    <i class="fas fa-link mr-1"></i>{{ t('連結到家庭') }}</button>
+                  <span class="text-xs text-slate-400 self-center">{{ t('18 歲以上成員唔會自動開戶，需已有帳戶先連結得到。') }}</span>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">建立後系統會自動經 WhatsApp 將登入帳戶同暫時密碼發送畀家長；如發送失敗，請喺下方大字資料手動抄低交畀家長。</p>
+                <p class="text-xs text-slate-400 mt-2">{{ t('建立後系統會自動經 WhatsApp 將登入帳戶同暫時密碼發送畀家長；如發送失敗，請喺下方大字資料手動抄低交畀家長。') }}</p>
               </div>
 
               <!-- 🔑 登入資料（大字顯示） -->
               <div v-if="familyCredentials" class="rounded-xl border-2 border-green-300 bg-green-50 p-5">
                 <p class="text-sm font-bold text-green-800 mb-3">
                   <i class="fas fa-key mr-1"></i>{{ familyCredentials.childName }} 嘅子帳戶登入資料
-                  <span v-if="familyCredentials.notified && familyCredentials.notified.whatsapp" class="ml-2 text-xs font-normal bg-green-600 text-white px-2 py-0.5 rounded-full">已發送家長 WhatsApp ✓</span>
+                  <span v-if="familyCredentials.notified && familyCredentials.notified.whatsapp" class="ml-2 text-xs font-normal bg-green-600 text-white px-2 py-0.5 rounded-full">{{ t('已發送家長 WhatsApp ✓') }}</span>
                   <span v-else class="ml-2 text-xs font-normal bg-red-500 text-white px-2 py-0.5 rounded-full">WhatsApp 未發送{{ familyCredentials.notified && familyCredentials.notified.error ? '：' + familyCredentials.notified.error : '' }}，請抄低交畀家長</span>
                 </p>
                 <div class="flex flex-wrap items-end gap-8">
                   <div>
-                    <p class="text-xs text-slate-500 mb-1">登入帳戶</p>
+                    <p class="text-xs text-slate-500 mb-1">{{ t('登入帳戶') }}</p>
                     <p class="text-3xl font-mono font-bold tracking-widest text-slate-900">{{ familyCredentials.username }}</p>
                   </div>
                   <div>
-                    <p class="text-xs text-slate-500 mb-1">暫時密碼</p>
+                    <p class="text-xs text-slate-500 mb-1">{{ t('暫時密碼') }}</p>
                     <p class="text-3xl font-mono font-bold tracking-widest text-red-600">{{ familyCredentials.tempPassword }}</p>
                   </div>
                   <button @click="copyFamilyCredentials" class="ml-auto bg-white border border-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
-                    <i class="far fa-copy mr-1"></i>複製
-                  </button>
+                    <i class="far fa-copy mr-1"></i>{{ t('複製') }}</button>
                 </div>
-                <p class="text-xs text-slate-500 mt-3"><i class="fas fa-info-circle mr-1"></i>首次登入後系統會要求修改密碼。</p>
+                <p class="text-xs text-slate-500 mt-3"><i class="fas fa-info-circle mr-1"></i>{{ t('首次登入後系統會要求修改密碼。') }}</p>
               </div>
 
               <!-- 家庭成員列表 -->
@@ -1514,8 +1493,7 @@
                     </div>
                     <button v-if="!c.isAdult" @click="resetChildPassword(c)"
                       class="shrink-0 bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs hover:bg-amber-100">
-                      <i class="fas fa-sync-alt mr-1"></i>重設並發送暫時密碼
-                    </button>
+                      <i class="fas fa-sync-alt mr-1"></i>{{ t('重設並發送暫時密碼') }}</button>
                   </div>
                 </div>
               </div>
@@ -1525,34 +1503,34 @@
             <!-- 👥 客戶帳戶管理（職員權限） -->
             <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
               <button @click="acctPanelOpen = !acctPanelOpen" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
-                <span class="font-semibold text-slate-800"><i class="fas fa-users-cog mr-2 text-emerald-600"></i>客戶帳戶管理</span>
+                <span class="font-semibold text-slate-800"><i class="fas fa-users-cog mr-2 text-emerald-600"></i>{{ t('客戶帳戶管理') }}</span>
                 <i :class="acctPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-slate-400"></i>
               </button>
 
               <div v-if="acctPanelOpen" class="px-6 pb-6 space-y-4 border-t border-slate-100">
                 <!-- 開新客戶 -->
                 <details class="pt-4">
-                  <summary class="cursor-pointer text-sm font-medium text-slate-700"><i class="fas fa-user-plus mr-1 text-indigo-500"></i>開新客戶帳戶</summary>
+                  <summary class="cursor-pointer text-sm font-medium text-slate-700"><i class="fas fa-user-plus mr-1 text-indigo-500"></i>{{ t('開新客戶帳戶') }}</summary>
                   <div class="flex flex-wrap items-end gap-3 mt-3">
-                    <div><label class="block text-xs text-slate-500 mb-1">中文姓名 *</label><input v-model="acctNew.name" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-36"></div>
-                    <div><label class="block text-xs text-slate-500 mb-1">8位電話 *</label><input v-model="acctNew.phone" maxlength="8" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-32"></div>
-                    <div><label class="block text-xs text-slate-500 mb-1">登記名（可留空自動）</label><input v-model="acctNew.username" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-32"></div>
+                    <div><label class="block text-xs text-slate-500 mb-1">{{ t('中文姓名 *') }}</label><input v-model="acctNew.name" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-36"></div>
+                    <div><label class="block text-xs text-slate-500 mb-1">{{ t('8位電話 *') }}</label><input v-model="acctNew.phone" maxlength="8" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-32"></div>
+                    <div><label class="block text-xs text-slate-500 mb-1">{{ t('登記名（可留空自動）') }}</label><input v-model="acctNew.username" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-32"></div>
                     <button @click="createCustomer" :disabled="acctBusy || !acctNew.name || !acctNew.phone"
-                      class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">建立</button>
+                      class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">{{ t('建立') }}</button>
                   </div>
                 </details>
 
                 <!-- 搜尋 -->
                 <div class="flex gap-2 pt-2" style="flex-wrap:wrap;">
-                  <input v-model="acctQuery" @keyup.enter="loadAccounts" placeholder="輸入姓名／電話／帳號搜尋，留空列出全部" class="border border-slate-300 rounded-lg px-3 py-2 text-sm flex-1">
-                  <button @click="loadAccounts" :disabled="acctBusy" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50"><i class="fas fa-search mr-1"></i>搜尋</button>
+                  <input v-model="acctQuery" @keyup.enter="loadAccounts" :placeholder="t('輸入姓名／電話／帳號搜尋，留空列出全部')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm flex-1">
+                  <button @click="loadAccounts" :disabled="acctBusy" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50"><i class="fas fa-search mr-1"></i>{{ t('搜尋') }}</button>
                 </div>
 
                 <!-- 🔑 重設密碼結果（大字） -->
                 <div v-if="acctCred" class="rounded-xl border-2 border-green-300 bg-green-50 p-4">
                   <p class="text-sm font-bold text-green-800 mb-2"><i class="fas fa-key mr-1"></i>{{ acctCred.name }} 嘅新密碼（請抄低交畀客人）</p>
                   <p class="text-3xl font-mono font-bold tracking-widest text-red-600">{{ acctCred.password }}</p>
-                  <p class="text-xs text-slate-500 mt-1">首次登入後系統會要求修改密碼。</p>
+                  <p class="text-xs text-slate-500 mt-1">{{ t('首次登入後系統會要求修改密碼。') }}</p>
                 </div>
 
                 <!-- 名單 -->
@@ -1566,18 +1544,16 @@
                         <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="{'bg-purple-100 text-purple-700': u.membership_tier==='family','bg-blue-100 text-blue-700': u.membership_tier==='premium','bg-slate-100 text-slate-600': u.membership_tier==='general'}">
                           {{ u.membership_tier==='family' ? '家庭會員' : u.membership_tier==='premium' ? '高級會員' : '一般會員' }}
                         </span>
-                        <span v-if="u.family_head_name==='head'" class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium" title="家庭戶主">
+                        <span v-if="u.family_head_name==='head'" class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium" :title="t('家庭戶主')">
                           <i class="fas fa-crown mr-1"></i>戶主（{{ u.family_children_count || 0 }} 位成員）
                         </span>
-                        <span v-else-if="u.family_head_name" class="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium" title="家庭子帳戶">
+                        <span v-else-if="u.family_head_name" class="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-medium" :title="t('家庭子帳戶')">
                           <i class="fas fa-user-friends mr-1"></i>{{ u.family_head_name }} 嘅子帳戶
                         </span>
-                        <span v-if="u.subscription_status === 'active'" class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium" title="Stripe 每月自動扣款生效中">
-                          <i class="fas fa-repeat mr-1"></i>月費生效中
-                        </span>
-                        <span v-else-if="u.subscription_status === 'past_due'" class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium" title="上次扣款失敗，請跟進">
-                          <i class="fas fa-exclamation-triangle mr-1"></i>扣款失敗
-                        </span>
+                        <span v-if="u.subscription_status === 'active'" class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium" :title="t('Stripe 每月自動扣款生效中')">
+                          <i class="fas fa-repeat mr-1"></i>{{ t('月費生效中') }}</span>
+                        <span v-else-if="u.subscription_status === 'past_due'" class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium" :title="t('上次扣款失敗，請跟進')">
+                          <i class="fas fa-exclamation-triangle mr-1"></i>{{ t('扣款失敗') }}</span>
                       </div>
                       <div v-if="u.staff_note" class="text-xs text-purple-600 mt-0.5 truncate">📌 {{ u.staff_note }}</div>
                     </div>
@@ -1587,23 +1563,23 @@
                         :class="u.staff_note ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'">
                         <i class="fas fa-sticky-note mr-1"></i>{{ u.staff_note ? '📌' : '備註' }}
                       </button>
-                      <button @click="changeAccountTier(u)" class="bg-blue-50 border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg text-xs hover:bg-blue-100"><i class="fas fa-exchange-alt mr-1"></i>改級別</button>
-                      <button @click="resetAccountPwd(u)" class="bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs hover:bg-amber-100"><i class="fas fa-key mr-1"></i>重設密碼</button>
+                      <button @click="changeAccountTier(u)" class="bg-blue-50 border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg text-xs hover:bg-blue-100"><i class="fas fa-exchange-alt mr-1"></i>{{ t('改級別') }}</button>
+                      <button @click="resetAccountPwd(u)" class="bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs hover:bg-amber-100"><i class="fas fa-key mr-1"></i>{{ t('重設密碼') }}</button>
                     </div>
                   </div>
                 </div>
-                <p v-else-if="acctSearched" class="text-sm text-slate-400">搵唔到相關客戶</p>
+                <p v-else-if="acctSearched" class="text-sm text-slate-400">{{ t('搵唔到相關客戶') }}</p>
               </div>
             </div>
 
             <!-- 📊 每日營業摘要 -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="far fa-calendar mr-1"></i>今日預約</p><p class="text-2xl font-bold text-slate-800">{{ todayBookings.length }}</p></div>
-              <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="fas fa-check-circle text-emerald-500 mr-1"></i>已完成</p><p class="text-2xl font-bold text-emerald-600">{{ todayCompletedCount }}</p></div>
-              <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="far fa-clock text-amber-500 mr-1"></i>待診／已確認</p><p class="text-2xl font-bold text-amber-600">{{ todayPendingCount }}</p></div>
+              <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="far fa-calendar mr-1"></i>{{ t('今日預約') }}</p><p class="text-2xl font-bold text-slate-800">{{ todayBookings.length }}</p></div>
+              <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="fas fa-check-circle text-emerald-500 mr-1"></i>{{ t('已完成') }}</p><p class="text-2xl font-bold text-emerald-600">{{ todayCompletedCount }}</p></div>
+              <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="far fa-clock text-amber-500 mr-1"></i>{{ t('待診／已確認') }}</p><p class="text-2xl font-bold text-amber-600">{{ todayPendingCount }}</p></div>
               <div class="bg-white rounded-xl shadow px-5 py-4 flex items-center justify-between">
-                <p class="text-xs text-slate-500"><i class="fas fa-print text-indigo-500 mr-1"></i>當日報表</p>
-                <button @click="printToday"class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"><i class="fas fa-print mr-1"></i>列印當日</button>
+                <p class="text-xs text-slate-500"><i class="fas fa-print text-indigo-500 mr-1"></i>{{ t('當日報表') }}</p>
+                <button @click="printToday"class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"><i class="fas fa-print mr-1"></i>{{ t('列印當日') }}</button>
               </div>
             </div>
 
@@ -1616,21 +1592,21 @@
               }
             </style>
             <div v-if="printPreparing && mainTab==='list'" class="print-area">
-              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px;">寶天醫館 · 當日預約表</h2>
+              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px;">{{ t('寶天醫館 · 當日預約表') }}</h2>
               <p style="font-size:12px;color:#555;margin-bottom:12px;">日期：{{ selectedDate }}｜列印時間：{{ new Date().toLocaleString('zh-HK') }}｜合共 {{ filteredBookings.length }} 筆</p>
               <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
-                  <th style="border:1px solid #999;padding:6px;text-align:left;">時間</th>
-                  <th style="border:1px solid #999;padding:6px;text-align:left;">客戶</th>
-                  <th style="border:1px solid #999;padding:6px;text-align:left;">電話</th>
-                  <th style="border:1px solid #999;padding:6px;text-align:left;">服務</th>
-                  <th style="border:1px solid #999;padding:6px;text-align:left;">醫師</th>
-                  <th style="border:1px solid #999;padding:6px;text-align:left;">狀態</th>
+                  <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('時間') }}</th>
+                  <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('客戶') }}</th>
+                  <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('電話') }}</th>
+                  <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('服務') }}</th>
+                  <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('醫師') }}</th>
+                  <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('狀態') }}</th>
                 </tr></thead>
                 <tbody>
                   <tr v-for="b in filteredBookings" :key="'p'+b.id">
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.appointment_time }}</td>
-                    <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></td>
+                    <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_phone }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.service_name }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.doctor_name }}</td>
@@ -1645,8 +1621,7 @@
             <div class="px-6 py-4 border-b flex items-center justify-between">
               <h2 class="font-semibold text-slate-800">
                 <i class="fas fa-list mr-2 text-purple-600"></i>
-                預約列表
-                <span v-if="selectedDate" class="text-sm font-normal text-slate-500 ml-2">{{ selectedDate }}</span>
+                {{ t('預約列表') }}<span v-if="selectedDate" class="text-sm font-normal text-slate-500 ml-2">{{ selectedDate }}</span>
               </h2>
               <span class="text-sm text-slate-500">共 {{ filteredBookings.length }} 筆</span>
             </div>
@@ -1654,7 +1629,7 @@
             <!-- 載入中 -->
             <div v-if="isLoading" class="py-12 text-center">
               <i class="fas fa-spinner fa-spin text-3xl text-purple-400 mb-3"></i>
-              <p class="text-slate-500">載入中...</p>
+              <p class="text-slate-500">{{ t('載入中...') }}</p>
             </div>
 
             <!-- 無資料 -->
@@ -1681,7 +1656,7 @@
                     <!-- 客戶資料 -->
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-semibold text-slate-800">{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" title="新客戶"></i></span>
+                        <span class="font-semibold text-slate-800">{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></span>
                         <span
                           :class="statusClass(booking.status)"
                           class="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -1714,63 +1689,54 @@
                       @click="updateStatus(booking.id, 'visited')"
                       class="px-3 py-1.5 text-xs bg-teal-500 text-white rounded-lg hover:bg-teal-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-user-check mr-1"></i>已到訪
-                    </button>
+                      <i class="fas fa-user-check mr-1"></i>{{ t('已到訪') }}</button>
                     <button
                       v-if="booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-progress'"
                       @click="updateStatus(booking.id, 'in-treatment')"
                       class="px-3 py-1.5 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-hand-holding-medical mr-1"></i>治療中
-                    </button>
+                      <i class="fas fa-hand-holding-medical mr-1"></i>{{ t('治療中') }}</button>
                     <button
                       v-if="booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'in-progress'"
                       @click="updateStatus(booking.id, 'dispensing')"
                       class="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-pills mr-1"></i>配藥中
-                    </button>
+                      <i class="fas fa-pills mr-1"></i>{{ t('配藥中') }}</button>
                     <button
                       v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
                       @click="updateStatus(booking.id, 'completed')"
                       class="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap"
                     >
-                      <i class="fas fa-check mr-1"></i>標記完成
-                    </button>
+                      <i class="fas fa-check mr-1"></i>{{ t('標記完成') }}</button>
                     <button
                       v-if="booking.status === 'confirmed'"
                       @click="updateStatus(booking.id, 'no-show')"
                       class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-user-times mr-1"></i>未到場
-                    </button>
+                      <i class="fas fa-user-times mr-1"></i>{{ t('未到場') }}</button>
                     <button
                       v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
                       @click="recordLateness(booking)"
                       class="px-3 py-1.5 text-xs bg-rose-400 text-white rounded-lg hover:bg-rose-500 whitespace-nowrap"
                     >
-                      <i class="fas fa-clock mr-1"></i>記錄遲到
-                    </button>
+                      <i class="fas fa-clock mr-1"></i>{{ t('記錄遲到') }}</button>
                     <button
                       v-if="booking.status === 'completed' || booking.status === 'no-show' || booking.status === 'in-treatment' || booking.status === 'dispensing' || booking.status === 'visited'"
                       @click="updateStatus(booking.id, 'confirmed')"
                       class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-undo mr-1"></i>還原確認
-                    </button>
+                      <i class="fas fa-undo mr-1"></i>{{ t('還原確認') }}</button>
                     <button
                       v-if="booking.status === 'completed' || booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'dispensing'"
                       @click="selectedBooking = { ...booking }; openMedicalRecordModal()"
                       class="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 whitespace-nowrap"
                     >
-                      <i class="fas fa-file-medical mr-1"></i>病歴管理
-                    </button>
+                      <i class="fas fa-file-medical mr-1"></i>{{ t('病歴管理') }}</button>
                     <button
                       @click="viewBookingDetail(booking)"
                       class="px-3 py-1.5 text-xs bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 whitespace-nowrap"
                     >
-                      <i class="fas fa-info-circle mr-1"></i>詳情
-                    </button>
+                      <i class="fas fa-info-circle mr-1"></i>{{ t('詳情') }}</button>
                   </div>
                 </div>
               </div>
@@ -1780,12 +1746,12 @@
 
         <!-- 手機版底部導航列 -->
         <nav class="m-bnav">
-          <button @click="mainTab='list'; sidebarOpen=false" :class="mainTab==='list' ? 'on' : ''"><i class="fas fa-list"></i><span>列表</span></button>
-          <button @click="mainTab='calendar'; loadCalHolidays(); sidebarOpen=false" :class="mainTab==='calendar' ? 'on' : ''"><i class="fas fa-calendar-days"></i><span>日曆</span></button>
-          <button @click="mainTab='records'; loadAllMedicalRecords(); sidebarOpen=false" :class="mainTab==='records' ? 'on' : ''"><i class="fas fa-folder-open"></i><span>病歷</span></button>
-          <button @click="mainTab='hr'; loadMyHr(); sidebarOpen=false" :class="mainTab==='hr' ? 'on' : ''"><i class="fas fa-clock"></i><span>考勤</span></button>
-          <button @click="mainTab='ess'; loadEss(); sidebarOpen=false" :class="mainTab==='ess' ? 'on' : ''"><i class="fas fa-user-cog"></i><span>自助</span></button>
-          <button @click="mainTab='timeslots'; openSlotManager(); sidebarOpen=false" :class="mainTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>時段</span></button>
+          <button @click="mainTab='list'; sidebarOpen=false" :class="mainTab==='list' ? 'on' : ''"><i class="fas fa-list"></i><span>{{ t('列表') }}</span></button>
+          <button @click="mainTab='calendar'; loadCalHolidays(); sidebarOpen=false" :class="mainTab==='calendar' ? 'on' : ''"><i class="fas fa-calendar-days"></i><span>{{ t('日曆') }}</span></button>
+          <button @click="mainTab='records'; loadAllMedicalRecords(); sidebarOpen=false" :class="mainTab==='records' ? 'on' : ''"><i class="fas fa-folder-open"></i><span>{{ t('病歷') }}</span></button>
+          <button @click="mainTab='hr'; loadMyHr(); sidebarOpen=false" :class="mainTab==='hr' ? 'on' : ''"><i class="fas fa-clock"></i><span>{{ t('考勤') }}</span></button>
+          <button @click="mainTab='ess'; loadEss(); sidebarOpen=false" :class="mainTab==='ess' ? 'on' : ''"><i class="fas fa-user-cog"></i><span>{{ t('自助') }}</span></button>
+          <button @click="mainTab='timeslots'; openSlotManager(); sidebarOpen=false" :class="mainTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>{{ t('時段') }}</span></button>
         </nav>
           </div>
         </div>
@@ -1800,8 +1766,7 @@
         <div class="bg-white rounded-xl p-6 max-w-md w-full">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-slate-800">
-              <i class="fas fa-calendar-check mr-2 text-purple-600"></i>預約詳情
-            </h3>
+              <i class="fas fa-calendar-check mr-2 text-purple-600"></i>{{ t('預約詳情') }}</h3>
             <button @click="showDetailModal = false" class="text-slate-400 hover:text-slate-600">
               <i class="fas fa-times text-xl"></i>
             </button>
@@ -1809,41 +1774,41 @@
 
           <div class="space-y-3">
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">預約編號</span>
+              <span class="text-sm text-slate-500">{{ t('預約編號') }}</span>
               <span class="text-sm font-medium">#{{ selectedBooking.id }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">狀態</span>
+              <span class="text-sm text-slate-500">{{ t('狀態') }}</span>
               <span :class="statusClass(selectedBooking.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">
                 {{ statusLabel(selectedBooking.status) }}
               </span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">客戶姓名</span>
+              <span class="text-sm text-slate-500">{{ t('客戶姓名') }}</span>
               <span class="text-sm font-medium">{{ selectedBooking.customer_name }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">電話</span>
+              <span class="text-sm text-slate-500">{{ t('電話') }}</span>
               <span class="text-sm font-medium">{{ selectedBooking.customer_phone }}</span>
             </div>
             <div v-if="selectedBooking.customer_email" class="flex justify-between">
-              <span class="text-sm text-slate-500">電郵</span>
+              <span class="text-sm text-slate-500">{{ t('電郵') }}</span>
               <span class="text-sm font-medium">{{ selectedBooking.customer_email }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">日期</span>
+              <span class="text-sm text-slate-500">{{ t('日期') }}</span>
               <span class="text-sm font-medium">{{ selectedBooking.appointment_date }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">時間</span>
+              <span class="text-sm text-slate-500">{{ t('時間') }}</span>
               <span class="text-sm font-medium">{{ selectedBooking.appointment_time }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-sm text-slate-500">服務</span>
+              <span class="text-sm text-slate-500">{{ t('服務') }}</span>
               <span class="text-sm font-medium">{{ selectedBooking.service_name || selectedBooking.service_id }}</span>
             </div>
             <div v-if="selectedBooking.notes" class="pt-2 border-t">
-              <p class="text-sm text-slate-500 mb-1">備註</p>
+              <p class="text-sm text-slate-500 mb-1">{{ t('備註') }}</p>
               <p class="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{{ selectedBooking.notes }}</p>
             </div>
           </div>
@@ -1855,56 +1820,48 @@
               @click="updateStatus(selectedBooking.id, 'visited'); showDetailModal = false"
               class="flex-1 min-w-[90px] bg-teal-500 text-white py-2 rounded-lg hover:bg-teal-600 text-sm"
             >
-              <i class="fas fa-user-check mr-1"></i>已到訪
-            </button>
+              <i class="fas fa-user-check mr-1"></i>{{ t('已到訪') }}</button>
             <button
               v-if="['confirmed','visited','in-progress'].includes(selectedBooking.status)"
               @click="updateStatus(selectedBooking.id, 'in-treatment'); showDetailModal = false"
               class="flex-1 min-w-[90px] bg-indigo-500 text-white py-2 rounded-lg hover:bg-indigo-600 text-sm"
             >
-              <i class="fas fa-hand-holding-medical mr-1"></i>治療中
-            </button>
+              <i class="fas fa-hand-holding-medical mr-1"></i>{{ t('治療中') }}</button>
             <button
               v-if="['visited','in-treatment','in-progress'].includes(selectedBooking.status)"
               @click="updateStatus(selectedBooking.id, 'dispensing'); showDetailModal = false"
               class="flex-1 min-w-[90px] bg-amber-500 text-white py-2 rounded-lg hover:bg-amber-600 text-sm"
             >
-              <i class="fas fa-pills mr-1"></i>配藥中
-            </button>
+              <i class="fas fa-pills mr-1"></i>{{ t('配藥中') }}</button>
             <button
               v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(selectedBooking.status)"
               @click="updateStatus(selectedBooking.id, 'completed'); showDetailModal = false"
               class="flex-1 min-w-[90px] bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 text-sm"
             >
-              <i class="fas fa-check mr-1"></i>標記完成
-            </button>
+              <i class="fas fa-check mr-1"></i>{{ t('標記完成') }}</button>
             <button
               v-if="selectedBooking.status === 'confirmed'"
               @click="updateStatus(selectedBooking.id, 'no-show'); showDetailModal = false"
               class="flex-1 min-w-[90px] bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600 text-sm"
             >
-              <i class="fas fa-user-times mr-1"></i>未到場
-            </button>
+              <i class="fas fa-user-times mr-1"></i>{{ t('未到場') }}</button>
             <button
               v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(selectedBooking.status)"
               @click="recordLateness(selectedBooking)"
               class="flex-1 min-w-[90px] bg-rose-400 text-white py-2 rounded-lg hover:bg-rose-500 text-sm"
             >
-              <i class="fas fa-clock mr-1"></i>記錄遲到
-            </button>
+              <i class="fas fa-clock mr-1"></i>{{ t('記錄遲到') }}</button>
             <button
               v-if="['completed','confirmed','visited','in-treatment','dispensing'].includes(selectedBooking.status)"
               @click="openMedicalRecordModal"
               class="flex-1 min-w-[90px] bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 text-sm"
             >
-              <i class="fas fa-file-medical mr-1"></i>病歴管理
-            </button>
+              <i class="fas fa-file-medical mr-1"></i>{{ t('病歴管理') }}</button>
             <button
               @click="showDetailModal = false"
               class="flex-1 min-w-[90px] bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 text-sm"
             >
-              關閉
-            </button>
+              {{ t('關閉') }}</button>
           </div>
         </div>
       </div>
@@ -1966,25 +1923,24 @@
               @click="resetRecordForm"
               class="text-xs text-slate-500 hover:text-slate-700"
             >
-              <i class="fas fa-plus mr-1"></i>新增另一筆
-            </button>
+              <i class="fas fa-plus mr-1"></i>{{ t('新增另一筆') }}</button>
           </div>
 
           <form @submit.prevent="submitMedicalRecord" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">診斷結果</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">{{ t('診斷結果') }}</label>
               <textarea v-model="medicalRecordForm.diagnosis" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" required></textarea>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">治療方案</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">{{ t('治療方案') }}</label>
               <textarea v-model="medicalRecordForm.treatment_plan" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" required></textarea>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">備註</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">{{ t('備註') }}</label>
               <textarea v-model="medicalRecordForm.notes" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"></textarea>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">上傳問題相片 (選填，可多選)</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">{{ t('上傳問題相片 (選填，可多選)') }}</label>
               <input type="file" ref="photoFile" @change="handlePhotoUpload" accept="image/*" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"/>
               <div v-if="medicalRecordForm.photoFiles.length > 0" class="mt-2">
                 <p class="text-xs text-slate-500 mb-1">新增預覽 ({{ medicalRecordForm.photoFiles.length }})</p>
@@ -2010,7 +1966,7 @@
               </div>
             </div>
 
-            <h4 class="text-md font-semibold text-slate-800 mt-6 mb-2">療程進度追蹤 (選填)</h4>
+            <h4 class="text-md font-semibold text-slate-800 mt-6 mb-2">{{ t('療程進度追蹤 (選填)') }}</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">指標名稱 (例如: 手臂活動度)</label>
@@ -2021,11 +1977,11 @@
                 <input type="text" v-model="medicalRecordForm.current_value" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">目標數值 (選填)</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t('目標數值 (選填)') }}</label>
                 <input type="text" v-model="medicalRecordForm.target_value" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">進度評分 (1-10)</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">{{ t('進度評分 (1-10)') }}</label>
                 <input type="number" v-model.number="medicalRecordForm.progress_score" min="1" max="10" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500" />
               </div>
             </div>

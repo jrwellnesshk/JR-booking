@@ -6,13 +6,16 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>寶天醫館 · 人力資源管理</title>
+    <title>{{ t('寶天醫館 · 人力資源管理') }}</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
+    <link rel="stylesheet" href="css/i18n.css" />
+    <script src="js/i18n.js?v=20260910"></script>
+    <script src="js/i18n-runtime.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -90,6 +93,11 @@
   </head>
   <body class="h-screen overflow-hidden">
     <div id="app" v-cloak class="h-screen flex">
+      <!-- 語言切換（中文 / EN） -->
+      <div class="fixed top-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur">
+        <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">中文</button>
+        <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">EN</button>
+      </div>
 
       <!-- ================= 左側欄 ================= -->
       <aside class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328]">
@@ -99,8 +107,8 @@
             <i class="fas fa-users text-lg"></i>
           </div>
           <div class="min-w-0">
-            <div class="brand-title font-bold text-[#3E3328] tracking-wide leading-tight">人力資源系統</div>
-            <div class="muted text-xs mt-0.5 truncate">寶天醫館 · JR</div>
+            <div class="brand-title font-bold text-[#3E3328] tracking-wide leading-tight">{{ t('人力資源系統') }}</div>
+            <div class="muted text-xs mt-0.5 truncate">{{ t('寶天醫館 · JR') }}</div>
           </div>
         </div>
         <!-- 使用者 + 登出 -->
@@ -108,28 +116,28 @@
           <div class="flex items-center gap-2 text-xs bg-white/70 rounded-xl px-3 py-2">
             <i class="fas fa-user-shield text-[#637c5d]"></i>
             <span class="truncate text-[#3E3328]">{{ adminUser.name || '管理員' }}</span>
-            <button @click="handleLogout" class="ml-auto text-[#b4453a] hover:text-[#8f3429]" title="登出">
+            <button @click="handleLogout" class="ml-auto text-[#b4453a] hover:text-[#8f3429]" :title="t('登出')">
               <i class="fas fa-sign-out-alt"></i>
             </button>
-            <a href="admin.html" class="text-[#637c5d] hover:text-[#3E5240]" title="返回後台"><i class="fas fa-arrow-left"></i></a>
+            <a href="admin.html" class="text-[#637c5d] hover:text-[#3E5240]" :title="t('返回後台')"><i class="fas fa-arrow-left"></i></a>
           </div>
         </div>
         <!-- 導航 -->
         <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-          <button class="navbtn" :class="{active:view==='overview'}" @click="switchView('overview')"><i class="fas fa-chart-pie w-4"></i>考勤總覽</button>
-          <button class="navbtn" :class="{active:view==='report'}" @click="switchView('report')"><i class="fas fa-file-alt w-4"></i>統計報表</button>
-          <button class="navbtn" :class="{active:view==='history'}" @click="switchView('history')"><i class="fas fa-clock w-4"></i>歷史考勤</button>
-          <button class="navbtn" :class="{active:view==='exceptions'}" @click="switchView('exceptions')"><i class="fas fa-exclamation-triangle w-4"></i>出勤異常</button>
-          <button class="navbtn" :class="{active:view==='leaves'}" @click="switchView('leaves')"><i class="fas fa-calendar-plus w-4"></i>請假管理<span v-if="pendingLeaveCount>0" class="ml-auto bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pendingLeaveCount }}</span></button>
-          <button class="navbtn" :class="{active:view==='roster'}" @click="switchView('roster')"><i class="fas fa-id-badge w-4"></i>員工名冊</button>
-          <button class="navbtn" :class="{active:view==='schedule'}" @click="switchView('schedule')"><i class="fas fa-calendar-check w-4"></i>排班管理</button>
-          <button class="navbtn" :class="{active:view==='leave-calendar'}" @click="switchView('leave-calendar')"><i class="fas fa-calendar-day w-4"></i>員工假期</button>
-          <button class="navbtn" :class="{active:view==='payroll'}" @click="switchView('payroll')"><i class="fas fa-money-bill-wave w-4"></i>出糧</button>
-          <button class="navbtn" :class="{active:view==='manual'}" @click="switchView('manual')"><i class="fas fa-edit w-4"></i>補打卡</button>
+          <button class="navbtn" :class="{active:view==='overview'}" @click="switchView('overview')"><i class="fas fa-chart-pie w-4"></i>{{ t('考勤總覽') }}</button>
+          <button class="navbtn" :class="{active:view==='report'}" @click="switchView('report')"><i class="fas fa-file-alt w-4"></i>{{ t('統計報表') }}</button>
+          <button class="navbtn" :class="{active:view==='history'}" @click="switchView('history')"><i class="fas fa-clock w-4"></i>{{ t('歷史考勤') }}</button>
+          <button class="navbtn" :class="{active:view==='exceptions'}" @click="switchView('exceptions')"><i class="fas fa-exclamation-triangle w-4"></i>{{ t('出勤異常') }}</button>
+          <button class="navbtn" :class="{active:view==='leaves'}" @click="switchView('leaves')"><i class="fas fa-calendar-plus w-4"></i>{{ t('請假管理') }}<span v-if="pendingLeaveCount>0" class="ml-auto bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pendingLeaveCount }}</span></button>
+          <button class="navbtn" :class="{active:view==='roster'}" @click="switchView('roster')"><i class="fas fa-id-badge w-4"></i>{{ t('員工名冊') }}</button>
+          <button class="navbtn" :class="{active:view==='schedule'}" @click="switchView('schedule')"><i class="fas fa-calendar-check w-4"></i>{{ t('排班管理') }}</button>
+          <button class="navbtn" :class="{active:view==='leave-calendar'}" @click="switchView('leave-calendar')"><i class="fas fa-calendar-day w-4"></i>{{ t('員工假期') }}</button>
+          <button class="navbtn" :class="{active:view==='payroll'}" @click="switchView('payroll')"><i class="fas fa-money-bill-wave w-4"></i>{{ t('出糧') }}</button>
+          <button class="navbtn" :class="{active:view==='manual'}" @click="switchView('manual')"><i class="fas fa-edit w-4"></i>{{ t('補打卡') }}</button>
         </nav>
         <div class="p-4 border-t border-[rgba(139,125,107,.12)] text-[11px] text-[#8B7D6B] flex justify-between items-center">
           <span>今日 {{ todayStr }}</span>
-          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-[#637c5d]"></span>HR 系統</span>
+          <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-[#637c5d]"></span>{{ t('HR 系統') }}</span>
         </div>
       </aside>
 
@@ -140,28 +148,28 @@
         <section v-if="view==='overview'">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">考勤總覽</h1>
-              <p class="text-sm text-taupe mt-1">今日即時出勤狀況</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('考勤總覽') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('今日即時出勤狀況') }}</p>
             </div>
-            <button class="btn btn-ghost" @click="loadToday"><i class="fas fa-sync-alt"></i>刷新</button>
+            <button class="btn btn-ghost" @click="loadToday"><i class="fas fa-sync-alt"></i>{{ t('刷新') }}</button>
           </div>
 
           <!-- 統計卡 -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="card p-5">
-              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">總員工</p><i class="fas fa-users text-lg text-moss-600 opacity-70"></i></div>
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">{{ t('總員工') }}</p><i class="fas fa-users text-lg text-moss-600 opacity-70"></i></div>
               <p class="text-3xl font-bold mt-2 text-ink">{{ stats.total }}</p>
             </div>
             <div class="card p-5">
-              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">返工中</p><i class="fas fa-stopwatch text-lg text-clay-500 opacity-70"></i></div>
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">{{ t('返工中') }}</p><i class="fas fa-stopwatch text-lg text-clay-500 opacity-70"></i></div>
               <p class="text-3xl font-bold mt-2 text-ink">{{ stats.working }}</p>
             </div>
             <div class="card p-5">
-              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">已收工</p><i class="fas fa-house-user text-lg text-moss-600 opacity-70"></i></div>
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">{{ t('已收工') }}</p><i class="fas fa-house-user text-lg text-moss-600 opacity-70"></i></div>
               <p class="text-3xl font-bold mt-2 text-ink">{{ stats.completed }}</p>
             </div>
             <div class="card p-5">
-              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">請假</p><i class="fas fa-umbrella-beach text-lg text-rose-400 opacity-70"></i></div>
+              <div class="flex items-center justify-between"><p class="text-xs text-taupe font-semibold">{{ t('請假') }}</p><i class="fas fa-umbrella-beach text-lg text-rose-400 opacity-70"></i></div>
               <p class="text-3xl font-bold mt-2 text-ink">{{ stats.onLeave }}</p>
             </div>
           </div>
@@ -174,7 +182,7 @@
             </div>
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">角色</th><th class="th">狀態</th><th class="th">上班</th><th class="th">下班</th><th class="th">工時</th><th class="th">備註</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('角色') }}</th><th class="th">{{ t('狀態') }}</th><th class="th">{{ t('上班') }}</th><th class="th">{{ t('下班') }}</th><th class="th">{{ t('工時') }}</th><th class="th">{{ t('備註') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="e in todayEmployees" :key="e.id">
                     <td class="td font-semibold text-ink">{{ e.name }}</td>
@@ -185,7 +193,7 @@
                     <td class="td">{{ e.work_label || '—' }}</td>
                     <td class="td text-xs text-taupe">{{ e.leave_type_label || '' }}</td>
                   </tr>
-                  <tr v-if="todayEmployees.length===0"><td class="td text-center text-taupe" colspan="7">暫無員工資料</td></tr>
+                  <tr v-if="todayEmployees.length===0"><td class="td text-center text-taupe" colspan="7">{{ t('暫無員工資料') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -196,19 +204,19 @@
         <section v-if="view==='report'">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">統計報表</h1>
-              <p class="text-sm text-taupe mt-1">每員工：出勤日 / 遲到 / 早退 / 請假 / 缺席 / 工時</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('統計報表') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('每員工：出勤日 / 遲到 / 早退 / 請假 / 缺席 / 工時') }}</p>
             </div>
             <div class="flex items-end gap-2">
-              <div><label class="lbl">開始日期</label><input type="date" class="input" v-model="repFrom" /></div>
-              <div><label class="lbl">結束日期</label><input type="date" class="input" v-model="repTo" /></div>
-              <button class="btn btn-solid" @click="loadReport"><i class="fas fa-search"></i>查詢</button>
+              <div><label class="lbl">{{ t('開始日期') }}</label><input type="date" class="input" v-model="repFrom" /></div>
+              <div><label class="lbl">{{ t('結束日期') }}</label><input type="date" class="input" v-model="repTo" /></div>
+              <button class="btn btn-solid" @click="loadReport"><i class="fas fa-search"></i>{{ t('查詢') }}</button>
             </div>
           </div>
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">角色</th><th class="th">出勤日</th><th class="th">遲到</th><th class="th">早退</th><th class="th">請假</th><th class="th">缺席</th><th class="th">總工時</th><th class="th">平均/日</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('角色') }}</th><th class="th">{{ t('出勤日') }}</th><th class="th">{{ t('遲到') }}</th><th class="th">{{ t('早退') }}</th><th class="th">{{ t('請假') }}</th><th class="th">{{ t('缺席') }}</th><th class="th">{{ t('總工時') }}</th><th class="th">{{ t('平均/日') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="r in reportRows" :key="r.id">
                     <td class="td font-semibold text-ink">{{ r.name }}</td>
@@ -221,7 +229,7 @@
                     <td class="td text-center font-semibold text-ink">{{ r.total_label }}</td>
                     <td class="td text-center text-taupe">{{ r.avg_label || '—' }}</td>
                   </tr>
-                  <tr v-if="reportRows.length===0"><td class="td text-center text-taupe" colspan="9">請選擇日期範圍查詢</td></tr>
+                  <tr v-if="reportRows.length===0"><td class="td text-center text-taupe" colspan="9">{{ t('請選擇日期範圍查詢') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -233,20 +241,20 @@
         <section v-if="view==='history'">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">歷史考勤</h1>
-              <p class="text-sm text-taupe mt-1">查閱每日打卡紀錄</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('歷史考勤') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('查閱每日打卡紀錄') }}</p>
             </div>
             <div class="flex items-end gap-2 flex-wrap">
-              <div><label class="lbl">員工</label><select class="input" v-model="histUserId"><option value="">全部員工</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}（{{ roleLabel(e.role) }}）</option></select></div>
-              <div><label class="lbl">開始</label><input type="date" class="input" v-model="histFrom" /></div>
-              <div><label class="lbl">結束</label><input type="date" class="input" v-model="histTo" /></div>
-              <button class="btn btn-solid" @click="loadHistory"><i class="fas fa-search"></i>查詢</button>
+              <div><label class="lbl">{{ t('員工') }}</label><select class="input" v-model="histUserId"><option value="">{{ t('全部員工') }}</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}（{{ roleLabel(e.role) }}）</option></select></div>
+              <div><label class="lbl">{{ t('開始') }}</label><input type="date" class="input" v-model="histFrom" /></div>
+              <div><label class="lbl">{{ t('結束') }}</label><input type="date" class="input" v-model="histTo" /></div>
+              <button class="btn btn-solid" @click="loadHistory"><i class="fas fa-search"></i>{{ t('查詢') }}</button>
             </div>
           </div>
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">日期</th><th class="th">員工</th><th class="th">角色</th><th class="th">上班</th><th class="th">下班</th><th class="th">類型</th><th class="th">遲到</th><th class="th">早退</th><th class="th">工時</th><th class="th">來源</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('日期') }}</th><th class="th">{{ t('員工') }}</th><th class="th">{{ t('角色') }}</th><th class="th">{{ t('上班') }}</th><th class="th">{{ t('下班') }}</th><th class="th">{{ t('類型') }}</th><th class="th">{{ t('遲到') }}</th><th class="th">{{ t('早退') }}</th><th class="th">{{ t('工時') }}</th><th class="th">{{ t('來源') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="h in historyRows" :key="h.id">
                     <td class="td font-semibold text-ink">{{ h.attendance_date }}</td>
@@ -260,7 +268,7 @@
                     <td class="td">{{ fmtMin(h.work_minutes) }}</td>
                     <td class="td text-xs text-taupe">{{ h.source==='manual' ? '手動' : '自助' }}</td>
                   </tr>
-                  <tr v-if="historyRows.length===0"><td class="td text-center text-taupe" colspan="10">暫無紀錄</td></tr>
+                  <tr v-if="historyRows.length===0"><td class="td text-center text-taupe" colspan="10">{{ t('暫無紀錄') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -271,24 +279,24 @@
         <section v-if="view==='exceptions'">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">出勤異常</h1>
-              <p class="text-sm text-taupe mt-1">遲到 / 早退 / 缺席 / 請假 標記</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('出勤異常') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('遲到 / 早退 / 缺席 / 請假 標記') }}</p>
             </div>
             <div class="flex items-end gap-2">
-              <div><label class="lbl">日期</label><input type="date" class="input" v-model="excDate" /></div>
-              <button class="btn btn-solid" @click="loadExceptions"><i class="fas fa-search"></i>查詢</button>
+              <div><label class="lbl">{{ t('日期') }}</label><input type="date" class="input" v-model="excDate" /></div>
+              <button class="btn btn-solid" @click="loadExceptions"><i class="fas fa-search"></i>{{ t('查詢') }}</button>
             </div>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div class="card p-4 flex items-center gap-3"><i class="fas fa-user-clock text-2xl text-amber-500"></i><div><div class="text-2xl font-bold">{{ excCount.late }}</div><div class="text-xs text-taupe">遲到</div></div></div>
-            <div class="card p-4 flex items-center gap-3"><i class="fas fa-sign-out-alt text-2xl text-orange-500"></i><div><div class="text-2xl font-bold">{{ excCount.early }}</div><div class="text-xs text-taupe">早退</div></div></div>
-            <div class="card p-4 flex items-center gap-3"><i class="fas fa-user-slash text-2xl text-rose-500"></i><div><div class="text-2xl font-bold">{{ excCount.absent }}</div><div class="text-xs text-taupe">缺席</div></div></div>
-            <div class="card p-4 flex items-center gap-3"><i class="fas fa-umbrella-beach text-2xl text-sky-500"></i><div><div class="text-2xl font-bold">{{ excCount.onLeave }}</div><div class="text-xs text-taupe">請假</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-user-clock text-2xl text-amber-500"></i><div><div class="text-2xl font-bold">{{ excCount.late }}</div><div class="text-xs text-taupe">{{ t('遲到') }}</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-sign-out-alt text-2xl text-orange-500"></i><div><div class="text-2xl font-bold">{{ excCount.early }}</div><div class="text-xs text-taupe">{{ t('早退') }}</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-user-slash text-2xl text-rose-500"></i><div><div class="text-2xl font-bold">{{ excCount.absent }}</div><div class="text-xs text-taupe">{{ t('缺席') }}</div></div></div>
+            <div class="card p-4 flex items-center gap-3"><i class="fas fa-umbrella-beach text-2xl text-sky-500"></i><div><div class="text-2xl font-bold">{{ excCount.onLeave }}</div><div class="text-xs text-taupe">{{ t('請假') }}</div></div></div>
           </div>
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">類型</th><th class="th">上班</th><th class="th">下班</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('類型') }}</th><th class="th">{{ t('上班') }}</th><th class="th">{{ t('下班') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="(a,i) in exceptions" :key="i">
                     <td class="td font-semibold text-ink">{{ a.name }}</td>
@@ -296,7 +304,7 @@
                     <td class="td">{{ a.attendance && a.attendance.clock_in ? a.attendance.clock_in : '—' }}</td>
                     <td class="td">{{ a.attendance && a.attendance.clock_out ? a.attendance.clock_out : '—' }}</td>
                   </tr>
-                  <tr v-if="exceptions.length===0"><td class="td text-center text-taupe" colspan="4">今日冇出勤異常</td></tr>
+                  <tr v-if="exceptions.length===0"><td class="td text-center text-taupe" colspan="4">{{ t('今日冇出勤異常') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -307,8 +315,8 @@
         <section v-if="view==='leaves'">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">請假管理</h1>
-              <p class="text-sm text-taupe mt-1">審批員工 / 醫生嘅請假申請</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('請假管理') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('審批員工 / 醫生嘅請假申請') }}</p>
             </div>
             <div class="flex gap-2">
               <button v-for="t in leaveTabs" :key="t.key" class="btn" :class="leaveTab===t.key?'btn-sage':'btn-ghost'" @click="leaveTab=t.key;loadLeaves()">{{ t.label }}{{ t.key==='pending'&&pendingLeaveCount>0?' ('+pendingLeaveCount+')':'' }}</button>
@@ -317,7 +325,7 @@
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">假別</th><th class="th">期間</th><th class="th">日數</th><th class="th">原因</th><th class="th">狀態</th><th class="th">提交時間</th><th class="th">操作</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('假別') }}</th><th class="th">{{ t('期間') }}</th><th class="th">{{ t('日數') }}</th><th class="th">{{ t('原因') }}</th><th class="th">{{ t('狀態') }}</th><th class="th">{{ t('提交時間') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="l in leaves" :key="l.id">
                     <td class="td font-semibold text-ink">{{ l.user_name }}</td>
@@ -329,13 +337,13 @@
                     <td class="td text-xs text-taupe">{{ (l.created_at||'').slice(0,16) }}</td>
                     <td class="td">
                       <template v-if="l.status==='pending'">
-                        <button class="btn btn-sage !px-3 !py-1 text-xs" @click="reviewLeave(l,'approved')"><i class="fas fa-check"></i>批准</button>
-                        <button class="btn btn-danger !px-3 !py-1 text-xs ml-1" @click="reviewLeave(l,'rejected')"><i class="fas fa-times"></i>拒絕</button>
+                        <button class="btn btn-sage !px-3 !py-1 text-xs" @click="reviewLeave(l,'approved')"><i class="fas fa-check"></i>{{ t('批准') }}</button>
+                        <button class="btn btn-danger !px-3 !py-1 text-xs ml-1" @click="reviewLeave(l,'rejected')"><i class="fas fa-times"></i>{{ t('拒絕') }}</button>
                       </template>
                       <span v-else class="text-xs text-taupe">{{ l.reviewed_note || '' }}</span>
                     </td>
                   </tr>
-                  <tr v-if="leaves.length===0"><td class="td text-center text-taupe" colspan="8">暫無請假申請</td></tr>
+                  <tr v-if="leaves.length===0"><td class="td text-center text-taupe" colspan="8">{{ t('暫無請假申請') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -346,14 +354,14 @@
         <section v-if="view==='leave-calendar'">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">員工假期</h1>
-              <p class="text-sm text-taupe mt-1">一眼睇晒全員邊日放假；紅日（香港公眾假期）全公司放假，會標成紅色</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('員工假期') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('一眼睇晒全員邊日放假；紅日（香港公眾假期）全公司放假，會標成紅色') }}</p>
             </div>
             <div class="flex items-center gap-2">
               <button class="btn btn-ghost !px-3" @click="prevCalMonth"><i class="fas fa-chevron-left"></i></button>
               <div class="text-center min-w-[140px]">
                 <div class="font-bold text-ink">{{ calYear }} 年 {{ calMonth }} 月</div>
-                <button class="text-xs text-taupe hover:text-[#7e5140]" @click="calToToday">回到本月</button>
+                <button class="text-xs text-taupe hover:text-[#7e5140]" @click="calToToday">{{ t('回到本月') }}</button>
               </div>
               <button class="btn btn-ghost !px-3" @click="nextCalMonth"><i class="fas fa-chevron-right"></i></button>
             </div>
@@ -361,20 +369,19 @@
 
           <!-- 圖例 -->
           <div class="card mb-4 px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span class="text-xs text-taupe font-semibold">假別：</span>
+            <span class="text-xs text-taupe font-semibold">{{ t('假別：') }}</span>
             <template v-for="(label,key) in calLegend" :key="key">
               <span class="inline-flex items-center gap-1.5 text-xs font-medium" :class="leaveTypeChip(key)">
                 <span class="w-2.5 h-2.5 rounded-full" :class="leaveTypeDot(key)"></span>{{ label }}
               </span>
             </template>
             <span class="inline-flex items-center gap-1.5 text-xs font-bold text-red-700">
-              <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>紅日（公眾假期 · 全公司放假）
-            </span>
+              <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>{{ t('紅日（公眾假期 · 全公司放假）') }}</span>
           </div>
 
           <!-- 日曆 -->
           <div class="card overflow-hidden">
-            <div v-if="calLoading" class="p-10 text-center text-taupe"><i class="fas fa-spinner fa-spin mr-2"></i>載入中…</div>
+            <div v-if="calLoading" class="p-10 text-center text-taupe"><i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入中…') }}</div>
             <template v-else>
               <div class="grid grid-cols-7 bg-[rgba(199,180,166,.15)]">
                 <div v-for="w in calWeekHeaders" :key="w" class="th !text-center !font-bold !text-[#8B7D6B]">{{ w }}</div>
@@ -386,7 +393,7 @@
                   <template v-if="cell">
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-xs font-semibold" :class="isToday(cell.date)?'text-[#637c5d]':(cell.holiday?'text-red-700':'text-ink')">{{ cell.day }}</span>
-                      <span v-if="isToday(cell.date)" class="text-[9px] font-bold text-white bg-[#637c5d] rounded-full px-1.5 py-0.5">今日</span>
+                      <span v-if="isToday(cell.date)" class="text-[9px] font-bold text-white bg-[#637c5d] rounded-full px-1.5 py-0.5">{{ t('今日') }}</span>
                     </div>
                     <div v-if="cell.holiday" class="mb-1 flex items-center gap-1 text-[10px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5" :title="cell.holiday">
                       <i class="fas fa-circle text-[6px]"></i><span class="truncate">紅日 · {{ cell.holiday }}</span>
@@ -402,7 +409,7 @@
                   </template>
                 </div>
               </div>
-              <div v-if="calTotalLeaves === 0" class="px-5 py-10 text-center text-taupe">呢個月暫時冇已批准嘅假期 🎉</div>
+              <div v-if="calTotalLeaves === 0" class="px-5 py-10 text-center text-taupe">{{ t('呢個月暫時冇已批准嘅假期 🎉') }}</div>
             </template>
           </div>
         </section>
@@ -411,15 +418,15 @@
         <section v-if="view==='roster'">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">員工名冊</h1>
-              <p class="text-sm text-taupe mt-1">管理員工 / 醫生帳戶、在職狀態與假額</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('員工名冊') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('管理員工 / 醫生帳戶、在職狀態與假額') }}</p>
             </div>
-            <button class="btn btn-solid" @click="openAddEmp"><i class="fas fa-user-plus"></i>新增員工</button>
+            <button class="btn btn-solid" @click="openAddEmp"><i class="fas fa-user-plus"></i>{{ t('新增員工') }}</button>
           </div>
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">姓名</th><th class="th">用戶名</th><th class="th">電話</th><th class="th">角色</th><th class="th">全/兼職</th><th class="th">狀態</th><th class="th">年假額</th><th class="th">病假額</th><th class="th">事假額</th><th class="th">操作</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('姓名') }}</th><th class="th">{{ t('用戶名') }}</th><th class="th">{{ t('電話') }}</th><th class="th">{{ t('角色') }}</th><th class="th">{{ t('全/兼職') }}</th><th class="th">{{ t('狀態') }}</th><th class="th">{{ t('年假額') }}</th><th class="th">{{ t('病假額') }}</th><th class="th">{{ t('事假額') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="e in roster" :key="e.id">
                     <td class="td font-semibold text-ink">{{ e.name }}</td>
@@ -438,7 +445,7 @@
                       <button class="btn btn-ghost !px-2.5 !py-1 text-xs ml-1" @click="toggleActive(e)"><i class="fas" :class="e.is_active?'fa-user-slash':'fa-user-check'"></i></button>
                     </td>
                   </tr>
-                  <tr v-if="roster.length===0"><td class="td text-center text-taupe" colspan="10">暫無員工資料，請先新增</td></tr>
+                  <tr v-if="roster.length===0"><td class="td text-center text-taupe" colspan="10">{{ t('暫無員工資料，請先新增') }}</td></tr>
                 </tbody>
               </table>
           </div>
@@ -448,7 +455,7 @@
         <section v-if="view==='schedule'">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">排班管理</h1>
+              <h1 class="text-2xl font-bold text-ink">{{ t('排班管理') }}</h1>
               <p class="text-sm text-taupe mt-1">全職用系統預設返工時間（一至五 10:00-19:00、六 10:00-13:00）；星期日及香港公眾假期休息；兼職每星期報更審批</p>
             </div>
           </div>
@@ -456,12 +463,12 @@
           <!-- 兼職報更（審批） -->
           <div class="card mb-4">
             <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)] flex items-center justify-between">
-              <h2 class="font-bold text-ink">兼職報更（待審批）</h2>
-              <select class="input !w-40" v-model="rosterStatus"><option value="pending">待審批</option><option value="approved">已批准</option><option value="rejected">已拒絕</option><option value="all">全部</option></select>
+              <h2 class="font-bold text-ink">{{ t('兼職報更（待審批）') }}</h2>
+              <select class="input !w-40" v-model="rosterStatus"><option value="pending">{{ t('待審批') }}</option><option value="approved">{{ t('已批准') }}</option><option value="rejected">{{ t('已拒絕') }}</option><option value="all">{{ t('全部') }}</option></select>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">工作週</th><th class="th">報更細項</th><th class="th">狀態</th><th class="th">操作</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('工作週') }}</th><th class="th">{{ t('報更細項') }}</th><th class="th">{{ t('狀態') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="r in filteredRosters" :key="r.id">
                     <td class="td font-semibold text-ink">{{ r.user_name }}</td>
@@ -470,18 +477,18 @@
                       <div v-for="it in r.items" :key="it.id" class="text-xs text-taupe">
                         {{ it.shift_date }} {{ it.time_start || '—' }} – {{ it.time_end || '—' }}
                       </div>
-                      <span v-if="!r.items || r.items.length===0" class="text-xs text-taupe">未揀更</span>
+                      <span v-if="!r.items || r.items.length===0" class="text-xs text-taupe">{{ t('未揀更') }}</span>
                     </td>
                     <td class="td"><span class="pill" :class="r.status==='pending'?'bg-amber-100 text-amber-700':(r.status==='approved'?'bg-moss-100 text-moss-700':'bg-rose-100 text-rose-700')">{{ r.status==='pending'?'待審批':(r.status==='approved'?'已批准':'已拒絕') }}</span></td>
                     <td class="td">
                       <template v-if="r.status==='pending'">
-                        <button class="btn btn-sage !px-3 !py-1 text-xs" @click="approveRoster(r)"><i class="fas fa-check"></i>批准</button>
-                        <button class="btn btn-danger !px-3 !py-1 text-xs ml-1" @click="rejectRoster(r)"><i class="fas fa-xmark"></i>拒絕</button>
+                        <button class="btn btn-sage !px-3 !py-1 text-xs" @click="approveRoster(r)"><i class="fas fa-check"></i>{{ t('批准') }}</button>
+                        <button class="btn btn-danger !px-3 !py-1 text-xs ml-1" @click="rejectRoster(r)"><i class="fas fa-xmark"></i>{{ t('拒絕') }}</button>
                       </template>
                       <span v-else class="text-xs text-taupe">—</span>
                     </td>
                   </tr>
-                  <tr v-if="filteredRosters.length===0"><td class="td text-center text-taupe" colspan="5">暫無報更</td></tr>
+                  <tr v-if="filteredRosters.length===0"><td class="td text-center text-taupe" colspan="5">{{ t('暫無報更') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -492,20 +499,20 @@
         <section v-if="view==='payroll'">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
             <div>
-              <h1 class="text-2xl font-bold text-ink">出糧</h1>
-              <p class="text-sm text-taupe mt-1">按月結算上一個月（逢 7 號出糧）：出勤日 / 總工時 / OT / 應發薪金</p>
+              <h1 class="text-2xl font-bold text-ink">{{ t('出糧') }}</h1>
+              <p class="text-sm text-taupe mt-1">{{ t('按月結算上一個月（逢 7 號出糧）：出勤日 / 總工時 / OT / 應發薪金') }}</p>
             </div>
             <div class="flex items-end gap-2">
-              <div><label class="lbl">月份</label><input type="month" class="input" v-model="payMonth" /></div>
-              <button class="btn btn-solid" @click="loadPayroll"><i class="fas fa-search"></i>結算</button>
-              <button class="btn btn-sage" :disabled="payrollRows.length===0" @click="exportPayroll"><i class="fas fa-file-csv"></i>匯出 CSV</button>
+              <div><label class="lbl">{{ t('月份') }}</label><input type="month" class="input" v-model="payMonth" /></div>
+              <button class="btn btn-solid" @click="loadPayroll"><i class="fas fa-search"></i>{{ t('結算') }}</button>
+              <button class="btn btn-sage" :disabled="payrollRows.length===0" @click="exportPayroll"><i class="fas fa-file-csv"></i>{{ t('匯出 CSV') }}</button>
             </div>
           </div>
           <div v-if="payMsg" class="mb-4 px-4 py-3 rounded-xl text-sm font-semibold" :class="payMsgOk?'bg-moss-100 text-moss-800':'bg-rose-100 text-rose-800'">{{ payMsg }}</div>
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">員工</th><th class="th">時薪/月薪</th><th class="th">出勤日</th><th class="th">總工時</th><th class="th">OT小時</th><th class="th">應發薪金</th><th class="th">狀態</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('時薪/月薪') }}</th><th class="th">{{ t('出勤日') }}</th><th class="th">{{ t('總工時') }}</th><th class="th">{{ t('OT小時') }}</th><th class="th">{{ t('應發薪金') }}</th><th class="th">{{ t('狀態') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="r in payrollRows" :key="r.id">
                     <td class="td font-semibold text-ink">{{ r.name }}</td>
@@ -516,7 +523,7 @@
                     <td class="td text-center font-semibold text-ink">{{ r.gross.toFixed(2) }}</td>
                     <td class="td"><span class="pill" :class="r.has_rate?'bg-moss-100 text-moss-700':'bg-amber-100 text-amber-700'">{{ r.has_rate?'已計算':'未設薪金' }}</span></td>
                   </tr>
-                  <tr v-if="payrollRows.length===0"><td class="td text-center text-taupe" colspan="7">請選擇月份後結算</td></tr>
+                  <tr v-if="payrollRows.length===0"><td class="td text-center text-taupe" colspan="7">{{ t('請選擇月份後結算') }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -526,20 +533,20 @@
 
         <section v-if="view==='manual'">
           <div class="mb-5">
-            <h1 class="text-2xl font-bold text-ink">手動補打卡</h1>
-            <p class="text-sm text-taupe mt-1">為員工補記 / 修改某日嘅上班、下班時間</p>
+            <h1 class="text-2xl font-bold text-ink">{{ t('手動補打卡') }}</h1>
+            <p class="text-sm text-taupe mt-1">{{ t('為員工補記 / 修改某日嘅上班、下班時間') }}</p>
           </div>
           <div class="card p-6 max-w-xl">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label class="lbl">員工</label><select class="input" v-model="mEmp"><option value="">請選擇</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}（{{ roleLabel(e.role) }}）</option></select></div>
-              <div><label class="lbl">日期</label><input type="date" class="input" v-model="mDate" /></div>
-              <div><label class="lbl">上班時間</label><input type="time" class="input" v-model="mIn" /></div>
-              <div><label class="lbl">下班時間</label><input type="time" class="input" v-model="mOut" /></div>
-              <div class="sm:col-span-2"><label class="lbl">出勤類型</label><select class="input" v-model="mType"><option value="full">全日</option><option value="half">半日</option><option value="fieldwork">外勤</option><option value="training">培訓</option></select></div>
-              <div class="sm:col-span-2"><label class="lbl">備註</label><input class="input" v-model="mNote" placeholder="例如：外出復診補打卡" /></div>
+              <div><label class="lbl">{{ t('員工') }}</label><select class="input" v-model="mEmp"><option value="">{{ t('請選擇') }}</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}（{{ roleLabel(e.role) }}）</option></select></div>
+              <div><label class="lbl">{{ t('日期') }}</label><input type="date" class="input" v-model="mDate" /></div>
+              <div><label class="lbl">{{ t('上班時間') }}</label><input type="time" class="input" v-model="mIn" /></div>
+              <div><label class="lbl">{{ t('下班時間') }}</label><input type="time" class="input" v-model="mOut" /></div>
+              <div class="sm:col-span-2"><label class="lbl">{{ t('出勤類型') }}</label><select class="input" v-model="mType"><option value="full">{{ t('全日') }}</option><option value="half">{{ t('半日') }}</option><option value="fieldwork">{{ t('外勤') }}</option><option value="training">{{ t('培訓') }}</option></select></div>
+              <div class="sm:col-span-2"><label class="lbl">{{ t('備註') }}</label><input class="input" v-model="mNote" :placeholder="t('例如：外出復診補打卡')" /></div>
               <div class="sm:col-span-2 flex gap-2">
-                <button class="btn btn-solid" @click="submitManual"><i class="fas fa-save"></i>儲存打卡</button>
-                <button class="btn btn-ghost" @click="resetManual"><i class="fas fa-undo"></i>重設</button>
+                <button class="btn btn-solid" @click="submitManual"><i class="fas fa-save"></i>{{ t('儲存打卡') }}</button>
+                <button class="btn btn-ghost" @click="resetManual"><i class="fas fa-undo"></i>{{ t('重設') }}</button>
               </div>
             </div>
             <div v-if="manualMsg" class="mt-3 text-sm font-semibold" :class="manualOk?'text-moss-700':'text-rose-600'">{{ manualMsg }}</div>
@@ -555,26 +562,26 @@
             <button class="text-taupe hover:text-ink" @click="showEmpModal=false"><i class="fas fa-times"></i></button>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label class="lbl">姓名 *</label><input class="input" v-model="empForm.name" /></div>
-            <div><label class="lbl">英文名</label><input class="input" v-model="empForm.name_en" /></div>
-            <div v-if="empModalMode==='add'"><label class="lbl">用戶名 *</label><input class="input" v-model="empForm.username" /></div>
-            <div><label class="lbl">電話 *</label><input class="input" v-model="empForm.phone" /></div>
-            <div><label class="lbl">電郵</label><input class="input" v-model="empForm.email" /></div>
-            <div><label class="lbl">角色</label><select class="input" v-model="empForm.role"><option value="staff">員工</option><option value="doctor">醫生</option></select></div>
-            <div v-if="empForm.role==='staff'"><label class="lbl">全職 / 兼職</label><select class="input" v-model="empForm.employment_type"><option value="full">全職</option><option value="part">兼職</option></select></div>
-            <div v-if="empModalMode!=='add'"><label class="lbl">帳戶狀態</label><select class="input" v-model="empForm.is_active"><option :value="1">在職</option><option :value="0">停用</option></select></div>
-            <div><label class="lbl">年假額（日）</label><input type="number" class="input" v-model="empForm.balance_annual" /></div>
-            <div><label class="lbl">病假額（日）</label><input type="number" class="input" v-model="empForm.balance_sick" /></div>
-            <div><label class="lbl">事假額（日）</label><input type="number" class="input" v-model="empForm.balance_personal" /></div>
+            <div><label class="lbl">{{ t('姓名 *') }}</label><input class="input" v-model="empForm.name" /></div>
+            <div><label class="lbl">{{ t('英文名') }}</label><input class="input" v-model="empForm.name_en" /></div>
+            <div v-if="empModalMode==='add'"><label class="lbl">{{ t('用戶名 *') }}</label><input class="input" v-model="empForm.username" /></div>
+            <div><label class="lbl">{{ t('電話 *') }}</label><input class="input" v-model="empForm.phone" /></div>
+            <div><label class="lbl">{{ t('電郵') }}</label><input class="input" v-model="empForm.email" /></div>
+            <div><label class="lbl">{{ t('角色') }}</label><select class="input" v-model="empForm.role"><option value="staff">{{ t('員工') }}</option><option value="doctor">{{ t('醫生') }}</option></select></div>
+            <div v-if="empForm.role==='staff'"><label class="lbl">{{ t('全職 / 兼職') }}</label><select class="input" v-model="empForm.employment_type"><option value="full">{{ t('全職') }}</option><option value="part">{{ t('兼職') }}</option></select></div>
+            <div v-if="empModalMode!=='add'"><label class="lbl">{{ t('帳戶狀態') }}</label><select class="input" v-model="empForm.is_active"><option :value="1">{{ t('在職') }}</option><option :value="0">{{ t('停用') }}</option></select></div>
+            <div><label class="lbl">{{ t('年假額（日）') }}</label><input type="number" class="input" v-model="empForm.balance_annual" /></div>
+            <div><label class="lbl">{{ t('病假額（日）') }}</label><input type="number" class="input" v-model="empForm.balance_sick" /></div>
+            <div><label class="lbl">{{ t('事假額（日）') }}</label><input type="number" class="input" v-model="empForm.balance_personal" /></div>
             <div><label class="lbl">其他假（法定/其他，-1=不限）</label><input type="number" class="input" v-model="empForm.balance_statutory" placeholder="-1" /></div>
           </div>
           <div v-if="empMsg" class="mt-3 text-sm font-semibold" :class="empOk?'text-moss-700':'text-rose-600'">{{ empMsg }}</div>
           <div v-if="empCredentials" class="mt-3 p-3 rounded-xl bg-moss-100 text-moss-800 text-sm">
-            <b>臨時帳號</b> 用戶名：{{ empCredentials.username }}<br/>密碼：<b>{{ empCredentials.tempPassword }}</b><br/>
-            <button class="btn btn-sage !py-1 text-xs mt-2" @click="copyCreds"><i class="fas fa-copy"></i>複製憑據</button>
+            <b>{{ t('臨時帳號') }}</b> 用戶名：{{ empCredentials.username }}<br/>{{ t('密碼：') }}<b>{{ empCredentials.tempPassword }}</b><br/>
+            <button class="btn btn-sage !py-1 text-xs mt-2" @click="copyCreds"><i class="fas fa-copy"></i>{{ t('複製憑據') }}</button>
           </div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-ghost" @click="showEmpModal=false">取消</button>
+            <button class="btn btn-ghost" @click="showEmpModal=false">{{ t('取消') }}</button>
             <button class="btn btn-solid" @click="saveEmp" :disabled="empBusy"><i class="fas" :class="empBusy?'fa-spinner fa-spin':'fa-save'"></i>{{ empModalMode==='add'?'建立':'儲存' }}</button>
           </div>
         </div>
@@ -584,12 +591,12 @@
       <div v-if="showPwdModal" class="modal-mask" @click.self="showPwdModal=false">
         <div class="card w-full max-w-sm p-6" style="background:#fffdf8;">
           <h2 class="text-lg font-bold text-ink mb-4">重設密碼 — {{ pwdEmp.name }}</h2>
-          <label class="lbl">新密碼</label>
-          <input type="text" class="input" v-model="pwdNew" placeholder="至少 6 位" />
+          <label class="lbl">{{ t('新密碼') }}</label>
+          <input type="text" class="input" v-model="pwdNew" :placeholder="t('至少 6 位')" />
           <div v-if="pwdMsg" class="mt-3 text-sm font-semibold" :class="pwdOk?'text-moss-700':'text-rose-600'">{{ pwdMsg }}</div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-ghost" @click="showPwdModal=false">取消</button>
-            <button class="btn btn-solid" @click="savePwd"><i class="fas fa-key"></i>重設</button>
+            <button class="btn btn-ghost" @click="showPwdModal=false">{{ t('取消') }}</button>
+            <button class="btn btn-solid" @click="savePwd"><i class="fas fa-key"></i>{{ t('重設') }}</button>
           </div>
         </div>
       </div>
@@ -602,19 +609,19 @@
             <button class="text-taupe hover:text-ink" @click="showHrModal=false"><i class="fas fa-times"></i></button>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label class="lbl">入職日期</label><input type="date" class="input" v-model="hrForm.hire_date" /></div>
-            <div><label class="lbl">時薪（HKD/小時）</label><input type="number" step="0.01" class="input" v-model="hrForm.hourly_rate" placeholder="0" /></div>
-            <div><label class="lbl">月薪（HKD，可選）</label><input type="number" step="0.01" class="input" v-model="hrForm.basic_salary" placeholder="0" /></div>
-            <div><label class="lbl">身份證（已遮罩）</label><input class="input" v-model="hrForm.id_card" placeholder="A***3(4)" /></div>
-            <div class="sm:col-span-2"><label class="lbl">地址</label><input class="input" v-model="hrForm.address" /></div>
-            <div class="sm:col-span-2"><label class="lbl">銀行戶口</label><input class="input" v-model="hrForm.bank_account" /></div>
-            <div><label class="lbl">緊急聯絡人</label><input class="input" v-model="hrForm.emergency_contact" /></div>
-            <div><label class="lbl">緊急聯絡電話</label><input class="input" v-model="hrForm.emergency_phone" /></div>
+            <div><label class="lbl">{{ t('入職日期') }}</label><input type="date" class="input" v-model="hrForm.hire_date" /></div>
+            <div><label class="lbl">{{ t('時薪（HKD/小時）') }}</label><input type="number" step="0.01" class="input" v-model="hrForm.hourly_rate" placeholder="0" /></div>
+            <div><label class="lbl">{{ t('月薪（HKD，可選）') }}</label><input type="number" step="0.01" class="input" v-model="hrForm.basic_salary" placeholder="0" /></div>
+            <div><label class="lbl">{{ t('身份證（已遮罩）') }}</label><input class="input" v-model="hrForm.id_card" placeholder="A***3(4)" /></div>
+            <div class="sm:col-span-2"><label class="lbl">{{ t('地址') }}</label><input class="input" v-model="hrForm.address" /></div>
+            <div class="sm:col-span-2"><label class="lbl">{{ t('銀行戶口') }}</label><input class="input" v-model="hrForm.bank_account" /></div>
+            <div><label class="lbl">{{ t('緊急聯絡人') }}</label><input class="input" v-model="hrForm.emergency_contact" /></div>
+            <div><label class="lbl">{{ t('緊急聯絡電話') }}</label><input class="input" v-model="hrForm.emergency_phone" /></div>
           </div>
           <div v-if="hrMsg" class="mt-3 text-sm font-semibold" :class="hrOk?'text-moss-700':'text-rose-600'">{{ hrMsg }}</div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-ghost" @click="showHrModal=false">取消</button>
-            <button class="btn btn-solid" @click="saveHr" :disabled="hrBusy"><i class="fas" :class="hrBusy?'fa-spinner fa-spin':'fa-save'"></i>儲存</button>
+            <button class="btn btn-ghost" @click="showHrModal=false">{{ t('取消') }}</button>
+            <button class="btn btn-solid" @click="saveHr" :disabled="hrBusy"><i class="fas" :class="hrBusy?'fa-spinner fa-spin':'fa-save'"></i>{{ t('儲存') }}</button>
           </div>
         </div>
       </div>

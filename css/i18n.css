@@ -1,0 +1,58 @@
+/* css/i18n.css — 英文模式防重疊 / 防圖標移位 防禦樣式
+   英文文字比中文長，容易頂爛固定闊度、出現重疊或圖標移位。
+   呢度做防禦性修正：英文模式允許換行、唔裁剪、唔固定死闊度。 */
+
+.lang-en .truncate,
+.lang-en [class*="truncate"],
+.lang-en .text-truncate,
+.lang-en .ellipsis {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+/* 導覽 / 掣 / 表頭 / 單元格：英文允許自然換行，唔逼一行 */
+.lang-en nav a,
+.lang-en .nav-link,
+.lang-en button,
+.lang-en .btn,
+.lang-en th,
+.lang-en td,
+.lang-en .tab,
+.lang-en .menu-item,
+.lang-en .sidebar a,
+.lang-en label {
+  white-space: normal;
+}
+
+/* 固定闊度嘅文字容器喺英文模式放鬆，避免文字被截走 */
+.lang-en .w-16,
+.lang-en .w-20,
+.lang-en .w-24,
+.lang-en .w-28,
+.lang-en .w-32,
+.lang-en .w-40,
+.lang-en .w-48,
+.lang-en .min-w-\[.*\] {
+  min-width: 0 !important;
+}
+
+/* 頂欄語言掣：固定右上、唔同其他元素重疊 */
+.aq-lang-toggle,
+.i18n-lang-toggle {
+  position: relative;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* 登入頁語言掣容器：避免同 logo / 標題撞位 */
+.i18n-lang-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
