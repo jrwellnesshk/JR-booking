@@ -18,8 +18,8 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260913"></script>
-    <script src="js/i18n-runtime.js?v=20260911"></script>
+    <script src="js/i18n.js?v=20260916"></script>
+    <script src="js/i18n-runtime.js?v=20260913"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
       [v-cloak]{ display:none !important; }
@@ -563,7 +563,7 @@
         <div class="max-w-7xl mx-auto flex items-center justify-between">
           <div class="flex items-center">
             <i class="fas fa-bell text-xl mr-3 animate-bounce"></i>
-            <span class="font-medium">📬 有 {{ newFeedbackCount }} 條新客戶意見待處理！</span>
+            <span class="font-medium">📬 {{ t('有') }} {{ newFeedbackCount }} {{ t('條新客戶意見待處理！') }}</span>
           </div>
           <div class="flex items-center gap-3">
             <button 
@@ -1101,7 +1101,7 @@
                 <p class="text-sm text-emerald-100"><i class="fas fa-coins mr-1"></i>{{ t('每月訂閱收入（經常性）') }}</p>
                 <p class="text-2xl font-bold mt-1">HK${{ (incomeSummary.subscription?.monthly_recurring || 0).toLocaleString() }}</p>
                 <p class="text-xs text-emerald-100 mt-1">
-                  訂閱總收入（本期）：HK${{ (incomeSummary.subscription?.total_subscription_revenue || 0).toLocaleString() }}
+                  {{ t('訂閱總收入（本期）：') }}HK${{ (incomeSummary.subscription?.total_subscription_revenue || 0).toLocaleString() }}
                 </p>
               </div>
             </div>
@@ -1118,7 +1118,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">{{ t('Excel 收入') }}</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">{{ t('訂閱收入') }}</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      {{ t('合計') }}<span class="block normal-case font-normal text-[10px] text-slate-400">= Excel + 訂閱</span>
+                      {{ t('合計') }}<span class="block normal-case font-normal text-[10px] text-slate-400">= Excel + {{ t('訂閱') }}</span>
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider" :title="t('系統預約金額僅供參考，不計入任何收入總數')">
                       {{ t('預約參考') }}<i class="fas fa-circle-info"></i>
@@ -1147,7 +1147,7 @@
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
               <p>
                 <i class="fas fa-circle-info mr-1 text-slate-400"></i>
-                {{ t('計法：') }}<b>總收入 = Excel 匯入收入 + 訂閱收入</b>。非訂閱收入只會根據你匯入嘅 Excel 資料改變。
+                {{ t('計法：') }}<b>{{ t('總收入 = Excel 匯入收入 + 訂閱收入') }}</b>。非訂閱收入只會根據你匯入嘅 Excel 資料改變。
                 系統預約金額（本期合計<b>HK${{ (incomeSummary.booking_reference_total || 0).toLocaleString() }}</b>{{ t('）僅供內部參考，') }}<b>{{ t('唔會計入任何收入') }}</b>{{ t('。應診人數照舊由預約系統自動統計。') }}</p>
               <p class="mt-1 text-xs text-slate-500">
                 {{ t('支援上載診所系統嘅「每日收入細列表」同「每月收入總覽表」匯出檔（自動辨認）；同一日／同一個月只可以匯入一次，刪除舊紀錄後可以先重新匯入。') }}</p>
@@ -1334,28 +1334,28 @@
                 :class="bookingStatusFilter === 'confirmed' ? 'border-b-2 border-emerald-600 text-emerald-600' : 'text-slate-600'"
                 class="px-4 py-2 font-medium transition-colors"
               >
-                已確認預約 ({{ filteredConfirmedBookings.length }})
+                {{ t('已確認預約') }} ({{ filteredConfirmedBookings.length }})
               </button>
               <button
                 @click="bookingStatusFilter = 'completed'"
                 :class="bookingStatusFilter === 'completed' ? 'border-b-2 border-emerald-600 text-emerald-600' : 'text-slate-600'"
                 class="px-4 py-2 font-medium transition-colors"
               >
-                已完成預約 ({{ filteredCompletedBookings.length }})
+                {{ t('已完成預約') }} ({{ filteredCompletedBookings.length }})
               </button>
               <button
                 @click="bookingStatusFilter = 'no-show'"
                 :class="bookingStatusFilter === 'no-show' ? 'border-b-2 border-emerald-600 text-emerald-600' : 'text-slate-600'"
                 class="px-4 py-2 font-medium transition-colors"
               >
-                未履行預約 ({{ filteredNoShowBookings.length }})
+                {{ t('未履行預約') }} ({{ filteredNoShowBookings.length }})
               </button>
               <button
                 @click="bookingStatusFilter = 'cancelled'"
                 :class="bookingStatusFilter === 'cancelled' ? 'border-b-2 border-emerald-600 text-emerald-600' : 'text-slate-600'"
                 class="px-4 py-2 font-medium transition-colors"
               >
-                已取消預約 ({{ filteredCancelledBookings.length }})
+                {{ t('已取消預約') }} ({{ filteredCancelledBookings.length }})
               </button>
             </div>
 
@@ -1863,27 +1863,27 @@
                     <tr v-if="filteredTrialBookings.length === 0">
                       <td colspan="7" class="px-4 py-8 text-center text-slate-400">{{ t('暫無初體驗記錄') }}</td>
                     </tr>
-                    <tr v-for="t in filteredTrialBookings" :key="t.id" class="hover:bg-slate-50">
+                    <tr v-for="tb in filteredTrialBookings" :key="tb.id" class="hover:bg-slate-50">
                       <td class="px-4 py-3 whitespace-nowrap">
-                        <div class="font-medium text-slate-800">{{ t.appointment_date }}</div>
-                        <div class="text-xs text-slate-500">{{ t.appointment_time }}</div>
+                        <div class="font-medium text-slate-800">{{ tb.appointment_date }}</div>
+                        <div class="text-xs text-slate-500">{{ tb.appointment_time }}</div>
                       </td>
                       <td class="px-4 py-3">
-                        <div class="font-medium text-slate-800">{{ t.customer_name }}</div>
-                        <div v-if="t.customer_name_en" class="text-xs text-slate-500">{{ t.customer_name_en }}</div>
+                        <div class="font-medium text-slate-800">{{ tb.customer_name }}</div>
+                        <div v-if="tb.customer_name_en" class="text-xs text-slate-500">{{ tb.customer_name_en }}</div>
                       </td>
-                      <td class="px-4 py-3 text-slate-600">{{ t.customer_phone }}</td>
-                      <td class="px-4 py-3 text-slate-600">{{ t.customer_age || '—' }}</td>
+                      <td class="px-4 py-3 text-slate-600">{{ tb.customer_phone }}</td>
+                      <td class="px-4 py-3 text-slate-600">{{ tb.customer_age || '—' }}</td>
                       <td class="px-4 py-3">
-                        <span v-if="t.username" class="text-slate-700">{{ t.username }}</span>
+                        <span v-if="tb.username" class="text-slate-700">{{ tb.username }}</span>
                         <span v-else class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{{ t('訪客（未開戶）') }}</span>
                       </td>
                       <td class="px-4 py-3">
-                        <span :class="trialStatusClass(t.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">
-                          {{ t.status_label }}
+                        <span :class="trialStatusClass(tb.status)" class="text-xs px-2 py-0.5 rounded-full font-medium">
+                          {{ tb.status_label }}
                         </span>
                       </td>
-                      <td class="px-4 py-3 text-xs text-slate-500">{{ (t.created_at || '').replace('T', ' ').slice(0, 16) }}</td>
+                      <td class="px-4 py-3 text-xs text-slate-500">{{ (tb.created_at || '').replace('T', ' ').slice(0, 16) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2243,7 +2243,7 @@
               <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-teal-400">
                 <p class="text-sm text-slate-500"><i class="fas fa-people-roof mr-1 text-teal-500"></i>{{ t('家庭帳戶總數') }}</p>
                 <p class="text-2xl font-bold text-teal-600 mt-1">{{ mpSummary.familyHeadCount || 0 }}</p>
-                <p class="text-xs text-slate-400 mt-0.5">一張單 = 一個家庭</p>
+                <p class="text-xs text-slate-400 mt-0.5">{{ t('一張單 = 一個家庭') }}</p>
               </div>
               <div class="bg-white rounded-xl shadow-lg p-4 border-t-4 border-emerald-400">
                 <p class="text-sm text-slate-500"><i class="fas fa-circle-check mr-1 text-emerald-500"></i>{{ t('生效中') }}</p>
@@ -2269,12 +2269,12 @@
               <button v-for="f in mpStatusFilters" :key="f.v"
                 @click="mpStatusFilter = (mpStatusFilter === f.v ? '' : f.v)"
                 :class="mpStatusFilter === f.v ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'"
-                class="px-3 py-1 rounded-full text-xs transition-colors">{{ f.l }} ({{ mpStatusCount(f.v) }})</button>
+                class="px-3 py-1 rounded-full text-xs transition-colors">{{ t(f.l) }} ({{ mpStatusCount(f.v) }})</button>
               <span class="text-sm text-slate-500 ml-3">{{ t('級別：') }}</span>
-              <button v-for="t in mpTierFilters" :key="t.v"
-                @click="mpTierFilter = (mpTierFilter === t.v ? '' : t.v)"
-                :class="mpTierFilter === t.v ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'"
-                class="px-3 py-1 rounded-full text-xs transition-colors">{{ t.l }}</button>
+              <button v-for="tk in mpTierFilters" :key="tk.v"
+                @click="mpTierFilter = (mpTierFilter === tk.v ? '' : tk.v)"
+                :class="mpTierFilter === tk.v ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'"
+                class="px-3 py-1 rounded-full text-xs transition-colors">{{ t(tk.l) }}</button>
             </div>
 
             <!-- 表格 -->
@@ -2301,7 +2301,7 @@
                       <span :class="m.tier === 'family' ? 'text-purple-600' : (m.tier === 'premium' ? 'text-blue-600' : 'text-slate-500')">{{ m.tierName }}</span>
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm">
-                      <span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(m.accountStatus)">{{ m.accountStatusLabel }}</span>
+                      <span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(m.accountStatus)">{{ i18nServerLabel(m.accountStatusLabel) }}</span>
                     </td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{{ m.paymentMethodLabel }}</td>
                     <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{{ m.lastPaidAt ? m.lastPaidAt.slice(0,10) : '—' }}</td>
@@ -2333,7 +2333,7 @@
               <div class="p-6 space-y-5">
                 <!-- 狀態卡 -->
                 <div class="bg-white rounded-xl shadow p-4 grid grid-cols-2 gap-3 text-sm">
-                  <div><p class="text-slate-400 text-xs">{{ t('帳戶狀況') }}</p><span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(mpDetail.user.accountStatus)">{{ mpDetail.user.accountStatusLabel }}</span></div>
+                  <div><p class="text-slate-400 text-xs">{{ t('帳戶狀況') }}</p><span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(mpDetail.user.accountStatus)">{{ i18nServerLabel(mpDetail.user.accountStatusLabel) }}</span></div>
                   <div><p class="text-slate-400 text-xs">{{ t('會員級別') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.tierName }}</p></div>
                   <div><p class="text-slate-400 text-xs">{{ t('付款方式') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.paymentMethodLabel }}</p></div>
                   <div><p class="text-slate-400 text-xs">{{ t('上次付款') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.lastPaidAt ? mpDetail.user.lastPaidAt.slice(0,10) : '—' }}</p></div>
@@ -2552,7 +2552,7 @@
                                   <div class="ftree-name">{{ child.name }}</div>
                                   <div class="ftree-meta">{{ child.age }} {{ t('歲') }} · {{ t('預約') }} {{ child.booking_count || 0 }} {{ t('次') }}</div>
                                   <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
-                                    {{ child.isAdult ? t('已成年·跟進') : (child.turning18Soon ? `${t('快成年')}(${child.days_to_18}${t('日')})` : t('18歲以下')) }}
+                                    {{ child.isAdult ? t('已成年·跟進') : (child.turning18Soon ? `${t('快成年')}(${child.days_to_18}${t(' 日')})` : t('18歲以下')) }}
                                   </span>
                                   <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
                                 </div>
@@ -3010,7 +3010,7 @@
                 </div>
               </div>
               <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
-                <div>{{ t('日') }}</div><div>{{ t('一') }}</div><div>{{ t('二') }}</div><div>{{ t('三') }}</div><div>{{ t('四') }}</div><div>{{ t('五') }}</div><div>{{ t('六') }}</div>
+                <div>{{ i18nWeekdayShort(0) }}</div><div>{{ i18nWeekdayShort(1) }}</div><div>{{ i18nWeekdayShort(2) }}</div><div>{{ i18nWeekdayShort(3) }}</div><div>{{ i18nWeekdayShort(4) }}</div><div>{{ i18nWeekdayShort(5) }}</div><div>{{ i18nWeekdayShort(6) }}</div>
               </div>
               <div class="grid grid-cols-7 gap-1">
                 <template v-for="(cell, idx) in calendarDays()" :key="idx">
@@ -3151,15 +3151,15 @@
                     <p class="font-medium text-slate-800">
                       <span class="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" :style="{ backgroundColor: lv.doctor_user_id ? doctorColorByName(lv.doctor_name) : '#94a3b8' }"></span>
                       {{ lv.doctor_user_id ? lv.doctor_name : '全診所休診' }}
-                      <span class="text-xs text-slate-400 ml-2">{{ lv.exception_date }}（週{{ weekdayLabel(lv.exception_date) }}）</span>
+                      <span class="text-xs text-slate-400 ml-2">{{ dateWithWeekday(lv.exception_date) }}</span>
                     </p>
                     <p class="text-xs text-slate-500 mt-1">
                       時段：{{ (lv.time_open && lv.time_close) ? (lv.time_open + '–' + lv.time_close) : '全日' }}
-                      <span v-if="lv.reason">　·　原因：{{ lv.reason }}</span>
+                      <span v-if="lv.reason">{{ t('　·　原因：') }}{{ lv.reason }}</span>
                     </p>
                     <p class="text-xs mt-1 flex flex-wrap gap-1">
-                      <span class="px-2 py-0.5 rounded-full font-medium" :class="lv.notify_customer ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'">{{ lv.notify_customer ? '會通知客人' : '唔通知客人' }}</span>
-                      <span v-if="lv.reassigned_to && lv.cover_doctor_name" class="px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">補位：{{ lv.cover_doctor_name }}</span>
+                      <span class="px-2 py-0.5 rounded-full font-medium" :class="lv.notify_customer ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'">{{ lv.notify_customer ? t('會通知客人') : t('唔通知客人') }}</span>
+                      <span v-if="lv.reassigned_to && lv.cover_doctor_name" class="px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">{{ t('補位：') }}{{ lv.cover_doctor_name }}</span>
                       <span v-if="lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0" class="px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">待安排第二位醫師（{{ lv.needs_arrange_count }} 張）</span>
                     </p>
                     <div v-if="lv.doctor_user_id && (lv.status === 'pending' || (lv.status === 'approved' && (lv.needs_arrange_count || 0) > 0))" class="mt-2 flex items-center gap-2">
@@ -3347,7 +3347,7 @@
                         v-model="closedDays"
                         class="sr-only"
                       />
-                      <span class="font-medium">{{ day }}</span>
+                      <span class="font-medium">{{ i18nWeekdayShort(index) }}</span>
                     </label>
                   </div>
                   <p class="mt-2 text-xs text-slate-500">
@@ -3387,8 +3387,8 @@
                     
                     <!-- 星期標題 -->
                     <div class="grid grid-cols-7 gap-1 mb-2">
-                      <div v-for="day in weekDays" :key="day" class="text-center text-xs font-medium text-slate-500 py-1">
-                        {{ day }}
+                      <div v-for="(day, index) in weekDays" :key="index" class="text-center text-xs font-medium text-slate-500 py-1">
+                        {{ i18nWeekdayShort(index) }}
                       </div>
                     </div>
                     
@@ -3912,7 +3912,7 @@
                       <i class="fas fa-exclamation-circle text-rose-600 mr-3"></i>
                       <div>
                         <p class="font-medium text-slate-700">{{ t('到診當日提醒') }}<span class="text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full ml-2">{{ t('即日通知') }}</span></p>
-                        <p class="text-xs text-slate-500">預約當天早上 8:00 發送提醒</p>
+                        <p class="text-xs text-slate-500">{{ t('預約當天早上 8:00 發送提醒') }}</p>
                       </div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -3931,7 +3931,7 @@
                       <i class="fas fa-calendar-day text-red-500 mr-3"></i>
                       <div>
                         <p class="font-medium text-slate-700">{{ t('到診前 1 日提醒') }}</p>
-                        <p class="text-xs text-slate-500">預約日期前一天早上 8:00 發送</p>
+                        <p class="text-xs text-slate-500">{{ t('預約日期前一天早上 8:00 發送') }}</p>
                       </div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -3950,7 +3950,7 @@
                       <i class="fas fa-calendar-week text-amber-500 mr-3"></i>
                       <div>
                         <p class="font-medium text-slate-700">{{ t('到診前 3 日提醒') }}</p>
-                        <p class="text-xs text-slate-500">預約日期前三天早上 8:00 發送</p>
+                        <p class="text-xs text-slate-500">{{ t('預約日期前三天早上 8:00 發送') }}</p>
                       </div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -3969,7 +3969,7 @@
                       <i class="fas fa-calendar-alt text-green-500 mr-3"></i>
                       <div>
                         <p class="font-medium text-slate-700">{{ t('到診前 7 日提醒') }}</p>
-                        <p class="text-xs text-slate-500">預約日期前一星期早上 8:00 發送</p>
+                        <p class="text-xs text-slate-500">{{ t('預約日期前一星期早上 8:00 發送') }}</p>
                       </div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -4001,7 +4001,7 @@
                     class="px-4 bg-slate-600 text-white py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50"
                   >
                     <i class="fas fa-paper-plane mr-2"></i>
-                    {{ isTriggeringReminder ? '發送中...' : '立即發送' }}
+                    {{ isTriggeringReminder ? t('發送中...') : t('立即發送') }}
                   </button>
                 </div>
                 
@@ -4460,7 +4460,7 @@
                 <i class="fas fa-comment-dots text-emerald-600 mr-2"></i>{{ t('意見箱管理') }}</h2>
               <div class="flex items-center gap-4">
                 <span class="text-sm text-slate-600">
-                  共 {{ adminFeedbacks.length }} 條反饋，{{ feedbackUnreadCount }} 條待處理
+                  {{ t('共') }} {{ adminFeedbacks.length }} {{ t('條反饋，') }}{{ feedbackUnreadCount }} {{ t('條待處理') }}
                 </span>
                 <button
                   @click="loadAdminFeedbacks"
@@ -4663,7 +4663,7 @@
                       <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('符合條件用戶數') }}</label>
                         <div class="bg-white border border-slate-300 rounded-lg px-4 py-2 text-emerald-600 font-semibold">
-                          {{ notificationEligibleCount }} 人
+                          {{ notificationEligibleCount }} {{ t('人') }}
                         </div>
                         <p class="text-xs text-slate-500 mt-1">{{ t('已完善個人資料的用戶') }}</p>
                       </div>
@@ -4818,7 +4818,7 @@
                             </span>
                           </td>
                           <td class="px-4 py-3 font-medium">{{ log.title }}</td>
-                          <td class="px-4 py-3">{{ log.recipients_count }} 人</td>
+                          <td class="px-4 py-3">{{ log.recipients_count }} {{ t('人') }}</td>
                           <td class="px-4 py-3 text-green-600">{{ log.success_count }}</td>
                           <td class="px-4 py-3 text-red-600">{{ log.failed_count }}</td>
                           <td class="px-4 py-3 text-sm text-slate-500">{{ formatAdminDate(log.sent_at) }}</td>
@@ -5098,18 +5098,18 @@
                 <p class="text-sm text-slate-500 mb-4">
                   {{ t('修改後官網即時顯示更新。左邊為文字名稱（顯示位置），右邊為內容') }}</p>
                 <div class="space-y-3">
-                  <div v-for="t in adminSiteTexts" :key="t.id" class="border rounded-lg p-4 bg-white">
+                  <div v-for="st in adminSiteTexts" :key="st.id" class="border rounded-lg p-4 bg-white">
                     <div class="flex items-center justify-between mb-2">
                       <div class="flex items-center gap-3">
-                        <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full">{{ t.section }}</span>
-                        <span class="font-mono text-sm text-slate-700">{{ t.text_key }}</span>
+                        <span class="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full">{{ st.section }}</span>
+                        <span class="font-mono text-sm text-slate-700">{{ st.text_key }}</span>
                       </div>
                       <div>
-                        <button @click="saveSiteText(t)" class="text-green-600 hover:text-green-800 mr-3" :title="t('儲存')"><i class="fas fa-save"></i></button>
-                        <button @click="deleteSiteText(t.id)" class="text-red-600 hover:text-red-800" :title="t('刪除')"><i class="fas fa-trash"></i></button>
+                        <button @click="saveSiteText(st)" class="text-green-600 hover:text-green-800 mr-3" :title="t('儲存')"><i class="fas fa-save"></i></button>
+                        <button @click="deleteSiteText(st.id)" class="text-red-600 hover:text-red-800" :title="t('刪除')"><i class="fas fa-trash"></i></button>
                       </div>
                     </div>
-                    <textarea v-model="t.text_value" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows="2"></textarea>
+                    <textarea v-model="st.text_value" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" rows="2"></textarea>
                   </div>
                   <div v-if="!adminSiteTexts.length" class="text-center py-8 text-slate-400">{{ t('暫無文字記錄') }}</div>
                 </div>
@@ -5213,11 +5213,11 @@
             <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-clock text-emerald-600 mr-2"></i>{{ t('我的打卡考勤') }}</h2>
 
             <!-- 今日狀態卡 -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div v-if="hrStatus" class="bg-white rounded-xl shadow-lg p-6">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h3 class="text-lg font-bold text-slate-800">{{ t('今日考勤') }}</h3>
-                  <p class="text-sm text-slate-500">{{ hrStatus.date || '—' }}{{ hrStatus.schedule && hrStatus.schedule.off ? '（休息日）' : '' }}</p>
+                  <p class="text-sm text-slate-500">{{ hrStatus.date || '—' }}{{ hrStatus.schedule && hrStatus.schedule.off ? t('（休息日）') : '' }}</p>
                 </div>
                 <div v-if="hrStatus.schedule && !hrStatus.schedule.off" class="text-sm text-slate-600">
                   {{ t('返工時間：') }}<b class="text-slate-800">{{ hrStatus.schedule.work_start || '—' }} – {{ hrStatus.schedule.work_end || '—' }}</b>
@@ -5277,22 +5277,22 @@
                 <div class="bg-sky-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('年假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.annual === -1 ? '不限' : (hrStatus.available.annual ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.annual || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.annual || 0 }}</p>
                 </div>
                 <div class="bg-rose-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('病假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.sick === -1 ? '不限' : (hrStatus.available.sick ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.sick || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.sick || 0 }}</p>
                 </div>
                 <div class="bg-amber-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('事假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal === -1 ? '不限' : (hrStatus.available.personal ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.personal || 0 }}</p>
                 </div>
                 <div class="bg-violet-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('其他') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal_other === -1 ? '不限' : (hrStatus.available.personal_other ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal_other || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.personal_other || 0 }}</p>
                 </div>
               </div>
             </div>
@@ -7723,7 +7723,7 @@ addUserForm: {
                 const [year, month] = value.split('-');
                 return {
                   value,
-                  label: `${year}年${parseInt(month)}月`,
+                  label: i18nMonthTitle(parseInt(year), parseInt(month)),
                   count
                 };
               })
@@ -9927,7 +9927,15 @@ phone: this.addUserForm.phone,
           },
           weekdayLabel(dateStr) {
             const d = new Date(dateStr + 'T00:00:00');
-            return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+            return i18nWeekdayShort(d.getDay());
+          },
+          // 「2026-09-10（週四）」/「2026-09-10 (Thu)」
+          dateWithWeekday(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr + 'T00:00:00');
+            if (isNaN(d.getTime())) return dateStr;
+            const wk = i18nWeekdayShort(d.getDay());
+            return (currentLang() === 'en') ? `${dateStr} (${wk})` : `${dateStr}（週${wk}）`;
           },
           onSlotRangeChange() {
             if (this.slotRangeEnd < this.slotRangeStart) this.slotRangeEnd = this.slotRangeStart;
@@ -9959,7 +9967,6 @@ phone: this.addUserForm.phone,
               const firstJson = await (await fetch(`/api/bookings/doctor-time-slots/${days[0]}`)).json();
               const timeList = [...(firstJson.morningSlots || []), ...(firstJson.afternoonSlots || [])];
               this.slotTimeList = timeList;
-              const wn = ['日', '一', '二', '三', '四', '五', '六'];
               const out = [];
               for (let i = 0; i < days.length; i++) {
                 const date = days[i];
@@ -9972,7 +9979,7 @@ phone: this.addUserForm.phone,
                   return { time, status, booked: ds.current_bookings || 0, capacity: ds.max_capacity || 1 };
                 });
                 const dt = new Date(date + 'T00:00:00');
-                out.push({ date, label: date.slice(5), dow: '週' + wn[dt.getDay()], cells });
+                out.push({ date, label: date.slice(5), dow: (currentLang() === 'en' ? '' : '週') + i18nWeekdayShort(dt.getDay()), cells });
               }
               this.slotDays = out;
             } catch (e) { console.error('載入時段網格失敗', e); }
@@ -10443,7 +10450,7 @@ phone: this.addUserForm.phone,
           // 月份開放控制相關方法
           getCurrentMonthLabel() {
             const now = new Date();
-            return `${now.getFullYear()}年${now.getMonth() + 1}月（當前月份）`;
+            return i18nMonthTitle(now.getFullYear(), now.getMonth() + 1) + (currentLang() === 'en' ? ' (current month)' : '（當前月份）');
           },
           
           getNextMonth(offset) {
@@ -10454,7 +10461,7 @@ phone: this.addUserForm.phone,
           
           getMonthLabel(monthStr) {
             const [year, month] = monthStr.split('-');
-            return `${year}年${parseInt(month)}月`;
+            return i18nMonthTitle(parseInt(year), parseInt(month));
           },
           
           isMonthOpen(monthStr) {
@@ -10540,8 +10547,7 @@ phone: this.addUserForm.phone,
           
           formatSpecialDate(dateStr) {
             const date = new Date(dateStr);
-            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-            return `${date.getMonth() + 1}/${date.getDate()} (${dayNames[date.getDay()]})`;
+            return `${date.getMonth() + 1}/${date.getDate()} (${i18nWeekdayShort(date.getDay())})`;
           },
           
           removeCustomClosedDate(dateStr) {
@@ -11055,7 +11061,7 @@ phone: this.addUserForm.phone,
 
           formatDate(dateStr) {
             if (!dateStr) return "";
-            return new Date(dateStr).toLocaleDateString("zh-TW");
+            return new Date(dateStr).toLocaleDateString(i18nLocale());
           },
 
           formatDateTime(dateTimeStr) {
@@ -11071,10 +11077,11 @@ phone: this.addUserForm.phone,
           },
 
           formatUptime(seconds) {
-            if (!seconds) return "0小時";
+            const en = (typeof currentLang === 'function' && currentLang() === 'en');
+            if (!seconds) return en ? '0h' : '0小時';
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
-            return `${hours}小時${minutes}分`;
+            return en ? `${hours}h ${minutes}m` : `${hours}小時${minutes}分`;
           },
 
           // ===== 醫療分流問題管理 =====

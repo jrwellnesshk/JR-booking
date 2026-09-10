@@ -15,8 +15,8 @@
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/auth-fetch.js"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260913"></script>
-    <script src="js/i18n-runtime.js?v=20260911"></script>
+    <script src="js/i18n.js?v=20260916"></script>
+    <script src="js/i18n-runtime.js?v=20260913"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
       [v-cloak]{ display:none !important; }
@@ -563,7 +563,7 @@
                 <i class="fas fa-list mr-2 text-purple-600"></i>
                 {{ t('預約列表') }}<span v-if="selectedDate" class="text-sm font-normal text-slate-500 ml-2">{{ selectedDate }}</span>
               </h2>
-              <span class="text-sm text-slate-500">共 {{ filteredBookings.length }} 筆</span>
+              <span class="text-sm text-slate-500">{{ t('共') }} {{ filteredBookings.length }} {{ t('筆') }}</span>
             </div>
 
             <!-- 載入中 -->
@@ -693,7 +693,7 @@
                 <div>
                   <label class="block text-xs text-slate-500 mb-1">{{ t('請假醫師') }}</label>
                   <select v-model="leaveForm.doctorUserId" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]">
-                    <option value="">自己（{{ doctorInfo ? doctorInfo.name : '' }}）</option>
+                    <option value="">{{ t('自己') }}（{{ doctorInfo ? doctorInfo.name : '' }}）</option>
                     <option v-for="doc in doctors" :key="doc.id" :value="doc.id">{{ doc.name }}</option>
                   </select>
                 </div>
@@ -758,7 +758,7 @@
                       <span class="text-xs text-slate-400 ml-2">{{ weekdayLabel(lv.exception_date) }}</span>
                       <span class="text-xs px-2 py-0.5 rounded-full font-medium ml-2" :class="leaveBadge(lv).cls">{{ leaveBadge(lv).text }}</span>
                     </p>
-                    <p class="text-xs text-slate-500 mt-0.5" v-if="lv.reason">原因：{{ lv.reason }}　·　時段：{{ leaveTimeLabel(lv) }}　<span v-if="lv.cover_doctor_name">　·　補位：{{ lv.cover_doctor_name }}</span></p>
+                    <p class="text-xs text-slate-500 mt-0.5" v-if="lv.reason">{{ t('原因：') }}{{ lv.reason }}{{ t('　·　時段：') }}{{ leaveTimeLabel(lv) }}<span v-if="lv.cover_doctor_name">{{ t('　·　補位：') }}{{ lv.cover_doctor_name }}</span></p>
                   </div>
                   <button @click="cancelLeave(lv)" class="text-sm text-red-500 hover:text-red-700 whitespace-nowrap">
                     <i class="fas fa-rotate-left mr-1"></i>{{ t('取消請假') }}</button>
@@ -770,11 +770,11 @@
           <!-- 🕐 打卡考勤（自助） -->
           <div v-if="docTab==='attendance'" class="space-y-6">
             <!-- 今日狀態卡 -->
-            <div class="bg-white rounded-xl shadow p-5">
+            <div v-if="hrStatus" class="bg-white rounded-xl shadow p-5">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
                   <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-clock text-emerald-600 mr-2"></i>{{ t('今日考勤') }}</h3>
-                  <p class="text-sm text-slate-500">{{ hrStatus.date || '—' }}{{ hrStatus.schedule && hrStatus.schedule.off ? '（休息日）' : '' }}</p>
+                  <p class="text-sm text-slate-500">{{ hrStatus.date || '—' }}{{ hrStatus.schedule && hrStatus.schedule.off ? t('（休息日）') : '' }}</p>
                 </div>
                 <div v-if="hrStatus.schedule && !hrStatus.schedule.off" class="text-sm text-slate-600">
                   {{ t('返工時間：') }}<b class="text-slate-800">{{ hrStatus.schedule.work_start || '—' }} – {{ hrStatus.schedule.work_end || '—' }}</b>
@@ -834,22 +834,22 @@
                 <div class="bg-sky-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('年假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.annual === -1 ? '不限' : (hrStatus.available.annual ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.annual || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.annual || 0 }}</p>
                 </div>
                 <div class="bg-rose-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('病假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.sick === -1 ? '不限' : (hrStatus.available.sick ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.sick || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.sick || 0 }}</p>
                 </div>
                 <div class="bg-amber-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('事假') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal === -1 ? '不限' : (hrStatus.available.personal ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.personal || 0 }}</p>
                 </div>
                 <div class="bg-violet-50 rounded-lg p-3">
                   <p class="text-xs text-slate-500 mb-1">{{ t('其他') }}</p>
                   <p class="text-xl font-bold text-slate-800">{{ hrStatus.available.personal_other === -1 ? '不限' : (hrStatus.available.personal_other ?? 0) }}</p>
-                  <p class="text-xs text-slate-400">已用 {{ hrStatus.used.personal_other || 0 }}</p>
+                  <p class="text-xs text-slate-400">{{ t('已用') }} {{ hrStatus.used.personal_other || 0 }}</p>
                 </div>
               </div>
             </div>
@@ -910,7 +910,7 @@
                     <tr v-for="l in hrLeaves" :key="l.id">
                       <td class="px-4 py-3">{{ l.leave_type_label || l.leave_type }}</td>
                       <td class="px-4 py-3">{{ l.start_date }} ~ {{ l.end_date }}</td>
-                      <td class="px-4 py-3">{{ l.days }} 日</td>
+                      <td class="px-4 py-3">{{ l.days }}{{ t(' 日') }}</td>
                       <td class="px-4 py-3 text-slate-600">{{ l.reason || '—' }}</td>
                       <td class="px-4 py-3">
                         <span v-if="l.status==='approved'" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{{ t('已批准') }}</span>
@@ -1013,7 +1013,7 @@
                 </div>
               </div>
               <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 mb-1">
-                <div>{{ t('一') }}</div><div>{{ t('二') }}</div><div>{{ t('三') }}</div><div>{{ t('四') }}</div><div>{{ t('五') }}</div><div>{{ t('六') }}</div><div>{{ t('日') }}</div>
+                <div>{{ i18nWeekdayShort(1) }}</div><div>{{ i18nWeekdayShort(2) }}</div><div>{{ i18nWeekdayShort(3) }}</div><div>{{ i18nWeekdayShort(4) }}</div><div>{{ i18nWeekdayShort(5) }}</div><div>{{ i18nWeekdayShort(6) }}</div><div>{{ i18nWeekdayShort(0) }}</div>
               </div>
               <div class="grid grid-cols-7 gap-1" style="user-select:none" @mouseleave="endCalSelect" @mouseup="endCalSelect">
                 <template v-for="(cell, idx) in slotCalendarDays()" :key="idx">
@@ -1056,7 +1056,7 @@
                   </button>
                 </template>
               </div>
-              <p class="text-xs text-slate-400 mt-2">揸住日曆日期拖掃 → 自動揀定日期範圍；{{ slotSubView==='booking' ? '下方「時段網格」純粹用嚟設定時段狀態（候診／休息／放假／開放）：拖掃揀自己帳戶嘅格，再撳狀態掣。如該時段已有預約，設定「放假」或「休息」時會彈出提醒。' : '下方會顯示嗰段日期嘅預約紀錄＋每位醫師嘅假期（直接寫明醫師名），撳入去睇詳情。' }}撳單一日亦可。</p>
+              <p class="text-xs text-slate-400 mt-2">{{ t('揸住日曆日期拖掃 → 自動揀定日期範圍；') }}{{ slotSubView==='booking' ? t('下方「時段網格」純粹用嚟設定時段狀態（候診／休息／放假／開放）：拖掃揀自己帳戶嘅格，再撳狀態掣。如該時段已有預約，設定「放假」或「休息」時會彈出提醒。') : t('下方會顯示嗰段日期嘅預約紀錄＋每位醫師嘅假期（直接寫明醫師名），撳入去睇詳情。') }}{{ t('撳單一日亦可。') }}</p>
             </div>
 
             <!-- 日期範圍 -->
@@ -1075,7 +1075,7 @@
             <!-- 預約模式：全部醫師時段網格（拖掃揀自己帳戶改時段；有預約格撳入睇詳情） -->
             <div v-if="slotSubView==='booking'" class="bg-white rounded-xl shadow-lg p-4">
               <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>{{ t('時段網格') }}<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }} 日 × {{ slotAllTimes.length }} 時段 · 自己帳戶）</span></h3>
+                <h3 class="font-bold text-slate-800"><i class="fas fa-clock mr-2 text-emerald-600"></i>{{ t('時段網格') }}<span class="ml-1 text-xs font-normal text-slate-400">（{{ slotAllDays.length }} {{ t('日') }} × {{ slotAllTimes.length }} {{ t('時段') }} · {{ t('自己帳戶') }}）</span></h3>
                 <div class="flex flex-wrap items-center gap-2">
                   <button @click="applyAllSlotStatus('leave')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-violet-600 disabled:opacity-40"><i class="fas fa-plane-departure mr-1"></i>{{ t('放假') }}</button>
                   <button @click="applyAllSlotStatus('rest')" :disabled="!slotSelCount || slotBusy" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-rose-500 disabled:opacity-40"><i class="fas fa-moon mr-1"></i>{{ t('休息') }}</button>
@@ -1110,7 +1110,7 @@
                             :key="dc.doctorId"
                             class="group relative px-1 py-0.5 rounded cursor-pointer transition-colors"
                             :style="allCellStyle(dc, allCellIsSel(slotAllCellByKey[d.date + '|' + time], dc))"
-                            :title="((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? '放假' : (dc.status==='open' ? '開放' : (dc.status==='rest' ? '休息' : (dc.status==='waiting' ? '候診' : '空位')))) + '（自己帳戶）'"
+                            :title="((slotAllCellByKey[d.date + '|' + time] || {}).time || '') + ' · ' + (dc.status==='leave' ? t('放假') : (dc.status==='open' ? t('開放') : (dc.status==='rest' ? t('休息') : (dc.status==='waiting' ? t('候診') : t('空位'))))) + t('（自己帳戶）')"
                             @mousedown.prevent="startAllSelect(slotAllCellByKey[d.date + '|' + time], dc)"
                             @mouseenter="enterAllCell(slotAllCellByKey[d.date + '|' + time], dc)"
                           >
@@ -1248,8 +1248,8 @@
                 <template v-else>
                   <div class="flex flex-wrap items-center justify-between gap-2 mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
                     <div>
-                      <div class="text-sm font-semibold text-emerald-800">報更週：{{ essRosterWeek.week_start }}（一）至 {{ essRosterWeek.week_end }}（六）</div>
-                      <div class="text-xs text-emerald-600 mt-1">截止：{{ essRosterWeek.deadline }}（星期日）前</div>
+                      <div class="text-sm font-semibold text-emerald-800">{{ t('報更週：') }}{{ essRosterWeek.week_start }}{{ t('（一）至') }}{{ essRosterWeek.week_end }}{{ t('（六）') }}</div>
+                      <div class="text-xs text-emerald-600 mt-1">{{ t('截止：') }}{{ essRosterWeek.deadline }}{{ t('（星期日）前') }}</div>
                       <div class="text-xs text-amber-600 mt-1" v-if="!essRosterWeek.canModify">{{ t('此週報更已截止或已提交，需要修改請聯絡管理員') }}</div>
                     </div>
                     <button v-if="essRosterWeek.canModify" @click="submitRoster()" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700">
@@ -1401,8 +1401,8 @@
                       <div class="text-sm text-slate-500">{{ essPayslip.row.name }}（醫生）</div>
                     </div>
                     <div class="space-y-3 pt-4 text-sm">
-                      <div class="flex justify-between"><span class="text-slate-500">{{ t('應返工作天') }}</span><span class="font-medium">{{ essPayslip.workdays }} 日</span></div>
-                      <div class="flex justify-between"><span class="text-slate-500">{{ t('出勤日數') }}</span><span class="font-medium">{{ essPayslip.row.worked_days }} 日</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">{{ t('應返工作天') }}</span><span class="font-medium">{{ essPayslip.workdays }}{{ t(' 日') }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-500">{{ t('出勤日數') }}</span><span class="font-medium">{{ essPayslip.row.worked_days }}{{ t(' 日') }}</span></div>
                       <div class="flex justify-between"><span class="text-slate-500">{{ t('總工時') }}</span><span class="font-medium">{{ essPayslip.row.total_label }}</span></div>
                       <div class="flex justify-between"><span class="text-slate-500">{{ t('OT 小時') }}</span><span class="font-medium">{{ essPayslip.row.ot_hours || 0 }}</span></div>
                     </div>
@@ -1910,10 +1910,9 @@
             for (const r of (this.slotAllGrid || [])) {
               if (!keys.has(r.date)) { keys.add(r.date); seen.push(r.date); }
             }
-            const wn = ['日', '一', '二', '三', '四', '五', '六'];
             return seen.map(d => {
               const dt = new Date(d + 'T00:00:00');
-              return { date: d, label: d.slice(5), dow: '週' + wn[dt.getDay()] };
+              return { date: d, label: d.slice(5), dow: (currentLang() === 'en' ? '' : '週') + i18nWeekdayShort(dt.getDay()) };
             });
           },
           slotAllTimes() {
@@ -1931,7 +1930,7 @@
           isPartTime() {
             return !!(this.doctorUser && this.doctorUser.employment_type === 'part');
           },          currentDateStr() {
-            return new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+            return new Date().toLocaleDateString(i18nLocale(), { year: "numeric", month: "long", day: "numeric", weekday: "long" });
           },
           todayStr() {
             return new Date().toISOString().split("T")[0];
@@ -2347,7 +2346,6 @@
               const firstJson = await (await fetch(`/api/bookings/doctor-time-slots/${days[0]}`)).json();
               const timeList = [...(firstJson.morningSlots || []), ...(firstJson.afternoonSlots || [])];
               this.slotTimeList = timeList;
-              const wn = ['日', '一', '二', '三', '四', '五', '六'];
               const out = [];
               for (let i = 0; i < days.length; i++) {
                 const date = days[i];
@@ -2360,7 +2358,7 @@
                   return { time, status, booked: ds.current_bookings || 0, capacity: ds.max_capacity || 1 };
                 });
                 const dt = new Date(date + 'T00:00:00');
-                out.push({ date, label: date.slice(5), dow: '週' + wn[dt.getDay()], cells });
+                out.push({ date, label: date.slice(5), dow: (currentLang() === 'en' ? '' : '週') + i18nWeekdayShort(dt.getDay()), cells });
               }
               this.slotDays = out;
             } catch (e) { console.error('載入時段網格失敗', e); }
@@ -2375,7 +2373,6 @@
             this.slotSelCount = 0; this.slotDirtyCount = 0;
             try {
               if (!days.length) { this.slotAllGrid = []; this.slotBusy = false; return; }
-              const wn = ['日', '一', '二', '三', '四', '五', '六'];
               if (!this.doctors.length) {
                 try {
                   const r0 = await fetch(`/api/bookings/doctor-time-slots/range?start=${days[0]}&end=${days[days.length - 1]}`);
@@ -2661,10 +2658,9 @@
           // ==================== 排程／請假 ====================
           weekdayLabel(ds) {
             if (!ds) return "";
-            const names = ["日", "一", "二", "三", "四", "五", "六"];
             const d = new Date(ds + "T00:00:00");
             if (isNaN(d.getTime())) return "";
-            return "星期" + names[d.getDay()];
+            return i18nWeekdayLong(d.getDay());
           },
 
           async loadScheduleDocs() {
@@ -2920,7 +2916,7 @@
               cancelled: "已取消", visited: "已到訪", "in-treatment": "治療中",
               dispensing: "配藥中", "in-progress": "處理中"
             };
-            return map[status] || status;
+            return t(map[status] || status);
           },
           statusClass(status) {
             const map = {
@@ -3274,8 +3270,7 @@
             else alert(data.error || "刪除失敗");
           },
           essWeekday(date) {
-            const w = ["日", "一", "二", "三", "四", "五", "六"];
-            return "星期" + w[new Date(date + "T12:00:00").getDay()];
+            return i18nWeekdayLong(new Date(date + "T12:00:00").getDay());
           },
           async loadRosterWeek() {
             const r = await fetch("/api/hr/my-roster/week", { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });

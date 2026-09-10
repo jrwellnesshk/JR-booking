@@ -93,7 +93,7 @@ const MAP = {
   '病假': 'Sick Leave', '年假': 'Annual Leave', '全日': 'Full Day', '半日': 'Half Day',
   '全職': 'Full-time', '兼職': 'Part-time', '全職 / 兼職': 'Full-time / Part-time', '全/兼職': 'Full/Part-time',
   '全部員工': 'All Employees', '兼職報更（待審批）': 'Part-time Shift (Pending)', '入職日期': 'Join Date',
-  '回到本月': 'Back to This Month', '紅日': 'Red Day', '考勤': 'Attendance', '自助': 'Self-Service',
+  '回到本月': 'Back to This Month', '紅日': 'Public Holiday', '考勤': 'Attendance', '自助': 'Self-Service',
   '我的假期': 'My Leave', '我的考勤紀錄': 'My Attendance Records', '我的自助': 'My Self-Service',
   '我的請假紀錄': 'My Leave Records', '打卡考勤': 'Clock-in Attendance', '申請請假': 'Apply for Leave',
   '申請請假（假期）': 'Apply for Leave', '取消請假': 'Cancel Leave', '請假日期 *': 'Leave Date *',

@@ -38,6 +38,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (typeof key === 'string' && key.startsWith('nav.')) return key.slice(4);
             return key;
           }
+          // 星期短標籤（日曆表頭用）
+          const weekdayShort = (i) => (lang.value === 'en'
+            ? (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i] || '')
+            : (['日', '一', '二', '三', '四', '五', '六'][i] || ''));
           function setLang(l) {
             if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
             lang.value = l;
@@ -4278,6 +4282,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             currentLang,
             t,
             setLang,
+            weekdayShort,
             SUPPORTED_LANGS,
             DOCTORS,
             SERVICES,

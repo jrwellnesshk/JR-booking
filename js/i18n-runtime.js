@@ -77,9 +77,44 @@
 
   function currentLang() { return langRef.value; }
 
+  // ── 本地化日期／星期輔助（畀各 portal 嘅 formatter 用）──────────────
+  // 讀 langRef.value → 語言切換時 computed 會自動重算（響應式）。
+  function i18nLocale() { return (langRef.value === 'en') ? 'en-US' : 'zh-TW'; }
+  var WD_SHORT_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+  var WD_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var WD_LONG_ZH = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  var WD_LONG_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function i18nWeekdays() { return (langRef.value === 'en') ? WD_SHORT_EN : WD_SHORT_ZH; }
+  function i18nWeekdayShort(i) { return ((langRef.value === 'en') ? WD_SHORT_EN : WD_SHORT_ZH)[i] || ''; }
+  function i18nWeekdayLong(i) { return ((langRef.value === 'en') ? WD_LONG_EN : WD_LONG_ZH)[i] || ''; }
+  // 「2026 年 09 月」/「September 2026」式嘅月份標題
+  function i18nMonthTitle(year, month) {
+    if (langRef.value === 'en') {
+      var m = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return (m[month - 1] || month) + ' ' + year;
+    }
+    return year + ' 年 ' + String(month).padStart(2, '0') + ' 月';
+  }
+
+  // 伺服器回傳嘅中文狀態標籤 → 英譯（支援「快到期（N 日內）」動態樣式）
+  function i18nServerLabel(text) {
+    if (!text) return text;
+    var v = t(text);
+    if (v !== text) return v;                       // 字典命中
+    var m = String(text).match(/^快到期（(\d+) 日內）$/);
+    if (m) return (langRef.value === 'en') ? ('Expiring in ' + m[1] + ' days') : text;
+    return text;
+  }
+
   window.t = t;
   window.setLang = setLang;
   window.currentLang = currentLang;
+  window.i18nLocale = i18nLocale;
+  window.i18nWeekdays = i18nWeekdays;
+  window.i18nWeekdayShort = i18nWeekdayShort;
+  window.i18nWeekdayLong = i18nWeekdayLong;
+  window.i18nMonthTitle = i18nMonthTitle;
+  window.i18nServerLabel = i18nServerLabel;
   window.__i18nLang = langRef; // 畀想直接用 ref 嘅 portal
 
   // 自動注入 globalProperties 到每一個 createApp（包含 index.html，但 index.html setup 自有 t/lang 優先）
@@ -90,6 +125,12 @@
     app.config.globalProperties.lang = langRef;
     app.config.globalProperties.setLang = setLang;
     app.config.globalProperties.currentLang = currentLang;
+    app.config.globalProperties.i18nLocale = i18nLocale;
+    app.config.globalProperties.i18nWeekdays = i18nWeekdays;
+    app.config.globalProperties.i18nWeekdayShort = i18nWeekdayShort;
+    app.config.globalProperties.i18nWeekdayLong = i18nWeekdayLong;
+    app.config.globalProperties.i18nMonthTitle = i18nMonthTitle;
+    app.config.globalProperties.i18nServerLabel = i18nServerLabel;
     return app;
   };
 })();
