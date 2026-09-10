@@ -66,7 +66,7 @@ const generateVerificationCode = () => {
 
 // 🆕 登入失敗鎖定配置
 const MAX_LOGIN_ATTEMPTS = 5;        // 最大登入失敗次數
-const LOCKOUT_DURATION_MINUTES = 10; // 鎖定時間（分鐘）
+const LOCKOUT_DURATION_MINUTES = 15; // 鎖定時間（分鐘）— 密碼錯誤 5 次後鎖定，15 分鐘後自動解鎖
 
 // 🆕 驗證碼發送限制配置
 const VERIFICATION_CODE_COOLDOWN_MINUTES = 1; // 同一電郵驗證碼冷卻時間（分鐘）
@@ -497,9 +497,12 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
             return serverError(res, err);
           }
           
+          // 🔒 統一回應，避免帳戶枚舉（唔好話「未登記」）
           if (!user) {
-            // 通知用戶電郵未註冊
-            return res.status(404).json({ error: "此電子郵件沒有登記" });
+            return res.json({
+              ok: true,
+              message: "如果該電郵已登記，驗證碼將會發送到您的信箱。"
+            });
           }
 
           // 生成 6 位驗證碼

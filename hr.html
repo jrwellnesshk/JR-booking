@@ -14,8 +14,8 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260917"></script>
-    <script src="js/i18n-runtime.js?v=20260913"></script>
+    <script src="js/i18n.js?v=20260919"></script>
+    <script src="js/i18n-runtime.js?v=20260919"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -94,7 +94,7 @@
   <body class="h-screen overflow-hidden">
     <div id="app" v-cloak class="h-screen flex">
       <!-- 語言切換（中文 / EN） -->
-      <div class="fixed top-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur">
+      <div class="fixed bottom-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur max-md:bottom-20">
         <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">中文</button>
         <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">EN</button>
       </div>
@@ -118,6 +118,9 @@
             <span class="truncate text-[#3E3328]">{{ adminUser.name || '管理員' }}</span>
             <button @click="handleLogout" class="ml-auto text-[#b4453a] hover:text-[#8f3429]" :title="t('登出')">
               <i class="fas fa-sign-out-alt"></i>
+            </button>
+            <button @click="openMyPwd" class="text-[#637c5d] hover:text-[#3E5240]" :title="t('更改密碼')">
+              <i class="fas fa-key"></i>
             </button>
             <a href="admin.html" class="text-[#637c5d] hover:text-[#3E5240]" :title="t('返回後台')"><i class="fas fa-arrow-left"></i></a>
           </div>
@@ -456,7 +459,88 @@
           <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
               <h1 class="text-2xl font-bold text-ink">{{ t('排班管理') }}</h1>
-              <p class="text-sm text-taupe mt-1">全職用系統預設返工時間（一至五 10:00-19:00、六 10:00-13:00）；星期日及香港公眾假期休息；兼職每星期報更審批</p>
+              <p class="text-sm text-taupe mt-1">{{ t('全職用系統預設返工時間（一至五 10:00-19:00、六 10:00-13:00）；星期日及香港公眾假期休息；兼職每星期報更審批') }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-ghost !px-3 !py-1 text-xs" @click="loadSchedulesAll"><i class="fas fa-sync-alt"></i>{{ t('刷新') }}</button>
+            </div>
+          </div>
+
+          <!-- 預設返工時間 -->
+          <div class="card mb-4">
+            <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)]">
+              <h2 class="font-bold text-ink">{{ t('預設返工時間') }}</h2>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('上班') }}</th><th class="th">{{ t('下班') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
+                <tbody>
+                  <tr v-for="s in defaultSchedules" :key="s.user_id">
+                    <td class="td font-semibold text-ink">{{ s.name }}</td>
+                    <td class="td"><input type="time" class="input !w-28" v-model="s.work_start" /></td>
+                    <td class="td"><input type="time" class="input !w-28" v-model="s.work_end" /></td>
+                    <td class="td"><button class="btn btn-sage !px-3 !py-1 text-xs" @click="saveSchedule(s)">{{ t('儲存') }}</button></td>
+                  </tr>
+                  <tr v-if="!defaultSchedules || defaultSchedules.length===0"><td class="td text-center text-taupe" colspan="4">{{ t('暫無資料') }}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 排班例外 -->
+          <div class="card mb-4">
+            <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)]">
+              <h2 class="font-bold text-ink mb-3">{{ t('排班例外（逐日覆寫 / 休息）') }}</h2>
+              <div class="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
+                <div><label class="lbl">{{ t('員工') }}</label><select class="input" v-model="excForm.user_id"><option value="">{{ t('請選擇') }}</option><option v-for="e in roster" :key="e.id" :value="e.id">{{ e.name }}</option></select></div>
+                <div><label class="lbl">{{ t('日期') }}</label><input type="date" class="input" v-model="excForm.exc_date" /></div>
+                <div><label class="lbl">{{ t('上班') }}</label><input type="time" class="input" v-model="excForm.work_start" :disabled="excForm.is_off" /></div>
+                <div><label class="lbl">{{ t('下班') }}</label><input type="time" class="input" v-model="excForm.work_end" :disabled="excForm.is_off" /></div>
+                <div class="flex items-center gap-2 pb-2"><input type="checkbox" id="excOff" v-model="excForm.is_off" /><label for="excOff" class="text-sm">{{ t('休息日') }}</label></div>
+                <div><button class="btn btn-solid w-full" @click="addScheduleException">{{ t('新增') }}</button></div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('日期') }}</th><th class="th">{{ t('時間') }}</th><th class="th">{{ t('備註') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
+                <tbody>
+                  <tr v-for="x in scheduleExceptions" :key="x.id">
+                    <td class="td">{{ x.user_name || x.name }}</td>
+                    <td class="td">{{ x.exception_date || x.exc_date }}</td>
+                    <td class="td">{{ x.is_off ? t('休息日') : ((x.work_start||'')+'–'+(x.work_end||'')) }}</td>
+                    <td class="td text-xs text-taupe">{{ x.note || '—' }}</td>
+                    <td class="td"><button class="btn btn-danger !px-2 !py-1 text-xs" @click="deleteScheduleException(x.id)"><i class="fas fa-trash"></i></button></td>
+                  </tr>
+                  <tr v-if="!scheduleExceptions || scheduleExceptions.length===0"><td class="td text-center text-taupe" colspan="5">{{ t('暫無例外') }}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 診所休診日 -->
+          <div class="card mb-4">
+            <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)]">
+              <h2 class="font-bold text-ink mb-3">{{ t('診所休診日') }}</h2>
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+                <div><label class="lbl">{{ t('日期') }}</label><input type="date" class="input" v-model="offdayForm.off_date" /></div>
+                <div><label class="lbl">{{ t('名稱') }}</label><input class="input" v-model="offdayForm.name" :placeholder="t('例如：農曆新年')" /></div>
+                <div class="flex items-center gap-2 pb-2"><input type="checkbox" id="offAnnual" v-model="offdayForm.is_annual" /><label for="offAnnual" class="text-sm">{{ t('每年重複') }}</label></div>
+                <div><button class="btn btn-solid w-full" @click="addClinicOffday">{{ t('新增') }}</button></div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('日期') }}</th><th class="th">{{ t('名稱') }}</th><th class="th">{{ t('每年重複') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
+                <tbody>
+                  <tr v-for="o in clinicOffdays" :key="o.id">
+                    <td class="td">{{ o.off_date }}</td>
+                    <td class="td">{{ o.name }}</td>
+                    <td class="td">{{ o.is_annual ? t('是') : t('否') }}</td>
+                    <td class="td"><button class="btn btn-danger !px-2 !py-1 text-xs" @click="deleteClinicOffday(o.id)"><i class="fas fa-trash"></i></button></td>
+                  </tr>
+                  <tr v-if="!clinicOffdays || clinicOffdays.length===0"><td class="td text-center text-taupe" colspan="4">{{ t('暫無休診日') }}</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -551,6 +635,32 @@
             </div>
             <div v-if="manualMsg" class="mt-3 text-sm font-semibold" :class="manualOk?'text-moss-700':'text-rose-600'">{{ manualMsg }}</div>
           </div>
+
+          <div class="card overflow-hidden mt-4">
+            <div class="px-5 py-4 border-b border-[rgba(199,180,166,.3)] flex items-center justify-between">
+              <h2 class="font-bold text-ink">{{ t('近期出勤（可編輯 / 刪除）') }}</h2>
+              <button class="btn btn-ghost !px-3 !py-1 text-xs" @click="loadRecentAttendance"><i class="fas fa-sync-alt"></i>{{ t('刷新') }}</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('日期') }}</th><th class="th">{{ t('員工') }}</th><th class="th">{{ t('上班') }}</th><th class="th">{{ t('下班') }}</th><th class="th">{{ t('來源') }}</th><th class="th">{{ t('操作') }}</th></tr></thead>
+                <tbody>
+                  <tr v-for="a in recentAttendance" :key="a.id">
+                    <td class="td">{{ a.attendance_date }}</td>
+                    <td class="td">{{ a.u_name || a.user_name || a.name }}</td>
+                    <td class="td">{{ a.clock_in || '—' }}</td>
+                    <td class="td">{{ a.clock_out || '—' }}</td>
+                    <td class="td text-xs text-taupe">{{ a.source==='manual' ? t('手動') : t('自助') }}</td>
+                    <td class="td">
+                      <button class="btn btn-ghost !px-2 !py-1 text-xs" @click="editAttendance(a)"><i class="fas fa-pen"></i></button>
+                      <button class="btn btn-danger !px-2 !py-1 text-xs ml-1" @click="deleteAttendance(a.id)"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                  <tr v-if="!recentAttendance || recentAttendance.length===0"><td class="td text-center text-taupe" colspan="6">{{ t('暫無考勤紀錄') }}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
       </main>
 
@@ -625,6 +735,28 @@
           </div>
         </div>
       </div>
+      <!-- ==================== 自助更改密碼 Modal ==================== -->
+      <div v-if="showMyPwd" class="modal-mask" @click.self="closeMyPwd">
+        <div class="card w-full max-w-sm p-6" style="background:#fffdf8;">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-ink"><i class="fas fa-key mr-2 text-moss-600"></i>{{ t('更改密碼') }}</h2>
+            <button class="text-taupe hover:text-ink" @click="closeMyPwd"><i class="fas fa-times"></i></button>
+          </div>
+          <div v-if="myPwdSuccess" class="mb-3 text-sm font-semibold text-moss-700"><i class="fas fa-check-circle mr-1"></i>{{ myPwdSuccess }}</div>
+          <label class="lbl">{{ t('目前密碼') }}</label>
+          <input type="password" class="input" v-model="myPwdData.currentPassword" autocomplete="current-password" />
+          <label class="lbl mt-3">{{ t('新密碼（最少 10 字元，含英文大細階＋數字）') }}</label>
+          <input type="password" class="input" v-model="myPwdData.newPassword" autocomplete="new-password" />
+          <label class="lbl mt-3">{{ t('確認新密碼') }}</label>
+          <input type="password" class="input" v-model="myPwdData.confirmPassword" autocomplete="new-password" />
+          <div v-if="myPwdError" class="mt-3 text-sm font-semibold text-rose-600">{{ myPwdError }}</div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-ghost" @click="closeMyPwd">{{ t('取消') }}</button>
+            <button class="btn btn-solid" @click="submitMyPwd" :disabled="myPwdBusy"><i class="fas" :class="myPwdBusy?'fa-spinner fa-spin':'fa-key'"></i>{{ myPwdBusy ? '提交中...' : '確認更改密碼' }}</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <script>
@@ -634,6 +766,12 @@
           return {
             adminUser: {},
             token: '',
+            // 🔑 自助更改密碼
+            showMyPwd: false,
+            myPwdBusy: false,
+            myPwdError: '',
+            myPwdSuccess: '',
+            myPwdData: { currentPassword: '', newPassword: '', confirmPassword: '' },
             todayStr: '',
             view: 'overview',
             // overview
@@ -658,30 +796,36 @@
             showPwdModal: false, pwdEmp: {}, pwdNew: '', pwdMsg:'', pwdOk:false,
             // schedule
             rosters: [], rosterStatus: 'pending',
+            defaultSchedules: [],
+            scheduleExceptions: [],
+            excForm: { user_id:'', exc_date:'', work_start:'10:00', work_end:'19:00', is_off:false, note:'' },
+            clinicOffdays: [],
+            offdayForm: { off_date:'', name:'', is_annual:false },
             // payroll
             payMonth: '', payrollRows: [], payWorkdays: 0, payMsg:'', payMsgOk:false,
             // HR 詳細檔案
             showHrModal: false, hrBusy: false, hrForm: {}, hrMsg:'', hrOk:false,
             // manual
             mEmp:'', mDate:'', mIn:'', mOut:'', mType:'full', mNote:'', manualMsg:'', manualOk:false,
+            recentAttendance: [],
             // 員工假期日曆
             calYear: (new Date()).getFullYear(), calMonth: (new Date()).getMonth()+1, calDays:{}, calHolidays:{}, calLoading:false, calLegend:{},
           };
         },
         computed: {
           filteredRosters(){ return (this.rosters||[]).filter(r => this.rosterStatus==='all' ? true : r.status===this.rosterStatus); },
-          roleLabel(){ return (r)=>({staff:'員工',doctor:'醫生',admin:'管理員',customer:'客戶'}[r]||r); },
-          empTypeLabel(){ return (role,et)=>(role==='doctor' ? '全職' : ({full:'全職',part:'兼職'}[et]||'全職')); },
-          statusLabel(){ return (s)=>({working:'返工中',completed:'已收工',absent:'未返工',on_leave:'請假'}[s]||s); },
+          roleLabel(){ return (r)=>({staff:t('員工'),doctor:t('醫生'),admin:t('管理員'),customer:t('客戶')}[r]||r); },
+          empTypeLabel(){ return (role,et)=>(role==='doctor' ? t('全職') : ({full:t('全職'),part:t('兼職')}[et]||t('全職'))); },
+          statusLabel(){ return (s)=>({working:t('返工中'),completed:t('已收工'),absent:t('未返工'),on_leave:t('請假')}[s]||s); },
           statusPill(){ return (s)=>({working:'bg-moss-100 text-moss-700',completed:'bg-sky-100 text-sky-700',absent:'bg-rose-100 text-rose-700',on_leave:'bg-purple-100 text-purple-700'}[s]||'bg-gray-100 text-gray-600'); },
           statusIcon(){ return (s)=>({working:'fa-stopwatch',completed:'fa-check-circle',absent:'fa-user-slash',on_leave:'fa-umbrella-beach'}[s]||'fa-circle'); },
-          excPill(){ return (t)=>({late:'bg-amber-100 text-amber-700',early_leave:'bg-orange-100 text-orange-700',absent:'bg-rose-100 text-rose-700',on_leave:'bg-sky-100 text-sky-700'}[t]||'bg-gray-100 text-gray-600'); },
+          excPill(){ return (tp)=>({late:'bg-amber-100 text-amber-700',early_leave:'bg-orange-100 text-orange-700',absent:'bg-rose-100 text-rose-700',on_leave:'bg-sky-100 text-sky-700'}[tp]||'bg-gray-100 text-gray-600'); },
           leavePill(){ return (s)=>({pending:'bg-amber-100 text-amber-700',approved:'bg-moss-100 text-moss-700',rejected:'bg-rose-100 text-rose-700'}[s]||'bg-gray-100 text-gray-600'); },
-          leaveStatusLabel(){ return (s)=>({pending:'待審批',approved:'已批准',rejected:'已拒絕'}[s]||s); },
+          leaveStatusLabel(){ return (s)=>({pending:t('待審批'),approved:t('已批准'),rejected:t('已拒絕')}[s]||s); },
           leaveDays(){ return (l)=>{ const s=new Date(l.start_date), e=new Date(l.end_date); return Math.round((e-s)/(86400000))+1; }; },
           fmtMin(){ return (m)=> (m==null||isNaN(m))?'—':(Math.floor(m/60)+'h'+(m%60?' '+Math.round(m%60)+'m':'')); },
-          attTypeLabel(){ return (t)=>({full:'全日',half:'半日',fieldwork:'外勤',training:'培訓'}[t]||'全日'); },
-          attTypePill(){ return (t)=>({full:'bg-moss-100 text-moss-700',half:'bg-sky-100 text-sky-700',fieldwork:'bg-orange-100 text-orange-700',training:'bg-purple-100 text-purple-700'}[t]||'bg-gray-100 text-gray-600'); },
+          attTypeLabel(){ return (tp)=>({full:t('全日'),half:t('半日'),fieldwork:t('外勤'),training:t('培訓')}[tp]||t('全日')); },
+          attTypePill(){ return (tp)=>({full:'bg-moss-100 text-moss-700',half:'bg-sky-100 text-sky-700',fieldwork:'bg-orange-100 text-orange-700',training:'bg-purple-100 text-purple-700'}[tp]||'bg-gray-100 text-gray-600'); },
           rateLabel(){ return (r)=> (r.hourly_rate&&r.hourly_rate>0)?(t('時薪')+' $'+r.hourly_rate):(r.basic_salary&&r.basic_salary>0)?(t('月薪')+' $'+r.basic_salary):'—'; },
           calWeekHeaders(){ return [0,1,2,3,4,5,6].map(function(i){ return i18nWeekdayShort(i); }); },
           calCells(){
@@ -702,7 +846,7 @@
         methods: {
           today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; },
           prevMonth(){ const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; },
-          switchView(v){ this.view=v; if(v==='overview')this.loadToday(); if(v==='report'){ if(!this.repFrom){const d=new Date();this.repFrom=this.today().slice(0,8)+'01';this.repTo=this.today();} this.loadReport(); } if(v==='history'){ if(!this.histFrom){ this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today(); } this.loadHistory(); } if(v==='exceptions')this.loadExceptions(); if(v==='leaves')this.loadLeaves(true); if(v==='roster')this.loadRoster(); if(v==='schedule')this.loadSchedule(); if(v==='payroll'){ if(!this.payMonth)this.payMonth=this.prevMonth(); this.loadPayroll(); } if(v==='leave-calendar')this.loadLeaveCalendar(); },
+          switchView(v){ this.view=v; if(v==='overview')this.loadToday(); if(v==='report'){ if(!this.repFrom){const d=new Date();this.repFrom=this.today().slice(0,8)+'01';this.repTo=this.today();} this.loadReport(); } if(v==='history'){ if(!this.histFrom){ this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today(); } this.loadHistory(); } if(v==='exceptions')this.loadExceptions(); if(v==='leaves')this.loadLeaves(true); if(v==='roster')this.loadRoster(); if(v==='schedule'){ this.loadSchedule(); this.loadRoster(()=>{}); this.loadSchedulesAll(); this.loadScheduleExceptions(); this.loadClinicOffdays(); } if(v==='payroll'){ if(!this.payMonth)this.payMonth=this.prevMonth(); this.loadPayroll(); } if(v==='manual'){ this.loadRoster(()=>{}); this.loadRecentAttendance(); } if(v==='leave-calendar')this.loadLeaveCalendar(); },
           async api(url, opts={}){
             const r = await fetch(url, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers||{}) } });
             const j = await r.json().catch(()=>({}));
@@ -771,6 +915,80 @@
               await this.loadRosters();
             } catch(e){ this.toastErr(e); }
           },
+          async loadSchedulesAll(){
+            try { this.defaultSchedules = await this.api('/api/hr/schedules/all'); } catch(e){ this.toastErr(e); }
+          },
+          async saveSchedule(s){
+            try {
+              await this.api(`/api/hr/schedules/${s.user_id}`, {
+                method:'PUT',
+                body: JSON.stringify({ work_start:s.work_start, work_end:s.work_end, work_days:s.work_days }),
+              });
+              this.loadSchedulesAll();
+            } catch(e){ this.toastErr(e); }
+          },
+          async loadScheduleExceptions(){
+            try { this.scheduleExceptions = await this.api('/api/hr/schedule-exceptions'); } catch(e){ this.toastErr(e); }
+          },
+          async addScheduleException(){
+            if(!this.excForm.user_id || !this.excForm.exc_date){ this.toastErr(new Error('請選擇員工及日期')); return; }
+            try {
+              await this.api('/api/hr/schedule-exceptions', {
+                method:'POST',
+                body: JSON.stringify({
+                  user_id: Number(this.excForm.user_id),
+                  exception_date: this.excForm.exc_date,
+                  work_start: this.excForm.is_off ? null : this.excForm.work_start,
+                  work_end: this.excForm.is_off ? null : this.excForm.work_end,
+                  is_off: this.excForm.is_off ? 1 : 0,
+                  note: this.excForm.note,
+                }),
+              });
+              this.excForm = { user_id:'', exc_date:'', work_start:'10:00', work_end:'19:00', is_off:false, note:'' };
+              this.loadScheduleExceptions();
+            } catch(e){ this.toastErr(e); }
+          },
+          async deleteScheduleException(id){
+            if(!confirm(t('確定刪除此排班例外？'))) return;
+            try { await this.api(`/api/hr/schedule-exceptions/${id}`, { method:'DELETE' }); this.loadScheduleExceptions(); } catch(e){ this.toastErr(e); }
+          },
+          async loadClinicOffdays(){
+            try { this.clinicOffdays = await this.api('/api/hr/clinic-offdays'); } catch(e){ this.toastErr(e); }
+          },
+          async addClinicOffday(){
+            if(!this.offdayForm.off_date){ this.toastErr(new Error('請選擇日期')); return; }
+            try {
+              await this.api('/api/hr/clinic-offdays', {
+                method:'POST',
+                body: JSON.stringify({ off_date:this.offdayForm.off_date, name:this.offdayForm.name, is_annual:this.offdayForm.is_annual?1:0 }),
+              });
+              this.offdayForm = { off_date:'', name:'', is_annual:false };
+              this.loadClinicOffdays();
+            } catch(e){ this.toastErr(e); }
+          },
+          async deleteClinicOffday(id){
+            if(!confirm(t('確定刪除此休診日？'))) return;
+            try { await this.api(`/api/hr/clinic-offdays/${id}`, { method:'DELETE' }); this.loadClinicOffdays(); } catch(e){ this.toastErr(e); }
+          },
+          async loadRecentAttendance(){
+            const from = this.addDaysStr(this.today(), -14);
+            try {
+              const j = await this.api(`/api/hr/history?from=${from}&to=${this.today()}`);
+              this.recentAttendance = (j.records || []).slice(0, 30);
+            } catch(e){ this.toastErr(e); }
+          },
+          editAttendance(a){
+            this.mEmp = a.user_id || a.userId || '';
+            this.mDate = a.attendance_date;
+            this.mIn = a.clock_in || '';
+            this.mOut = a.clock_out || '';
+            this.mType = a.attendance_type || 'full';
+            this.mNote = a.note || '';
+          },
+          async deleteAttendance(id){
+            if(!confirm(t('確定刪除此考勤紀錄？'))) return;
+            try { await this.api(`/api/hr/attendance/${id}`, { method:'DELETE' }); this.loadRecentAttendance(); } catch(e){ this.toastErr(e); }
+          },
           async loadRosters(){
             try {
               const today = this.today();
@@ -831,7 +1049,7 @@
           resetManual(){ this.mEmp=''; this.mDate=this.today(); this.mIn=''; this.mOut=''; this.mType='full'; this.mNote=''; this.manualMsg=''; },
           async submitManual(){
             if(!this.mEmp||!this.mDate){ this.manualMsg='請選擇員工及日期'; this.manualOk=false; return; }
-            try { const j = await this.api('/api/hr/attendance', { method:'POST', body: JSON.stringify({ user_id:Number(this.mEmp), attendance_date:this.mDate, clock_in:this.mIn||null, clock_out:this.mOut||null, attendance_type:this.mType, note:this.mNote }) }); this.manualMsg=j.message; this.manualOk=true; } catch(e){ this.manualMsg=e.message; this.manualOk=false; }
+            try { const j = await this.api('/api/hr/attendance', { method:'POST', body: JSON.stringify({ user_id:Number(this.mEmp), attendance_date:this.mDate, clock_in:this.mIn||null, clock_out:this.mOut||null, attendance_type:this.mType, note:this.mNote }) }); this.manualMsg=j.message; this.manualOk=true; this.loadRecentAttendance(); } catch(e){ this.manualMsg=e.message; this.manualOk=false; }
           },
           // ===== 員工假期日曆 =====
           async loadLeaveCalendar(){
@@ -851,7 +1069,45 @@
           leaveTypeChip(t){ return ({annual:'bg-moss-100 text-moss-700',sick:'bg-sky-100 text-sky-700',personal:'bg-amber-100 text-amber-700',statutory:'bg-purple-100 text-purple-700',personal_other:'bg-gray-100 text-gray-600'})[t]||'bg-gray-100 text-gray-600'; },
           leaveTypeDot(t){ return ({annual:'bg-moss-600',sick:'bg-sky-500',personal:'bg-amber-500',statutory:'bg-purple-500',personal_other:'bg-gray-400'})[t]||'bg-gray-400'; },
           toastErr(e){ console.error(e); alert(e.message); },
-          handleLogout(){ localStorage.removeItem('jwtToken'); localStorage.removeItem('adminUser'); window.location.href='admin.html'; },
+          handleLogout(){
+            try { fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); } catch (e) {}
+            localStorage.removeItem('jwtToken');
+            localStorage.removeItem('adminUser');
+            window.location.href = 'index.html';
+          },
+          // ==================== 自助更改密碼 ====================
+          openMyPwd(){
+            this.showMyPwd = true;
+            this.myPwdError = '';
+            this.myPwdSuccess = '';
+            this.myPwdData = { currentPassword: '', newPassword: '', confirmPassword: '' };
+          },
+          closeMyPwd(){
+            this.showMyPwd = false;
+            this.myPwdError = '';
+            this.myPwdSuccess = '';
+            this.myPwdData = { currentPassword: '', newPassword: '', confirmPassword: '' };
+          },
+          async submitMyPwd(){
+            this.myPwdError = '';
+            this.myPwdSuccess = '';
+            const d = this.myPwdData;
+            if(!d.currentPassword || !d.newPassword || !d.confirmPassword){ this.myPwdError = '請填寫完整密碼欄位'; return; }
+            if(d.newPassword !== d.confirmPassword){ this.myPwdError = '新密碼與確認密碼不一致'; return; }
+            this.myPwdBusy = true;
+            try {
+              const token = localStorage.getItem('jwtToken');
+              const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ currentPassword: d.currentPassword, newPassword: d.newPassword }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if(res.ok && data.ok){ this.myPwdSuccess = '密碼已更新，下次請用新密碼登入'; this.myPwdData = { currentPassword:'', newPassword:'', confirmPassword:'' }; }
+              else { this.myPwdError = data.error || '更改密碼失敗，請稍後再試'; }
+            } catch(e){ this.myPwdError = '網絡錯誤，請稍後再試'; }
+            finally { this.myPwdBusy = false; }
+          },
         },
         mounted(){
           const u = localStorage.getItem('adminUser');

@@ -37,16 +37,35 @@
   min-width: 0 !important;
 }
 
-/* 頂欄語言掣：固定右上、唔同其他元素重疊 */
+/* 頂欄語言掣：inline flex item，唔好做 fixed 浮層遮住其他掣 */
 .aq-lang-toggle,
 .i18n-lang-toggle {
   position: relative;
-  z-index: 60;
+  z-index: 20;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
   flex: 0 0 auto;
+}
+
+/* Portal 浮動語言膠囊（admin/staff/doctor/hr）：右下角，避免遮頂欄 */
+.portal-lang-switch {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.1);
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.25);
+  backdrop-filter: blur(8px);
+  font-size: .75rem;
+  font-weight: 500;
 }
 
 /* 登入頁語言掣容器：避免同 logo / 標題撞位 */
@@ -55,4 +74,14 @@
   justify-content: flex-end;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+/* 手機：膠囊再收細，避免遮住底部操作列 */
+@media (max-width: 640px) {
+  .portal-lang-switch {
+    right: .5rem;
+    bottom: .5rem;
+    transform: scale(.92);
+    transform-origin: bottom right;
+  }
 }
