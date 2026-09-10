@@ -27,10 +27,30 @@
       document.documentElement.lang = (l === 'en') ? 'en' : 'zh-TW';
     } catch (e) {}
   }
+
+  // 🩹 更新 Vue mount（#app）*以外* 嘅元素：<title> 同 boot splash。
+  // 呢啲 DOM 唔會被 Vue compile，所以唔可以用 {{ t('…') }}（會淨低字面 braces/quotes）；
+  // 改用 data-i18n="<中文 key>" + 呢個 updater，先至可以跟語言切換。
+  function applyOutOfApp() {
+    if (typeof document === 'undefined') return;
+    try {
+      var els = document.querySelectorAll('[data-i18n]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        var key = el.getAttribute('data-i18n');
+        if (key) el.textContent = t(key);
+      }
+    } catch (e) {}
+  }
+
   applyDom(langRef.value);
+  applyOutOfApp();
   // body 可能尚未解析（script 喺 head），body ready 後再補一次 class
   if (typeof document !== 'undefined' && document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { applyDom(langRef.value); });
+    document.addEventListener('DOMContentLoaded', function () {
+      applyDom(langRef.value);
+      applyOutOfApp();
+    });
   }
 
   // 翻譯函數：英文查字典；冇譯→fallback 中文（nav. 去 namespace）
@@ -52,6 +72,7 @@
     langRef.value = l;
     try { localStorage.setItem(LS_KEY, l); } catch (e) {}
     applyDom(l);
+    applyOutOfApp();
   }
 
   function currentLang() { return langRef.value; }

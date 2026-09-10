@@ -7,7 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>{{ t('寶天醫館 - 管理員後台') }}</title>
+    <title data-i18n="寶天醫館 - 管理員後台">寶天醫館 - 管理員後台</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -18,8 +18,8 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260911"></script>
-    <script src="js/i18n-runtime.js"></script>
+    <script src="js/i18n.js?v=20260913"></script>
+    <script src="js/i18n-runtime.js?v=20260911"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
       [v-cloak]{ display:none !important; }
@@ -524,9 +524,9 @@
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
-      <div class="boot-logo">{{ t('寶') }}</div>
-      <div class="boot-name">{{ t('寶天醫館') }}</div>
-      <div class="boot-sub">{{ t('管理後台') }}</div>
+      <div class="boot-logo" data-i18n="寶">寶</div>
+      <div class="boot-name" data-i18n="寶天醫館">寶天醫館</div>
+      <div class="boot-sub" data-i18n="管理後台">管理後台</div>
       <div class="boot-ring"></div>
     </div>
     <script>
@@ -2131,7 +2131,7 @@
                        <!-- 🆕 家庭關係欄（戶主／子帳戶歸屬） -->
                        <td class="px-4 py-3 text-sm">
                          <span v-if="user.role === 'customer' && user.family_head_name==='head'" class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700 font-medium" :title="t('家庭戶主')">
-                           <i class="fas fa-crown mr-1"></i>戶主（{{ user.family_children_count || 0 }} 位成員）
+                           <i class="fas fa-crown mr-1"></i>{{ t('戶主') }}（{{ user.family_children_count || 0 }} {{ t('位成員') }}）
                          </span>
                          <span v-else-if="user.role === 'customer' && user.family_head_name" class="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 font-medium" :title="t('家庭子帳戶')">
                            <i class="fas fa-user-friends mr-1"></i>{{ user.family_head_name }} 嘅子帳戶
@@ -2431,8 +2431,8 @@
 
               <!-- 主帳戶列表（未選中時） -->
               <template v-if="!selectedFamilyHead">
-                <p class="text-sm text-slate-500 px-1">共 {{ filteredHeads.length }} 個主帳戶（點擊查看家庭樹）</p>
-                <div v-if="filteredHeads.length === 0" class="bg-white rounded-xl shadow p-8 text-center text-slate-400 text-sm">無符合「{{ familySearch }}」嘅主帳戶</div>
+                <p class="text-sm text-slate-500 px-1">{{ t('共') }} {{ filteredHeads.length }} {{ t('個主帳戶（點擊查看家庭樹）') }}</p>
+                <div v-if="filteredHeads.length === 0" class="bg-white rounded-xl shadow p-8 text-center text-slate-400 text-sm">{{ t('無符合') }}「{{ familySearch }}」{{ t('嘅主帳戶') }}</div>
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   <button
                     v-for="head in filteredHeads"
@@ -2445,7 +2445,7 @@
                       <div class="min-w-0">
                         <p class="font-bold text-slate-800 truncate">{{ head.name }} <span class="text-xs text-slate-400">({{ head.username }})</span></p>
                         <p class="text-xs text-slate-500 truncate">
-                          {{ head.members.length }} 位成員
+                          {{ head.members.length }} {{ t('位成員') }}
                           <template v-if="head.membership_tier === 'family'"> {{ t('· 家庭會員') }}</template>
                           <span v-else class="text-red-500"> {{ t('· 非 family 級') }}</span>
                         </p>
@@ -2507,9 +2507,9 @@
                                     </div>
                                   </div>
                                   <div class="ftree-name">{{ parent.primary.name }}</div>
-                                  <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} 位成員</div>
+                                  <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} {{ t('位成員') }}</div>
                                   <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
-                                    {{ parent.primary.membership_tier === 'family' ? '家庭會員' : (parent.primary.membership_tier || 'general') }}
+                                    {{ parent.primary.membership_tier === 'family' ? t('家庭會員') : (t(parent.primary.membership_tier) || 'general') }}
                                   </span>
                                 </div>
                                 <!-- 配偶 -->
@@ -2520,9 +2520,9 @@
                                       <i v-else class="fas fa-user"></i>
                                     </div>
                                   </div>
-                                  <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : '配偶' }}</div>
-                                  <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : '（待連結）' }}</div>
-                                  <span class="ftree-tag sage">{{ parent.spouse ? (parent.spouseRelation || '配偶') : '待連結' }}</span>
+                                  <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : t('配偶') }}</div>
+                                  <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : t('（待連結）') }}</div>
+                                  <span class="ftree-tag sage">{{ parent.spouse ? (t(parent.spouseRelation) || t('配偶')) : t('待連結') }}</span>
                                 </div>
                               </div>
                               <!-- 其他經由戶主連入嘅親屬 -->
@@ -2535,7 +2535,7 @@
                                 </div>
                                 <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
                                 <div class="ftree-meta">{{ parent.primary.username }}</div>
-                                <span class="ftree-tag sage">{{ parent.relation }}</span>
+                                <span class="ftree-tag sage">{{ t(parent.relation) }}</span>
                               </div>
                             </div>
 
@@ -2550,9 +2550,9 @@
                                     </div>
                                   </div>
                                   <div class="ftree-name">{{ child.name }}</div>
-                                  <div class="ftree-meta">{{ child.age }} 歲 · 預約 {{ child.booking_count || 0 }} 次</div>
+                                  <div class="ftree-meta">{{ child.age }} {{ t('歲') }} · {{ t('預約') }} {{ child.booking_count || 0 }} {{ t('次') }}</div>
                                   <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
-                                    {{ child.isAdult ? '已成年·跟進' : (child.turning18Soon ? `快成年(${child.days_to_18}日)` : '18歲以下') }}
+                                    {{ child.isAdult ? t('已成年·跟進') : (child.turning18Soon ? `${t('快成年')}(${child.days_to_18}${t('日')})` : t('18歲以下')) }}
                                   </span>
                                   <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
                                 </div>
@@ -2568,7 +2568,7 @@
                                       </div>
                                       <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
                                       <div class="ftree-meta">{{ lk.other.username }}</div>
-                                      <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
+                                      <span class="ftree-tag sage">{{ t(lk.customRelation || lk.relation) }}</span>
                                       <button @click="removeHeadLink(lk)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
                                     </div>
                                   </li>
@@ -2595,7 +2595,7 @@
                                 </div>
                               </div>
                               <div class="ftree-name">{{ parent.primary.name }}</div>
-                              <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} 位成員</div>
+                              <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} {{ t('位成員') }}</div>
                               <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
                                 {{ parent.primary.membership_tier === 'family' ? '家庭會員' : (parent.primary.membership_tier || 'general') }}
                               </span>

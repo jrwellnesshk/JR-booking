@@ -655,6 +655,22 @@ const DEEP = [
   ['）僅供內部參考，', ') for internal reference only, '],
   ['＋每月月結', '+ monthly settlement'],
   ['，跳過', ', skipped'],
+
+  // ── 家庭帳戶 family tree / relationship view ───────────────────
+  ['戶主', 'Primary account holder'],
+  ['配偶', 'Spouse'],
+  ['待連結', 'Not linked'],
+  ['（待連結）', '(Not linked)'],
+  ['歲', 'yrs'],
+  ['成年', 'Adult'],
+  ['已成年·跟進', 'Adult · Follow-up'],
+  ['快成年', 'Turning 18 soon'],
+  ['18歲以下', 'Under 18'],
+  ['一般', 'Standard'],
+  ['主帳戶', 'Primary account'],
+  ['個主帳戶（點擊查看家庭樹）', 'primary accounts (click to view family tree)'],
+  ['無符合', 'No match for'],
+  ['嘅主帳戶', 'primary account'],
 ];
 
 module.exports = DEEP;

@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>{{ t('員工版面 - 寶天醫館') }}</title>
+    <title data-i18n="員工版面 - 寶天醫館">員工版面 - 寶天醫館</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <link rel="stylesheet" href="css/tailwind.css?v=20260909" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -15,8 +15,8 @@
     <link rel="stylesheet" href="css/style.css?v=20260909" />
     <script src="js/auth-fetch.js?v=20260909"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260911"></script>
-    <script src="js/i18n-runtime.js"></script>
+    <script src="js/i18n.js?v=20260913"></script>
+    <script src="js/i18n-runtime.js?v=20260911"></script>
     <style>
       /* 🛡️ 防 Vue 編譯前範本閃現（FOUC） */
       [v-cloak]{ display:none !important; }
@@ -313,9 +313,9 @@
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
-      <div class="boot-logo">{{ t('寶') }}</div>
-      <div class="boot-name">{{ t('寶天醫館') }}</div>
-      <div class="boot-sub">{{ t('員工版') }}</div>
+      <div class="boot-logo" data-i18n="寶">寶</div>
+      <div class="boot-name" data-i18n="寶天醫館">寶天醫館</div>
+      <div class="boot-sub" data-i18n="員工版">員工版</div>
       <div class="boot-ring"></div>
     </div>
     <script>
