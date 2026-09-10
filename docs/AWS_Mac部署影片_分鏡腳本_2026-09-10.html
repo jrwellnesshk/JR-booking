@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS Mac 部署影片 — 分鏡腳本</title>
+<style>
+  :root {
+    --bg:#F7F4EF; --panel:#FFFFFF; --ink:#3E2A1E; --muted:#7A6A5C;
+    --line:#E6DDD1; --accent:#7E9476; --accent-soft:#E5E8D9; --code-bg:#FBF7F1;
+    --warn:#B4532A;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    line-height:1.85; font-size:16px; }
+  .layout { display:flex; max-width:1400px; margin:0 auto; }
+  nav { width:280px; flex:0 0 280px; padding:28px 18px 60px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--line); background:#FCFAF7; }
+  nav h3 { font-size:12px; letter-spacing:.12em; color:var(--muted);
+    text-transform:uppercase; margin:0 0 12px; }
+  nav a { display:block; padding:6px 10px; border-radius:8px; color:var(--ink);
+    text-decoration:none; font-size:13.5px; line-height:1.5; }
+  nav a:hover { background:var(--accent-soft); }
+  nav a.toc-1 { font-weight:700; margin-top:10px; }
+  nav a.toc-2 { padding-left:22px; color:var(--muted); }
+  main { flex:1; min-width:0; padding:40px 48px 100px; }
+  h1 { font-size:30px; margin:0 0 24px; padding-bottom:16px; border-bottom:3px solid var(--accent); }
+  h2 { font-size:23px; margin-top:52px; padding:10px 16px; background:var(--accent-soft);
+    border-radius:10px; border-left:5px solid var(--accent); }
+  h3 { font-size:18px; margin-top:34px; color:#4A382B; }
+  h4 { font-size:16px; margin-top:22px; color:var(--muted); }
+  p, li { margin:10px 0; }
+  code { background:var(--code-bg); padding:2px 6px; border-radius:5px;
+    font-family:"SFMono-Regular",Consolas,monospace; font-size:13.5px; color:#8A4B2A; }
+  pre.code { background:#2E2A26; color:#F2ECE4; padding:16px 18px; border-radius:12px;
+    overflow-x:auto; font-size:13px; line-height:1.65; margin:16px 0; }
+  pre.code code { background:none; color:inherit; padding:0; font-size:13px; }
+  .table-wrap { overflow-x:auto; margin:18px 0; }
+  table { border-collapse:collapse; width:100%; background:var(--panel);
+    border-radius:10px; overflow:hidden; font-size:14.5px; }
+  th { background:var(--accent-soft); text-align:left; padding:10px 12px; font-weight:700; }
+  td { padding:9px 12px; border-top:1px solid var(--line); }
+  blockquote { margin:16px 0; padding:12px 16px; background:#FFF8EE;
+    border-left:4px solid var(--warn); border-radius:8px; color:#6B4A2E; }
+  hr { border:none; border-top:1px solid var(--line); margin:40px 0; }
+  strong { color:#2F2018; }
+  a { color:#5B704F; }
+  @media (max-width:900px) {
+    nav { display:none; }
+    main { padding:24px 18px 60px; }
+  }
+  @media print {
+    nav { display:none; } pre.code { background:#F4F0EA; color:#241F1A; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav><h3>目錄</h3><a class="toc-1" href="#mac-部署-booking-aurora-到-aws-完整影片分鏡腳本">《Mac 部署 booking-aurora 到 AWS》— 完整影片分鏡腳本</a><a class="toc-2" href="#全片安全三原則-每章都要提一次">全片安全三原則（每章都要提一次）</a><a class="toc-2" href="#章節目錄">章節目錄</a><a class="toc-1" href="#第-0-章-開場-最終會變成點-4-00">第 0 章｜開場：最終會變成點（4:00）</a><a class="toc-2" href="#scene-0-1-開場白-1-30">Scene 0.1｜開場白（1:30）</a><a class="toc-2" href="#scene-0-2-呢條片嘅路線圖-2-30">Scene 0.2｜呢條片嘅路線圖（2:30）</a><a class="toc-1" href="#第-1-章-架構決策-買咩-唔好買咩-8-00">第 1 章｜架構決策：買咩、唔好買咩（8:00）</a><a class="toc-2" href="#scene-1-1-我哋個系統其實係啲咩-3-00">Scene 1.1｜我哋個系統其實係啲咩（3:00）</a><a class="toc-2" href="#scene-1-2-四個方案-點解揀-ec2-3-00">Scene 1.2｜四個方案，點解揀 EC2（3:00）</a><a class="toc-2" href="#scene-1-3-成本預覽-2-00">Scene 1.3｜成本預覽（2:00）</a><a class="toc-1" href="#第-2-章-aws-開戶全流程-14-00">第 2 章｜AWS 開戶全流程（14:00）</a><a class="toc-2" href="#scene-2-1-開戶前準備-2-00">Scene 2.1｜開戶前準備（2:00）</a><a class="toc-2" href="#scene-2-2-逐步開戶-8-00">Scene 2.2｜逐步開戶（8:00）</a><a class="toc-2" href="#scene-2-3-region-揀邊個-4-00">Scene 2.3｜Region 揀邊個（4:00）</a><a class="toc-1" href="#第-3-章-開戶後-5-分鐘安全加固-必做-10-00">第 3 章｜開戶後 5 分鐘安全加固（**必做**）（10:00）</a><a class="toc-2" href="#scene-3-1-root-開-mfa-3-00">Scene 3.1｜Root 開 MFA（3:00）</a><a class="toc-2" href="#scene-3-2-刪除-root-access-key-2-00">Scene 3.2｜刪除 Root Access Key（2:00）</a><a class="toc-2" href="#scene-3-3-開-iam-管理員用戶-mfa-3-00">Scene 3.3｜開 IAM 管理員用戶 + MFA（3:00）</a><a class="toc-2" href="#scene-3-4-budget-billing-告警-2-00">Scene 3.4｜Budget + Billing 告警（2:00）</a><a class="toc-1" href="#第-4-章-買咩服務-成本表-8-00">第 4 章｜買咩服務 + 成本表（8:00）</a><a class="toc-2" href="#scene-4-1-要開嘅服務清單-4-00">Scene 4.1｜要開嘅服務清單（4:00）</a><a class="toc-2" href="#scene-4-2-唔好開嘅服務-2-00">Scene 4.2｜唔好開嘅服務（2:00）</a><a class="toc-2" href="#scene-4-3-成本總表-計價器-2-00">Scene 4.3｜成本總表 + 計價器（2:00）</a><a class="toc-1" href="#第-5-章-mac-本機準備-7-00">第 5 章｜Mac 本機準備（7:00）</a><a class="toc-2" href="#scene-5-1-工具檢查-2-00">Scene 5.1｜工具檢查（2:00）</a><a class="toc-2" href="#scene-5-2-產生-ssh-鎖匙-3-00">Scene 5.2｜產生 SSH 鎖匙（3:00）</a><a class="toc-2" href="#scene-5-3-ssh-config-方便日後-2-00">Scene 5.3｜~/.ssh/config 方便日後（2:00）</a><a class="toc-1" href="#第-6-章-開-ec2-實例-elastic-ip-15-00">第 6 章｜開 EC2 實例 + Elastic IP（15:00）</a><a class="toc-2" href="#scene-6-1-launch-instance-基本設定-5-00">Scene 6.1｜Launch instance 基本設定（5:00）</a><a class="toc-2" href="#scene-6-2-network-settings-security-group-4-00">Scene 6.2｜Network settings（Security Group）（4:00）</a><a class="toc-2" href="#scene-6-3-storage-advanced-2-00">Scene 6.3｜Storage + Advanced（2:00）</a><a class="toc-2" href="#scene-6-4-elastic-ip-4-00">Scene 6.4｜Elastic IP（4:00）</a><a class="toc-1" href="#第-7-章-ssh-登入-伺服器初始化-12-00">第 7 章｜SSH 登入 + 伺服器初始化（12:00）</a><a class="toc-2" href="#scene-7-1-第一次-ssh-2-00">Scene 7.1｜第一次 SSH（2:00）</a><a class="toc-2" href="#scene-7-2-用-bootstrap-腳本初始化-6-00">Scene 7.2｜用 bootstrap 腳本初始化（6:00）</a><a class="toc-2" href="#scene-7-3-ssh-硬化-關密碼登入-4-00">Scene 7.3｜SSH 硬化（關密碼登入）（4:00）</a><a class="toc-1" href="#第-8-章-網域與-dns-8-00">第 8 章｜網域與 DNS（8:00）</a><a class="toc-2" href="#scene-8-1-兩個選擇-route-53-定-cloudflare-2-00">Scene 8.1｜兩個選擇：Route 53 定 Cloudflare（2:00）</a><a class="toc-2" href="#scene-8-2-route-53-hosted-zone-a-record-4-00">Scene 8.2｜Route 53 Hosted Zone + A record（4:00）</a><a class="toc-2" href="#scene-8-3-可選-cloudflare-設定-2-00">Scene 8.3｜（可選）Cloudflare 設定（2:00）</a><a class="toc-1" href="#第-9-章-上傳程式碼上機-6-00">第 9 章｜上傳程式碼上機（6:00）</a><a class="toc-2" href="#scene-9-1-rsync-排除敏感同大檔案-4-00">Scene 9.1｜rsync（排除敏感同大檔案）（4:00）</a><a class="toc-2" href="#scene-9-2-另一個做法-git-clone-deploy-key-2-00">Scene 9.2｜另一個做法：git clone + deploy key（2:00）</a><a class="toc-1" href="#第-10-章-設定-env-與密鑰-8-00">第 10 章｜設定 .env 與密鑰（8:00）</a><a class="toc-2" href="#scene-10-1-產生-session_secret-3-00">Scene 10.1｜產生 SESSION_SECRET（3:00）</a><a class="toc-2" href="#scene-10-2-寫-env-3-00">Scene 10.2｜寫 .env（3:00）</a><a class="toc-2" href="#scene-10-3-首次部署前清-data-2-00">Scene 10.3｜首次部署前清 data（2:00）</a><a class="toc-1" href="#第-11-章-起容器-第一次登入-10-00">第 11 章｜起容器 + 第一次登入（10:00）</a><a class="toc-2" href="#scene-11-1-docker-compose-up-5-00">Scene 11.1｜docker compose up（5:00）</a><a class="toc-2" href="#scene-11-2-搵初始-admin-密碼-2-00">Scene 11.2｜搵初始 admin 密碼（2:00）</a><a class="toc-2" href="#scene-11-3-功能冒煙測試-3-00">Scene 11.3｜功能冒煙測試（3:00）</a><a class="toc-1" href="#第-12-章-https-上線-8-00">第 12 章｜HTTPS 上線（8:00）</a><a class="toc-2" href="#scene-12-1-caddy-點樣自動拎證書-2-00">Scene 12.1｜Caddy 點樣自動拎證書（2:00）</a><a class="toc-2" href="#scene-12-2-設-site_domain-並重啟-3-00">Scene 12.2｜設 SITE_DOMAIN 並重啟（3:00）</a><a class="toc-2" href="#scene-12-3-caddy-證書存放位置與備份-1-30">Scene 12.3｜Caddy 證書存放位置與備份（1:30）</a><a class="toc-2" href="#scene-12-4-http-跳-https-驗證-1-30">Scene 12.4｜HTTP 跳 HTTPS 驗證（1:30）</a><a class="toc-1" href="#第-13-章-備份-還原演練-12-00">第 13 章｜備份 + **還原演練**（12:00）</a><a class="toc-2" href="#scene-13-1-兩層備份策略-2-00">Scene 13.1｜兩層備份策略（2:00）</a><a class="toc-2" href="#scene-13-2-ebs-snapshot-dlm-3-00">Scene 13.2｜EBS Snapshot + DLM（3:00）</a><a class="toc-2" href="#scene-13-3-iam-role-畀-ec2-上傳-s3-唔用-access-key-3-00">Scene 13.3｜IAM Role 畀 EC2 上傳 S3（**唔用 Access Key**）（3:00）</a><a class="toc-2" href="#scene-13-4-每日備份腳本-cron-2-00">Scene 13.4｜每日備份腳本 + cron（2:00）</a><a class="toc-2" href="#scene-13-5-還原演練-最重要-2-00">Scene 13.5｜**還原演練**（最重要）（2:00）</a><a class="toc-1" href="#第-14-章-監控與告警-7-00">第 14 章｜監控與告警（7:00）</a><a class="toc-2" href="#scene-14-1-cloudwatch-基本告警-4-00">Scene 14.1｜CloudWatch 基本告警（4:00）</a><a class="toc-2" href="#scene-14-2-日誌檢查-sop-3-00">Scene 14.2｜日誌檢查 SOP（3:00）</a><a class="toc-1" href="#第-15-章-安全加固清單-10-00">第 15 章｜安全加固清單（10:00）</a><a class="toc-2" href="#scene-15-1-逐條加固-6-00">Scene 15.1｜逐條加固（6:00）</a><a class="toc-2" href="#scene-15-2-應用層安全-4-00">Scene 15.2｜應用層安全（4:00）</a><a class="toc-1" href="#第-16-章-常見錯誤排查-12-00">第 16 章｜常見錯誤排查（12:00）</a><a class="toc-2" href="#scene-16-1-連唔上-ssh-2-00">Scene 16.1｜連唔上 SSH（2:00）</a><a class="toc-2" href="#scene-16-2-docker-容器問題-3-00">Scene 16.2｜Docker / 容器問題（3:00）</a><a class="toc-2" href="#scene-16-3-https-證書問題-3-00">Scene 16.3｜HTTPS / 證書問題（3:00）</a><a class="toc-2" href="#scene-16-4-效能與空間-2-00">Scene 16.4｜效能與空間（2:00）</a><a class="toc-2" href="#scene-16-5-費用異常-2-00">Scene 16.5｜費用異常（2:00）</a><a class="toc-1" href="#第-17-章-日常發版-sop-回滾-6-00">第 17 章｜日常發版 SOP + 回滾（6:00）</a><a class="toc-2" href="#scene-17-1-發版流程-3-00">Scene 17.1｜發版流程（3:00）</a><a class="toc-2" href="#scene-17-2-回滾-3-00">Scene 17.2｜回滾（3:00）</a><a class="toc-1" href="#第-18-章-收尾-成本總結-檢查表-5-00">第 18 章｜收尾：成本總結 + 檢查表（5:00）</a><a class="toc-2" href="#scene-18-1-成本總結-2-00">Scene 18.1｜成本總結（2:00）</a><a class="toc-2" href="#scene-18-2-一頁檢查表-2-00">Scene 18.2｜一頁檢查表（2:00）</a><a class="toc-2" href="#scene-18-3-下一步-1-00">Scene 18.3｜下一步（1:00）</a><a class="toc-1" href="#附錄-a-常用指令速查表">附錄 A｜常用指令速查表</a><a class="toc-1" href="#附錄-b-配套腳本">附錄 B｜配套腳本</a><a class="toc-1" href="#附錄-c-未驗證事項-誠實聲明">附錄 C｜未驗證事項（誠實聲明）</a></nav>
+  <main>
+<h1 id="mac-部署-booking-aurora-到-aws-完整影片分鏡腳本">《Mac 部署 booking-aurora 到 AWS》— 完整影片分鏡腳本</h1>
+<blockquote>項目：寶天醫館智能預約系統｜對象：用 Mac、由零開始嘅開發者 總時長預估：<strong>約 110 分鐘</strong>（18 章）｜語言：粵語旁白 + 繁中字幕 版本：v1.0｜日期：2026-09-10 配套：<code>docs/AWS_Mac部署影片_專業提示詞_2026-09-10.md</code>、<code>scripts/aws/*.sh</code></blockquote>
+<hr>
+<h2 id="全片安全三原則-每章都要提一次">全片安全三原則（每章都要提一次）</h2>
+<ol><li><strong>錢</strong>：任何收費服務，先講價錢 + 開 Budget 告警，先好撳「Create」。</li><li><strong>權</strong>：唔好長期用 root；Access Key 唔好落 code；SSH 只准用 key。</li><li><strong>驗證</strong>：每一步做完一定要有一個「成功長點樣」嘅畫面，冇驗證就唔好去下一步。</li></ol>
+<hr>
+<h2 id="章節目錄">章節目錄</h2>
+<div class="table-wrap"><table><thead><tr><th>章</th><th>標題</th><th>預計</th><th>累計</th></tr></thead><tbody><tr><td>0</td><td>開場：最終會變成點</td><td>4:00</td><td>04:00</td></tr><tr><td>1</td><td>架構決策：買咩、唔好買咩</td><td>8:00</td><td>12:00</td></tr><tr><td>2</td><td>AWS 開戶全流程</td><td>14:00</td><td>26:00</td></tr><tr><td>3</td><td>開戶後 5 分鐘安全加固（<strong>必做</strong>）</td><td>10:00</td><td>36:00</td></tr><tr><td>4</td><td>買咩服務 + 成本表</td><td>8:00</td><td>44:00</td></tr><tr><td>5</td><td>Mac 本機準備（SSH key）</td><td>7:00</td><td>51:00</td></tr><tr><td>6</td><td>開 EC2 實例 + Elastic IP</td><td>15:00</td><td>66:00</td></tr><tr><td>7</td><td>SSH 登入 + 伺服器初始化</td><td>12:00</td><td>78:00</td></tr><tr><td>8</td><td>網域與 DNS</td><td>8:00</td><td>86:00</td></tr><tr><td>9</td><td>上傳程式碼上機</td><td>6:00</td><td>92:00</td></tr><tr><td>10</td><td>設定 .env 與密鑰</td><td>8:00</td><td>100:00</td></tr><tr><td>11</td><td>起容器 + 第一次登入</td><td>10:00</td><td>110:00</td></tr><tr><td>12</td><td>HTTPS 上線（Caddy 自動證書）</td><td>8:00</td><td>118:00</td></tr><tr><td>13</td><td>備份 + <strong>還原演練</strong></td><td>12:00</td><td>130:00</td></tr><tr><td>14</td><td>監控與告警</td><td>7:00</td><td>137:00</td></tr><tr><td>15</td><td>安全加固清單</td><td>10:00</td><td>147:00</td></tr><tr><td>16</td><td>常見錯誤排查</td><td>12:00</td><td>159:00</td></tr><tr><td>17</td><td>日常發版 SOP + 回滾</td><td>6:00</td><td>165:00</td></tr><tr><td>18</td><td>收尾：成本總結 + 檢查表</td><td>5:00</td><td>170:00</td></tr></tbody></table></div>
+<blockquote>實測節奏可以拉到 90 分鐘（快版）或 150 分鐘（逐格停低解說）。</blockquote>
+<hr>
+<h1 id="第-0-章-開場-最終會變成點-4-00">第 0 章｜開場：最終會變成點（4:00）</h1>
+<h2 id="scene-0-1-開場白-1-30">Scene 0.1｜開場白（1:30）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-01] 全螢幕架構圖（瀏覽器 → Caddy:443 → app:4000 → SQLite），右邊疊最終網址 <code>https://booking.你的網域</code> 成功開啟嘅畫面。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「呢條片，我會由零開始，用一部 Mac，將寶天醫館嘅預約系統／部署上 AWS。／由『我連 AWS 帳戶都未開』，一路做到網站有 HTTPS、有自動備份、有告警。／   我唔會跳步。每一個掣撳邊、每一句指令打乜、打完應該見到啲乜，全部都講。／   片長會比較長，你可以當佢係一份有畫面嘅說明書，睇一段做一段。／   有三條規矩我先講喺前頭：／第一，涉及錢嘅服務，我一定先講價錢同免費額度，先叫你開。／第二，權限嘅嘢，我唔會教你用 root 或者將密碼寫落 code 度。／第三，每一步我都要畀個驗證方法你，冇驗證就唔好去下一步。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：觀眾明白目標：網站上線 + HTTPS + 備份 + 告警。</li><li><strong>陷阱</strong>：唔好一開始就開一大堆服務；跟住順序開，先唔使錢或者只係好少錢。</li><li><strong>安全</strong>：⚠️ 全程會見到 IP、網域、金鑰名；錄影前準備好打碼。</li></ul>
+<h2 id="scene-0-2-呢條片嘅路線圖-2-30">Scene 0.2｜呢條片嘅路線圖（2:30）</h2>
+<ul><li><strong>畫面</strong>：章節目錄表（本文件目錄投影片），游標逐行掃過。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「全片十八章。／頭四章係『開戶同安全』，呢部分最悶但最緊要，／因為 AWS 係用信用卡計數嘅，安全做得唔好，真係會收到驚喜帳單。／   第五到七章係『開機』，喺 Mac 整鎖匙、開 EC2、SSH 上去。／第八到十二章係『上線』，DNS、上 code、起 Docker、拎 HTTPS。／   第十三到十六章係『長期營運』，備份、監控、加固、排查。／最後兩章係日常點更新同年結成本。／   如果你得一個鐘，最低限度要睇：第 3、6、7、10、11、13 章。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：—</li><li><strong>安全</strong>：—</li></ul>
+<hr>
+<h1 id="第-1-章-架構決策-買咩-唔好買咩-8-00">第 1 章｜架構決策：買咩、唔好買咩（8:00）</h1>
+<h2 id="scene-1-1-我哋個系統其實係啲咩-3-00">Scene 1.1｜我哋個系統其實係啲咩（3:00）</h2>
+<ul><li><strong>畫面</strong>：打開專案目錄（Finder / Terminal <code>ls</code>），再打開 <code>docker-compose.yml</code>、<code>Caddyfile</code>、<code>Dockerfile</code>，逐個檔案 highlight。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「先搞清楚我哋要部署嘅係啲乜。／呢個系統係 Node 20 加 Express 5，資料庫係 SQLite——一個檔案嚟嘅，唔係一個獨立嘅資料庫伺服器。／   前端係 Vue 3 用 CDN 引入，即係唔需要 build 前端。／   我哋用 Docker 包咗兩個嘢：一個係 app，行 Node，聽 4000 port，但係<strong>淨係對內</strong>，外面上唔到。／另一個係 Caddy，聽 80 同 443，做反向代理，順便自動幫我哋拎 TLS 證書。／   資料就放喺一個 volume，即係主機上面嘅 <code>data</code> 目錄，入面有 <code>database.db</code>。／   記住呢點：<strong>我哋個資料庫係一個檔案</strong>。呢個事實決定咗後面所有選擇。」</p>
+<ul><li><strong>指令</strong>：</li></ul>
+<pre class="code lang-bash"><code>cd ~/Desktop/JP/booking-aurora
+ls -1
+cat docker-compose.yml</code></pre>
+<ul><li><strong>驗證</strong>：見到 <code>Dockerfile</code>、<code>docker-compose.yml</code>、<code>Caddyfile</code>、<code>.env.example</code>。</li><li><strong>陷阱</strong>：<code>.env</code> 唔會喺 git 入面，部署時要另外傳；<code>.dockerignore</code> 已經排除了，唔好改。</li><li><strong>安全</strong>：<code>.env</code> 同 <code>database.db</code> 永遠唔好 commit。</li></ul>
+<h2 id="scene-1-2-四個方案-點解揀-ec2-3-00">Scene 1.2｜四個方案，點解揀 EC2（3:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-02] 對比表（方案／月費／啱唔啱／原因）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「四個諗法。／   第一，EC2——即係租一部虛擬機，自己裝 Docker。月費大約十到十八美金，控制晒，我哋揀呢個。／   第二，Lightsail——AWS 自己嘅『懶人 VPS』，五到十美金固定價，畫面簡單好多。<strong>如果你只想要最平最簡單，Lightsail 十蚊嗰檔其實好合理</strong>，缺點係同 IAM、S3、CloudWatch 嘅整合冇咁完整。／   第三，ECS Fargate——managed container。聽落先進，但 Fargate 嘅磁碟係臨時嘅，container 一停，我個 SQLite 檔案就冇咗。要用就一定要駁 EFS，成本高一大截。<strong>所以唔好揀。</strong>／   第四，Lambda——更加唔啱，無狀態、無磁碟、有執行時間限制。／   另外 RDS？我哋用 SQLite，完全唔需要，開咗每個月白白俾廿幾美金。／ALB？一部機唔使负载均衡，Caddy 已經做咗反向代理同 TLS。開 ALB 每個月又係廿幾美金。／   所以結論：<strong>EC2 + EBS + Docker + Caddy</strong>。呢個組合對一間診所、每日幾十張單，綽綽有餘。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：觀眾講得出「點解唔用 Fargate」（因為 ephemeral disk）。</li><li><strong>陷阱</strong>：網上好多 tutorial 教你 ECS + RDS + ALB，嗰啲係為咗高可用、多實例；單機 SQLite 唔适用。</li><li><strong>安全</strong>：唔好為「睇落專業」而開多餘服務，每開一樣就多一個收費同攻擊面。</li></ul>
+<h2 id="scene-1-3-成本預覽-2-00">Scene 1.3｜成本預覽（2:00）</h2>
+<ul><li><strong>畫面</strong>：成本表投影片（首 12 個月 vs 之後）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「講錢。／首 12 個月有免費層：t3.micro 750 個鐘一個月，即係全月開住都免費；30GB EBS、100GB 出站流量都包。／所以頭一年個網站每個月大概係零點五美金，主要係 Route 53 嘅託管區。／   免費層過咗之後，t3.micro 大概十點六美金一個月。／但我會建議你用 <strong>t3.small</strong>，因為得 1GB RAM 嘅 micro 喺 build Docker image 嗰陣好容易唔夠記憶體。t3.small 大約十五到十八美金一個月。／   ⚠️ 具體價錢每個區都唔同，亦會調整，開之前自己撳去 AWS Pricing Calculator 對一次。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：打開 &lt;https://calculator.aws&gt; 自己估一次。</li><li><strong>陷阱</strong>：Elastic IP <strong>綁咗喺運行中嘅實例就唔收費</strong>，但如果你 allocate 咗唔綁、或者部機停咗，就會收少少錢。</li><li><strong>安全</strong>：💡 第一件事就係去開 Budget 告警（第 3 章）。</li></ul>
+<hr>
+<h1 id="第-2-章-aws-開戶全流程-14-00">第 2 章｜AWS 開戶全流程（14:00）</h1>
+<h2 id="scene-2-1-開戶前準備-2-00">Scene 2.1｜開戶前準備（2:00）</h2>
+<ul><li><strong>畫面</strong>：準備清單投影片：電郵、信用卡／扣賬卡、身分證明（可能需要）、手機收 SMS、公司資料（地址、電話）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「開戶前準備幾樣嘢：／一個<strong>唔好同其他人共用</strong>嘅電郵——我強烈建議開一個專用嘅，例如 <code>aws-admin@你公司域名</code>，或者用 Gmail 個 plus 地址。／因為呢個係 root 帳戶，一世都改唔到。／   一張信用卡或者扣賬卡，AWS 會先扣一蚊港幣左右做驗證，之後會退返。／   一部收到 SMS 嘅手機，做身分驗證用。／   仲有你嘅公司或者個人地址，要填真實嘅，因為帳單資料要用。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：唔好用會離職嘅員工私人電郵做 root；唔好用自己日常電郵（root 係釣魚攻擊嘅頭號目標）。</li><li><strong>安全</strong>：🔒 root 電郵 = 成個 AWS 帳戶嘅命根，獨立 + 開 MFA。</li></ul>
+<h2 id="scene-2-2-逐步開戶-8-00">Scene 2.2｜逐步開戶（8:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-03] 瀏覽器 &lt;https://aws.amazon.com&gt; → 「Create an AWS Account」，逐步錄：</li></ul>
+<p>  1. Root user email address → Verify email address → 輸入驗證碼   2. Create password（≥ 8 位，含大小寫數字符號）   3. Contact information：Account type 揀 <strong>Business</strong>（個人都可以揀 Personal，功能一樣）   4. 地址、電話（電話要真實，會打嚟驗證）   5. Billing information：卡號、到期日、賬單地址   6. 身分驗證：輸入電話號碼 → 選 SMS / Voice → 輸入 CAPTCHA（聽住讀出嚟嗰段）→ 輸入 4 位驗證碼   7. Support plan：揀 <strong>Basic support – Free</strong>（其餘要俾錢）   8. 完成 → 「Go to the AWS Management Console」</p>
+<ul><li><strong>旁白</strong>：</li></ul>
+<p>  「去 aws.amazon.com，右上角『Create an AWS Account』。／   第一步填電郵。呢個就係你嘅 <strong>root user email</strong>，一世改唔到，認真填。／跟住去郵箱攞驗證碼。／   第二步設密碼。用密碼管理器整個長密碼，唔好重用任何其他網站嘅密碼。／   第三步聯絡資料。個人用就揀 Personal，公司就揀 Business；分別只係賬單同稅務資料。／地址同電話要真實，因為之後真係會打嚟。／   第四步信用卡。佢會先做一筆小額授權驗證，之後會退返，唔係收費。／   第五步身分驗證。揀 SMS，輸入你嘅電話，打佢畀你嗰個驗證碼，跟住輸入驗證碼。／   第六步支援計劃——<strong>一定要揀 Basic，免費嗰個</strong>。其餘兩個每個月收幾十到幾百美金，你而家唔需要。／   之後就完成，等幾分鐘帳戶啟用，就可以登入。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：見到 AWS Management Console 首頁，右上角見到 region 選單。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 身分驗證 CAPTCHA 有時會聽唔清楚，可以揀「文字驗證」或者重聽。   - 支援計劃揀錯要俾錢；事後可以降級（Billing → Manage support plan）。   - 開完戶有時要等 10–20 分鐘先完全生效，唔好以為失敗。</p>
+<ul><li><strong>安全</strong>：🔒 呢個電郵同密碼就係 root。開完戶第一件事唔係開機，係落 MFA（第 3 章）。</li></ul>
+<h2 id="scene-2-3-region-揀邊個-4-00">Scene 2.3｜Region 揀邊個（4:00）</h2>
+<ul><li><strong>畫面</strong>：Console 右上角 region 選單，展示 <code>ap-southeast-1 (Singapore)</code> 同 <code>ap-east-1 (Hong Kong)</code>。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「右上角呢度揀區域。／兩個選擇：／   <strong>新加坡 ap-southeast-1</strong>——新帳戶預設開通，對香港延遲大概三十幾毫秒，服務種類最齊，價錢中等。我建議用呢個，穩陣。／   <strong>香港 ap-east-1</strong>——離你最近，延遲最低，但<strong>新帳戶要另外申請開通（opt-in）</strong>，有時要等，而且部分實例類型冇得開，價錢通常貴少少。／   如果你真係要用香港區：右上角揀香港，會見到提示要 Enable，跟住去 Support Center 開 case 申請，或者喺 Account 頁面做 opt-in。／   ⚠️ 介面會改，總之見到『Region 未啟用』就跟住提示做。／   <strong>重要</strong>：揀咗區就固定用嗰區。AWS 嘅資源係分區嘅，你喺新加坡開嘅機，去香港區係睇唔到嘅。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：右上角顯示所選 region；EC2 頁面左上角 region 一致。</li><li><strong>陷阱</strong>：最常見錯誤：跟 tutorial 開咗機，但 EC2 頁面睇唔到——因為 region 揀錯咗。</li><li><strong>安全</strong>：只開你需要嘅區，減少管理面。</li></ul>
+<hr>
+<h1 id="第-3-章-開戶後-5-分鐘安全加固-必做-10-00">第 3 章｜開戶後 5 分鐘安全加固（<strong>必做</strong>）（10:00）</h1>
+<h2 id="scene-3-1-root-開-mfa-3-00">Scene 3.1｜Root 開 MFA（3:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-04] 右上角帳戶名 → Security credentials → Multi-factor authentication (MFA) → Assign MFA device → Authenticator app → 掃 QR code（用手機 Google Authenticator / 1Password / Authy）→ 輸入兩組連續 MFA code。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「登入之後，<strong>唔好急住開機</strong>。先做五分鐘安全設定，呢五分鐘可以幫你慳返幾萬蚊同無數麻煩。／   第一件事：root 開 MFA。／右上角你個帳戶名，撳落去，Security credentials。／拉落去搵 Multi-factor authentication，Assign MFA device。／名隨便填，揀 Authenticator app。／   佢會出一個 QR code，用手機嘅 Google Authenticator、1Password 或者 Authy 掃。／之後要輸入<strong>連續兩組</strong>六位數字——因為佢每三十秒換一次，所以你要等佢跳去下一組再打第二個。／   完成之後，每次用 root 登入都要打多六位數字。／   點解咁重要？因為 root 係唯一一個可以刪晒你所有資源、改賬單資料嘅身份。冇 MFA，一個密碼洩漏就全毀。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：MFA 狀態變成 <code>Enabled / Active</code>；登出再登入一次，確認要打 MFA code。</li><li><strong>陷阱</strong>：兩組 code 要<strong>連續</strong>，唔可以打完第一組等一陣；失敗就等三十秒再做。</li><li><strong>安全</strong>：🔒 呢一步係全片最高優先級。</li></ul>
+<h2 id="scene-3-2-刪除-root-access-key-2-00">Scene 3.2｜刪除 Root Access Key（2:00）</h2>
+<ul><li><strong>畫面</strong>：Security credentials → Access keys 區 → 顯示 <code>No access keys</code>（如有則 Delete），並展示 <code>Your security credentials</code> 頁面頂部嘅警告。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第二件事：確認 root 冇 Access Key。／同一版 Security credentials，搵 Access keys 嗰一欄。／   正常新帳戶係冇嘅，會寫住『No access keys』。如果你見到有，或者係以前自己開過，<strong>即刻 Delete</strong>。／   點解？Access Key 係俾程式用嘅長期憑證，一旦洩漏，人哋可以開幾百部挖礦機，一個晚上燒你幾千美金。／   root 根本唔應該有 Access Key。日後要用 CLI，我用 IAM 用戶或者 IAM Role，第 13 章會講。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：Access keys 顯示「No access keys」。</li><li><strong>陷阱</strong>：有啲舊教學教你開 root access key 用 CLI——<strong>唔好</strong>。</li><li><strong>安全</strong>：🔒 root 只做人類登入 + MFA，唔做程式存取。</li></ul>
+<h2 id="scene-3-3-開-iam-管理員用戶-mfa-3-00">Scene 3.3｜開 IAM 管理員用戶 + MFA（3:00）</h2>
+<ul><li><strong>畫面</strong>：IAM Console → Users → Create user → 名 <code>admin-damian</code> → Attach policies directly → <code>AdministratorAccess</code> → Create → 入去 Security credentials → Assign MFA device → 記錄 login URL（Dashboard 嘅 <code>IAM users sign-in link</code>）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第三件事：開一個 IAM 用戶做日常使用。／去 IAM，Users，Create user。／名例如 <code>admin-damian</code>。／唔好剔『提供 console 存取』先……不，我哋要開，因為要用 console 登入，所以剔『Provide user access to the AWS Management Console』。／   權限方面，直接 Attach policies，揀 <code>AdministratorAccess</code>。／個人項目咁樣就得；如果係團隊，之後應該收窄做 custom policy。／   開完，入去呢個 user，Security credentials，照樣開 MFA。／   跟住記低 IAM 頁面頂部嗰條『IAM users sign-in link』，例如 <code>https://123456789012.signin.aws.amazon.com/console</code>。／   由今日開始，用呢條 link 加 IAM 用戶登入，除咗極少數操作（改賬單資料、關帳戶）之外，都唔好用 root。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：用 IAM sign-in link 登入成功，右上角顯示 <code>admin-damian @ 1234-5678-9012</code>。</li><li><strong>陷阱</strong>：右上角落顯示嘅係帳戶 ID，唔係用戶名；要認住用戶名係 <code>admin-damian</code>。</li><li><strong>安全</strong>：🔒 日後用 IAM；root 收埋。</li></ul>
+<h2 id="scene-3-4-budget-billing-告警-2-00">Scene 3.4｜Budget + Billing 告警（2:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-05] Console 搜尋 <code>Budgets</code> → Create budget → Zero-spend / Monthly cost budget → 門檻 US$10 → Alert threshold 80% 同 100% → 填電郵 → Create budget。再開 Billing preferences → 剔 <code>Receive CloudWatch billing alerts</code>。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第四件事：設錢嘅警報。／喺頂部搜尋欄打 Budgets，Create budget。／揀 Monthly cost budget，設個上限，例如十美金。／跟住加兩個 alert：去到八成通知你一次，去到十成再通知。／電郵填你自己成日睇嗰個。／   另外去 Billing preferences，剔『Receive CloudWatch billing alerts』，等佢可以出告警。／   呢個唔係因為我預期你會使好多錢，而係<strong>萬一</strong>有嘢設定錯、或者俾人濫用，你會第一時間收到電郵，唔係月底收信嗰陣先知。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：收到 AWS 嘅「budget created」確認電郵（或者 Console 見到 budget 狀態 OK）。</li><li><strong>陷阱</strong>：只設 budget 唔代表會限住你使錢，佢只係通知；要硬限制要另外做（超出範圍，唔講）。</li><li><strong>安全</strong>：🔒 錢嘅告警 = 最後一道防線。</li></ul>
+<hr>
+<h1 id="第-4-章-買咩服務-成本表-8-00">第 4 章｜買咩服務 + 成本表（8:00）</h1>
+<h2 id="scene-4-1-要開嘅服務清單-4-00">Scene 4.1｜要開嘅服務清單（4:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-06] 服務清單表 + AWS Console 搜尋列逐個 demo（只 demo 唔建立）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「我哋只需要幾樣嘢：／   <strong>EC2</strong>——部虛擬機，行 Docker。／   <strong>EBS gp3 30GB</strong>——部機嘅硬碟，擺 OS 同我個 SQLite 檔案。／   <strong>Elastic IP</strong>——一個固定公網 IP，綁咗喺開住嘅機上面就唔收費。／   <strong>Route 53 Hosted Zone</strong>——管 DNS，每個月大約零點五美金；<strong>或者</strong>用 Cloudflare 免費 DNS，連埋 Proxy 同基本 WAF，我個人偏好 Cloudflare。／   <strong>S3</strong>——擺資料庫備份。一兩 GB 計，每個月幾仙美金。／   <strong>CloudWatch</strong>——基本監控免費，加兩個告警。／   <strong>AWS Budgets</strong>——頭先設咗。／   就係咁多。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：Route 53 嘅 Hosted Zone 一開就開始按月收費，就算冇 record 都收。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-4-2-唔好開嘅服務-2-00">Scene 4.2｜唔好開嘅服務（2:00）</h2>
+<ul><li><strong>畫面</strong>：紅色 ❌ 清單投影片：RDS、ALB、NAT Gateway、ECS/Fargate、ElastiCache、CloudFront（可選）、EFS（除非轉 Fargate）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「講清楚<strong>唔好開</strong>啲咩。／RDS：我哋用 SQLite，唔需要獨立資料庫伺服器。／ALB：一部機唔需要負載均衡，Caddy 已經做咗。／NAT Gateway：我哋部機有公網 IP，唔需要。而且 NAT Gateway 一開就每個月三十幾美金，係最常見嘅『點解我個帳單咁貴』元兇。／ECS Fargate：頭先講過，磁碟係臨時嘅。／ElastiCache：用唔著。／CloudFront：做 CDN 可以，但一間診所嘅流量暫時唔需要，之後先算。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：免費層唔包 NAT Gateway、RDS、ALB。</li><li><strong>安全</strong>：少開一樣 = 少一個攻擊面 + 少一條收費線。</li></ul>
+<h2 id="scene-4-3-成本總表-計價器-2-00">Scene 4.3｜成本總表 + 計價器（2:00）</h2>
+<ul><li><strong>畫面</strong>：成本表（首年 ~US$0.5/月 含 Route 53；之後 t3.micro ~US$10.6/月、t3.small ~US$15–18/月），再開 &lt;https://calculator.aws&gt; 示範估一次。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「總結：頭一年，連埋 Route 53，一個月大概零點五美金。／第二年開始，t3.micro 十點六美金左右，t3.small 十五到十八。／再加網域一年十幾美金。／   ⚠️ 所有價錢以 AWS 官方計價器為準，區域唔同價錢唔同。／   如果你覺得呢個數都唔想煩，第 1 章提過嘅 Lightsail 十蚊月費包埋，係最平嘅選擇。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：自己喺 calculator.aws 估一次，數字差唔多。</li><li><strong>陷阱</strong>：價錢會變，region 唔同會差 10–20%。</li><li><strong>安全</strong>：—</li></ul>
+<hr>
+<h1 id="第-5-章-mac-本機準備-7-00">第 5 章｜Mac 本機準備（7:00）</h1>
+<h2 id="scene-5-1-工具檢查-2-00">Scene 5.1｜工具檢查（2:00）</h2>
+<ul><li><strong>畫面</strong>：Mac Terminal（放大字級），逐行執行。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「返去 Mac。／我哋需要 Terminal——內置嗰個已經夠，我而家放大啲字等你睇到。／需要 git、ssh、rsync——macOS 全部內置。／   可以先檢查吓版本。／如果你未裝 Xcode Command Line Tools，第一次打 git 會彈個視窗叫你裝，撳安裝就得。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code># 檢查版本
+sw_vers          # macOS 版本
+git --version
+ssh -V
+rsync --version | head -1
+
+# 如果未裝 Command Line Tools（會彈視窗）
+xcode-select --install</code></pre>
+<ul><li><strong>驗證</strong>：<code>git --version</code> 出到 <code>git version 2.x</code>；<code>ssh -V</code> 出到 OpenSSH。</li><li><strong>陷阱</strong>：公司 Mac 可能鎖咗安裝；用屋企機做。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-5-2-產生-ssh-鎖匙-3-00">Scene 5.2｜產生 SSH 鎖匙（3:00）</h2>
+<ul><li><strong>畫面</strong>：Terminal 執行 ssh-keygen，再用 <code>cat</code> 顯示公鑰，講解邊段可以公開、邊段唔得。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「SSH 鎖匙係我哋入伺服器唯一嘅方式——冇密碼，淨係認鎖匙。／   打 <code>ssh-keygen -t ed25519</code>，ED25519 係而家推薦嘅演算法，短又快又安全。／檔案名我哋叫 <code>aurora-aws</code>。／   Passphrase：<strong>要設</strong>。就算有人攞咗你個檔案都入唔到。／   出嚟兩個檔案：<code>.pem</code> 嗰個係私鑰，<strong>永遠唔好傳畀任何人、唔好 commit</strong>；<code>.pub</code> 嗰個係公鑰，可以公開，就係呢段要貼上 AWS。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code># 1) 產生 ED25519 鎖匙（設 passphrase）
+ssh-keygen -t ed25519 -C &quot;aurora-aws&quot; -f ~/.ssh/aurora-aws
+
+# 2) 收緊權限（太寬 SSH 會拒用）
+chmod 600 ~/.ssh/aurora-aws
+chmod 644 ~/.ssh/aurora-aws.pub
+
+# 3) 加到 Keychain，唔使每次打 passphrase
+ssh-add --apple-use-keychain ~/.ssh/aurora-aws
+
+# 4) 顯示公鑰（呢段要複製）
+cat ~/.ssh/aurora-aws.pub</code></pre>
+<ul><li><strong>驗證</strong>：<code>cat ~/.ssh/aurora-aws.pub</code> 出一行以 <code>ssh-ed25519 AAAA...</code> 開頭、以 <code>aurora-aws</code> 結尾嘅字串。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 權限太闊（<code>644</code> 私鑰）→ SSH 報 <code>UNPROTECTED PRIVATE KEY FILE</code>。   - Keychain 嗰句要用 <code>--apple-use-keychain</code>（macOS 專用）。</p>
+<ul><li><strong>安全</strong>：🔒 私鑰唔好擺 iCloud／AirDrop／GitHub；passphrase 用密碼管理器記。</li></ul>
+<h2 id="scene-5-3-ssh-config-方便日後-2-00">Scene 5.3｜~/.ssh/config 方便日後（2:00）</h2>
+<ul><li><strong>畫面</strong>：<code>nano ~/.ssh/config</code> 寫入設定，之後 <code>ssh aurora</code> 測試（會連唔到，因為機未開，呢度只係示範）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「寫個 config，日後唔使次次打長長嘅指令。／   Host 我哋叫 <code>aurora</code>，HostName 填你嘅 Elastic IP——呢度我留個佔位符，第 6 章攞到 IP 再填。／User 係 <code>ubuntu</code>，因為我哋用 Ubuntu AMI。／IdentityFile 指去我哋啱啱整嘅私鑰。／   之後就淨係打 <code>ssh aurora</code> 就得。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>mkdir -p ~/.ssh &amp;&amp; chmod 700 ~/.ssh
+nano ~/.ssh/config</code></pre>
+<p>寫入：</p>
+<p>Host aurora     HostName &lt;ELASTIC_IP&gt;     User ubuntu     IdentityFile ~/.ssh/aurora-aws     IdentitiesOnly yes     AddKeysToAgent yes     UseKeychain yes     ServerAliveInterval 60</p>
+<pre class="code lang-"><code>```bash
+chmod 600 ~/.ssh/config</code></pre>
+<ul><li><strong>驗證</strong>：<code>cat ~/.ssh/config</code> 見到 <code>Host aurora</code>；第 7 章 <code>ssh aurora</code> 會直接入到。</li><li><strong>陷阱</strong>：<code>HostName</code> 要等第 6 章攞到 Elastic IP 先填；填錯會連唔到。</li><li><strong>安全</strong>：<code>IdentitiesOnly yes</code> 防止 SSH 亂試其他 key 被ban。</li></ul>
+<hr>
+<h1 id="第-6-章-開-ec2-實例-elastic-ip-15-00">第 6 章｜開 EC2 實例 + Elastic IP（15:00）</h1>
+<h2 id="scene-6-1-launch-instance-基本設定-5-00">Scene 6.1｜Launch instance 基本設定（5:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-07] EC2 Console → Instances → <strong>Launch instances</strong>，逐項錄：</li></ul>
+<p>  - Name and tags：<code>aurora-prod</code>   - Application and OS Images (AMI)：<strong>Ubuntu Server 24.04 LTS (HVM), SSD Volume Type</strong>, 64-bit (x86_64) — 標示 Free tier eligible   - Instance type：<code>t3.small</code>（想用免費層就 <code>t3.micro</code>，但要加 swap，第 7 章）   - Key pair (login)：Create new key pair → 名 <code>aurora-aws</code> → RSA/ED25519 → <code>.pem</code> 下載（<strong>只此一次</strong>）</p>
+<ul><li><strong>旁白</strong>：</li></ul>
+<p>  「去 EC2 Console，Instances，Launch instances。／   名：aurora-prod。／   AMI 揀 <strong>Ubuntu Server 24.04 LTS，64-bit x86_64</strong>。點解 x86？因為如果揀 ARM（Graviton），有啲 npm 原生模組要重新編譯，會多好多麻煩。我哋用 x86 穩陣。／   實例類型：<strong>t3.small</strong>（2 vCPU、2GB RAM）。想慳錢可以 t3.micro，但得 1GB，build Docker 嗰陣會好冧，第 7 章我會教你加 swap 頂住。／   Key pair：撳 Create new key pair，名 <code>aurora-aws</code>，格式揀 <code>.pem</code>（因為我哋用 Mac 嘅 OpenSSH）。／撳落去佢會下載一個 <code>.pem</code> 檔案——<strong>呢個檔案只會畀你下載一次</strong>，唔見咗就要重新做過。／   下載完我哋會擺去 ~/.ssh/ 度，第 7 章會用。／   （如果你想用第 5 章自己整嘅 ED25519 公鑰，可以喺 Key pair 嗰度揀『Import existing key pair』，貼入 .pub 內容，咁就唔使理 .pem。）」</p>
+<ul><li><strong>指令</strong>（Mac 本機，下載完 .pem 之後）：</li></ul>
+<pre class="code lang-bash"><code>mv ~/Downloads/aurora-aws.pem ~/.ssh/aurora-aws.pem
+chmod 400 ~/.ssh/aurora-aws.pem
+ls -l ~/.ssh/aurora-aws.pem    # 應該係 -r--------</code></pre>
+<ul><li><strong>驗證</strong>：<code>ls -l</code> 見到權限 <code>-r-------- (400)</code>。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 下載咗但唔記得擺邊 → 重新開過 instance 或者換 key。   - 權限唔係 400 → <code>Permissions 0644 are too open</code> 錯誤。</p>
+<ul><li><strong>安全</strong>：🔒 .pem 唔好放 Desktop／iCloud／GitHub。</li></ul>
+<h2 id="scene-6-2-network-settings-security-group-4-00">Scene 6.2｜Network settings（Security Group）（4:00）</h2>
+<ul><li><strong>畫面</strong>：Network settings → Edit → 展示三條 inbound rule：</li></ul>
+<p>  - SSH / TCP / 22 / Source = <strong>My IP</strong>（自動偵測）   - HTTP / TCP / 80 / Source = <strong>Anywhere-IPv4 + IPv6</strong>（Caddy 簽證書要用）   - HTTPS / TCP / 443 / Source = <strong>Anywhere-IPv4 + IPv6</strong></p>
+<ul><li><strong>旁白</strong>：</li></ul>
+<p>  「Network settings，撳 Edit。／   我哋要三條入站規則。／   第一，SSH，22 port，來源揀 <strong>My IP</strong>。呢個好重要——只准你而家呢個 IP 入。如果你屋企 IP 會變，日後返去改就得，安全過開全世界。／   第二，HTTP 80，來源全世界。點解要開 80？因為 Caddy 簽 Let's Encrypt 證書嘅 HTTP-01 挑戰要用 80 port。Caddy 會自動將 80 跳去 443，所以唔係明文傳輸。／   第三，HTTPS 443，來源全世界，呢個就係正式網站嘅門口。／   ⚠️ <strong>千祈唔好</strong>將 22 port 開做 0.0.0.0/0。開咗之後幾個鐘內就會有機械人開始撞你嘅密碼。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：Summary 見到 3 條 rule，22 嘅來源係 <code>x.x.x.x/32</code>。</li><li><strong>陷阱</strong>：屋企 IP 變咗會連唔上 SSH；解法：EC2 → Security Groups → Edit inbound rules → 改做新 IP（或用 AWS 嘅 <code>My IP</code>）。</li><li><strong>安全</strong>：🔒 22 只限自己 IP；只開需要嘅 port。</li></ul>
+<h2 id="scene-6-3-storage-advanced-2-00">Scene 6.3｜Storage + Advanced（2:00）</h2>
+<ul><li><strong>畫面</strong>：Configure storage 30 GiB gp3；Advanced details → Termination protection = Enable、Shutdown behavior = Stop；右邊 Summary → Launch instance。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「Storage：30GB gp3 就夠（免費層 30GB 內）。／   Advanced details 有兩個位要改：／   <strong>Termination protection → Enable</strong>。呢個係防止你手滑撳『Terminate』成部機冇咗，連埋個資料庫。／   <strong>Shutdown behavior → Stop</strong>。即係喺作業系統入面 shutdown，部機只係停低，唔會被 terminate。／   之後右邊 Summary 睇一次：1 instance、t3.small、30GB、3 條 rule。／撳 Launch instance。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：Instances 列表見到 <code>aurora-prod</code>，Instance state = <code>Running</code>（等 1–2 分鐘），Status check = <code>2/2 checks passed</code>。</li><li><strong>陷阱</strong>：Status check 要等 2/2 先好 SSH；1/2 嗰陣連會 timeout。</li><li><strong>安全</strong>：🔒 Termination protection 必開——呢個係防手滑嘅最後保險絲。</li></ul>
+<h2 id="scene-6-4-elastic-ip-4-00">Scene 6.4｜Elastic IP（4:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-08] EC2 → Network &amp; Security → Elastic IPs → Allocate Elastic IP address → Allocate → Actions → Associate Elastic IP address → Instance = aurora-prod → Associate。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「部機而家有個公網 IP，但係<strong>會變</strong>——一 stop 再 start 就換咗。所以我哋要個固定 IP：Elastic IP。／   左邊 Network &amp; Security，Elastic IPs，Allocate Elastic IP address，直接 Allocate。／   跟住揀呢個 IP，Actions，Associate Elastic IP address，揀返 aurora-prod 呢部機，Associate。／   由而家開始，<code>ssh</code> 同 DNS 都用呢個 Elastic IP。／   ⚠️ 記住：Elastic IP <strong>綁住行緊嘅 instance 係免費嘅</strong>；但如果你 allocate 咗唔綁，或者部機長期停住，就會收少少閒置費。所以唔用就 Release 佢。」</p>
+<ul><li><strong>指令</strong>（Mac 本機，記錄 IP）：</li></ul>
+<pre class="code lang-bash"><code>echo &quot;AURORA_IP=&lt;ELASTIC_IP&gt;&quot; &gt;&gt; ~/.aurora_env
+# 或者改 ~/.ssh/config 嘅 HostName
+nano ~/.ssh/config</code></pre>
+<ul><li><strong>驗證</strong>：Elastic IP 頁面見到 Associated instance ID = aurora-prod 嘅 instance id；EC2 列表 Public IPv4 address 一致。</li><li><strong>陷阱</strong>：唔綁 = 收費；唔記得 Release = 長期收費。</li><li><strong>安全</strong>：—</li></ul>
+<hr>
+<h1 id="第-7-章-ssh-登入-伺服器初始化-12-00">第 7 章｜SSH 登入 + 伺服器初始化（12:00）</h1>
+<h2 id="scene-7-1-第一次-ssh-2-00">Scene 7.1｜第一次 SSH（2:00）</h2>
+<ul><li><strong>畫面</strong>：Terminal 執行 ssh，第一次會問 <code>Are you sure you want to continue connecting (yes/no/[fingerprint])?</code>，輸入 yes；成功見到 <code>ubuntu@ip-172-31-x-x:~$</code>。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第一次連，SSH 會問你信唔信呢部機，打 <code>yes</code>。／之後見到 <code>ubuntu@...</code> 就係入到啦。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>ssh -i ~/.ssh/aurora-aws.pem ubuntu@&lt;ELASTIC_IP&gt;
+# 或者（如果第 5 章 import 咗公鑰 + 寫咗 config）
+ssh aurora</code></pre>
+<ul><li><strong>驗證</strong>：提示符變成 <code>ubuntu@ip-xxx:~$</code>；<code>whoami</code> → <code>ubuntu</code>；<code>pwd</code> → <code>/home/ubuntu</code>。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - <code>Permission denied (publickey)</code> → key 錯／user 名錯（Ubuntu 係 <code>ubuntu</code>，Amazon Linux 係 <code>ec2-user</code>，Debian 係 <code>admin</code>）。   - <code>Connection timed out</code> → Security Group 冇開你 IP 嘅 22。   - <code>UNPROTECTED PRIVATE KEY FILE</code> → <code>chmod 400</code>。</p>
+<ul><li><strong>安全</strong>：🔒 唔好用 root 直接 SSH。</li></ul>
+<h2 id="scene-7-2-用-bootstrap-腳本初始化-6-00">Scene 7.2｜用 bootstrap 腳本初始化（6:00）</h2>
+<ul><li><strong>畫面</strong>：講解 <code>scripts/aws/ec2-bootstrap.sh</code> 內容（cat 出嚟逐段講），然後上傳 + 執行（apt upgrade 段加速）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「我準備咗個初始化腳本，喺專案入面 <code>scripts/aws/ec2-bootstrap.sh</code>。／我逐段講佢做乜：／   一，更新系統套件；／二，裝 Docker Engine 同 Compose plugin（用官方 repo，唔用舊版 docker.io）；／三，將 ubuntu 加入 docker group，之後唔使次次 sudo；／四，設時區做 Asia/Hong_Kong；／五，開 2GB swap（t3.micro 必做，否則 build 會 OOM）；／六，ufw 防火牆淨開 22、80、443；／七，開 unattended-upgrades 自動裝安全更新；／八，裝 fail2ban 防 SSH 暴力破解；／九，建 <code>/home/ubuntu/aurora</code> 目錄。／   而家上傳佢上去跑。」</p>
+<ul><li><strong>指令</strong>（Mac 本機 → 傳上去）：</li></ul>
+<pre class="code lang-bash"><code>rsync -avz -e &quot;ssh -i ~/.ssh/aurora-aws.pem&quot; \
+  scripts/aws/ec2-bootstrap.sh ubuntu@&lt;ELASTIC_IP&gt;:/home/ubuntu/</code></pre>
+<p><strong>伺服器上執行</strong>：</p>
+<pre class="code lang-bash"><code>chmod +x ~/ec2-bootstrap.sh
+sudo ./ec2-bootstrap.sh
+# 跑完一定要登出再入，docker group 先生效
+exit</code></pre>
+<ul><li><strong>驗證</strong>（重新登入後）：</li></ul>
+<pre class="code lang-bash"><code>docker --version          # Docker version 2x.x
+docker compose version    # Docker Compose version v2.x
+docker run hello-world    # 出 Hello from Docker!
+free -h                   # Swap 有 2.0G
+sudo ufw status           # 22/tcp, 80, 443 ALLOW
+timedatectl               # Time zone: Asia/Hong_Kong</code></pre>
+<ul><li><strong>陷阱</strong>：</li></ul>
+<p>  - 加咗 docker group 但冇登出 → <code>permission denied while trying to connect to the Docker daemon socket</code>。   - swap 冇開 → docker build 去到 <code>npm rebuild sqlite3</code> 會 <code>Killed</code>（OOM）。</p>
+<ul><li><strong>安全</strong>：🔒 自動安全更新 + fail2ban 一定要開；伺服器係公網機器，每日俾人掃。</li></ul>
+<h2 id="scene-7-3-ssh-硬化-關密碼登入-4-00">Scene 7.3｜SSH 硬化（關密碼登入）（4:00）</h2>
+<ul><li><strong>畫面</strong>：<code>sudo nano /etc/ssh/sshd_config.d/50-aurora.conf</code> 寫入設定 → <code>sshd -t</code> → <code>systemctl reload ssh</code>。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「跟住收緊 SSH。／我哋開個新 config 檔案，唔改主檔案，方便管理。／   三行：唔准 root 登入、唔准用密碼登入（淨係用 key）、最多試三次。／   改完<strong>一定要</strong> <code>sudo sshd -t</code> 檢查語法，先好 reload。／   ⚠️ 呢度有個大陷阱：你 reload 之後<strong>唔好斷開連線</strong>，另外開一個 Terminal 視窗試連一次，確認入到，先好關咗原本嗰個。否則設定錯咗你就永遠入唔返。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>sudo tee /etc/ssh/sshd_config.d/50-aurora.conf &gt;/dev/null &lt;&lt;&#x27;EOF&#x27;
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+EOF
+
+# 一定要先驗語法
+sudo sshd -t &amp;&amp; echo &quot;SSH config OK&quot;
+sudo systemctl reload ssh</code></pre>
+<p><strong>另一個 Mac Terminal 視窗驗證（唔好關咗原本嗰個）</strong>：</p>
+<pre class="code lang-bash"><code>ssh aurora    # 應該照入到</code></pre>
+<ul><li><strong>驗證</strong>：新視窗入到；<code>sudo sshd -t</code> 冇 output。</li><li><strong>陷阱</strong>：改錯 sshd config 又斷咗線 = 要經 AWS Console 用 EC2 Serial Console / 或者 detach volume 救，非常麻煩。</li><li><strong>安全</strong>：🔒 呢步係防止暴力破解嘅關鍵。</li></ul>
+<hr>
+<h1 id="第-8-章-網域與-dns-8-00">第 8 章｜網域與 DNS（8:00）</h1>
+<h2 id="scene-8-1-兩個選擇-route-53-定-cloudflare-2-00">Scene 8.1｜兩個選擇：Route 53 定 Cloudflare（2:00）</h2>
+<ul><li><strong>畫面</strong>：對比表：Route 53（AWS 原生、$0.5/月、簡單）vs Cloudflare（免費 DNS + Proxy + 基本 WAF + 隱藏真實 IP）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「你要有個網域。買網域可以去 Route 53、Namecheap、或者香港嘅註冊商，一年大概十幾美金。／   DNS 由邊個管？兩個選擇：／   <strong>Route 53</strong>——AWS 原生，hosted zone 每個月零點五美金，設定最直接。／   <strong>Cloudflare</strong>——免費 DNS，仲送 Proxy（隱藏你真實 IP）、基本 WAF、CDN。我個人會揀呢個。／   今次我示範 Route 53，因為全程喺 AWS 入面；如果你想用 Cloudflare，概念一樣：加一條 A record 指去 Elastic IP。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：如果你網域係喺第二度買嘅，記得喺註冊商嗰邊改 Nameserver 指去 Route 53 / Cloudflare。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-8-2-route-53-hosted-zone-a-record-4-00">Scene 8.2｜Route 53 Hosted Zone + A record（4:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-09] Route 53 → Hosted zones → Create hosted zone（Domain name = <code>yourdomain.com</code>，Type = Public hosted zone）→ Create → Create record → Record name = <code>booking</code>，Type = A，Value = <code>&lt;ELASTIC_IP&gt;</code>，TTL = 300 → Create records。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「去 Route 53，Hosted zones，Create hosted zone。／網域填你個 domain，類型 Public。／   開好之後入去，Create record。／   Record name 填 <code>booking</code>，即係我哋想要 <code>booking.yourdomain.com</code>。／Type A，Value 填 Elastic IP，TTL 300 秒——TTL 短啲，日後改 IP 生效快。／   如果你網域係喺 Route 53 買嘅，Nameserver 已經自動設好。如果唔係，要喺你嘅註冊商嗰邊，將 Nameserver 改做 Route 53 畀你嗰四個。」</p>
+<ul><li><strong>指令</strong>（Mac 本機驗證）：</li></ul>
+<pre class="code lang-bash"><code>dig +short booking.yourdomain.com        # 應該出你個 Elastic IP
+dig NS yourdomain.com +short             # 應該出 4 條 awsdns-xx</code></pre>
+<ul><li><strong>驗證</strong>：<code>dig +short</code> 出到 Elastic IP。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - DNS 生效要幾分鐘到幾小時，視乎 TTL 同上層快取。   - 改 Nameserver 最慢可以等到 24–48 小時。   - ⚠️ 未生效就去簽證書，會失敗（第 12 章會講）。</p>
+<ul><li><strong>安全</strong>：用 Cloudflare Proxy 可以唔暴露 Elastic IP。</li></ul>
+<h2 id="scene-8-3-可選-cloudflare-設定-2-00">Scene 8.3｜（可選）Cloudflare 設定（2:00）</h2>
+<ul><li><strong>畫面</strong>：Cloudflare → Add site → 抄 NS → SSL/TLS = Full (strict) → Always Use HTTPS = On → A record 指去 IP、Proxy = Proxied（橙色雲）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「如果用 Cloudflare：加咗 site 之後，佢會畀兩條 Nameserver 你，去註冊商改。／   DNS 加 A record 指去 Elastic IP，<strong>橙色雲要開</strong>（Proxied）。／   SSL/TLS 模式揀 <strong>Full (strict)</strong>，因為我哋伺服器有正式證書。／再開『Always Use HTTPS』。／   之後你 dig 出嚟嘅會係 Cloudflare 嘅 IP，唔係你嘅 Elastic IP——呢個係正常嘅，亦係我哋想要嘅效果。」</p>
+<ul><li><strong>指令</strong>：</li></ul>
+<pre class="code lang-bash"><code>dig +short booking.yourdomain.com   # 會出 Cloudflare IP（如 104.x.x.x）</code></pre>
+<ul><li><strong>驗證</strong>：網站可開，且 <code>curl -sI</code> 見到 <code>server: cloudflare</code>。</li><li><strong>陷阱</strong>：SSL 模式揀錯（Flexible）會造成無限重定向。</li><li><strong>安全</strong>：🔒 Proxy 隱藏真實 IP + 免費 WAF。</li></ul>
+<hr>
+<h1 id="第-9-章-上傳程式碼上機-6-00">第 9 章｜上傳程式碼上機（6:00）</h1>
+<h2 id="scene-9-1-rsync-排除敏感同大檔案-4-00">Scene 9.1｜rsync（排除敏感同大檔案）（4:00）</h2>
+<ul><li><strong>畫面</strong>：Terminal 執行 rsync，講解每個 <code>--exclude</code> 嘅原因。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「傳 code 上去。我用 rsync，因為第二次開始只傳改咗嘅檔，好快。／   重點係<strong>排除乜嘢</strong>：／<code>node_modules</code>——唔使傳，Docker 入面會裝；／<code>.git</code>——係你嘅歷史，伺服器唔需要，而且可能有敏感嘢；／<code>database.db</code> 同 <code>database.db-*</code>——本地測試資料，唔好污染生產；／<code>.env</code>——<strong>我哋另外單獨傳</strong>，唔好跟住 rsync 咁飄；／<code>logs</code>、<code>uploads</code> 視乎情況。／   另外 <code>scenario.db</code>、<code>scenario.db-*</code>、<code>promo-videos</code>、<code>presentation</code> 呢啲大檔案同測試檔都排走，唔好嘥時間同空間。」</p>
+<ul><li><strong>指令</strong>（Mac 本機，喺專案根目錄）：</li></ul>
+<pre class="code lang-bash"><code>rsync -avz --delete \
+  -e &quot;ssh -i ~/.ssh/aurora-aws.pem&quot; \
+  --exclude &#x27;node_modules&#x27; \
+  --exclude &#x27;.git&#x27; \
+  --exclude &#x27;.env&#x27; \
+  --exclude &#x27;database.db&#x27; --exclude &#x27;database.db-shm&#x27; --exclude &#x27;database.db-wal&#x27; \
+  --exclude &#x27;scenario.db*&#x27; \
+  --exclude &#x27;logs&#x27; \
+  --exclude &#x27;promo-videos&#x27; --exclude &#x27;presentation&#x27; --exclude &#x27;design&#x27; \
+  --exclude &#x27;_*.html&#x27; --exclude &#x27;_*.cjs&#x27; --exclude &#x27;_*.js&#x27; --exclude &#x27;_*.txt&#x27; \
+  ./ ubuntu@&lt;ELASTIC_IP&gt;:/home/ubuntu/aurora/</code></pre>
+<ul><li><strong>驗證</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>ls /home/ubuntu/aurora
+# 應該見到: Dockerfile docker-compose.yml Caddyfile server.js package.json
+#          config routes services middlewares js css admin.html index.html ...
+# 唔應該見到: node_modules .env database.db</code></pre>
+<ul><li><strong>陷阱</strong>：</li></ul>
+<p>  - <code>--delete</code> 會剷走伺服器上多出嘅檔；第一次用之前確認目標目錄係啱嘅。   - 漏咗 exclude <code>.env</code> → 本地開發用嘅假值會上咗生產。</p>
+<ul><li><strong>安全</strong>：🔒 <code>.env</code> 單獨傳、傳完 <code>chmod 600</code>、確認唔喺 git。</li></ul>
+<h2 id="scene-9-2-另一個做法-git-clone-deploy-key-2-00">Scene 9.2｜另一個做法：git clone + deploy key（2:00）</h2>
+<ul><li><strong>畫面</strong>：GitHub repo → Settings → Deploy keys → Add deploy key（只讀）；伺服器上 ssh-keygen + git clone。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「另一個做法係喺伺服器 git clone。／好處係有版本記錄、更新方便；壞處係私有 repo 要設 deploy key，多一步。／   喺 GitHub repo 嘅 Settings → Deploy keys，加一把只讀嘅公鑰（伺服器上 <code>ssh-keygen</code> 出嚟嗰條 <code>.pub</code>）。／   之後伺服器 <code>git clone git@github.com:...</code>。／   我今次用 rsync，因為最直接，亦唔使將 repo 權限交畀伺服器。」</p>
+<ul><li><strong>指令</strong>（伺服器上，示範版）：</li></ul>
+<pre class="code lang-bash"><code>ssh-keygen -t ed25519 -C &quot;aurora-deploy&quot; -f ~/.ssh/aurora_deploy -N &quot;&quot;
+cat ~/.ssh/aurora_deploy.pub     # 貼去 GitHub Deploy keys
+git clone git@github.com:&lt;you&gt;/booking-aurora.git /home/ubuntu/aurora</code></pre>
+<ul><li><strong>驗證</strong>：<code>git log --oneline -1</code> 出到最新 commit。</li><li><strong>陷阱</strong>：Deploy key 要剔「Allow write access」先可以 push（我哋唔需要，保持只讀）。</li><li><strong>安全</strong>：🔒 Deploy key 只讀；私鑰唔好離開伺服器。</li></ul>
+<hr>
+<h1 id="第-10-章-設定-env-與密鑰-8-00">第 10 章｜設定 .env 與密鑰（8:00）</h1>
+<h2 id="scene-10-1-產生-session_secret-3-00">Scene 10.1｜產生 SESSION_SECRET（3:00）</h2>
+<ul><li><strong>畫面</strong>：Mac Terminal 產生密鑰；講解 <code>config/preflight.js</code> 嘅要求（冇就 exit 1、&lt;32 字元拒絕）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「<code>.env</code> 係成個系統最敏感嘅檔案。／   入面最緊要係 <code>SESSION_SECRET</code>——用嚟簽 JWT 同 session cookie 嘅。／   項目入面有個 <code>config/preflight.js</code>，開機前會檢查：冇設就直接拒絕啟動；長度少過三十二個字元都拒絕。／   所以唔可以亂填。我哋用 Node 產生 48 bytes 隨機值，base64url 出嚟六十四個字元，穩陣。／   ⚠️ 呢條密鑰改咗，所有已經登入嘅人都會被登出。所以生產用嗰條要長期固定，唔好每次部署都換。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>node -e &quot;console.log(require(&#x27;crypto&#x27;).randomBytes(48).toString(&#x27;base64url&#x27;))&quot;</code></pre>
+<ul><li><strong>驗證</strong>：出到一條 64 個字元、含大小寫同 <code>-_</code> 嘅亂碼。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 用 base64（唔係 base64url）會出 <code>+</code> <code>/</code> <code>=</code>，喺 docker env_file 有時會出問題 → 用 base64url。   - 每次重新部署換新 → 所有用家被登出。</p>
+<ul><li><strong>安全</strong>：🔒 唔好寫落 git、唔好貼落 chat、唔好放 GitHub gist。</li></ul>
+<h2 id="scene-10-2-寫-env-3-00">Scene 10.2｜寫 .env（3:00）</h2>
+<ul><li><strong>畫面</strong>：Mac 上 <code>cp .env.example .env.production</code> → 用編輯器填 → <code>scp</code> 上機 → <code>chmod 600</code>。逐行講解。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「喺 Mac 複製 <code>.env.example</code> 做 <code>.env.production</code>，跟住填：／   <code>SESSION_SECRET</code> 填啱啱嗰條。／   <code>NODE_ENV=production</code>。／   <code>PORT=4000</code>——容器內嘅 port。／   <code>DB_PATH=/app/data/database.db</code>——容器內路徑，配合 docker-compose 嘅 volume。／   <code>ADMIN_PASSWORD</code>——<strong>一定要設</strong>，設個強密碼。唔設嘅話系統會隨機生成，要去 log 度搵。／   Email、Twilio、Stripe 呢啲，而家開唔到就<strong>留空</strong>——系統會自動停用相關功能，唔會報錯。／   ⚠️ 最重要：<strong><code>CAPTCHA_TEST_BYPASS</code> 呢一行一定要刪走</strong>。留低嘅話，任何人打驗證碼 <code>test999</code> 就過到，等於開咗個後門。／   寫好之後 scp 上去，跟住<strong>一定要</strong> <code>chmod 600</code>，淨係擁有者讀到。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>cp .env.example .env.production
+nano .env.production
+# 檢查：一定要冇 CAPTCHA_TEST_BYPASS
+grep -n &quot;CAPTCHA_TEST_BYPASS&quot; .env.production &amp;&amp; echo &quot;⚠️ 有後門！&quot; || echo &quot;OK 已清除&quot;</code></pre>
+<p>上傳 + 收權限（伺服器上）：</p>
+<pre class="code lang-bash"><code>scp -i ~/.ssh/aurora-aws.pem .env.production ubuntu@&lt;ELASTIC_IP&gt;:/home/ubuntu/aurora/.env</code></pre>
+<pre class="code lang-bash"><code>chmod 600 /home/ubuntu/aurora/.env
+ls -l /home/ubuntu/aurora/.env     # -rw-------</code></pre>
+<ul><li><strong>驗證</strong>：<code>grep -c CAPTCHA_TEST_BYPASS /home/ubuntu/aurora/.env</code> → <code>0</code>；權限 <code>-rw-------</code>。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 檔名要係 <code>.env</code>（唔係 <code>.env.production</code>），因為 docker-compose 係 <code>env_file: .env</code>。   - 行尾唔好有 Windows 嘅 <code>^M</code>（CRLF），否則變數值會多咗個 <code>\r</code>。</p>
+<ul><li><strong>安全</strong>：🔒 呢個檔 = 成個系統嘅鎖匙。</li></ul>
+<h2 id="scene-10-3-首次部署前清-data-2-00">Scene 10.3｜首次部署前清 data（2:00）</h2>
+<ul><li><strong>畫面</strong>：伺服器上 <code>rm -rf data</code>，解釋原因（系統只會喺冇 admin 時用 ADMIN_PASSWORD 建 admin）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第一次部署前，確保伺服器上冇 <code>data</code> 目錄。／點解？因為系統嘅邏輯係：建庫嗰陣如果搵唔到 admin，就會用你 <code>.env</code> 嘅 <code>ADMIN_PASSWORD</code> 開一個。／如果唔小心有個舊嘅 <code>database.db</code> 喺度，就可能建唔到、或者用咗個你唔知嘅密碼。／   ⚠️ 呢一步<strong>只可以喺第一次做</strong>。之後再做就係剷資料庫，會冇晒所有預約。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>cd /home/ubuntu/aurora
+ls -la data 2&gt;/dev/null || echo &quot;無 data 目錄，安全&quot;
+# 確認係全新環境先好剷（只限第一次！）
+rm -rf data</code></pre>
+<ul><li><strong>驗證</strong>：<code>ls data</code> → No such file。</li><li><strong>陷阱</strong>：第二次部署千祈唔好再剷；呢個係全片最危險嘅指令之一。</li><li><strong>安全</strong>：🔴 剷之前先確認已經有備份，或者確認係全新環境。</li></ul>
+<hr>
+<h1 id="第-11-章-起容器-第一次登入-10-00">第 11 章｜起容器 + 第一次登入（10:00）</h1>
+<h2 id="scene-11-1-docker-compose-up-5-00">Scene 11.1｜docker compose up（5:00）</h2>
+<ul><li><strong>畫面</strong>：伺服器 Terminal，<code>docker compose up -d --build</code>（build 段加速 6–8 倍，但停低睇結果），<code>docker compose ps</code> 顯示 healthy。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「起機。／<code>docker compose up -d --build</code>——<code>--build</code> 係重新 build image，<code>-d</code> 係背景跑。／   第一次會比較耐，因為要裝 npm 套件同編譯 sqlite3 嘅原生模組。／去到 <code>npm rebuild sqlite3</code> 嗰段最耐，亦最容易因為記憶體唔夠而被 kill——所以第 7 章叫你開 swap。／   完成之後 <code>docker compose ps</code>，睇 status。／app 嗰個應該係 <code>Up (healthy)</code>，因為 Dockerfile 有 HEALTHCHECK 對住 <code>/health</code>。／   如果係 <code>Up (unhealthy)</code> 或者 <code>Restarting</code>，即係有問題，要睇 log。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>cd /home/ubuntu/aurora
+docker compose up -d --build
+docker compose ps
+docker compose logs -f app      # Ctrl+C 離開</code></pre>
+<ul><li><strong>驗證</strong>：</li></ul>
+<pre class="code lang-bash"><code>docker compose ps
+# NAME          SERVICE   STATUS
+# aurora-app    app       Up (healthy)
+# aurora-caddy  caddy     Up
+
+curl -s -o /dev/null -w &quot;%{http_code}\n&quot; http://127.0.0.1/health   # 200
+curl -s http://127.0.0.1/health | head -c 200</code></pre>
+<ul><li><strong>陷阱</strong>：</li></ul>
+<p>  - build 時 <code>Killed</code> → OOM，加 swap 或者升 t3.small。   - <code>SQLITE_CANTOPEN</code> → data 目錄權限問題，或者 DB_PATH 設錯。   - <code>preflight</code> 報錯 <code>SESSION_SECRET 未設定</code> → .env 未讀到（檔名錯 / 權限 / 有 BOM）。</p>
+<ul><li><strong>安全</strong>：app 只 expose 4000，唔對外；唯一入口係 Caddy。</li></ul>
+<h2 id="scene-11-2-搵初始-admin-密碼-2-00">Scene 11.2｜搵初始 admin 密碼（2:00）</h2>
+<ul><li><strong>畫面</strong>：<code>docker compose logs app | grep -i admin</code> 搵密碼；瀏覽器開 <code>http://&lt;ELASTIC_IP&gt;/admin.html</code> 登入。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「如果你 <code>.env</code> 冇設 <code>ADMIN_PASSWORD</code>，系統會隨機生成一個，印落 log 度。／用 grep 搵。／   跟住開瀏覽器，用 Elastic IP 入 <code>admin.html</code>。／   ⚠️ 呢個時候仲係 http，未加密，所以<strong>只係用嚟確認</strong>，跟住我哋即刻做 HTTPS（第 12 章）。／   登入之後第一件事：改密碼。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>docker compose logs app 2&gt;&amp;1 | grep -i -m5 &quot;admin\|password&quot;</code></pre>
+<ul><li><strong>驗證</strong>：瀏覽器見到 admin 後台；用 admin + 密碼入到。</li><li><strong>陷阱</strong>：log 會一直留喺度，其他人有 docker 權限都可以睇到 → 登入後改密碼，之後清理 log 或者用 ADMIN_PASSWORD 預設值。</li><li><strong>安全</strong>：🔒 第一次登入後<strong>立即改密碼</strong>；唔好用預設 admin/admin123 上生產。</li></ul>
+<h2 id="scene-11-3-功能冒煙測試-3-00">Scene 11.3｜功能冒煙測試（3:00）</h2>
+<ul><li><strong>畫面</strong>：瀏覽器逐個開：首頁 <code>index.html</code>、admin、doctor、staff、hr；開控制台 Network 睇有冇 4xx/5xx。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「上線前做個快速冒煙測試。／首頁開唔開到、可唔可以揀服務同時間、預約表單出唔出到。／   跟住開 admin、doctor、staff、hr 四個後台，逐個登入睇吓。／   開住瀏覽器嘅開發者工具，Network 分頁，睇吓有冇紅色嘅 4xx、5xx。／   其中最緊要係呢個：開 <code>https://.../health</code> 應該出 200。」</p>
+<ul><li><strong>指令</strong>（伺服器上批量檢查）：</li></ul>
+<pre class="code lang-bash"><code>for p in / /health /health/ready /admin.html /doctor.html /staff.html /hr.html; do
+  printf &quot;%-16s %s\n&quot; &quot;$p&quot; &quot;$(curl -s -o /dev/null -w &#x27;%{http_code}&#x27; http://127.0.0.1$p)&quot;
+done</code></pre>
+<ul><li><strong>驗證</strong>：全部 200（<code>/health/ready</code> 視乎 DB 狀態，應該都係 200）。</li><li><strong>陷阱</strong>：<code>npm run qa</code> 係本地 QA，生產環境唔好跑（會寫測試資料）。</li><li><strong>安全</strong>：冒煙測試完，確認冇測試帳戶留低。</li></ul>
+<hr>
+<h1 id="第-12-章-https-上線-8-00">第 12 章｜HTTPS 上線（8:00）</h1>
+<h2 id="scene-12-1-caddy-點樣自動拎證書-2-00">Scene 12.1｜Caddy 點樣自動拎證書（2:00）</h2>
+<ul><li><strong>畫面</strong>：<code>Caddyfile</code> 逐行講解；畫 HTTP-01 挑戰流程圖。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「Caddy 會自動向 Let's Encrypt 拎證書，原理係 HTTP-01 挑戰：／Let's Encrypt 會去 <code>http://你嘅網域/.well-known/acme-challenge/...</code> 攞一個檔案，／攞到即係證明你控制住呢個網域，就批證書。／   所以兩個條件：一，DNS 要已經指去呢部機；二，80 port 要開。／   Caddyfile 入面 <code>email</code> 嗰行要改做你嘅電郵，用嚟收證書到期通知。／   <code>.env</code> 入面加 <code>SITE_DOMAIN=booking.yourdomain.com</code>，Caddyfile 用 <code>{$SITE_DOMAIN:localhost}</code> 讀。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：冇開 80 port → 簽證書失敗；DNS 未生效 → 失敗。</li><li><strong>安全</strong>：證書自動續期，唔使自己 cron。</li></ul>
+<h2 id="scene-12-2-設-site_domain-並重啟-3-00">Scene 12.2｜設 SITE_DOMAIN 並重啟（3:00）</h2>
+<ul><li><strong>畫面</strong>：伺服器上改 <code>.env</code>、改 <code>Caddyfile</code> email、<code>docker compose up -d</code>、<code>curl -I https://...</code>。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「改 <code>.env</code> 加 <code>SITE_DOMAIN</code>。／改 Caddyfile 嘅 email。／   跟住 <code>docker compose up -d</code>——<strong>唔使 --build</strong>，因為只係改環境變數同 Caddyfile（Caddyfile 係 mount 入去嘅）。／   之後等十幾秒，Caddy 就會去拎證書。／   驗證：curl -I，睇吓有冇出 200 同 HSTS header。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>cd /home/ubuntu/aurora
+
+# 1) 加 SITE_DOMAIN
+grep -q &#x27;^SITE_DOMAIN=&#x27; .env || echo &#x27;SITE_DOMAIN=booking.yourdomain.com&#x27; &gt;&gt; .env
+
+# 2) 改 Caddyfile email
+sed -i &#x27;s|email .*|email your-real@email.com|&#x27; Caddyfile
+head -5 Caddyfile
+
+# 3) 重啟（唔使 rebuild）
+docker compose up -d
+
+# 4) 睇 Caddy 拎證書過程
+docker compose logs -f caddy | grep -i &quot;cert\|acme\|tls&quot;</code></pre>
+<ul><li><strong>驗證</strong>：</li></ul>
+<pre class="code lang-bash"><code>curl -sI https://booking.yourdomain.com | head -12
+# HTTP/2 200
+# strict-transport-security: max-age=31536000; includeSubDomains
+# x-content-type-options: nosniff
+
+echo | openssl s_client -connect booking.yourdomain.com:443 -servername booking.yourdomain.com 2&gt;/dev/null \
+  | openssl x509 -noout -issuer -dates
+# issuer=... Let&#x27;s Encrypt ...</code></pre>
+<ul><li><strong>陷阱</strong>：</li></ul>
+<p>  - 一直出 308 redirect loop → Cloudflare SSL 模式唔係 Full(strict)。   - <code>too many certificates already issued</code> → 短期內試太多次，等一小時。   - 出 502 → app 未 healthy。</p>
+<ul><li><strong>安全</strong>：🔒 HSTS 已由 Caddy 設；續期全自動。</li></ul>
+<h2 id="scene-12-3-caddy-證書存放位置與備份-1-30">Scene 12.3｜Caddy 證書存放位置與備份（1:30）</h2>
+<ul><li><strong>畫面</strong>：<code>docker volume inspect</code> 搵 caddy_data；解釋證書喺 volume 入面，做 snapshot 時要包埋。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「證書放喺 <code>caddy_data</code> 呢個 docker volume 入面。／所以做伺服器備份嘅時候，唔好淨係備份 <code>data</code> 目錄同 <code>.env</code>，caddy 嘅 volume 都要包埋，否則重建嗰陣要重新簽（唔係大問題，但會多啲手續）。」</p>
+<ul><li><strong>指令</strong>：</li></ul>
+<pre class="code lang-bash"><code>docker volume ls | grep caddy
+docker volume inspect aurora_caddy_data --format &#x27;{{.Mountpoint}}&#x27;</code></pre>
+<ul><li><strong>驗證</strong>：出到 <code>/var/lib/docker/volumes/aurora_caddy_data/_data</code>。</li><li><strong>陷阱</strong>：誤刪 volume → 證書重新簽，一般会自动恢復。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-12-4-http-跳-https-驗證-1-30">Scene 12.4｜HTTP 跳 HTTPS 驗證（1:30）</h2>
+<ul><li><strong>畫面</strong>：<code>curl -I http://...</code> 見到 308；瀏覽器地址列顯示鎖頭。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「最後確認：打 <code>http://</code> 會唔會自己跳去 <code>https://</code>。／curl 會出 308 Permanent Redirect。／   瀏覽器地址列應該有個鎖頭，撳落去睇證書有效期——三個月，但 Caddy 會自動續，唔使你理。」</p>
+<ul><li><strong>指令</strong>：</li></ul>
+<pre class="code lang-bash"><code>curl -sI http://booking.yourdomain.com | grep -i &quot;location\|HTTP/&quot;</code></pre>
+<ul><li><strong>驗證</strong>：出 <code>308</code> + <code>Location: https://...</code>。</li><li><strong>陷阱</strong>：見到 308 loop（http→https→http）通常係 Cloudflare Flexible 模式。</li><li><strong>安全</strong>：—</li></ul>
+<hr>
+<h1 id="第-13-章-備份-還原演練-12-00">第 13 章｜備份 + <strong>還原演練</strong>（12:00）</h1>
+<h2 id="scene-13-1-兩層備份策略-2-00">Scene 13.1｜兩層備份策略（2:00）</h2>
+<ul><li><strong>畫面</strong>：架構圖：EBS Snapshot（整機，每日）＋ SQLite 邏輯備份上 S3（每日，異地）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「備份要兩層。／第一層：EBS Snapshot——成個硬碟嘅快照，出事可以成部機還原，用 AWS 嘅 Data Lifecycle Manager 自動每日做，保留七日。／   第二層：SQLite 邏輯備份——用 <code>sqlite3 .backup</code> 出一個一致嘅資料庫檔，gzip 之後放上 S3。／   點解要兩層？因為 snapshot 係成個 disk，你要搵返一張單嘅時候好麻煩；而邏輯備份可以單獨還原個 db 檔。／而且 S3 係異地，就算成個 region 出事都仲有。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：直接 <code>cp database.db</code> 出嚟，如果當時有寫入，份 backup 可能損壞 → 一定要用 <code>.backup</code>。</li><li><strong>安全</strong>：🔒 3-2-1 原則：3 份、2 種媒介、1 份異地。</li></ul>
+<h2 id="scene-13-2-ebs-snapshot-dlm-3-00">Scene 13.2｜EBS Snapshot + DLM（3:00）</h2>
+<ul><li><strong>畫面</strong>：EC2 → Elastic Block Store → Lifecycle Manager → Create lifecycle policy → EBS snapshot policy → Target = 用 tag 揀 volume → Schedule 每日 03:00 (UTC+8) → Retention 7 → Enable policy。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「先做 snapshot 自動化。／EC2 左邊搵 Lifecycle Manager，Create lifecycle policy。／揀 EBS snapshot policy。／   目標用 tag 揀——我哋畀部機加個 tag。／   排程每日一次，時間揀凌晨三點（網站最少人用）。保留七日。／   ⚠️ snapshot 係要錢嘅，但係計增量，即係第二日只係計改咗嘅部分，一個細系統每個月好少錢。／   記得 Enable policy。」</p>
+<ul><li><strong>指令</strong>（伺服器上／Mac 用 AWS CLI 手動試一次）：</li></ul>
+<pre class="code lang-bash"><code># 手動做一次 snapshot（要先裝 awscli 並設 IAM Role，見下一幕）
+aws ec2 create-snapshot --volume-id vol-xxxxxxxx --description &quot;aurora-manual-$(date +%F)&quot;
+
+# 手動做一次（Console 版）：EC2 → Volumes → 揀 volume → Actions → Create snapshot</code></pre>
+<ul><li><strong>驗證</strong>：EC2 → Snapshots 見到新 snapshot，Status = <code>Completed</code>。</li><li><strong>陷阱</strong>：Volume 未加 tag → DLM policy 揀唔到，冇嘢做。</li><li><strong>安全</strong>：🔒 Snapshot 可能含敏感資料，唔好公開分享。</li></ul>
+<h2 id="scene-13-3-iam-role-畀-ec2-上傳-s3-唔用-access-key-3-00">Scene 13.3｜IAM Role 畀 EC2 上傳 S3（<strong>唔用 Access Key</strong>）（3:00）</h2>
+<ul><li><strong>畫面</strong>：IAM → Roles → Create role → AWS service → EC2 → 加 <code>AmazonS3</code> 只寫一個 bucket 嘅 inline policy → 命名 <code>aurora-backup-role</code>；EC2 → Actions → Security → Modify IAM role → 揀呢個 role。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「上傳 S3 要有憑證。<strong>最錯嘅做法</strong>係喺伺服器放一條 Access Key。／   正確做法係用 <strong>IAM Role</strong>：將權限直接綁落部機度，AWS 會自動提供臨時憑證，會自己輪換，冇長期金鑰可以洩漏。／   去 IAM，Roles，Create role。／Trusted entity 揀 AWS service，Use case 揀 EC2。／   權限方面，我哋自己寫一條最窄嘅 inline policy：只准 <code>s3:PutObject</code> 去我哋嗰一個 bucket。／   開好之後，返去 EC2，揀部機，Actions → Security → Modify IAM role，揀啱啱嗰個。／   即時生效，唔使重啟。」</p>
+<ul><li><strong>指令</strong>（伺服器上驗證）：</li></ul>
+<pre class="code lang-bash"><code># 唔使設任何 key，直接試
+aws sts get-caller-identity
+# 應該出: &quot;Arn&quot;: &quot;arn:aws:sts::123456789012:assumed-role/aurora-backup-role/i-xxxxx&quot;</code></pre>
+<p>Inline policy 範例：</p>
+<pre class="code lang-json"><code>{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [{
+    &quot;Effect&quot;: &quot;Allow&quot;,
+    &quot;Action&quot;: [&quot;s3:PutObject&quot;, &quot;s3:ListBucket&quot;],
+    &quot;Resource&quot;: [&quot;arn:aws:s3:::aurora-backups-你的名&quot;, &quot;arn:aws:s3:::aurora-backups-你的名/*&quot;]
+  }]
+}</code></pre>
+<ul><li><strong>驗證</strong>：<code>aws sts get-caller-identity</code> 出到 assumed-role。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 冇裝 awscli → <code>sudo apt install -y awscli</code>（或用 snap）。   - Region 唔啱 → <code>aws configure set region ap-southeast-1</code>。</p>
+<ul><li><strong>安全</strong>：🔒 <strong>永遠優先 IAM Role 而唔係 Access Key</strong>。</li></ul>
+<h2 id="scene-13-4-每日備份腳本-cron-2-00">Scene 13.4｜每日備份腳本 + cron（2:00）</h2>
+<ul><li><strong>畫面</strong>：上傳 <code>scripts/aws/backup-to-s3.sh</code>，講解內容，<code>crontab -e</code> 加排程，手動跑一次驗證。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「備份腳本喺 <code>scripts/aws/backup-to-s3.sh</code>。／   佢做嘅嘢：用 <code>sqlite3 .backup</code> 出一致性備份 → gzip → 用 aws s3 cp 上傳 → 刪走本地超過 7 日嘅舊檔。／   放上伺服器，加執行權限，跟住用 cron 每日凌晨三點半跑。／   手動跑一次確認。／   ⚠️ 之後一定要去 S3 睇吓個檔真係喺度，同埋 size 唔係 0。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code># 上傳（Mac 執行）
+# rsync -avz -e &quot;ssh -i ~/.ssh/aurora-aws.pem&quot; scripts/aws/backup-to-s3.sh ubuntu@&lt;ELASTIC_IP&gt;:/home/ubuntu/
+
+chmod +x ~/backup-to-s3.sh
+sudo mkdir -p /var/backups/aurora &amp;&amp; sudo chown ubuntu:ubuntu /var/backups/aurora
+
+# 手動跑一次
+~/backup-to-s3.sh
+
+# 加 cron（每日 03:30）
+crontab -e
+# 加入：
+30 3 * * * /home/ubuntu/backup-to-s3.sh &gt;&gt; /var/backups/aurora/backup.log 2&gt;&amp;1</code></pre>
+<ul><li><strong>驗證</strong>：</li></ul>
+<pre class="code lang-bash"><code>aws s3 ls s3://aurora-backups-你的名/aurora/
+# 見到 aurora-db-2026-09-10_0330.db.gz，size &gt; 0
+tail -5 /var/backups/aurora/backup.log</code></pre>
+<ul><li><strong>陷阱</strong>：</li></ul>
+<p>  - cron 嘅環境變數好少，<code>aws</code> 可能搵唔到 → 腳本內用絕對路徑 <code>/usr/bin/aws</code>。   - bucket 名全球唯一，要改。</p>
+<ul><li><strong>安全</strong>：🔒 bucket 設 Block Public Access = On、開版本控制、SSE 加密。</li></ul>
+<h2 id="scene-13-5-還原演練-最重要-2-00">Scene 13.5｜<strong>還原演練</strong>（最重要）（2:00）</h2>
+<ul><li><strong>畫面</strong>：真係演練一次：開個測試目錄，停 app，換 db，起返，驗證資料；再還原返原本個 db。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「<strong>未演練過嘅備份，唔算備份。</strong>／呢一幕成條片最重要，唔好 skip。／   我哋真係還原一次：／由 S3 攞份最新備份落嚟，解壓，停咗 app，換個 db 檔，起返，開網站睇吓資料啱唔啱。／   做完之後，記得還原返而家個 db，或者確認你係特登要roll back。／   呢個動作每個月做一次，你先會真係信自己嘅備份。」</p>
+<ul><li><strong>指令</strong>（伺服器上，<strong>小心</strong>）：</li></ul>
+<pre class="code lang-bash"><code>cd /home/ubuntu/aurora
+
+# 0) 先備份現況（保護自己）
+cp data/database.db /var/backups/aurora/pre-restore-$(date +%F_%H%M).db
+
+# 1) 落載 + 解壓
+aws s3 cp s3://aurora-backups-你的名/aurora/aurora-db-2026-09-10_0330.db.gz /tmp/
+gunzip -f /tmp/aurora-db-*.db.gz
+
+# 2) 停 app（重要：唔好喺寫緊嗰陣換檔）
+docker compose stop app
+
+# 3) 換 db
+cp /tmp/aurora-db-*.db data/database.db
+rm -f data/database.db-wal data/database.db-shm
+
+# 4) 起返
+docker compose start app
+sleep 15
+curl -s -o /dev/null -w &quot;%{http_code}\n&quot; http://127.0.0.1/health   # 200</code></pre>
+<ul><li><strong>驗證</strong>：網站開到，資料同備份時間點一致；<code>/health</code> = 200。</li><li><strong>陷阱</strong>：</li></ul>
+<p>  - 冇停 app 就換 db → SQLite 可能損壞。   - 換完唔記得剷 <code>-wal</code> 檔 → 資料混亂。</p>
+<ul><li><strong>安全</strong>：🔴 演練前一定要先 <code>cp</code> 一份現況，唔好盲信自己。</li></ul>
+<hr>
+<h1 id="第-14-章-監控與告警-7-00">第 14 章｜監控與告警（7:00）</h1>
+<h2 id="scene-14-1-cloudwatch-基本告警-4-00">Scene 14.1｜CloudWatch 基本告警（4:00）</h2>
+<ul><li><strong>畫面</strong>：CloudWatch → Alarms → Create alarm → 揀 EC2 metric <code>CPUUtilization</code> → 門檻 &gt; 80% 持續 5 分鐘 → 設 SNS 通知（Create new topic + email）→ 命名；再做 <code>StatusCheckFailed</code> 告警。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「免費嘅基本監控每五分鐘一個點，對我哋夠用。／   做兩個告警：／一，CPU 超過八成持續五分鐘——通常代表有嘢失控。／二，StatusCheckFailed——部機或者底層硬件有問題。／   通知用 SNS，開個 topic，加你電郵，要去郵箱 confirm subscription。／   ⚠️ CloudWatch 基本監控<strong>冇磁碟使用率</strong>。要監控 disk，要裝 CloudWatch Agent 或者自己寫 cron metric。／最簡單：用 cron 每日 check 一次 disk，超過八成電郵通知。」</p>
+<ul><li><strong>指令</strong>（伺服器上，磁碟檢查 cron）：</li></ul>
+<pre class="code lang-bash"><code>cat &gt; /home/ubuntu/disk-check.sh &lt;&lt;&#x27;EOF&#x27;
+#!/usr/bin/env bash
+THRESHOLD=80
+USAGE=$(df / | awk &#x27;NR==2 {print $5}&#x27; | tr -d &#x27;%&#x27;)
+if [ &quot;$USAGE&quot; -ge &quot;$THRESHOLD&quot; ]; then
+  echo &quot;[WARN] disk ${USAGE}% on $(hostname) $(date)&quot; | tee -a /var/backups/aurora/disk-alert.log
+fi
+EOF
+chmod +x /home/ubuntu/disk-check.sh
+crontab -e
+# 加：0 8 * * * /home/ubuntu/disk-check.sh</code></pre>
+<ul><li><strong>驗證</strong>：CloudWatch → Alarms 見到 2 條 alarm，State = <code>OK</code>；電郵收到 SNS confirm 信並已確認。</li><li><strong>陷阱</strong>：SNS 訂閱未確認就收唔到通知。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-14-2-日誌檢查-sop-3-00">Scene 14.2｜日誌檢查 SOP（3:00）</h2>
+<ul><li><strong>畫面</strong>：伺服器上示範幾個常用 log 指令；講解 logrotate 設定。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「每日或者每星期睇一次 log。／常用幾條指令：／<code>docker compose logs --tail=100 app</code> 睇最近一百行；／<code>docker compose logs -f</code> 實時跟；／<code>journalctl -u docker</code> 睇 Docker 本身。／   Docker 嘅 log 會一直寫落去，所以一定要設 logrotate，否則幾個月後個 disk 會爆。／   我哋喺 docker-compose 加咗 logging 限制（如果冇，而家加）。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>docker compose logs --tail=50 app
+docker compose logs -f caddy
+
+# 磁碟使用
+df -h /
+docker system df          # Docker 用咗幾多
+
+# 清理（小心：會剷走未用嘅 image）
+docker image prune -a --filter &quot;until=168h&quot;    # 剷 7 日前冇用嘅 image</code></pre>
+<ul><li><strong>驗證</strong>：log 出到；<code>docker system df</code> 見到空間合理。</li><li><strong>陷阱</strong>：<code>docker system prune</code> 會剷走晒所有冇用嘅嘢，包括你可能想留嘅舊 image（rollback 用）。</li><li><strong>安全</strong>：log 可能含個人資料，唔好公開分享。</li></ul>
+<hr>
+<h1 id="第-15-章-安全加固清單-10-00">第 15 章｜安全加固清單（10:00）</h1>
+<h2 id="scene-15-1-逐條加固-6-00">Scene 15.1｜逐條加固（6:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-10] 檢查表投影片 + 逐條實機示範。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「安全清單，逐條做：／   一，SSH 淨用 key、關咗密碼——第 7 章做咗。／   二，fail2ban——bootstrap 腳本裝咗，驗證吓。／   三，自動安全更新——unattended-upgrades，驗證吓。／   四，Security Group 收窄——22 只限自己 IP。／   五，<code>.env</code> 權限 600。／   六，<code>CAPTCHA_TEST_BYPASS</code> 已刪。／   七，admin 密碼已改，唔係 admin123。／   八，伺服器上冇留低測試帳戶同測試資料。／   九，Termination protection 已開。／   十，S3 bucket 唔公開、開版本控制。／   十一，如果用 Cloudflare，開 WAF 基本規則同 Bot Fight Mode。／   十二，資料庫備份已經放異地，而且演練過還原。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code># 2) fail2ban
+sudo systemctl is-active fail2ban &amp;&amp; sudo fail2ban-client status sshd
+
+# 3) 自動更新
+sudo systemctl is-enabled unattended-upgrades
+grep -q &#x27;^Unattended-Upgrade::Automatic-Reboot &quot;false&quot;&#x27; /etc/apt/apt.conf.d/50unattended-upgrades &amp;&amp; echo &quot;自動重啟已關（建議）&quot;
+
+# 4) SG 要喺 Console 檢查
+# 5) .env 權限
+stat -c &#x27;%a %n&#x27; /home/ubuntu/aurora/.env      # 600
+
+# 6) 後門檢查
+grep -c &#x27;CAPTCHA_TEST_BYPASS&#x27; /home/ubuntu/aurora/.env   # 0
+
+# 9) Termination protection（喺 Console 或用 CLI）
+aws ec2 describe-instance-attribute --instance-id i-xxxxx --attribute disableApiTermination</code></pre>
+<ul><li><strong>驗證</strong>：每條都有明確輸出；全部 ✅。</li><li><strong>陷阱</strong>：<code>unattended-upgrades</code> 設咗自動重啟，可能喺營業時間重啟 → 設為 false，或者設重啟時段。</li><li><strong>安全</strong>：🔒 呢張表每月行一次。</li></ul>
+<h2 id="scene-15-2-應用層安全-4-00">Scene 15.2｜應用層安全（4:00）</h2>
+<ul><li><strong>畫面</strong>：講解 Caddyfile 已設嘅 header；<code>npm audit</code>；<code>docker compose exec app</code> 確認唔係 root 跑。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「應用層都有幾樣嘢。／   Caddyfile 已經幫你設咗 HSTS、<code>nosniff</code>、<code>Referrer-Policy</code>，仲收埋咗 Server header。／   Dockerfile 用咗非 root 用戶跑 Node，即係就算被人打穿咗應用，都唔係 root 權限。／   Dockerfile 仲清走咗 build-only 嘅套件（tar、node-gyp），減少攻擊面。／   定期跑 <code>npm audit</code> 睇吓有冇新漏洞。／   仲有：瀏覽器開吓你嘅網站，撳右鍵檢視原始碼，確認冇任何 API key、token 暴露喺前端。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>cd ~/Desktop/JP/booking-aurora
+npm audit --omit=dev</code></pre>
+<p>（伺服器上）</p>
+<pre class="code lang-bash"><code>docker compose exec app id          # uid=1000(node)
+curl -sI https://booking.yourdomain.com | grep -i &quot;x-content-type\|strict-transport\|server&quot;</code></pre>
+<ul><li><strong>驗證</strong>：<code>uid=1000(node)</code>；header 有 HSTS 同 nosniff；冇 <code>server:</code> 露出版本。</li><li><strong>陷阱</strong>：<code>npm audit</code> 出嘅 dev dependency 漏洞（puppeteer 相關）生產唔影響，用 <code>--omit=dev</code> 過濾。</li><li><strong>安全</strong>：🔒 前端永遠唔可以有 secret；所有權限判斷一定要喺後端。</li></ul>
+<hr>
+<h1 id="第-16-章-常見錯誤排查-12-00">第 16 章｜常見錯誤排查（12:00）</h1>
+<h2 id="scene-16-1-連唔上-ssh-2-00">Scene 16.1｜連唔上 SSH（2:00）</h2>
+<ul><li><strong>畫面</strong>：重現 <code>Permission denied (publickey)</code>、<code>Connection timed out</code>、<code>UNPROTECTED PRIVATE KEY FILE</code> 三個錯誤，逐個修。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第一類：連唔上。／   <code>Permission denied (publickey)</code> → 三個可能：key 唔啱、user 名唔啱、或者 instance 用咗第二條 key pair。Ubuntu 係 <code>ubuntu</code>，Amazon Linux 係 <code>ec2-user</code>。／   <code>Connection timed out</code> → Security Group 冇開你 IP，或者你 IP 變咗。去 Console 改。／   <code>UNPROTECTED PRIVATE KEY FILE</code> → <code>chmod 400</code>。／   診斷方法可以加 <code>-vvv</code> 睇詳細。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>ssh -vvv -i ~/.ssh/aurora-aws.pem ubuntu@&lt;ELASTIC_IP&gt; 2&gt;&amp;1 | tail -30
+curl -s ifconfig.me        # 查自己公網 IP，對吓 SG</code></pre>
+<ul><li><strong>驗證</strong>：見到 <code>Authenticated to ...</code> 即係成功。</li><li><strong>陷阱</strong>：屋企寬頻 IP 會變；出街用電話熱點都唔同 IP。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-16-2-docker-容器問題-3-00">Scene 16.2｜Docker / 容器問題（3:00）</h2>
+<ul><li><strong>畫面</strong>：<code>docker compose ps</code> 見到 Restarting；<code>docker compose logs</code> 搵原因。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第二類：容器起唔到。／   首先 <code>docker compose ps</code> 睇 status，再 <code>docker compose logs app --tail=100</code> 睇錯誤。／   常見：／<code>SESSION_SECRET 未設定</code> → .env 讀唔到，檢查檔名、路徑、有冇 CRLF。／   <code>SQLITE_CANTOPEN</code> → data 目錄唔存在或者權限錯，檢查 volume 同 <code>DB_PATH</code>。／   build 嗰陣 <code>Killed</code> → OOM，加 swap 或者升級實例。／   <code>port is already allocated</code> → 80 或 443 俾其他嘢佔咗，用 <code>ss -tulnp</code> 查。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>docker compose ps
+docker compose logs app --tail=100
+docker compose logs caddy --tail=50
+
+# 查邊個霸住 80/443
+sudo ss -tulnp | grep -E &#x27;:80|:443&#x27;
+
+# 查 volume 權限
+ls -ld /home/ubuntu/aurora/data
+docker compose exec app ls -l /app/data
+
+# 入去容器親手試
+docker compose exec app node -e &quot;console.log(process.env.SESSION_SECRET?.length)&quot;</code></pre>
+<ul><li><strong>驗證</strong>：揾到錯誤根因並修好；<code>docker compose ps</code> 全 healthy。</li><li><strong>陷阱</strong>：改咗 <code>.env</code> 之後要 <code>docker compose up -d</code> 先生效（env 係啟動時讀入）。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-16-3-https-證書問題-3-00">Scene 16.3｜HTTPS / 證書問題（3:00）</h2>
+<ul><li><strong>畫面</strong>：重現簽證書失敗、502、重定向 loop；逐個修。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第三類：證書。／   簽唔到 → 八成係 DNS 未生效或者 80 port 冇開。先 <code>dig</code> 確認，再 <code>curl -I http://網域</code> 喺<strong>外面</strong>（例如你 Mac）試。／   出 502 → Caddy 接到但 app 冇反應，睇 app 係咪 healthy。／   無限重定向 → Cloudflare SSL 模式要係 Full (strict)，唔係 Flexible。／   <code>too many certificates already issued for exact set of domains</code> → 一星期內簽太多次，等一小時再試。」</p>
+<ul><li><strong>指令</strong>（Mac 本機 + 伺服器）：</li></ul>
+<pre class="code lang-bash"><code># Mac：確認 DNS 同 80 port
+dig +short booking.yourdomain.com
+curl -sI http://booking.yourdomain.com | head -3
+
+# 伺服器：睇 Caddy 嘅 ACME log
+docker compose logs caddy 2&gt;&amp;1 | grep -i &quot;acme\|error\|certificate&quot; | tail -20</code></pre>
+<ul><li><strong>驗證</strong>：<code>curl -sI https://網域</code> 出 200；<code>openssl s_client</code> 見到 Let's Encrypt。</li><li><strong>陷阱</strong>：改 Caddyfile 後要 <code>docker compose up -d</code>（Caddy 會 reload config）；改錯格式 Caddy 會拒絕啟動。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-16-4-效能與空間-2-00">Scene 16.4｜效能與空間（2:00）</h2>
+<ul><li><strong>畫面</strong>：<code>top</code>、<code>df -h</code>、<code>docker stats</code>；示範清理。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第四類：慢同爆。／   <code>top</code> 睇 CPU 同 RAM；<code>df -h</code> 睇磁碟；<code>docker stats</code> 睇容器。／   最常見：disk 爆咗。原因通常係 Docker log 冇 rotate，或者舊 image 堆積。／   清理：用 <code>docker image prune -a --filter until=168h</code> 剷七日冇用嘅 image。／   ⚠️ 唔好亂用 <code>docker system prune -a --volumes</code>，會連 volume（即係你個 database）都剷埋。」</p>
+<ul><li><strong>指令</strong>（伺服器上）：</li></ul>
+<pre class="code lang-bash"><code>top -bn1 | head -15
+df -h /
+docker stats --no-stream
+
+# Docker 空間分佈
+docker system df -v | head -30
+
+# 安全清理（保留 7 日內）
+docker image prune -a --filter &quot;until=168h&quot;</code></pre>
+<ul><li><strong>驗證</strong>：disk 使用回落；<code>docker compose ps</code> 依然 healthy。</li><li><strong>陷阱</strong>：<code>--volumes</code> 會剷 database！永遠唔好喺生產用。</li><li><strong>安全</strong>：🔴 清理前先確認有備份。</li></ul>
+<h2 id="scene-16-5-費用異常-2-00">Scene 16.5｜費用異常（2:00）</h2>
+<ul><li><strong>畫面</strong>：Billing → Cost Explorer 按服務分組；示範搵出邊樣收錢。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「第五類：帳單有嘢唔對路。／   去 Billing，Cost Explorer，Group by Service，睇吓邊樣最貴。／   常見元兇：忘記 Release 嘅 Elastic IP、NAT Gateway、冇刪嘅 snapshot、開咗 RDS／ALB 唔記得。／   所以頭先我叫你開 Budget 告警——呢個就係佢嘅用途。」</p>
+<ul><li><strong>指令</strong>：—（全部喺 Console）</li><li><strong>驗證</strong>：每個月行一次 Cost Explorer，對吓係咪得 EC2 + EBS + Route53 + S3。</li><li><strong>陷阱</strong>：免費層到期嗰個月帳單會突然升。</li><li><strong>安全</strong>：—</li></ul>
+<hr>
+<h1 id="第-17-章-日常發版-sop-回滾-6-00">第 17 章｜日常發版 SOP + 回滾（6:00）</h1>
+<h2 id="scene-17-1-發版流程-3-00">Scene 17.1｜發版流程（3:00）</h2>
+<ul><li><strong>畫面</strong>：示範一次完整更新：rsync → up -d --build → health check → 確認。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「日常更新嘅標準動作：／一，喺 Mac 改好 code、本地測過；／二，rsync 上去；／三，<code>docker compose up -d --build</code>；／四，<code>curl</code> health check；／五，瀏覽器開吓主要頁面確認。／   ⚠️ 記住：<strong>唔好</strong>再跑 <code>rm -rf data</code>，會冇晒資料。／   如果改咗 <code>.env</code>，記得改完再 <code>up -d</code>。」</p>
+<ul><li><strong>指令</strong>（Mac 本機）：</li></ul>
+<pre class="code lang-bash"><code>rsync -avz --delete \
+  -e &quot;ssh -i ~/.ssh/aurora-aws.pem&quot; \
+  --exclude &#x27;node_modules&#x27; --exclude &#x27;.git&#x27; --exclude &#x27;.env&#x27; \
+  --exclude &#x27;database.db*&#x27; --exclude &#x27;scenario.db*&#x27; \
+  --exclude &#x27;logs&#x27; --exclude &#x27;promo-videos&#x27; --exclude &#x27;presentation&#x27; \
+  ./ ubuntu@&lt;ELASTIC_IP&gt;:/home/ubuntu/aurora/</code></pre>
+<p>（伺服器上）</p>
+<pre class="code lang-bash"><code>cd /home/ubuntu/aurora
+docker compose up -d --build
+sleep 20
+curl -s -o /dev/null -w &quot;health=%{http_code}\n&quot; http://127.0.0.1/health
+docker compose ps</code></pre>
+<ul><li><strong>驗證</strong>：health = 200；兩個 container Up (healthy)。</li><li><strong>陷阱</strong>：<code>--build</code> 會重新 build，如果 npm 有新版本可能行為改變；建議 lockfile 一致。</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-17-2-回滾-3-00">Scene 17.2｜回滾（3:00）</h2>
+<ul><li><strong>畫面</strong>：示範 rollback：保留上一版 image tag / 用 git checkout 上一版 → 重新 build → 重啟；或者最壞情況還原資料庫。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「出事點算？／   第一層：code 有問題 → 用 git 返上一版，重新 rsync + build。所以部署前記低你而家嘅 commit hash。／   第二層：資料庫有問題 → 用第 13 章嘅還原演練，由 S3 攞返備份。／   第三層：成部機有問題 → 用 EBS snapshot 開過部機，或者由 snapshot 建新 volume 駁返上去。／   所以我話備份要演練——出事嗰陣你冇時間學點還原。」</p>
+<ul><li><strong>指令</strong>（Mac 本機，記錄版本）：</li></ul>
+<pre class="code lang-bash"><code>git rev-parse --short HEAD | tee .deploy-last-commit
+# 出事回滾：
+git checkout &lt;上一個好嘅 commit&gt;
+# 再 rsync + up -d --build</code></pre>
+<ul><li><strong>驗證</strong>：回滾後 health=200，功能正常。</li><li><strong>陷阱</strong>：資料庫 schema 向前改咗，回滾 code 可能同新 schema 唔夾 → 大改動前先做備份。</li><li><strong>安全</strong>：🔴 任何會改 DB schema 嘅部署，部署前一定要有即時備份。</li></ul>
+<hr>
+<h1 id="第-18-章-收尾-成本總結-檢查表-5-00">第 18 章｜收尾：成本總結 + 檢查表（5:00）</h1>
+<h2 id="scene-18-1-成本總結-2-00">Scene 18.1｜成本總結（2:00）</h2>
+<ul><li><strong>畫面</strong>：成本表 + Cost Explorer 實例。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「總結成本。／頭一年：EC2 t3.micro 免費層 + 30GB EBS 免費 + Route 53 約零點五美金 → 一個月約半美金。／   免費層之後：t3.micro 約十點六美金，t3.small 約十五到十八。／加網域一年十幾美金，加 S3 備份幾仙。／   ⚠️ 以 AWS 官方計價器為準。／   想再慳：用 Lightsail 十蚊月費，或者用 t3.micro + swap（但要接受 build 慢）。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：—</li><li><strong>安全</strong>：—</li></ul>
+<h2 id="scene-18-2-一頁檢查表-2-00">Scene 18.2｜一頁檢查表（2:00）</h2>
+<ul><li><strong>畫面</strong>：[SCREENSHOT-11] 可列印檢查表（下面嗰張）。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「最後呢張表，列印出嚟貼喺枱頭。每次部署行一次。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：—</li><li><strong>安全</strong>：—</li></ul>
+<h3 id="上線檢查表-可列印">✅ 上線檢查表（可列印）</h3>
+<pre class="code lang-"><code>[ ] AWS root 已開 MFA
+[ ] root 冇 Access Key
+[ ] IAM 用戶 + MFA，日常用 IAM
+[ ] Budget 告警已設（US$10 / 80% / 100%）
+[ ] EC2 Termination protection = Enable
+[ ] Security Group：22 = My IP；80/443 = 全世界
+[ ] Elastic IP 已 Associate
+[ ] SSH：PermitRootLogin no、PasswordAuthentication no
+[ ] swap 已開（t3.micro 必做）
+[ ] fail2ban 已啟
+[ ] unattended-upgrades 已啟（自動重啟 = false）
+[ ] .env 權限 600，SESSION_SECRET ≥ 48 bytes
+[ ] .env 冇 CAPTCHA_TEST_BYPASS
+[ ] ADMIN_PASSWORD 已設，首次登入後已改密碼
+[ ] docker compose ps：app / caddy 都 Up (healthy)
+[ ] curl /health = 200
+[ ] DNS 已生效（dig 出 Elastic IP）
+[ ] HTTPS 200 + HSTS + 證書係 Let&#x27;s Encrypt
+[ ] http 自動跳 https（308）
+[ ] EBS DLM 每日 snapshot，保留 7 日
+[ ] S3 備份 cron 已設，bucket 唔公開 + 版本控制
+[ ] 還原演練已做過至少一次
+[ ] CloudWatch CPU + StatusCheck 告警已設
+[ ] 本次部署 commit hash 已記錄</code></pre>
+<h2 id="scene-18-3-下一步-1-00">Scene 18.3｜下一步（1:00）</h2>
+<ul><li><strong>畫面</strong>：路線圖：PostgreSQL 遷移時機、CloudFront CDN、多分店、藍綠部署。</li><li><strong>旁白</strong>：</li></ul>
+<p>  「下一步嘅嘢：／如果你開第二間分店、或者寫入量大到 SQLite 頂唔順，先至考慮轉 PostgreSQL。／   想快啲？加 CloudFront 做 CDN。／   想零停機？做藍綠部署——但呢啲都要先將 SQLite 換走。／   而家呢個組合，對一間診所每日幾十張單，係最啱嘅：平、簡單、夠穩。／   多謝收看，檢查表同指令速查表喺下面。」</p>
+<ul><li><strong>指令</strong>：—</li><li><strong>驗證</strong>：—</li><li><strong>陷阱</strong>：—</li><li><strong>安全</strong>：—</li></ul>
+<hr>
+<h1 id="附錄-a-常用指令速查表">附錄 A｜常用指令速查表</h1>
+<p><strong>Mac 本機</strong></p>
+<pre class="code lang-bash"><code>ssh aurora                                   # 登入（要 ~/.ssh/config）
+ssh -i ~/.ssh/aurora-aws.pem ubuntu@&lt;IP&gt;     # 冇 config 時
+scp -i ~/.ssh/aurora-aws.pem .env.production ubuntu@&lt;IP&gt;:/home/ubuntu/aurora/.env
+rsync -avz --delete -e &quot;ssh -i ~/.ssh/aurora-aws.pem&quot; \
+  --exclude &#x27;node_modules&#x27; --exclude &#x27;.git&#x27; --exclude &#x27;.env&#x27; \
+  --exclude &#x27;database.db*&#x27; --exclude &#x27;scenario.db*&#x27; --exclude &#x27;logs&#x27; \
+  ./ ubuntu@&lt;IP&gt;:/home/ubuntu/aurora/
+dig +short booking.yourdomain.com            # 查 DNS
+node -e &quot;console.log(require(&#x27;crypto&#x27;).randomBytes(48).toString(&#x27;base64url&#x27;))&quot;   # 產生 SESSION_SECRET</code></pre>
+<p><strong>伺服器</strong></p>
+<pre class="code lang-bash"><code>cd /home/ubuntu/aurora
+docker compose up -d --build                 # build + 起
+docker compose up -d                         # 只改 env/config 時
+docker compose ps                            # 睇 status
+docker compose logs -f app                   # 實時 log
+docker compose logs --tail=100 app           # 最近 100 行
+docker compose restart app
+docker compose stop app &amp;&amp; docker compose start app
+curl -s -o /dev/null -w &quot;%{http_code}\n&quot; http://127.0.0.1/health
+docker stats --no-stream                     # CPU/RAM
+df -h /                                      # 磁碟
+docker image prune -a --filter &quot;until=168h&quot;  # 清 7 日前舊 image（安全）
+aws sts get-caller-identity                  # 確認 IAM Role
+~/backup-to-s3.sh                            # 手動備份</code></pre>
+<h1 id="附錄-b-配套腳本">附錄 B｜配套腳本</h1>
+<div class="table-wrap"><table><thead><tr><th>檔案</th><th>用途</th><th>喺邊度跑</th></tr></thead><tbody><tr><td><code>scripts/aws/ec2-bootstrap.sh</code></td><td>初始化 EC2：Docker、swap、ufw、fail2ban、自動更新、目錄</td><td>EC2（sudo）</td></tr><tr><td><code>scripts/aws/backup-to-s3.sh</code></td><td>SQLite 一致性備份 → gzip → S3，本地保留 7 日</td><td>EC2（cron）</td></tr><tr><td><code>scripts/aws/mac-deploy.sh</code></td><td>Mac 一鍵 rsync + 遠端重啟 + health check</td><td>Mac</td></tr></tbody></table></div>
+<blockquote>三個腳本都要先睇過內容再用；涉及 <code>rm -rf</code>、防火牆、SSH 設定嘅部分已經加咗確認提示。</blockquote>
+<h1 id="附錄-c-未驗證事項-誠實聲明">附錄 C｜未驗證事項（誠實聲明）</h1>
+<ol><li><strong>AWS 控制台介面會改</strong>：本腳本嘅按鈕路徑以 2026-09 嘅 Console 為準，實際可能稍有唔同。</li><li><strong>價錢以官方為準</strong>：所有價錢係撰寫時嘅約數，請用 &lt;https://calculator.aws&gt; 覆核。</li><li><strong>Region opt-in</strong>：ap-east-1（香港）未必即時可開，介面流程可能變。</li><li><strong>本文件未喺真實 EC2 上跑過</strong>：腳本已做 shell 語法檢查（<code>bash -n</code>），但實際執行結果請照第 7、11 章嘅驗證點逐步確認。</li></ol>
+  </main>
+</div>
+</body>
+</html>

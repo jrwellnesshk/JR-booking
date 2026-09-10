@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS Mac 部署影片 — 專業提示詞</title>
+<style>
+  :root {
+    --bg:#F7F4EF; --panel:#FFFFFF; --ink:#3E2A1E; --muted:#7A6A5C;
+    --line:#E6DDD1; --accent:#7E9476; --accent-soft:#E5E8D9; --code-bg:#FBF7F1;
+    --warn:#B4532A;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    line-height:1.85; font-size:16px; }
+  .layout { display:flex; max-width:1400px; margin:0 auto; }
+  nav { width:280px; flex:0 0 280px; padding:28px 18px 60px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--line); background:#FCFAF7; }
+  nav h3 { font-size:12px; letter-spacing:.12em; color:var(--muted);
+    text-transform:uppercase; margin:0 0 12px; }
+  nav a { display:block; padding:6px 10px; border-radius:8px; color:var(--ink);
+    text-decoration:none; font-size:13.5px; line-height:1.5; }
+  nav a:hover { background:var(--accent-soft); }
+  nav a.toc-1 { font-weight:700; margin-top:10px; }
+  nav a.toc-2 { padding-left:22px; color:var(--muted); }
+  main { flex:1; min-width:0; padding:40px 48px 100px; }
+  h1 { font-size:30px; margin:0 0 24px; padding-bottom:16px; border-bottom:3px solid var(--accent); }
+  h2 { font-size:23px; margin-top:52px; padding:10px 16px; background:var(--accent-soft);
+    border-radius:10px; border-left:5px solid var(--accent); }
+  h3 { font-size:18px; margin-top:34px; color:#4A382B; }
+  h4 { font-size:16px; margin-top:22px; color:var(--muted); }
+  p, li { margin:10px 0; }
+  code { background:var(--code-bg); padding:2px 6px; border-radius:5px;
+    font-family:"SFMono-Regular",Consolas,monospace; font-size:13.5px; color:#8A4B2A; }
+  pre.code { background:#2E2A26; color:#F2ECE4; padding:16px 18px; border-radius:12px;
+    overflow-x:auto; font-size:13px; line-height:1.65; margin:16px 0; }
+  pre.code code { background:none; color:inherit; padding:0; font-size:13px; }
+  .table-wrap { overflow-x:auto; margin:18px 0; }
+  table { border-collapse:collapse; width:100%; background:var(--panel);
+    border-radius:10px; overflow:hidden; font-size:14.5px; }
+  th { background:var(--accent-soft); text-align:left; padding:10px 12px; font-weight:700; }
+  td { padding:9px 12px; border-top:1px solid var(--line); }
+  blockquote { margin:16px 0; padding:12px 16px; background:#FFF8EE;
+    border-left:4px solid var(--warn); border-radius:8px; color:#6B4A2E; }
+  hr { border:none; border-top:1px solid var(--line); margin:40px 0; }
+  strong { color:#2F2018; }
+  a { color:#5B704F; }
+  @media (max-width:900px) {
+    nav { display:none; }
+    main { padding:24px 18px 60px; }
+  }
+  @media print {
+    nav { display:none; } pre.code { background:#F4F0EA; color:#241F1A; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav><h3>目錄</h3><a class="toc-1" href="#aws-部署教學影片-專業提示詞-prompt-pack">AWS 部署教學影片 — 專業提示詞（Prompt Pack）</a><a class="toc-2" href="#目錄">目錄</a><a class="toc-2" href="#提示詞-a-master-prompt-可直接貼上">提示詞 A｜Master Prompt（可直接貼上）</a><a class="toc-2" href="#提示詞-b-逐章結構化-prompt-分批生成-避免截斷">提示詞 B｜逐章結構化 Prompt（分批生成，避免截斷）</a><a class="toc-2" href="#提示詞-c-production-brief-畀錄影師-剪輯師">提示詞 C｜Production Brief（畀錄影師／剪輯師）</a><a class="toc-2" href="#提示詞-d-安全與準確度硬約束-附加喺-a-b-後面">提示詞 D｜安全與準確度硬約束（附加喺 A／B 後面）</a><a class="toc-2" href="#提示詞-e-章節卡-字幕輔助-prompt">提示詞 E｜章節卡＋字幕輔助 Prompt</a><a class="toc-2" href="#使用建議-邊個-prompt-配邊個工具">使用建議（邊個 prompt 配邊個工具）</a></nav>
+  <main>
+<h1 id="aws-部署教學影片-專業提示詞-prompt-pack">AWS 部署教學影片 — 專業提示詞（Prompt Pack）</h1>
+<blockquote>項目：寶天醫館智能預約系統（booking-aurora） 目標：用 <strong>Mac</strong> 由零開始部署到 <strong>AWS</strong>，手把手、全程螢幕錄影、準確且安全 版本：v1.0｜日期：2026-09-10</blockquote>
+<hr>
+<h2 id="目錄">目錄</h2>
+<ul><li>[提示詞 A｜Master Prompt（畀 AI 影片／腳本生成工具，可直接貼）](#提示詞-a)</li><li>[提示詞 B｜逐章結構化 Prompt（用嚟分批生成，避免一次過被截斷）](#提示詞-b)</li><li>[提示詞 C｜Production Brief（畀人類錄影師／剪輯師）](#提示詞-c)</li><li>[提示詞 D｜安全與準確度硬約束（必須附加喺 A／B 後面）](#提示詞-d)</li><li>[提示詞 E｜一鍵生成「章節卡＋字幕」嘅輔助 Prompt](#提示詞-e)</li></ul>
+<hr>
+<p>&lt;a id="提示詞-a"&gt;&lt;/a&gt;</p>
+<h2 id="提示詞-a-master-prompt-可直接貼上">提示詞 A｜Master Prompt（可直接貼上）</h2>
+<pre class="code lang-text"><code># ROLE
+你係一位有 10 年經驗嘅 AWS Solutions Architect，同時係一位專業技術教學影片導演同旁白撰稿人。
+你熟悉 macOS（Terminal、zsh、Homebrew、SSH keys、rsync）同 AWS 控制台嘅每一個實際介面位置。
+
+# GOAL
+為「寶天醫館智能預約系統」製作一條 **極詳盡嘅 AWS 部署教學影片**，
+觀眾係一位用 Mac 嘅非 DevOps 出身開發者，要由「完全冇 AWS 帳戶」做到「網站正式上線、有 HTTPS、有備份、有告警」。
+影片長度不限（預計 90–150 分鐘），**詳細度同準確度優先於節奏**。
+
+# TECHNICAL CONTEXT（真實項目，必須嚴格遵守，唔可以換技術棧）
+- 項目：Node.js 20 + Express 5 + SQLite（better-sqlite3 風格，driver = sqlite3）＋ Vue 3（CDN）
+- 容器化：Docker 多階段 build（node:20-bookworm-slim），Docker Compose 兩個服務：
+  - app：Node 應用，容器內 PORT=4000，只 expose 4000（唔對外）
+  - caddy：caddy:2-alpine，對外 80/443，reverse_proxy app:4000，自動簽 Let&#x27;s Encrypt 證書
+- 健康檢查端點：GET /health、/healthz（liveness）、/health/ready（readiness）
+- 啟動預檢（config/preflight.js）：
+  - 冇 SESSION_SECRET → process.exit(1) 拒絕啟動
+  - SESSION_SECRET 長度 &lt; 32 字元 → 拒絕啟動（建議用 48 bytes random，base64url）
+  - 生產環境若設咗 CAPTCHA_TEST_BYPASS → 視為後門，必須刪除
+- 資料持久化：SQLite 檔案喺 `./data/database.db`（目錄 volume，唔係單一檔案 bind mount）
+- 反向代理 TLS 由 Caddy 負責（**唔使用 AWS ACM + ALB**，因為單機 SQLite 唔需要 ALB，而且會加成本）
+- 既有檔案：Dockerfile、docker-compose.yml、Caddyfile、.env.example、scripts/backup-db.js
+
+# AUDIENCE &amp; PREMISE
+- 觀眾用 macOS（Apple Silicon 或 Intel 都得），熟悉基本 Terminal 指令。
+- 由零開始：冇 AWS 帳戶、冇伺服器、未買網域都得跟住做。
+- 全程要「照做就一定成功」：每一個指令都要可複製貼上，每一步都要有「成功長點樣」嘅驗證方法。
+
+# MUST COVER（章節大綱，缺一不可）
+0. 開場：會學到啲咩、最終架構圖、總成本預覽、安全原則三條
+1. 架構決策：點解用 EC2 + Docker + Caddy + SQLite（對比 Lightsail / ECS Fargate / Lambda / RDS，講清邊啲**唔好買**）
+2. AWS 開戶全流程（逐步螢幕）：電郵、root user、密碼、聯絡資料、信用卡／扣賬卡、身分驗證（電話/簡訊）、
+   選擇支援計劃（Basic 免費）、完成後登入 Console、Region 選擇（ap-southeast-1 新加坡 vs ap-east-1 香港需 opt-in）
+3. 開戶後 5 分鐘安全加固（最重要，唔可以skip）：
+   - Root 帳戶開 MFA（虛擬 MFA 器：Google Authenticator / 1Password）
+   - 刪除或永不建立 root Access Key
+   - 建立 IAM 管理員用戶 + MFA，日後用 IAM 登入
+   - 開 AWS Budgets 預算告警（US$10 / 80% / 100%）
+   - 開 Billing Alarm + Cost Explorer，啟用 IAM 帳單訪問權限
+4. 買咩服務（逐項講解「買 / 唔買 / 幾時先買」）：
+   - 要開：EC2（t3.small 建議；t3.micro 免費層 12 個月但得 1GB RAM 要加 swap）、
+     EBS gp3 30GB、Elastic IP（綁定後免費）、Route 53 Hosted Zone（或 Cloudflare 免費 DNS）、
+     S3（備份）、CloudWatch（基本監控 + 告警）、AWS Budgets
+   - 唔好開：RDS、ALB、ECS/Fargate、NAT Gateway、CloudFront（除非做 CDN）、ElastiCache
+   - 成本表：免費層首 12 個月 ~US$0.5/月；之後 t3.micro ~US$10.6/月，t3.small ~US$15–18/月（以官方計價器為準）
+5. Mac 本機準備：Terminal/iTerm2、Xcode CLT、Homebrew、git、ssh-keygen ED25519、
+   ~/.ssh/config 寫法、chmod 400/600、ssh-add --apple-use-keychain、公鑰內容點樣貼入 AWS
+6. 開 EC2 實例（逐步）：命名、AMI（Ubuntu Server 24.04 LTS 64-bit x86_64）、
+   Instance type、Key pair 下載 .pem、Network settings（Security Group：22 只限 My IP；80/443 開全世界）、
+   Storage 30GB gp3、進階細節（Termination protection、Shutdown behavior=Stop）、Launch、Elastic IP 分配與 Associate
+7. SSH 第一次登入＋伺服器初始化（bootstrap）：apt update/upgrade、建 swap（micro 必做）、
+   裝 Docker Engine + Compose plugin、把 ubuntu 加入 docker group、ufw 防火牆、建 /home/ubuntu/aurora 目錄、
+   logrotate、時區 Asia/Hong_Kong、重新登入驗證 docker 可用
+8. 網域同 DNS：Route 53 Hosted Zone / Cloudflare 二選一，A record → Elastic IP，TTL 300，
+   用 dig / nslookup 驗證生效，講清 propagation 時間
+9. 上傳程式碼：rsync（排除 node_modules / .git / database.db* / .env / logs）、
+   或 git clone（私有 repo 用 deploy key）、scp .env、伺服器上 chmod 600 .env
+10. 設定 .env：產生 SESSION_SECRET（48 bytes base64url）、NODE_ENV=production、PORT=4000、
+    DB_PATH=/app/data/database.db、ADMIN_PASSWORD 設強密碼、
+    **刪除 CAPTCHA_TEST_BYPASS**、EMAIL/TWILIO/STRIPE 留空則功能停用（唔會報錯）
+    首次部署前 rm -rf data（避免舊 DB 令 admin 建唔到）
+11. 起容器：docker compose up -d --build、docker compose logs -f app、docker compose ps（healthy）、
+    搵初始 admin 密碼、curl -I http://127.0.0.1/health、第一次登入 admin.html 並改密碼
+12. HTTPS 上線：.env 設 SITE_DOMAIN、Caddyfile 改 email、SG 必須開 80/443、
+    Caddy 自動拎證書（講 HTTP-01 挑戰原理）、curl -I https://網域 驗證、
+    講 HSTS header 已由 Caddy 設好、點樣 renew（Caddy 自動）
+13. 備份與還原演練：EBS Snapshot + Data Lifecycle Manager（每日/保留 7 日）、
+    SQLite 安全備份（sqlite3 .backup 而非直接 cp）、gzip + aws s3 cp（用 **IAM Role 唔用 Access Key**）、
+    S3 Lifecycle 轉 Glacier、cron 排程、**真係演練一次還原**（最重要）
+14. 監控告警：CloudWatch CPU / StatusCheckFailed 告警、磁碟空間（要裝 CloudWatch Agent 或 cron 自訂 metric）、
+    Budgets 告警、每日 log 檢查 SOP
+15. 安全加固清單（逐條示範）：SSH 只用 key + 關 PasswordAuthentication、fail2ban、
+    unattended-upgrades 自動安全更新、SG 收窄、.env 權限、CAPTCHA bypass 已刪、
+    admin 密碼已改、關閉唔用嘅 port、Cloudflare Proxy + WAF（可選）
+16. 常見錯誤排查（每條都要重現錯誤畫面 + 修復）：
+    Permission denied (publickey)、port 80 已被佔用、SQLite CANTOPEN、
+    EBS 爆滿、Let&#x27;s Encrypt 簽發失敗（DNS 未生效 / 80 被封）、build OOM（1GB RAM）、
+    container 不停重啟、Caddy 502、忘記 Elastic IP 收費
+17. 日常發版 SOP：rsync → up -d --build → health check → 出事點 rollback（保留上一個 image / git tag）
+18. 收尾：成本總結、檢查表（可列印）、下一步（PostgreSQL 遷移時機、CDN、多分店）
+
+# OUTPUT FORMAT（嚴格遵守）
+每一幕（Scene）必須用下面格式，一幕都唔可以省略任何一欄：
+
+【Scene 編號｜章節｜預計時長 mm:ss】
+- 畫面（Screen）：要錄邊個視窗、邊個 URL、邊個按鈕／選單路徑（例如：AWS Console → EC2 → Instances → Launch instances），
+  游標要停喺邊、要 highlight 邊個位；標註 [SCREENSHOT-xx] 需要截圖定格嘅地方
+- 旁白（Narration）：**粵語口語逐字稿**，可以直接照讀，每句短句，唔書面語，必要時加停頓標記「／」
+- 指令（Commands）：Mac 本機定 Server 上跑要標明，用 ```bash 包住，可整段複製貼上
+- 驗證（Verify）：呢一步做完，「成功」長點樣（預期輸出／畫面），失敗長點樣
+- 陷阱（Pitfalls）：呢一步最常錯嘅 1–3 個位，同點解
+-安全提示（Security）：涉及金錢／權限／暴露面時必須有；冇就寫「—」
+
+# STYLE
+- 粵語（繁體中文字幕），技術名詞保留英文（EC2、Security Group、Elastic IP、volume、compose）
+- 語氣：平實、唔浮誇、唔講「好簡單」「只需三步」呢類空話；遇到容易出錯位要加重語氣提醒
+- 每一個操作都先講「點解要咁做」，再講「點做」，最後「點驗證」
+- 指令要附註解（# 註解寫喺指令上方），變數用 &lt;ELASTIC_IP&gt; &lt;DOMAIN&gt; 呢種明確佔位符
+
+# HARD CONSTRAINTS
+- 唔可以教人將 Access Key / Secret 寫死喺程式碼或公開 repo
+- 唔可以教人 chmod 777、關晒防火牆、用 root 跑應用、PermitRootLogin yes
+- 唔可以建議用 AWS ACM + ALB（成本同架構唔啱）；單機 SQLite 亦唔可以建議 ECS/Lambda（ephemeral storage 會冇 data）
+- 涉及收費嘅服務必須先講價錢同免費額度，先好叫人開
+- 所有指令必須係可執行嘅真實指令，唔可以寫偽代碼或「⋯」
+- 唔確定嘅價錢／介面要標註「⚠️ 以 AWS 官方當時定價／介面為準」，唔可以編造
+
+# DELIVERABLE
+輸出：完整分鏡腳本（Markdown），含封面資訊、總時長預估、章節目錄、
+每一幕嘅六欄內容（畫面／旁白／指令／驗證／陷阱／安全）、
+片尾嘅「一頁檢查表」同「常用指令速查表」。</code></pre>
+<hr>
+<p>&lt;a id="提示詞-b"&gt;&lt;/a&gt;</p>
+<h2 id="提示詞-b-逐章結構化-prompt-分批生成-避免截斷">提示詞 B｜逐章結構化 Prompt（分批生成，避免截斷）</h2>
+<p>用法：先跑一次「B-0 總綱」，之後每章用「B-N」逐章展開；每次都把上一章嘅輸出貼返做 context。</p>
+<pre class="code lang-text"><code>B-0（總綱）：
+呢個係《Mac 部署 booking-aurora 到 AWS》教學影片。請先輸出：
+1) 章節表（編號 / 標題 / 預計時長 / 累計時間），總時長目標 90–150 分鐘
+2) 每一章嘅學習目標（1 句）同「完成後觀眾手上會有啲咩」
+3) 全片需要嘅螢幕素材清單：AWS Console 截圖 N 張（列出每張要影邊個頁面）、
+   Mac Terminal 錄影段落 N 段、瀏覽器驗證畫面 N 個
+先唔好寫旁白。
+
+B-N（逐章）：
+而家寫第 &lt;N&gt; 章：&lt;章名&gt;。
+沿用 Master Prompt 嘅六欄格式（畫面／旁白／指令／驗證／陷阱／安全）。
+假設觀眾已完成晒前面章節（狀態：EC2 已開、SSH 接到、Docker 已裝⋯⋯ ← 按實際填）。
+旁白要粵語口語逐字稿，指令要完整可貼上。
+寫完呢章先停，等我確認。</code></pre>
+<hr>
+<p>&lt;a id="提示詞-c"&gt;&lt;/a&gt;</p>
+<h2 id="提示詞-c-production-brief-畀錄影師-剪輯師">提示詞 C｜Production Brief（畀錄影師／剪輯師）</h2>
+<pre class="code lang-text"><code># 影片規格
+- 解析度：2560×1440（QHD）錄影，輸出 1080p（Terminal 字要清楚，字級 ≥ 16pt）
+- 幀率：30fps；螢幕錄影工具：macOS QuickTime（Shift+Cmd+5）或 ScreenFlow / Camtasia
+- 游標：開「Highlight 游標」+ 點擊漣漪效果（ScreenFlow / Cursorful）
+- 畫面分區：Terminal 錄影時用 16:9 全螢幕、字級放大到 18pt、深色主題（清晰）
+- 講解 AWS 控制台時：先把瀏覽器 zoom 到 125%，必要時用放大鏡效果聚焦某個按鈕
+
+# 收音與旁白
+- 旁白：粵語，語速中等（約 180–200 字/分鐘），句與句之間停 0.4 秒方便剪
+- 或者：先用本腳本嘅逐字稿做 TTS／AI 配音，再人工校正專有名詞讀音（EC2、EBS、Caddy、nginx 唔好讀錯）
+- BGM：低音量（-28dB）純音樂，講指令時段靜音 BGM
+
+# 剪輯節奏
+- 每個章節開頭：3 秒章節卡（章號 + 標題 + 本章目標）
+- 每完成一個可驗證步驟：停 1 秒 + 打勾動畫 + 「✅ 驗證點」小標
+- 涉及金錢／刪除／權限嘅操作：紅框警告 2 秒 + 提示音
+- 長指令執行（apt upgrade、docker build）：時間軸加速 4–8 倍，加「⏩ 已加速」角標，但**輸出結果要停低睇**
+
+# 字幕與附件
+- 硬字幕繁體中文（.srt 另附），專有名詞後附英文（例：安全組 Security Group）
+- 片尾：一頁檢查表（可下載 PDF）+ 常用指令速查表 QR Code</code></pre>
+<hr>
+<p>&lt;a id="提示詞-d"&gt;&lt;/a&gt;</p>
+<h2 id="提示詞-d-安全與準確度硬約束-附加喺-a-b-後面">提示詞 D｜安全與準確度硬約束（附加喺 A／B 後面）</h2>
+<pre class="code lang-text"><code>1. 任何 Access Key / Secret / 密碼 喺畫面出現前必須打碼（馬賽克或佔位符 &lt;YOUR_...&gt;）。
+2. 凡係「會產生費用」嘅服務，必須先講價錢同免費額度，再示範開；免費額度期要提醒設 Budget 告警。
+3. 凡係「不可逆」操作（Terminate instance、Delete volume、Delete bucket、Drop table）必須加二次確認提示。
+4. 唔可以為咗方便而建議：關防火牆、chmod 777、root 跑服務、PermitRootLogin yes、0.0.0.0/0 開 22 port。
+5. 架構約束：單機 SQLite → 必須用有持久化磁碟嘅方案（EC2 + EBS 或 Lightsail），
+   唔可以建議 ECS Fargate / Lambda（ephemeral disk 會冇咗 DB）。
+6. 價錢／介面如無法 100% 確定，必須標註「⚠️ 以 AWS 官方當時定價／介面為準」，嚴禁編造數字。
+7. 每章結尾必須有可執行嘅驗證指令同「成功嘅預期輸出」。</code></pre>
+<hr>
+<p>&lt;a id="提示詞-e"&gt;&lt;/a&gt;</p>
+<h2 id="提示詞-e-章節卡-字幕輔助-prompt">提示詞 E｜章節卡＋字幕輔助 Prompt</h2>
+<pre class="code lang-text"><code>根據已生成嘅分鏡腳本，為每一章輸出：
+1) 章節卡文案：章號 / 標題（≤12 字）/ 副標（≤24 字）/ 本章 3 個重點 bullet
+2) 該章字幕 .srt（繁中，每行 ≤ 18 字，單條 1.5–4 秒）
+3) 該章「如果時間唔夠，可以 skip 嘅部分」同「絕對唔可以 skip 嘅部分」
+4) 5 條課後自我檢查題（開放式，答案要喺腳本搵到）</code></pre>
+<hr>
+<h2 id="使用建議-邊個-prompt-配邊個工具">使用建議（邊個 prompt 配邊個工具）</h2>
+<div class="table-wrap"><table><thead><tr><th>你想做乜</th><th>用邊條</th><th>落喺邊</th></tr></thead><tbody><tr><td>生成／補全分鏡腳本</td><td>A + B</td><td>Claude / GPT / 本專案 Agent</td></tr><tr><td>生成旁白配音稿</td><td>A（Narration 欄）</td><td>TTS（ElevenLabs / Azure 粵語）</td></tr><tr><td>做章節卡、字幕</td><td>E</td><td>Claude / GPT</td></tr><tr><td>真係錄同剪</td><td>C</td><td>ScreenFlow / Camtasia / QuickTime + 剪映</td></tr><tr><td>畀人幫手錄</td><td>C + D</td><td>Freelancer / 同事</td></tr></tbody></table></div>
+  </main>
+</div>
+</body>
+</html>
