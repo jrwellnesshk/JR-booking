@@ -556,8 +556,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
           // AI問診相關變數（語言狀態供醫療分流使用）
           const aiConsultationEnabled = ref(true); // AI問診是否開放（預設開放）
-          const aiLang = ref("zh_hant"); // 預設語言：繁體中文
+          // 用家 2026-09-10 要求：醫療分流文字跟隨介面語言（UI=EN → 分流即英文）
+          const uiToAiLang = (l) => (l === 'en' ? 'en' : 'zh_hant');
+          const aiLang = ref(uiToAiLang(lang.value)); // 預設跟隨介面語言
           const aiLanguageSelected = ref(false); // 是否已選擇語言
+          watch(lang, (l) => { aiLang.value = uiToAiLang(l); }); // 介面語言一變，分流語言同步
 
           // 🆕 醫療分流相關變數
           const triageQuestions = ref([]); // 分流問題列表
