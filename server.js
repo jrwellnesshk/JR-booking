@@ -916,6 +916,20 @@ app.get("/api/api-settings", requireAuth, requireRole('admin'), (req, res) => {
   });
 });
 
+// 公開設定（客人主頁用，無 auth）——只暴露可公開嘅開關，唔會洩敏感欄位
+app.get("/api/public-settings", (req, res) => {
+  db.get(
+    "SELECT setting_value FROM api_settings WHERE setting_key='ai_consultation_enabled'",
+    [],
+    (err, row) => {
+      if (err) return serverError(res, err);
+      const val = row ? row.setting_value : null;
+      const enabled = !(val === 'false' || val === false || val === '0' || val === 0);
+      res.json({ ai_consultation_enabled: enabled });
+    }
+  );
+});
+
 // 更新 API 設定（限管理員）
 app.put("/api/api-settings", requireAuth, requireRole('admin'), (req, res) => {
   const settings = req.body;

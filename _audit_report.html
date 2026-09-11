@@ -120,7 +120,7 @@
   <p><b>位置：</b><code>js/app.js:3203</code>（公開客人主頁 fetch <code>/api/api-settings</code>，用途係讀 AI 諮詢 toggle）</p>
   <div class="ev"><b>實機證據（Puppeteer）：</b>index / desktop 同 mobile 各錄到 <b>1 個 console error = 403 Forbidden</b>（<code>/api/api-settings</code>），<code>apiFail=1</code>。</div>
   <p><b>影響：</b>細 —— 公開頁 console 報錯 + AI toggle 唔反映 admin 設定。但公開頁 call admin secret 端點係唔應該。</p>
-  <div class="fix"><b>修改提議：</b>開 <code>GET /api/public-settings</code>（只含 AI toggle 等公開欄位，冇 auth）畀主頁用；或前端硬編 AI toggle 預設值。</div>
+  <div class="fix"><b>修改提議：</b>開 <code>GET /api/public-settings</code>（只含 AI toggle 等公開欄位，冇 auth）畀主頁用；或前端硬編 AI toggle 預設值。</div><div class="ok" style="margin-top:6px"><b>✅ 已修復（2026-09-10）：</b>新增無 auth 公開端點並改主頁 call <code>/public-settings</code>，實測 200 冇 console error；admin <code>/api/api-settings</code> 仍 401 保護。</div>
 </div>
 
 <div class="card">
@@ -242,7 +242,7 @@
   <tr><td>1</td><td>會員付費門禁加 subscription_status 檢查（bookings.js + 前端 isServiceLocked）</td><td class="s1 sev">P1</td><td>中（~0.5 日，含 regression）</td></tr>
   <tr><td>2</td><td>HR 前端按 role 決定 load（唔 call admin 端點）</td><td class="s2 sev">P2</td><td>低（~2 小時）</td></tr>
   <tr><td>3</td><td>帳戶連結搜尋收窄 scope / 唔返 phone / rate limit</td><td class="s2 sev">P2</td><td>低（~2 小時）</td></tr>
-  <tr><td>4</td><td>主頁改 call public-settings</td><td class="s3 sev">P3</td><td>低</td></tr>
+  <tr><td>4</td><td>主頁改 call public-settings</td><td class="s3 sev">P3</td><td>低</td><td class="ok">✅ 已修復</td></tr>
   <tr><td>5</td><td>JWT → httpOnly cookie / SHA-256 upgrade-on-login / CSP 收緊 / 移除 find-user-id</td><td class="s3 sev">P3</td><td>中（路線圖）</td></tr>
 </table>
 
