@@ -32,6 +32,12 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   const maskPhone = (p) => (p && p.length >= 4) ? p.slice(0, 3) + '****' + p.slice(-2) : (p ? '****' : null);
   const maskEmail = (e) => (e && /@/.test(e)) ? e.replace(/^(.)[^@]*@/, '$1***@') : e;
 
+  // 🔓 會員付費門禁已移除（按設計：一本帳戶都可以用晒所有服務；
+  //    會員級別只影響折扣 / 免費特定次數門診，呢部分遲啲補上，唔影響 access）。
+  //    訪客（無帳戶）仍然只可約「初體驗」，見下方 guestMode 檢查。
+  //    （原本 userHasActivePaidMembership 判定 helper 已一併移除；
+  //      將來做折扣 / 免費次數時可喺 memberships.js 重用家庭「一張單一個付款人」模型重新引入。）
+
   // ==================== 重疊時段邏輯 ====================
   // 規則：每個預約可與前一個預約重疊最多 15 分鐘（後 15 分鐘），
   //       並與下一個預約重疊最多 15 分鐘（前 15 分鐘）。
@@ -227,10 +233,24 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   // ==================== 預約 CRUD ====================
 
   // 建立預約（可選登入：已登入用戶記錄 userId；訪客以 isGuest / 無 token 建立，只可預約「初體驗」）
+  // 🔧 Walk-in：staff/admin 可帶 forUserId / for_user_id 為客戶代落單
   router.post("/", optionalAuth, async (req, res) => {
-    const userId = req.userId; // 訪客時為 undefined
+    const b0 = req.body || {};
+    const actorRole = req.user && req.user.role;
+    const forUserRaw = b0.forUserId || b0.for_user_id || b0.userId || b0.user_id;
+    let userId = req.userId; // 訪客時為 undefined
+    // 員工/管理員代客預約：改用目標客戶 id
+    if ((actorRole === 'staff' || actorRole === 'admin') && forUserRaw) {
+      const target = await new Promise((resolve) => {
+        db.get("SELECT id, role, is_active FROM users WHERE id=?", [Number(forUserRaw)], (e, r) => resolve(r || null));
+      });
+      if (!target || target.role !== 'customer' || target.is_active === 0) {
+        return res.status(400).json({ error: '找不到有效客戶帳戶（forUserId）' });
+      }
+      userId = target.id;
+    }
     // 🆕 同時接受 camelCase（前端）+ snake_case（API 契約統一），第一個有值嘅 wins
-    const b = req.body || {};
+    const b = b0;
     const customerName       = b.customerName       || b.customer_name;
     const customerNameEn     = b.customerNameEn     || b.customer_name_en;
     const customerPhone      = b.customerPhone      || b.customer_phone;
@@ -246,7 +266,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const bedNumber          = b.bedNumber          || b.bed_number;
     const reqBedType         = b.bedType            || b.bed_type;
     const isGuest            = b.isGuest ?? b.is_guest;
-    const guestMode = !userId; // 訪客模式：以是否持有有效 token 為準（isGuest 僅供前端標示）
+    // Walk-in（staff/admin 代客）唔算 guest mode
+    const walkInStaff = (actorRole === 'staff' || actorRole === 'admin') && !!(forUserRaw);
+    const guestMode = walkInStaff ? false : !userId;
 
     if (!customerName || !customerPhone || !serviceId || !appointmentDate || !appointmentTime) {
       const missing = ['customerName', 'customerPhone', 'serviceId', 'appointmentDate', 'appointmentTime']
@@ -303,21 +325,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         if (guestMode && (!svc || !svc.name || !svc.name.includes('初體驗'))) {
           return res.status(403).json({ error: "訪客模式僅可預約「初體驗（一小時）」服務，如需其他服務請先註冊帳戶。" });
         }
-        // 🔒 會員級別檢查：一般會員只可預約「初體驗」，高級/家庭會員先可以預約其他服務
-        //（與前端 bookableServices/isServiceLocked 邏輯一致；家庭子帳戶隨戶主享有家庭級別權限）
-        if (!guestMode && svc && svc.name && !svc.name.includes('初體驗')) {
-          const tierRow = await new Promise((resolve) => {
-            db.get("SELECT membership_tier, family_head_id FROM users WHERE id=?", [userId], (e, r) => resolve(r || {}));
-          });
-          const tier = tierRow.membership_tier || 'general';
-          const familyLinked = tierRow.family_head_id !== null && tierRow.family_head_id !== undefined;
-          if (tier === 'general' && !familyLinked) {
-            return res.status(403).json({
-              error: "此服務為高級/家庭會員專屬。請先升級會員計劃（會員中心 → 以 Stripe 付款升級），或致電 2555-1136 由職員協助。",
-              code: 'membership_required'
-            });
-          }
-        }
+        // 🔓 會員付費門禁已移除（按設計：一本帳戶都可以用晒所有服務；
+        //    會員級別只影響折扣 / 免費特定次數門診，遲啲補上，唔影響 access）。
+        //    訪客（無帳戶）仍然只可約「初體驗」，見上方 guestMode 檢查。
         const serviceName = svc ? svc.name : `服務 #${serviceId}`;
         const durationMin = svc && svc.duration ? Number(svc.duration) : 30;
         const needsBed = svc ? (svc.requires_bed === 1) : false;
@@ -407,7 +417,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         const endTime = minutesToTime(startMin + durationMin);
 
         // 🎟️ 免費診症扣減：客戶有剩餘免費次數就標 is_free 並扣 1（優惠券購買嘅免費診症）
+        // 🔒 用交易包住扣減 + 寫入，INSERT 失敗會回滾，避免白扣次數
         let isFreeBooking = 0;
+        let freeCouponId = null;
         if (!guestMode && userId) {
           const uc = await new Promise((resolve) => {
             db.get(`SELECT id, free_total, free_used FROM user_coupons
@@ -416,14 +428,23 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
           });
           if (uc) {
             isFreeBooking = 1;
+            freeCouponId = uc.id;
+            await new Promise((resolve) => db.run('BEGIN IMMEDIATE', () => resolve()));
             await new Promise((resolve) => db.run('UPDATE user_coupons SET free_used = free_used + 1 WHERE id=?', [uc.id], () => resolve()));
           }
         }
 
+        const rollbackFree = () => {
+          if (freeCouponId != null) {
+            db.run('UPDATE user_coupons SET free_used = free_used - 1 WHERE id=? AND free_used > 0', [freeCouponId]);
+            db.run('COMMIT');
+          }
+        };
+
         const stmt = db.prepare(
           "INSERT INTO bookings (user_id, customer_name, customer_name_en, customer_phone, customer_email, customer_age, service_id, doctor_name, appointment_date, appointment_time, end_time, notes, doctor_user_id, bed_type, bed_number, is_free, created_at, is_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         );
-        
+
         stmt.run(
           userId || null,
           customerName,
@@ -444,7 +465,13 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
           localTime,
           1, // is_locked 預設為 1 (true)
           async function (err) {
-            if (err) return serverError(res, err);
+            if (err) {
+              rollbackFree();
+              return serverError(res, err);
+            }
+            if (freeCouponId != null) {
+              await new Promise((resolve) => db.run('COMMIT', () => resolve()));
+            }
             
             const bookingId = this.lastID;
             console.log(`✅ 預約已建立 - ID: ${bookingId}, created_at: ${localTime}`);
@@ -1635,11 +1662,28 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   });
 
   // 批量更新醫師時段狀態（限管理員 / 醫師 / 員工）
-  router.post("/doctor-time-slots/batch", requireAuth, requireRole('admin', 'doctor', 'staff'), (req, res) => {
+  // 🔒 醫師只可改自己嘅時段；staff/admin 可跨醫師
+  router.post("/doctor-time-slots/batch", requireAuth, requireRole('admin', 'doctor', 'staff'), async (req, res) => {
     const { slots } = req.body;
 
     if (!slots || !Array.isArray(slots)) {
       return res.status(400).json({ error: "無效的資料格式" });
+    }
+
+    // 醫師：解析自己嘅 doctors.id，唔允許改他人
+    let allowedDoctorId = null;
+    if (req.user.role === 'doctor') {
+      const myDoc = await new Promise((resolve) => {
+        db.get("SELECT id FROM doctors WHERE user_id=? AND is_active=1", [req.user.id], (e, r) => resolve(r || null));
+      });
+      if (!myDoc) {
+        return res.status(403).json({ error: '找不到你的醫師資料，無法更新時段' });
+      }
+      allowedDoctorId = Number(myDoc.id);
+      const foreign = slots.filter((s) => Number(s.doctor_id) !== allowedDoctorId);
+      if (foreign.length) {
+        return res.status(403).json({ error: '醫師只可以修改自己嘅時段' });
+      }
     }
 
     const stmt = db.prepare(

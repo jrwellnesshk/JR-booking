@@ -793,7 +793,7 @@ async function sendBookingReminders() {
 👨‍⚕️ 醫師：${booking.doctor_name || '待定'}
 💆 服務：${booking.service_name || '一般診症'}
 
-📍 地址：香港九龍新蒲崗大有街3號萬迪廣場9樓E鋪
+📍 地址：香港島中環德輔道中61-65號華人銀行大廈10樓1002室
 📞 電話：2555-1136
 
 ${daysUntil === 0 ? '請準時到達！' : '請準時到達，如需更改請提前通知。'}`;

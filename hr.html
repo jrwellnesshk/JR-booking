@@ -14,7 +14,7 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
     <link rel="stylesheet" href="css/i18n.css" />
-    <script src="js/i18n.js?v=20260919"></script>
+    <script src="js/i18n.js?v=20260920"></script>
     <script src="js/i18n-runtime.js?v=20260919"></script>
     <script>
       tailwind.config = {
@@ -854,6 +854,7 @@
             return j;
           },
           async loadToday(){
+            if(!this.isAdmin) return;
             try { const j = await this.api('/api/hr/today'); this.todayEmployees = j.employees; const s={total:0,working:0,completed:0,onLeave:0,absent:0}; j.employees.forEach(e=>{ s.total++; s[e.status]=(s[e.status]||0)+1; }); this.stats=s; } catch(e){ this.toastErr(e); }
           },
           async loadReport(){
@@ -866,6 +867,7 @@
             try { const j = await this.api(`/api/hr/exceptions?date=${this.excDate||this.today()}`); this.exceptions=j.anomalies; const c={late:0,early:0,absent:0,onLeave:0}; j.anomalies.forEach(a=>{ if(a.type==='late')c.late++; if(a.type==='early_leave')c.early++; if(a.type==='absent')c.absent++; if(a.type==='on_leave')c.onLeave++; }); this.excCount=c; } catch(e){ this.toastErr(e); }
           },
           async loadLeaves(updateBadge){
+            if(!this.isAdmin) return;
             try { const j = await this.api(`/api/hr/leaves/all${this.leaveTab!=='all'?`?status=${this.leaveTab}`:''}`); this.leaves=j; if(updateBadge){ const p=await this.api('/api/hr/leaves/all?status=pending'); this.pendingLeaveCount=p.length; } } catch(e){ this.toastErr(e); }
           },
           async reviewLeave(l, action){
@@ -873,6 +875,7 @@
             try { const j = await this.api(`/api/hr/leaves/${l.id}/review`, { method:'PUT', body: JSON.stringify({ action }) }); alert(j.message); this.loadLeaves(true); } catch(e){ this.toastErr(e); }
           },
           async loadRoster(cb){
+            if(!this.isAdmin){ if(cb)cb(); return; }
             try { const j = await this.api('/api/hr/employees'); this.roster=j; if(cb)cb(); } catch(e){ this.toastErr(e); if(cb)cb(); }
           },
           openAddEmp(){
@@ -1109,6 +1112,9 @@
             finally { this.myPwdBusy = false; }
           },
         },
+        computed: {
+          isAdmin() { return !!(this.adminUser && this.adminUser.role === 'admin'); },
+        },
         mounted(){
           const u = localStorage.getItem('adminUser');
           const tok = localStorage.getItem('jwtToken');
@@ -1119,9 +1125,11 @@
           this.mDate = this.today();
           const d=new Date(); this.repFrom=this.today().slice(0,8)+'01'; this.repTo=this.today();
           this.histFrom=this.today().slice(0,8)+'01'; this.histTo=this.today();
-          this.loadToday();
-          this.loadRoster();
-          this.loadLeaves(true);
+          if(this.isAdmin){
+            this.loadToday();
+            this.loadRoster();
+            this.loadLeaves(true);
+          }
         },
       }).mount('#app');
     </script>

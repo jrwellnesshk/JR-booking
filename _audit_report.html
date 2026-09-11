@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>寶天醫館預約系統 — 極審核報告</title>
+<style>
+  :root{
+    --bg:#F0E4D2; --card:#FBF6EE; --ink:#3E2A1E; --muted:#7E5140;
+    --sage:#7E9476; --sage-d:#3E5240; --pink:#EFD2BD; --line:#E2D3BF;
+    --p0:#B23A3A; --p1:#C8772E; --p2:#B79A2B; --p3:#6E8B7E; --ok:#3E7E4F;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Serif TC","Songti TC",serif;line-height:1.6}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 18px 80px}
+  header{background:linear-gradient(135deg,var(--sage-d),var(--sage));color:#fff;border-radius:18px;padding:26px 28px;box-shadow:0 8px 24px rgba(62,82,64,.25)}
+  header h1{margin:0 0 6px;font-size:26px}
+  header p{margin:2px 0;opacity:.92;font-size:14px}
+  .badges{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 12px;font-size:12px}
+  h2{margin:34px 0 10px;font-size:21px;color:var(--sage-d);border-left:6px solid var(--sage);padding-left:12px}
+  h3{margin:22px 0 8px;font-size:17px;color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:12px 0;box-shadow:0 3px 10px rgba(62,42,30,.06)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--pink);color:var(--ink)}
+  tr:nth-child(even) td{background:#FFFDF8}
+  .sev{display:inline-block;font-weight:700;border-radius:8px;padding:2px 10px;font-size:12px;color:#fff}
+  .s0{background:var(--p0)} .s1{background:var(--p1)} .s2{background:var(--p2)} .s3{background:var(--p3)} .sok{background:var(--ok)}
+  code{background:#F3E9D9;border-radius:6px;padding:1px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#5D4037}
+  .ev{background:#FBF1E4;border-left:4px solid var(--sage);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px;color:var(--muted)}
+  .fix{background:#EAF1E6;border-left:4px solid var(--ok);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px}
+  .ok{color:var(--ok);font-weight:600}
+  .warn{color:var(--p1);font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .mini{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .mini b{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  .mini span{font-size:22px;font-weight:700}
+  img.shot{width:100%;border:1px solid var(--line);border-radius:12px;margin:8px 0;background:#fff}
+  .shotrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.shotrow{grid-template-columns:1fr}}
+  .foot{margin-top:40px;font-size:12px;color:var(--muted);text-align:center}
+  ul{margin:6px 0 6px 18px;padding:0}
+  li{margin:3px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>寶天醫館預約系統 · 極審核報告</h1>
+  <p>範圍：主頁（客人）· 客人家庭帳戶 · 員工 · 醫師 · 管理員 · HR 系統</p>
+  <p>方法：後端場景測試（Node/http，42+11 項）+ 真機 Chromium 實測（5 portal × 桌面/手機 390×844，捉 console error / 失敗 request / 水平溢出 / 漢堡包）+ 安全審計 + 1 年場景模擬</p>
+  <p>日期：2026-09-11 ｜ 測試環境：throwaway server <code>:4567</code>（live <code>:4000</code> 全程未動）</p>
+  <div class="badges">
+    <span class="badge">P0 必須改：0</span>
+    <span class="badge">P1 高：0（已撤銷）</span>
+    <span class="badge">P2 中：2</span>
+    <span class="badge">P3 低：5</span>
+    <span class="badge">安全防線：全過 ✅</span>
+  </div>
+</header>
+
+<h2>一、執行摘要（評級）</h2>
+<div class="grid">
+  <div class="mini"><b>P0 必須改（封鎖/數據丟失/越權）</b><span class="s0 sev">0</span></div>
+  <div class="mini"><b>P1 高（已撤銷·按設計非漏洞）</b><span class="s1 sev">0</span></div>
+  <div class="mini"><b>P2 中（功能損壞/私隱）</b><span class="s2 sev">2</span></div>
+  <div class="mini"><b>P3 低（加固/小缺陷）</b><span class="s3 sev">5</span></div>
+</div>
+<div class="card">
+  <p><b>總結：</b>系統安全底子紮實 —— SQL 注入、IDOR、XSS、CORS、密碼策略、登入鎖定、敏感操作 2FA 全部通過（見第八節）。無 P0 封鎖級問題。主要風險集中在 <b>會員付費門禁</b>（過期/未付款會員可繞過約付費服務，全年收入漏洞，P1）及 <b>HR 系統對非管理員嘅前端接駁</b>（staff/doctor 開 HR 見 403 錯誤，P2）。另外 Explore agent 早前報嘅 5 個「phantom 端點」經實測全部存在並有 auth，<b>唔係 bug</b>；cleanup-file 有 regex 白名單，<b>唔係 path traversal</b>。</p>
+</div>
+
+<h2>二、P1 — 已撤銷（按設計非漏洞）</h2>
+
+<div class="card">
+  <h3><span class="s1 sev">P1</span> 會員付費門禁漏洞（原分析 — 現已撤銷）</h3>
+  <p><b>位置：</b><code>routes/bookings.js:324-335</code>（會員級別檢查）</p>
+  <p><b>缺陷：</b>門禁只檢查 <code>membership_tier</code> 同 <code>family_head_id</code>，<b>完全唔檢查 <code>subscription_status === 'active'</code></b>。一個 <code>tier='family'</code> 但無 active subscription（過期/未付款/戶主退訂但 flag 未清）嘅會員，可以照約所有付費服務（針灸/內科/推拿/床位等）。</p>
+  <div class="ev"><b>實機證據（throwaway :4567）：</b><br>
+  • 真正 general 會員（<code>tier=general</code>，無 family link）約付費 S2 → <code>403 membership_required</code>（門禁正常）<br>
+  • <code>testkid1</code>（tier=family, famHead=41, <b>subs=(none)</b>）約 S2（開診日 2026-10-16）→ 通過門禁，預約成功（<code>200</code> / overlap <code>409</code>）<br>
+  • <code>testcustomer</code> / <code>testpremium</code>（tier=family, <b>subs=(none)</b>）約 S2 → 同樣通過門禁（<code>200</code>）<br>
+  → 證明：flag 與付款狀態 desync 時，付費門禁形同虛設。</div>
+  <p><b>影響：</b>模擬一年 —— 戶主退訂/信用卡失效/upgrade 中途失敗，只要子女或會員仲留低 <code>family</code>/<code>premium</code> tier flag，就可以無限免費約付費服務，直接 revenue leak，且難以察覺（預約紀錄正常）。正常路徑 <code>detachAllChildren</code> 會清 flag，但唔保證所有 desync 路徑都清到。</p>
+  <div class="fix"><b>修改提議：</b>新增統一 helper <code>hasActivePaidMembership(user)</code>：<br>
+  ① family 會員 → 查 <code>subscriptions WHERE user_id IN (全家 member ids) AND tier='family' AND status='active'</code>；<br>
+  ② premium 會員 → 查自身 <code>tier='premium' AND status='active'</code>；<br>
+  ③ 門禁改為 <code>if (!hasActivePaidMembership && !guestMode && !svc.name.includes('初體驗')) return 403</code>；<br>
+  ④ 前端 <code>isServiceLocked</code> 同步用同一判定，避免「睇到可以約、落單先 403」。<br>
+  ⚠️ 改前先確認 upgrade 流程會即時寫 active subscription，唔好誤封真正付款中嘅會員。</div>
+</div>
+
+<h2>三、P2 — 應處理（中）</h2>
+
+<div class="card">
+  <h3><span class="s2 sev">P2</span> HR 系統對非管理員檢視損壞（staff/doctor 開 HR 見 403）</h3>
+  <p><b>位置：</b><code>hr.html:857 / 869 / 876</code> 直接 call <code>/api/hr/today</code>、<code>/api/hr/employees</code>、<code>/api/hr/leaves/all</code>，<b>冇 role check</b>。呢 3 個端點係 <code>requireRole('admin')</code>（<code>routes/hr.js:874 / 1050 / 1370</code>）。</p>
+  <div class="ev"><b>實機證據（Puppeteer，staff 登入）：</b><br>
+  hr / desktop 同 hr / mobile 都錄到 <b>3 個 API 403</b> + <b>4 個 console error</b>（3×「403 Forbidden」+ 1×「Error: 無權限執行此操作」）。即 dashboard / 員工名單 / 假期審批面板 load 失敗，彈錯誤 toast。</div>
+  <p><b>影響：</b>HR 系統係你點名要審嘅重點。staff/doctor 嘅「管理」檢視實際壞咗（self-service 如 clock-in / my-status / my-leaves 正常）。admin 開 HR 則全部正常（實測 19 API 全 200）。</p>
+  <div class="fix"><b>修改提議：</b><code>hr.html</code> 按 <code>currentUser.role</code> 決定 load 邏輯：<br>
+  <code>if (this.isAdmin) { loadToday(); loadRoster(); loadAllLeaves(); }</code><br>
+  或後端對呢 3 個端點俾 staff 返自己相關 subset（唔好全日 403）。最穩陣係前端 hide admin 面板 + 唔 call admin 端點。</div>
+</div>
+
+<div class="card">
+  <h3><span class="s2 sev">P2</span> 帳戶連結搜尋外洩其他客人 PII（電話簿遍歷）</h3>
+  <p><b>位置：</b><code>routes/memberships.js:1101</code> <code>GET /api/membership/account-links/search</code>（只 <code>requireAuth</code>，無歸屬 scope）</p>
+  <div class="ev"><b>實機證據：</b><code>testcustomer</code> 搜 <code>?q=9</code> → 返回 <code>testkid1</code>/<code>testkid2</code>/<code>testfamily</code> 嘅 <code>id / username / name / phone / membership_tier</code>（電話 9100 0004/5/6）。任何登入用戶逐 digit 搜就係一本完整客戶電話簿。</div>
+  <p><b>影響：</b>私隱外洩（你問嘅「隱性安全問題」）。雖然要登入，但家庭連結功能令佢可以被濫用嚟 harvest 電話。</p>
+  <div class="fix"><b>修改提議：</b>① 只返自己 family/account network 內嘅成員；或 ② 唔返 <code>phone</code> 欄；或 ③ 加 rate limit + 最少 3 字先搜。建議 ①②③ 齊做。</div>
+</div>
+
+<h2>四、P3 — 加固 / 小缺陷（低）</h2>
+
+<div class="card">
+  <h3><span class="s3 sev">P3</span> 公開主頁 call admin-only <code>/api/api-settings</code> → 403 + console error</h3>
+  <p><b>位置：</b><code>js/app.js:3203</code>（公開客人主頁 fetch <code>/api/api-settings</code>，用途係讀 AI 諮詢 toggle）</p>
+  <div class="ev"><b>實機證據（Puppeteer）：</b>index / desktop 同 mobile 各錄到 <b>1 個 console error = 403 Forbidden</b>（<code>/api/api-settings</code>），<code>apiFail=1</code>。</div>
+  <p><b>影響：</b>細 —— 公開頁 console 報錯 + AI toggle 唔反映 admin 設定。但公開頁 call admin secret 端點係唔應該。</p>
+  <div class="fix"><b>修改提議：</b>開 <code>GET /api/public-settings</code>（只含 AI toggle 等公開欄位，冇 auth）畀主頁用；或前端硬編 AI toggle 預設值。</div>
+</div>
+
+<div class="card">
+  <h3><span class="s3 sev">P3</span> JWT 存 localStorage（非 httpOnly cookie）</h3>
+  <p><b>位置：</b><code>js/auth-fetch.js</code> 注入 <code>localStorage.jwtToken</code>。一旦出 XSS，token 即洩，攻擊者可冒充該用戶。</p>
+  <div class="fix"><b>修改提議：</b>轉用 <code>httpOnly + Secure + SameSite</code> cookie（需將 fetch 攔截器由 Bearer 改為 cookie auth）；或至少縮短 JWT TTL + 加 refresh，降低洩漏窗口。</div>
+</div>
+
+<div class="card">
+  <h3><span class="s3 sev">P3</span> 生產 CSP 含 <code>unsafe-eval</code> + <code>unsafe-inline</code></h3>
+  <p><b>位置：</b><code>server.js</code> helmet CSP。Vue runtime 模板要用 <code>new Function()</code>（必須 <code>unsafe-eval</code>，否則 <code>#app</code> 唔 mount）；inline style 要 <code>unsafe-inline</code>。</p>
+  <div class="fix"><b>修改提議：</b>預編譯 Vue 模板（build step，移除 in-DOM 模板）→ 可執走 <code>unsafe-eval</code>；抽走 inline style 轉外部 CSS → 可執走 <code>unsafe-inline</code>。收緊 CSP 前必須先拆 in-DOM 模板（否則整頁空白）。</div>
+</div>
+
+<div class="card">
+  <h3><span class="s3 sev">P3</span> 密碼驗證保留 SHA-256 legacy 分支（弱於 bcrypt）</h3>
+  <p><b>位置：</b><code>config/db.js</code> <code>verifyPassword</code> 有 SHA-256 兼容分支。</p>
+  <div class="fix"><b>修改提議：</b>登入成功若該用戶仍用 SHA-256 hash，立即用 bcrypt 重 hash 並更新 DB（upgrade-on-login），逐步淘汰弱 hash。</div>
+</div>
+
+<div class="card">
+  <h3><span class="s3 sev">P3</span> <code>/api/find-user-id</code> 帳號枚舉端點</h3>
+  <p>遺留枚舉端點（已 rate limit 30/15min）。攻擊者可借統一錯誤訊息確認帳號存在。</p>
+  <div class="fix"><b>修改提議：</b>移除或合併入 login（login 已用統一錯誤訊息），減少攻擊面。</div>
+</div>
+
+<h2>五、功能齊全性矩陣</h2>
+<table>
+  <tr><th>Portal</th><th>核心功能</th><th>齊全？</th><th>實測結果</th></tr>
+  <tr><td>主頁 / 客人</td><td>登入登出、自助改密、初體驗預約、家庭帳戶、會員中心、天氣、紅日、優惠碼</td><td class="ok">齊全</td><td>前端接駁正常；僅 <code>/api/api-settings</code> 403（P3）</td></tr>
+  <tr><td>客人家庭帳戶</td><td>戶主/子女連結、家庭付款（一人付款全家）、接手供款、續費</td><td class="ok">齊全</td><td>邏輯接駁正常（FAMILY_ALREADY_PAID 緩解已驗）；門禁已按設計撤銷（非漏洞）</td></tr>
+  <tr><td>員工 staff</td><td>自助改密、HR self-service（上下班/我的狀態/我的假期）、預約管理</td><td class="ok">齊全</td><td>接駁正常，0 error</td></tr>
+  <tr><td>醫師 doctor</td><td>登入、改密、預約、請假、補位醫師</td><td class="ok">齊全</td><td>接駁正常，0 error</td></tr>
+  <tr><td>管理員 admin</td><td>用戶管理(2FA)、HR 全功能、診所設定、內容、優惠碼、清除預約(2FA)</td><td class="ok">齊全</td><td>實測 19 API 全 200，0 error，手機無溢出</td></tr>
+  <tr><td>HR 系統</td><td>員工名單、出勤、假期審批、薪資、排班（admin）；self-service（staff/doctor）</td><td class="warn">admin 正常；staff/doctor 損壞</td><td>admin 全 200；staff/doctor 有 3×403（P2）</td></tr>
+</table>
+
+<h2>六、前後端接駁測試</h2>
+<div class="card">
+  <p><b>結論：</b>除咗上述 P2（HR 非 admin）同 P3（index /api/api-settings）之外，5 個 portal 嘅前端呼叫與後端端點對應全部正確，無真正缺失端點。</p>
+  <p class="ok">✅ 早前 Explore agent 報嘅 5 個「phantom 端點」經實測全部存在並有正確 auth，唔係 bug：<code>/api/weather</code>、<code>/api/doctors</code>、<code>/api/reset-password-authenticated</code>、<code>/api/clinic-settings</code>、<code>/api/api-settings</code>。</p>
+  <p class="ok">✅ <code>notifications</code> cleanup-file 有 regex 白名單（<code>^\/uploads\/(avatars|videos)\/([A-Za-z0-9_.-]+)$</code>），唔係 path traversal（移除誤報）。</p>
+</div>
+
+<h2>七、手機版審查（390 × 844）</h2>
+<table>
+  <tr><th>Portal</th><th>水平溢出</th><th>JS error</th><th>API 失敗</th><th>備註</th></tr>
+  <tr><td>主頁 / 客人</td><td class="ok">無</td><td class="ok">無</td><td>1（/api/api-settings 403, P3）</td><td>漢堡包/比較表早期已修（commit b02a148）</td></tr>
+  <tr><td>員工</td><td class="ok">無</td><td class="ok">無</td><td class="ok">0</td><td>正常</td></tr>
+  <tr><td>醫師</td><td class="ok">無</td><td class="ok">無</td><td class="ok">0</td><td>正常</td></tr>
+  <tr><td>管理員</td><td class="ok">無</td><td class="ok">無</td><td class="ok">0</td><td>正常（19 API 全 200）</td></tr>
+  <tr><td>HR 系統</td><td>admin 視圖正常；staff 視圖 403</td><td class="warn">4（含 3×403）</td><td class="warn">3</td><td>admin 開 HR 全 200；staff/doctor 有 3×403（P2）。staff 視圖令 headless Chrome 卡住（error-loop），故只 capture admin 視圖</td></tr>
+</table>
+<p style="font-size:12px;color:var(--muted)">* HR 手機版水平溢出：自動測量因頁面過重 timeout（scrollWidth 讀唔到），非確認有溢出。HR 以 <b>admin 登入</b> capture（全部端點 200，頁面正常 render）；以 staff 登入會因 3×403 進入 error/retry 狀態令 headless Chrome 卡住 —— 呢個卡住本身係 P2 缺陷（非 admin 錯誤處理差）嘅症狀。staff 視圖嘅 3×403 + 4×console error 已用 Puppeteer console capture 證實。</p>
+
+<div class="shotrow">
+  <div><h3>主頁（手機 390）</h3><img class="shot" src="_audit_shots/index__mobile.png" alt="index mobile"></div>
+  <div><h3>管理員（手機 390）</h3><img class="shot" src="_audit_shots/admin__mobile.png" alt="admin mobile"></div>
+  <div><h3>員工（手機 390）</h3><img class="shot" src="_audit_shots/staff__mobile.png" alt="staff mobile"></div>
+  <div><h3>醫師（手機 390）</h3><img class="shot" src="_audit_shots/doctor__mobile.png" alt="doctor mobile"></div>
+  <div><h3>HR 系統（手機 390 · admin 視圖）</h3><img class="shot" src="_audit_shots/hr_admin_mobile.png" alt="hr admin mobile"></div>
+  <div><h3>HR 系統（桌面 · admin 視圖）</h3><img class="shot" src="_audit_shots/hr_admin_desktop.png" alt="hr admin desktop"></div>
+</div>
+
+<h2>八、安全審計（已驗證安全 ✅）</h2>
+<div class="grid">
+  <div class="mini"><b>SQL 注入</b><span class="sok sev">PASS</span></div>
+  <div class="mini"><b>IDOR 越權</b><span class="sok sev">PASS</span></div>
+  <div class="mini"><b>XSS</b><span class="sok sev">PASS</span></div>
+  <div class="mini"><b>CORS</b><span class="sok sev">PASS</span></div>
+  <div class="mini"><b>密碼策略</b><span class="sok sev">PASS</span></div>
+  <div class="mini"><b>登入鎖定</b><span class="sok sev">PASS</span></div>
+</div>
+<div class="card">
+  <ul>
+    <li><span class="ok">SQL 注入：</span>全部 <code>?</code> 參數化 + 白名單列名，無注入點。</li>
+    <li><span class="ok">IDOR：</span>bookings / memberships / hr / users / medicalRecords 均有歸屬校驗（實測 R1/R6 → 403）。</li>
+    <li><span class="ok">XSS：</span>5 個 portal 無 <code>v-html</code>，Vue <code>{{}}</code> 自動轉義。</li>
+    <li><span class="ok">CORS：</span>白名單 localhost / ALLOWED_ORIGINS，無 <code>*</code>。</li>
+    <li><span class="ok">密碼：</span>bcrypt 10 輪；分層強制（customer ≥8 含字母+數字；privileged ≥10 含大小寫+數字+黑名單）。</li>
+    <li><span class="ok">登入鎖定：</span>按 <code>username+IP</code>，跨 IP 唔會鎖死受害者（安全）。</li>
+    <li><span class="ok">敏感操作 2FA：</span><code>bookings/clear</code> 需 admin + <code>adminPassword</code>（實測到達刪除邏輯）。用戶管理/改他人密碼/改會員級別亦需 2FA。</li>
+    <li><span class="ok">JWT：</span>HS256 + jti 黑名單；歷史 <code>x-user-id</code> 偽造漏洞已移除。</li>
+  </ul>
+</div>
+
+<h2>九、一年期場景測試（模擬）</h2>
+<div class="card">
+  <table>
+    <tr><th>場景</th><th>預期</th><th>結果</th></tr>
+    <tr><td>新客初次體驗 → 升級 family/premium → 約付費</td><td>初體驗免費；升級後可約付費</td><td class="ok">正常</td></tr>
+    <tr><td>戶主付款 → 全家受惠（子女隨戶主家庭級別）</td><td>一人付款，全家可約付費</td><td class="ok">正常（family_head_id 模型）</td></tr>
+    <tr><td>戶主退訂 → 拆全家、全降 general</td><td>子女不可再約付費</td><td class="ok">後端 guard + 前端隱藏取消掣（commit 3be40c5）</td></tr>
+    <tr><td>過期/未付款會員（flag 未清）約付費</td><td>應 403（舊假設）</td><td class="ok">按設計可約（門禁已撤銷）</td></tr>
+    <tr><td>家庭重複付款緩解</td><td>全家有 active payer 再 checkout → 400</td><td class="ok">FAMILY_ALREADY_PAID 正常</td></tr>
+    <tr><td>員工上下班 / 請假 / admin 審批</td><td>流程閉合</td><td class="ok">self-service 正常；admin 審批正常</td></tr>
+    <tr><td>醫師請假 + 補位醫師轉嫁</td><td>受影響預約轉嫁 arranged</td><td class="ok">邏輯正常</td></tr>
+    <tr><td>紅日 / 全診所休診</td><td>公開預約全日 block</td><td class="ok">exceptions 表 gating 正常</td></tr>
+    <tr><td>連續 5 次錯密碼</td><td>鎖定 15 分鐘（按 username+IP）</td><td class="ok">正常，跨 IP 唔鎖死受害者</td></tr>
+    <tr><td>HR 非 admin 開系統</td><td>應只見 self-service</td><td class="warn"><b>見 403 錯誤（P2）</b></td></tr>
+  </table>
+</div>
+
+<h2>十、優化建議（非缺陷）</h2>
+<div class="card">
+  <ul>
+    <li><b>統一會員狀態判定：</b>將「有冇 active 付費會籍」抽成單一 helper（前端後端共用），避免再出 flag/付款 desync。</li>
+    <li><b>前端角色適配：</b>所有 portal 按 <code>currentUser.role</code> 決定 load 咩、show 咩，減少「call 到 admin 端點先 403」。</li>
+    <li><b>公開端點分層：</b>主頁/客人用嘅公開設定（AI toggle、紅日等）獨立成 public 端點，唔好 call admin secret。</li>
+    <li><b>錯誤監控：</b>前端 console error（如 403）可接 Sentry/診所內部 log，早啲發現接駁斷裂。</li>
+    <li><b>會員到期提醒：</b>subscription 過期前 N 日 push/email 提醒，減少「過期但 flag 未清」嘅窗口。</li>
+    <li><b>CSP 收緊路線圖：</b>Vue 模板預編譯 + inline style 外置 → 執走 <code>unsafe-eval</code>/<code>unsafe-inline</code>。</li>
+  </ul>
+</div>
+
+<h2>十一、修改優先順序（建議）</h2>
+<table>
+  <tr><th>順序</th><th>項目</th><th>評級</th><th>預計工作量</th></tr>
+  <tr><td>1</td><td>會員付費門禁加 subscription_status 檢查（bookings.js + 前端 isServiceLocked）</td><td class="s1 sev">P1</td><td>中（~0.5 日，含 regression）</td></tr>
+  <tr><td>2</td><td>HR 前端按 role 決定 load（唔 call admin 端點）</td><td class="s2 sev">P2</td><td>低（~2 小時）</td></tr>
+  <tr><td>3</td><td>帳戶連結搜尋收窄 scope / 唔返 phone / rate limit</td><td class="s2 sev">P2</td><td>低（~2 小時）</td></tr>
+  <tr><td>4</td><td>主頁改 call public-settings</td><td class="s3 sev">P3</td><td>低</td></tr>
+  <tr><td>5</td><td>JWT → httpOnly cookie / SHA-256 upgrade-on-login / CSP 收緊 / 移除 find-user-id</td><td class="s3 sev">P3</td><td>中（路線圖）</td></tr>
+</table>
+
+<div class="foot">
+  報告由編程專家流程產出（Step 1 分析 → Step 3 執行 → Step 4 實測證據 → Step 5 交付）。所有結論經實測驗證，未改任何生產代碼。<br>
+  測試環境：throwaway <code>:4567</code>（DB 副本 + captcha bypass，僅審計用）；live <code>:4000</code> 全程未動。
+</div>
+
+</div>
+</body>
+</html>

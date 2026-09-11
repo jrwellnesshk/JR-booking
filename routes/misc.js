@@ -29,7 +29,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     else if (text.includes("預約")) 
       reply = "您可以在首頁選擇服務後，選擇適合的時間進行預約。";
     else if (text.includes("地址") || text.includes("位置")) 
-      reply = "我們位於香港九龍旺角，詳細地址請致電查詢。";
+      reply = "我們位於香港島中環德輔道中61-65號華人銀行大廈10樓1002室，港鐵中環站 D2 出口步行 3 分鐘。";
 
     res.json({ reply });
   });

@@ -231,7 +231,7 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
 💆 *服務：* ${booking.serviceName}
 💰 *服務費用：* ${priceDisplay}
 
-📍 *地址：* 香港九龍新蒲崗大有街3號萬迪廣場9樓E鋪
+📍 *地址：* 香港島中環德輔道中61-65號華人銀行大廈10樓1002室
 📞 *聯絡電話：* 2555-1136
 
 如需更改或取消預約，請登入系統或致電診所。

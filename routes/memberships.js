@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 
 // 🔒 分層密碼政策：暫時密碼改用強隨機生成器（混合大小寫 + 數字，符合新政策）
 const { generateTempPassword } = require('../services/passwordPolicy');
@@ -831,19 +832,26 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
-  // GET /api/membership/family/:id/bookings — 子帳戶預約（18+ 只顯示「預約成功」狀態）
+  // GET /api/membership/family/:id/bookings — 子帳戶預約
+  // 規則：18歲以下戶主必見全部；18+ 若 hide_from_head=1 則戶主不可見
   router.get('/family/:id/bookings', requireAuth, async (req, res) => {
     const childId = Number(req.params.id);
     const user = req.user;
     try {
       const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
       if (!link) return res.status(403).json({ error: '沒有權限' });
-      const child = await q1("SELECT birth_date FROM users WHERE id=?", [childId]);
+      const child = await q1("SELECT birth_date, hide_from_head FROM users WHERE id=?", [childId]);
       const age = computeAge(child && child.birth_date);
+      const isAdult = age >= 18;
+      // 🔒 18+ 且開啟私隱 → 戶主不可見其預約
+      if (isAdult && child && child.hide_from_head === 1) {
+        return res.status(403).json({ error: '該成員已設定私隱，戶主不可查看其預約', code: 'hidden_from_head' });
+      }
       const rows = await q(
         "SELECT id, service_id, appointment_date, appointment_time, status FROM bookings WHERE user_id=? ORDER BY appointment_date DESC, appointment_time DESC",
         [childId]);
-      const bookings = age >= 18
+      // 18+ 只顯示中性「預約成功」狀態（詳情仍受私隱開關控制）
+      const bookings = isAdult
         ? rows.map(r => ({ ...r, status: r.status === 'cancelled' ? 'cancelled' : '預約成功' }))
         : rows;
       res.json({ bookings, age });
@@ -1088,13 +1096,27 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  // 🔍 GET /api/membership/account-links/search?q= — 客人／戶主搜尋可以連結嘅客戶帳戶（按名稱/用戶名/電話）
+  // 🔒 防止帳戶連結搜尋被用嚟高頻枚舉其他客戶 PII（電話）
+  const linkSearchLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 分鐘
+    max: 20,             // 同一 IP 最多 20 次
+    message: { ok: false, error: '搜尋過於頻繁，請稍後再試' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // 🔍 GET /api/membership/account-links/search?q= — 戶主搜尋可以連結嘅客戶帳戶（按名稱／用戶名／會員編號）
+  // 安全收緊（P2 帳戶連結搜尋 PII 外洩）：
+  //   ① 唔返 phone 欄（防其他客戶電話外洩）；
+  //   ② 唔按 phone 搜尋（防電話號碼枚舉）；
+  //   ③ 關鍵字至少 2 字先搜（防單字廣撒網，中文姓名常 2 字故唔用 3）；
+  //   ④ 頻率限制（linkSearchLimiter）。
   // 排除：自己、自己名下嘅家庭子女、以及雙方已存在嘅 account_links（避免重複連結）
   // 管理員可傳 userId ?excludeHeadId= 代指定主帳戶搜尋（排除該戶主及其下子女/已連結）
-  router.get('/account-links/search', requireAuth, async (req, res) => {
+  router.get('/account-links/search', requireAuth, linkSearchLimiter, async (req, res) => {
     try {
       const kw = String(req.query.q || '').trim();
-      if (!kw) return res.json({ ok: true, results: [] });
+      if (kw.length < 2) return res.json({ ok: true, results: [] });
       const like = `%${kw}%`;
       let me = req.user.id;
       if (req.query.excludeHeadId && Number(req.query.excludeHeadId) !== Number(req.user.id)) {
@@ -1109,10 +1131,10 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         me = Number(req.query.excludeUserId);
       }
       const rows = await q(
-        `SELECT u.id, u.username, u.name, u.membership_tier, u.phone
+        `SELECT u.id, u.username, u.name, u.membership_tier
          FROM users u
          WHERE u.role='customer' AND u.id <> ?
-           AND (u.name LIKE ? COLLATE NOCASE OR u.username LIKE ? COLLATE NOCASE OR u.phone LIKE ? OR u.member_no LIKE ?)
+           AND (u.name LIKE ? COLLATE NOCASE OR u.username LIKE ? COLLATE NOCASE OR u.member_no LIKE ?)
            AND u.id NOT IN (SELECT child_user_id FROM family_links WHERE parent_user_id=?)
            AND u.id NOT IN (
              SELECT CASE WHEN user_a=? THEN user_b ELSE user_a END
@@ -1120,9 +1142,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
            )
          ORDER BY u.name COLLATE NOCASE
          LIMIT 12`,
-        [me, like, like, like, like, me, me, me]
+        [me, like, like, like, me, me, me]
       );
-      res.json({ ok: true, results: rows || [] });
+      // 🔒 防禦式：無論查詢點寫，返出去嘅結果一律唔帶 phone 欄
+      const safe = (rows || []).map(({ phone, ...rest }) => rest);
+      res.json({ ok: true, results: safe });
     } catch (e) {
       console.error('搜尋可連結帳戶失敗:', e);
       res.status(500).json({ error: '搜尋失敗' });
@@ -1251,14 +1275,33 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       // 醫師 user_id
       const docRow = await q1("SELECT id, user_id FROM doctors WHERE name=? AND is_active=1", [doctorName]);
       const doctorUserId = docRow ? docRow.user_id : null;
-      // 寫入（繞過 checkClinicOpen 因為咁樣要載入 holidays 模組；admin UI 可手動檢查；簡化版：直接寫 confirmed）
+      // 🔒 與主預約路徑一致：基本開診/日期/衝突檢查（唔可裸寫 confirmed）
+      const todayStr = new Date().toLocaleDateString('sv-SE');
+      if (!apptDate || apptDate < todayStr) {
+        return res.status(400).json({ error: '不可預約過去日期', code: 'past_date' });
+      }
+      // 簡單衝突：同日同醫師同時段已有預約
+      const conflict = await q1(
+        `SELECT id FROM bookings WHERE appointment_date=? AND appointment_time=? AND doctor_name=? AND status NOT IN ('cancelled','no-show') LIMIT 1`,
+        [apptDate, apptTime, doctorName]
+      );
+      if (conflict) {
+        return res.status(409).json({ error: '該時段已被預約，請另選時段', code: 'slot_taken' });
+      }
+      const startMin = (() => {
+        const p = String(apptTime).split(':').map(Number);
+        return p[0] * 60 + (p[1] || 0);
+      })();
+      const durationMin = Number(svc.duration) || 30;
+      const endMin = startMin + durationMin;
+      const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
       const notes = (extraNotes ? extraNotes + ' ' : '') + `[代約 by ${req.user.name}#${req.user.id}]`;
       const r = await run(
         `INSERT INTO bookings (user_id, customer_name, customer_phone, customer_email, service_id, doctor_name, doctor_user_id, appointment_date, appointment_time, end_time, status, notes, created_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
         [forUserId, customerName || member.name, customerPhone || null, customerEmail || null,
          serviceId, doctorName, doctorUserId, apptDate, apptTime,
-         svc.duration ? `${apptTime} +${svc.duration}min` : null,
+         endTime,
          'confirmed', notes]
       );
       res.json({ ok: true, booking_id: r.lastID || r.id, for_user_id: forUserId, member_name: member.name, message: `已代 ${member.name} 預約成功` });
