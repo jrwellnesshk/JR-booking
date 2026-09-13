@@ -42,6 +42,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const weekdayShort = (i) => (lang.value === 'en'
             ? (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i] || '')
             : (['日', '一', '二', '三', '四', '五', '六'][i] || ''));
+          // 年/月標題：EN「September 2026」、ZH「2026 年 09 月」
+          const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'];
+          const monthTitle = (year, month) => (lang.value === 'en'
+            ? ((MONTHS_EN[Number(month) - 1] || month) + ' ' + year)
+            : (year + ' 年 ' + String(month).padStart(2, '0') + ' 月'));
           function setLang(l) {
             if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
             lang.value = l;
@@ -122,10 +128,17 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             },
           ]);
 
-          // 🔒 初體驗服務只限訪客——會員預約時隱藏
+          // 服務可約清單：
+          // - 訪客：全部顯示（後端只准初體驗）
+          // - 一般會員：只見初體驗（設計：先官網初體驗，員工開戶後先全部）
+          // - 高級/家庭會員：全部服務
           const bookableServices = computed(() => {
             if (!currentMember.value) return SERVICES.value;
-            return SERVICES.value.filter(s => !/初體驗/.test(s.name || ""));
+            const tier = (realTier.value || currentMember.value.tier || currentMember.value.membership_tier || 'general');
+            if (tier === 'general') {
+              return SERVICES.value.filter(s => /初體驗/.test(s.name || ""));
+            }
+            return SERVICES.value;
           });
 
           const TOTAL_BEDS = ref({ tuina: 5, vip: 5, acup: 5 });
@@ -453,7 +466,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const showNewPasswordChangeText = ref(false);
           const showConfirmPasswordChangeText = ref(false);
 
-          // 🔒 首登／臨時密碼強制更改（子帳戶 must_change_password=1）
+          // 🔓 已取消強制改密：以下狀態位保留作兼容，但不再觸發強制流程
           const forceChangePw = ref(false);
           const forcePwData = ref({ currentPassword: "", newPassword: "", confirmPassword: "" });
           const forcePwError = ref("");
@@ -628,9 +641,6 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                           // data.data 是陣列，每筆 medical_record 裡可能包含 progress 陣列
                           bookingMedical.value[bookingId] = (data.data || []).map(r => ({
                             ...r,
-                            audio_url: r.audio_file_path
-                              ? `${r.audio_file_path}`
-                              : null,
                             photo_urls: (r.photos && r.photos.length > 0)
                               ? r.photos.map(p => `${p.photo_file_path}`)
                               : []
@@ -670,9 +680,6 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                           const data = await response.json();
                           medicalHistory.value = (data.data || []).map(r => ({
                             ...r,
-                            audio_url: r.audio_file_path
-                              ? `${r.audio_file_path}`
-                              : null,
                             photo_urls: (r.photos && r.photos.length > 0)
                               ? r.photos.map(p => `${p.photo_file_path}`)
                               : []
@@ -1597,16 +1604,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                   loginTime: new Date().toISOString()
                 }));
 
-                // 🔒 子帳戶臨時密碼：強制首次更改
-                const needsPwChange = !!(data.mustChangePassword || data.user.must_change_password);
-                currentMember.value.must_change_password = needsPwChange;
-                if (needsPwChange) {
-                  forceChangePw.value = true;
-                  try {
-                    const savedTok = JSON.parse(localStorage.getItem('userToken') || 'null');
-                    if (savedTok) { savedTok.must_change_password = true; localStorage.setItem('userToken', JSON.stringify(savedTok)); }
-                  } catch (e) {}
-                }
+                // 🔓 已取消強制改密：登入後直接使用系統，不再彈出強制改密視窗
+                currentMember.value.must_change_password = false;
                 
                 customerName.value = data.user.name;
                 customerPhone.value = data.user.phone;
@@ -2099,6 +2098,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` }
               });
               const data = await res.json();
+              if (!res.ok) {
+                alert(data.error || '無法載入預約狀態');
+                return;
+              }
+              // 18+ 私隱：後端可能回 403 hidden_from_head
+              if (data.code === 'hidden_from_head') {
+                alert(data.error || '該成員已設定私隱');
+                return;
+              }
               selectedChildBookings.value = {
                 label: `${child.name} 的預約記錄`,
                 bookings: data.bookings || []
@@ -3088,10 +3096,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
 
-          // 載入診所設定
+          // 載入診所設定（改用無 auth 公開端點，訪客唔會再 401）
           const loadClinicSettings = async () => {
             try {
-              const response = await fetch(`${API_URL}/clinic-settings`);
+              const response = await fetch(`${API_URL}/public-clinic-settings`);
               if (response.ok) {
                 const data = await response.json();
                 TOTAL_BEDS.value.tuina = parseInt(data.tuina_beds || 5);
@@ -3176,9 +3184,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               console.error("載入醫師資料失敗:", error);
             }
             
-            // 載入 API 設定（AI 問診開關）
+            // 載入公開設定（AI 問診開關，無 auth）
             try {
-              const response = await fetch(`${API_URL}/api-settings`);
+              const response = await fetch(`${API_URL}/public-settings`);
               if (response.ok) {
                 const data = await response.json();
                 aiConsultationEnabled.value = data.ai_consultation_enabled !== false && data.ai_consultation_enabled !== 'false';
@@ -3482,55 +3490,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             };
           };
 
-          // 取消預約
+          // 取消預約：設計上客人不可自行取消／改期，一律請聯絡診所
+          //（後端 PUT /bookings/:id/status 亦只限 staff/admin/doctor）
           const cancelBooking = async (bookingId) => {
-            if (confirm("⚠️ 確定要取消這個預約嗎？\n\n（如用戶遇上不可抗力的情況，本診所會酌情處理）")) {
-              // 設置載入狀態
-              isCancelling.value = true;
-              cancellingBookingId.value = bookingId;
-              
-              try {
-                // 更新資料庫
-                const response = await fetch(
-                  `${API_URL}/bookings/${bookingId}/status`,
-                  {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "cancelled" }),
-                  }
-                );
-
-                if (response.ok) {
-                  // 更新本地狀態
-                  const cancelledAt = new Date().toISOString();
-                  bookings.value = bookings.value.map((b) =>
-                    b.id === bookingId
-                      ? { ...b, status: "cancelled", cancelledAt }
-                      : b
-                  );
-
-                  // 重新載入所有預約以更新即時狀況
-                  await loadAllBookings();
-
-                  alert("✅ 預約已取消，取消通知已發送至您的聯絡方式");
-
-                  // 15分鐘後從列表中移除
-                  setTimeout(() => {
-                    bookings.value = bookings.value.filter(
-                      (b) => !(b.id === bookingId && b.status === "cancelled")
-                    );
-                  }, 15 * 60 * 1000);
-                } else {
-                  alert("取消預約失敗，請稍後再試");
-                }
-              } catch (error) {
-                console.error("取消預約錯誤:", error);
-                alert("取消預約失敗，請稍後再試");
-              } finally {
-                isCancelling.value = false;
-                cancellingBookingId.value = null;
-              }
-            }
+            alert(t('預約一經確認即已鎖定，如需更改或取消，請致電 2555-1136 與診所聯絡。') ||
+              '預約一經確認即已鎖定，如需更改或取消，請致電 2555-1136 與診所聯絡。');
           };
 
           // 開始修改預約
@@ -4101,8 +4065,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                   days_remaining: userData.days_remaining || null,
                   must_change_password: !!userData.must_change_password
                 };
-                // 🔒 臨時密碼未改：繼續強制更改
-                if (userData.must_change_password) forceChangePw.value = true;
+                // 🔓 已取消強制改密：恢復登入狀態時不再強制彈出改密視窗
                 customerName.value = userData.name;
                 customerPhone.value = userData.phone;
                 customerEmail.value = userData.email || "";
@@ -4197,9 +4160,6 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                     current_value: progress?.current_value,
                     target_value: progress?.target_value,
                     progress_score: progress?.progress_score,
-                    audio_url: record.audio_file_path
-                      ? `${record.audio_file_path}`
-                      : null,
                     photo_urls: (record.photos && record.photos.length > 0)
                       ? record.photos.map(p => `${p.photo_file_path}`)
                       : [],
@@ -4218,28 +4178,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           }
 
-          // 下載錄音檔案
-          async function downloadMedicalAudio(recordId) {
-            try {
-              const response = await fetch(`${API_URL}/medical-records/customer/records/${recordId}/audio`, {
-                headers: { 'x-user-id': (currentMember.value.dbId || currentMember.value.id) }
-              });
-              if (!response.ok) {
-                alert('下載錄音失敗，請稍後再試');
-                return;
-              }
-              const blob = await response.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `medical-audio-${recordId}.mp3`;
-              a.click();
-              URL.revokeObjectURL(url);
-            } catch (error) {
-              console.error('下載錄音時發生錯誤:', error);
-              alert('下載錄音時發生錯誤，請稍後再試');
-            }
-          }
+          // 下載錄音檔案 — 已取消（音頻功能停用，只保留相片）
 
           // 下載病歷摘要文字檔
           function downloadMedicalSummary(record) {
@@ -4286,6 +4225,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             t,
             setLang,
             weekdayShort,
+            monthTitle,
             SUPPORTED_LANGS,
             DOCTORS,
             SERVICES,
@@ -4534,7 +4474,6 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             fetchMedicalForBooking,
             percentToSquares,
             viewMedicalRecord,
-            downloadMedicalAudio,
             downloadMedicalSummary,
             canEditBooking,
             // 病歷相片比較與檢視

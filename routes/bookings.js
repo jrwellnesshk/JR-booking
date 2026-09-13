@@ -201,6 +201,20 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       }
     }
 
+    // 4b. 開放預約月份（open_months，逗號分隔月份如 "9,10,11"）
+    //     注意：空值／未設定 = 不限制（保持向後兼容，唔會影響現有預約）
+    const openMonthsRaw = await qGet('open_months');
+    if (openMonthsRaw != null && String(openMonthsRaw).trim() !== '') {
+      const monthList = String(openMonthsRaw).split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+      const m = parseInt(String(date).slice(5, 7), 10);
+      if (monthList.length && !monthList.includes(m)) {
+        const customOpenDates = (await qGet('custom_open_dates') || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (!customOpenDates.includes(date)) {
+          return { ok: false, error: `${m} 月暫未開放預約，請選擇其他月份`, code: 'month_closed' };
+        }
+      }
+    }
+
     // 5. 營業時間範圍（由 clinic_settings 讀取，預設 10:00-19:00 全日開放）
     const t = timeToMinutes(time);
     const morningStart = timeToMinutes(await qGet('morning_start')) ?? (10 * 60);
@@ -651,15 +665,15 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
   
   // 批量刪除預約記錄（僅限管理員，需二次驗證）
   router.delete("/clear", requireAuth, requireRole('admin'), async (req, res) => {
-    const { bookingIds } = req.body;
+    // 無 body 的 DELETE（curl -X DELETE 不帶 payload）時 req.body 為 undefined，需防禦
+    const { bookingIds, adminPassword } = req.body || {};
     
     if (!bookingIds || !Array.isArray(bookingIds) || bookingIds.length === 0) {
       return res.status(400).json({ error: "請提供要刪除的預約ID列表" });
     }
     
     try {
-      // 二次驗證：管理員需提供密碼
-      const { adminPassword } = req.body;
+      // 二次驗證：管理員需提供密碼（adminPassword 已於上方連同 req.body 防禦一併解構）
       if (!adminPassword) {
         return res.status(400).json({
           error: "此操作需要輸入管理員密碼進行驗證",
@@ -748,8 +762,8 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
   // 修改預約（需登入，只限本人或管理員/醫師/員工）
   router.put("/:id", requireAuth, async (req, res, next) => {
-    // 🔧 避免與 /doctor-time-slots 路由衝突：該路徑交由專用 handler 處理
-    if (req.params.id === 'doctor-time-slots') return next();
+    // 🔧 避免與 /doctor-time-slots、/time-slots 路由衝突：該等路徑交由專用 handler 處理
+    if (req.params.id === 'doctor-time-slots' || req.params.id === 'time-slots') return next();
     const { id } = req.params;
     const { customerName, customerNameEn, customerPhone, customerEmail, customerAge, serviceId, doctorName, appointmentDate, appointmentTime, notes } = req.body;
 

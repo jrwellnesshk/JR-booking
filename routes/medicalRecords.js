@@ -6,8 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-// 允許的檔案 MIME 類型白名單（音頻 + 圖片）
-const ALLOWED_AUDIO = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/webm', 'audio/ogg', 'audio/x-m4a', 'audio/mp4', 'audio/aac', 'audio/amr', 'audio/m4a', 'audio/3gpp'];
+// 允許的檔案 MIME 類型白名單（只限圖片；音頻功能已取消，只保留相片）
 const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/heic', 'image/heif', 'image/tiff'];
 const FILE_EXT_MAP = {
   'image/jpeg': '.jpg',
@@ -18,21 +17,9 @@ const FILE_EXT_MAP = {
   'image/heic': '.heic',
   'image/heif': '.heif',
   'image/tiff': '.tiff',
-  'audio/mpeg': '.mp3',
-  'audio/mp3': '.mp3',
-  'audio/wav': '.wav',
-  'audio/x-wav': '.wav',
-  'audio/webm': '.webm',
-  'audio/ogg': '.ogg',
-  'audio/x-m4a': '.m4a',
-  'audio/m4a': '.m4a',
-  'audio/mp4': '.m4a',
-  'audio/aac': '.aac',
-  'audio/amr': '.amr',
-  'audio/3gpp': '.3gp',
 };
 
-// 配置 multer 用於檔案上傳（只允許音頻與圖片，檔名由伺服器生成防止路徑注入）
+// 配置 multer 用於檔案上傳（只允許圖片，檔名由伺服器生成防止路徑注入；音頻已取消）
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = path.join(__dirname, '../uploads/medical_records');
@@ -48,15 +35,14 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (ALLOWED_AUDIO.includes(file.mimetype) || ALLOWED_IMAGE.includes(file.mimetype)) {
+    if (ALLOWED_IMAGE.includes(file.mimetype)) {
       return cb(null, true);
     }
-    cb(new Error('不允許的檔案類型：只可上傳音頻或圖片'));
+    cb(new Error('不允許的檔案類型：只可上傳圖片'));
   },
 });
-// 允許音頻與圖片上傳
+// 只允許圖片上傳（音頻功能已取消）
 const uploadFields = upload.fields([
-  { name: 'audio', maxCount: 1 },
   { name: 'photos', maxCount: 10 },
 ]);
 
@@ -124,11 +110,10 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     });
   };
 
-  // 醫師上傳病歷、錄音與相片 (需要 doctor 角色)
+  // 醫師上傳病歷與相片 (需要 doctor 角色；音頻已取消)
   router.post('/doctor/records', authorizeRole(['doctor', 'staff', 'admin']), uploadFields, async (req, res) => {
     const { booking_id, user_id, diagnosis, treatment_plan, notes, metric_name, current_value, target_value, progress_score } = req.body;
-    const doctor_user_id = req.userId;
-    const audio_file_path = req.files && req.files.audio ? `/uploads/medical_records/${req.files.audio[0].filename}` : null;
+    const audio_file_path = null; // 音頻功能已取消，一律不寫入
     const photoFiles = (req.files && req.files.photos) || [];
 
     if (!booking_id || !user_id || !diagnosis || !treatment_plan) {
@@ -139,6 +124,19 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     if (req.user && req.user.role === 'doctor') {
       const owns = await doctorOwnsTarget(req, booking_id, null);
       if (!owns) return res.status(403).json({ error: '醫師只可以為自己嘅預約撰寫病歷' });
+    }
+
+    // 🔒 病歷醫師欄：優先用預約上嘅醫師；staff/admin 代寫時唔好污染成自己 id
+    let doctor_user_id = req.userId;
+    const bookingRow = await new Promise((resolve) => {
+      db.get("SELECT doctor_user_id FROM bookings WHERE id=?", [booking_id], (e, r) => resolve(r || null));
+    });
+    if (req.user && req.user.role !== 'doctor') {
+      if (req.body.doctor_user_id) {
+        doctor_user_id = Number(req.body.doctor_user_id);
+      } else if (bookingRow && bookingRow.doctor_user_id) {
+        doctor_user_id = Number(bookingRow.doctor_user_id);
+      }
     }
 
     try {
@@ -183,6 +181,11 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
   // 醫師查看某次預約的病歷 (需要 doctor 角色)
   router.get('/doctor/booking/:booking_id', authorizeRole(['doctor', 'staff', 'admin']), async (req, res) => {
     const { booking_id } = req.params;
+    // 🔒 醫師只可讀取自己名下預約嘅病歷（staff/admin 可讀全部）
+    if (req.user && req.user.role === 'doctor') {
+      const owns = await doctorOwnsTarget(req, booking_id, null);
+      if (!owns) return res.status(403).json({ error: '醫師只可以查看自己預約嘅病歷' });
+    }
     try {
       const records = await new Promise((resolve, reject) => {
         db.all(
@@ -218,11 +221,10 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     }
   });
 
-  // 醫師更新病歷 (需要 doctor 角色)
+  // 醫師更新病歷 (需要 doctor 角色；音頻已取消，不再接受新錄音)
   router.put('/doctor/records/:record_id', authorizeRole(['doctor', 'staff', 'admin']), uploadFields, async (req, res) => {
     const { record_id } = req.params;
     const { diagnosis, treatment_plan, notes } = req.body;
-    const audio_file_path = req.files && req.files.audio ? `/uploads/medical_records/${req.files.audio[0].filename}` : null;
     const photoFiles = (req.files && req.files.photos) || [];
 
     if (!record_id) {
@@ -247,7 +249,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
         if (!owns) return res.status(403).json({ error: '醫師只可以修改自己嘅病歷' });
       }
 
-      const updatedAudio = audio_file_path || existing.audio_file_path;
+      const updatedAudio = existing.audio_file_path; // 音頻已取消：保留舊值不覆寫，亦不再接受新錄音
       const updatedDiagnosis = (diagnosis !== undefined && diagnosis !== null) ? diagnosis : existing.diagnosis;
       const updatedTreatment = (treatment_plan !== undefined && treatment_plan !== null) ? treatment_plan : existing.treatment_plan;
       const updatedNotes = (notes !== undefined && notes !== null) ? notes : existing.notes;
@@ -413,26 +415,8 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     );
   });
 
-  // 客戶下載錄音檔案 (需要 customer 角色)
-  router.get('/customer/records/:record_id/audio', authorizeRole(['customer']), (req, res) => {
-    const user_id = req.userId;
-    const { record_id } = req.params;
-
-    db.get("SELECT audio_file_path FROM medical_records WHERE id=? AND user_id= ?", [record_id, user_id], (err, record) => {
-      if (err) return serverError(res, err);
-      if (!record || !record.audio_file_path) {
-        return res.status(404).json({ error: '錄音檔案不存在或無權限' });
-      }
-
-      const filePath = path.join(__dirname, '..', record.audio_file_path);
-      res.download(filePath, (downloadErr) => {
-        if (downloadErr) {
-          console.error('下載錄音檔案失敗:', downloadErr.message);
-          res.status(500).json({ error: '下載檔案失敗' });
-        }
-      });
-    });
-  });
+  // 客戶下載錄音檔案 — 已取消（音頻功能停用，只保留相片）
+  // （原有 GET /customer/records/:record_id/audio 端點已移除）
 
   // 新增：依 booking 取得該客戶的病歷與進度（需要 customer 角色）
   router.get('/customer/booking/:booking_id', authorizeRole(['customer']), async (req, res) => {
@@ -581,12 +565,6 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       const boost = Math.min(1, photos.length * 0.2);
       score += boost;
       reasons.push(`已上傳 ${photos.length} 張問題相片，有助觀察病情進展`);
-    }
-
-    // 錄音記錄 +0.3
-    if (record.audio_file_path) {
-      score += 0.3;
-      reasons.push('有醫師錄音記錄，反映曾進行診治');
     }
 
     // 已有進度記錄則參考（不重複扣分，純參考）
@@ -747,23 +725,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     }
   });
 
-  // GET /api/medical-records/admin/records/:record_id/audio — 員工／管理員下載病歷錄音
-  router.get('/admin/records/:record_id/audio', authorizeRole(['admin', 'staff']), (req, res) => {
-    const { record_id } = req.params;
-    db.get("SELECT audio_file_path FROM medical_records WHERE id=?", [record_id], (err, record) => {
-      if (err) return serverError(res, err);
-      if (!record || !record.audio_file_path) {
-        return res.status(404).json({ error: '錄音檔案不存在' });
-      }
-      const filePath = path.join(__dirname, '..', record.audio_file_path);
-      res.download(filePath, (downloadErr) => {
-        if (downloadErr) {
-          console.error('下載錄音檔案失敗:', downloadErr.message);
-          if (!res.headersSent) res.status(500).json({ error: '下載檔案失敗' });
-        }
-      });
-    });
-  });
+  // GET /api/medical-records/admin/records/:record_id/audio — 已取消（音頻功能停用，只保留相片）
 
   return router;
 };

@@ -424,19 +424,8 @@ app.use("/uploads/hr_documents", requireAuth, requireRole('staff', 'doctor', 'ad
   });
 });
 
-// 靜態檔案：提供上傳嘅頭像與影片（只允許白名單檔案類型，blocked 清單已阻擋 .env/.db 等）
-app.use("/uploads", (req, res, next) => {
-  // 只允許圖片與影片格式，其他一律 404
-  if (!/\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|ogg|mov)$/i.test(req.path)) {
-    return res.status(404).end();
-  }
-  next();
-}, express.static(path.join(__dirname, 'uploads'), {
-  index: false,
-  dotfiles: 'deny'
-}));
-
 // 靜態檔案服務：提供上傳的醫療記錄檔案（需登入，客戶只可存取自己的檔案）
+// 注意：必須註冊在 /uploads 靜態閘門之前，否則會被 express.static 直接放行（P0 修復）
 app.use("/uploads/medical_records", (req, res) => {
   // 1. 驗證登入身份（優先 JWT token，其次 session cookie；不再接受可偽造嘅 x-user-id header）
   const token = jwt.extractTokenFromRequest(req);
@@ -468,8 +457,8 @@ app.use("/uploads/medical_records", (req, res) => {
     const dbFileName = '/uploads/medical_records/' + relativePath;
     const checkFileOwnership = (callback) => {
       db.get(
-        `SELECT mr.user_id FROM medical_records mr WHERE mr.audio_file_path=? 
-         UNION 
+        `SELECT mr.user_id FROM medical_records mr WHERE mr.audio_file_path=?
+         UNION
          SELECT mr.user_id FROM medical_record_photos p JOIN medical_records mr ON p.medical_record_id=mr.id WHERE p.photo_file_path=?`,
         [dbFileName, dbFileName],
         (err, ownerRow) => callback(err, ownerRow ? ownerRow.user_id : null)
@@ -481,12 +470,24 @@ app.use("/uploads/medical_records", (req, res) => {
       if (user.role === 'customer' && ownerId !== user.id) {
         return res.status(403).json({ error: '無權限存取此檔案' });
       }
-      // 5. 授權通過，以附件形式提供檔案（避免被 <audio>/<img> 之外直接內嵌）
+      // 5. 授權通過，以附件形式提供檔案（避免被 <img> 之外直接內嵌）
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.sendFile(filePath);
     });
   });
 });
+
+// 靜態檔案：提供上傳嘅頭像與影片（只允許白名單檔案類型，blocked 清單已阻擋 .env/.db 等）
+app.use("/uploads", (req, res, next) => {
+  // 只允許圖片與影片格式，其他一律 404
+  if (!/\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|ogg|mov)$/i.test(req.path)) {
+    return res.status(404).end();
+  }
+  next();
+}, express.static(path.join(__dirname, 'uploads'), {
+  index: false,
+  dotfiles: 'deny'
+}));
 
 // 醫療分流路由
 // 路徑前綴: /api/triage
@@ -926,6 +927,32 @@ app.get("/api/public-settings", (req, res) => {
       const val = row ? row.setting_value : null;
       const enabled = !(val === 'false' || val === false || val === '0' || val === 0);
       res.json({ ai_consultation_enabled: enabled });
+    }
+  );
+});
+
+// 公開診所設定（客人主頁日曆用，無 auth）
+// 只暴露「預約日曆」必需嘅公開欄位白名單；敏感／內部欄位一律唔回。
+// 背景：主頁原本 call 需登入嘅 /api/clinic-settings，訪客會 401，
+//       導致休息日／假期／開放月份全部 fallback 前端預設值（前後端唔一致）。
+app.get("/api/public-clinic-settings", (req, res) => {
+  const PUBLIC_KEYS = [
+    'tuina_beds', 'acupuncture_beds', 'vip_rooms', 'vip_bed_names', 'total_doctors',
+    'closed_days', 'holidays_enabled', 'working_holidays', 'open_months',
+    'custom_closed_dates', 'custom_open_dates',
+    'morning_start', 'morning_end', 'afternoon_start', 'afternoon_end', 'slot_interval',
+  ];
+  const placeholders = PUBLIC_KEYS.map(() => '?').join(',');
+  db.all(
+    `SELECT setting_key, setting_value FROM clinic_settings WHERE setting_key IN (${placeholders})`,
+    PUBLIC_KEYS,
+    (err, rows) => {
+      if (err) return serverError(res, err);
+      const settings = {};
+      // 先填預設值，確保主頁任何情況下都有安全 fallback
+      PUBLIC_KEYS.forEach(k => { settings[k] = ''; });
+      rows.forEach(row => { settings[row.setting_key] = row.setting_value; });
+      res.json(settings);
     }
   );
 });

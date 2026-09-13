@@ -1628,7 +1628,7 @@
               </div>
             </div>
             <div v-if="editingRecordId" class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-              <i class="fas fa-info-circle mr-1"></i>正在編輯病歴 #{{ editingRecordId }}，儲存後會更新既有病歴及錄音。
+              <i class="fas fa-info-circle mr-1"></i>正在編輯病歴 #{{ editingRecordId }}，儲存後會更新既有病歷。
             </div>
           </div>
 
@@ -1780,6 +1780,7 @@
 
             // 🔑 更改密碼
             showChangePwd: false,
+            // 🔓 已取消強制改密（改密入口仍在，屬自願性質）
             changePwdBusy: false,
             changePwdError: "",
             changePwdSuccess: "",
@@ -2004,12 +2005,13 @@
                 return;
               }
               this.doctorUser = data.user;
-              localStorage.setItem("doctorUser", JSON.stringify(data.user));
+              localStorage.setItem("doctorUser", JSON.stringify(this.doctorUser));
               // 🔑 儲存 JWT Token
               if (data.token) {
                 localStorage.setItem("jwtToken", data.token);
               }
               this.isLoggedIn = true;
+              // 🔓 已取消強制改密：登入後直接進入系統（改密入口仍在，屬自願性質）
               await this.loadDoctorProfile();
               await this.loadBookings();
             } catch (error) {

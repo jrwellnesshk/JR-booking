@@ -1002,6 +1002,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         await run("UPDATE users SET membership_tier='family' WHERE id=?", [ownerId]);
         ownerUpgradedToFamily = true;
       }
+      // 🔧 戶主自己補埋 family_head_id=自己（同步鏡像）；
+      //    之前漏咗呢步 → /family-payment isHead 誤判 false、戶主被引導「接手供款」
+      if (owner && Number(headId) === Number(ownerId)) {
+        await run("UPDATE users SET family_head_id=? WHERE id=? AND (family_head_id IS NULL OR family_head_id='')", [headId, ownerId]);
+      }
       let targetUpgradedToFamily = false;
       if (target.role === 'customer' && target.membership_tier !== 'family') {
         await run("UPDATE users SET membership_tier='family' WHERE id=?", [target.id]);

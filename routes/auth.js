@@ -419,10 +419,13 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
           const { password: _, must_change_password, ...userWithoutPassword } = user;
           // 設定登入 Session Cookie（保護病歷檔案上傳區）
           if (signSession) {
+            // secure 按實際請求協議判斷（trust proxy 已開啟，反代後方仍可正確判斷），
+            // 避免 NODE_ENV=production 但以 http 提供服務時瀏覽器拒收 Secure cookie
+            const isSecure = req.secure || (req.headers['x-forwarded-proto'] === 'https');
             res.cookie('clinic_session', signSession(user.id), {
               httpOnly: true,
               sameSite: 'lax',
-              secure: process.env.NODE_ENV === 'production',
+              secure: isSecure,
               maxAge: 30 * 24 * 60 * 60 * 1000, // 30 天
             });
           }

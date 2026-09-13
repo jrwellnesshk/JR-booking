@@ -683,7 +683,6 @@
                     <td class="py-2.5 pr-3"><span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">{{ (r.progress || []).length }} 次</span></td>
                     <td class="py-2.5 pr-3 text-xs text-slate-500">
                       <span v-if="(r.photos || []).length" class="mr-1"><i class="fas fa-image mr-0.5"></i>{{ r.photos.length }}</span>
-                      <span v-if="r.audio_file_path"><i class="fas fa-microphone"></i></span>
                     </td>
                     <td class="py-2.5">
                       <button @click="viewMedicalRecordDetail(r)" class="text-emerald-600 hover:text-emerald-800 text-xs font-medium whitespace-nowrap"><i class="fas fa-eye mr-1"></i>{{ t('詳情') }}</button>
@@ -747,11 +746,7 @@
                 </div>
               </div>
 
-              <div v-if="mrDetail.audio_file_path" class="mb-2">
-                <p class="text-sm font-semibold text-slate-700 mb-2"><i class="fas fa-microphone mr-1 text-emerald-600"></i>{{ t('診症錄音') }}</p>
-                <audio controls :src="mrAudioUrl(mrDetail.id)" class="w-full"></audio>
-                <a :href="mrAudioUrl(mrDetail.id)" class="text-xs text-emerald-600 hover:underline mt-1 inline-block" download><i class="fas fa-download mr-1"></i>{{ t('下載錄音') }}</a>
-              </div>
+              <!-- 診症錄音 — 音頻功能已取消，只保留相片 -->
             </div>
           </div>
 
@@ -1971,7 +1966,7 @@
               </div>
             </div>
             <div v-if="editingRecordId" class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-              <i class="fas fa-info-circle mr-1"></i>正在編輯病歴 #{{ editingRecordId }}，儲存後會更新既有病歴及錄音。
+              <i class="fas fa-info-circle mr-1"></i>正在編輯病歴 #{{ editingRecordId }}，儲存後會更新既有病歷。
             </div>
           </div>
 
@@ -2119,6 +2114,7 @@
 
             // 🔑 更改密碼
             showChangePwd: false,
+            // 🔓 已取消強制改密（改密入口仍在，屬自願性質）
             changePwdBusy: false,
             changePwdError: "",
             changePwdSuccess: "",
@@ -2741,12 +2737,13 @@
                 return;
               }
               this.staffUser = data.user;
-              localStorage.setItem("staffUser", JSON.stringify(data.user));
+              localStorage.setItem("staffUser", JSON.stringify(this.staffUser));
               // 🔑 儲存 JWT Token
               if (data.token) {
                 localStorage.setItem("jwtToken", data.token);
               }
               this.isLoggedIn = true;
+              // 🔓 已取消強制改密：登入後直接進入系統（改密入口仍在，屬自願性質）
               await this.loadBookings();
             } catch (error) {
               this.loginError = "系統錯誤，請稍後再試";
@@ -3305,9 +3302,7 @@
             if (!p) return "";
             return p.startsWith("/") ? p : "/" + p;
           },
-          mrAudioUrl(recordId) {
-            return `/api/medical-records/admin/records/${recordId}/audio`;
-          },
+          // mrAudioUrl — 已取消（音頻功能停用）
 
           // 🖨️ 列印當日預約表
           printToday() {
