@@ -342,6 +342,27 @@ function runMigrations(db) {
       else console.log("✅ medical_record_photos 表已準備就緒");
     });
 
+    // 創建 customer_health_profiles 表（客人健康檔案：長期病患/長期用藥/過往病歷，客人自填）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS customer_health_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL UNIQUE,
+        chronic_conditions TEXT,
+        long_term_medications TEXT,
+        medical_history TEXT,
+        source TEXT NOT NULL DEFAULT 'customer',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `, (err) => {
+      if (err) console.error("創建 customer_health_profiles 表失敗:", err.message);
+      else console.log("✅ customer_health_profiles 表已準備就緒");
+    });
+    db.run("CREATE INDEX IF NOT EXISTS idx_health_profile_user ON customer_health_profiles(user_id)", (err) => {
+      if (err) console.error("建立 customer_health_profiles 索引失敗:", err.message);
+    });
+
     // 為 bookings 表添加 is_locked 欄位
     db.all("PRAGMA table_info(bookings)", (err, columns) => {
       if (!err && columns && columns.length > 0) {

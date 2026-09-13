@@ -391,6 +391,11 @@ app.use('/api/ai', aiRoutes(db, { requireAuth, requireRole }));
 app.use("/api/feedback", feedbackRoutes(db, { requireAuth, requireRole }));
 app.use("/api/medical-records", medicalRecordsRoutes(db, getLocalTimeString, { requireAuth, requireRole }));
 
+// 客人健康檔案（長期病患 / 長期用藥 / 過往病歷：客人自填 + 醫護唯讀搜尋）
+// 路徑前綴: /api/health-profile
+const healthProfileRoutes = require("./routes/healthProfiles");
+app.use('/api/health-profile', healthProfileRoutes(db, { requireAuth, requireRole }));
+
 // 官網內容管理（公告/影片/社交/評價/討論區/頭像）
 // 路徑前綴: /api/content（公開+登入）、/api/admin/content（管理員）
 app.use("/api/content", contentRoutes(db, { requireAuth, requireRole }));

@@ -498,6 +498,13 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           });
           const profileSaveSuccess = ref(false);
 
+          // 🆕 我的健康檔案（長期病患 / 長期用藥 / 過往病歷，客人自填，醫護唯讀）
+          const healthProfile = ref({ chronic_conditions: "", long_term_medications: "", medical_history: "" });
+          const healthProfileLoading = ref(false);
+          const healthProfileSaving = ref(false);
+          const healthProfileSavedAt = ref(null);
+          const healthProfileError = ref("");
+
           // 🆕 WhatsApp 通知偏好（通訊偏好中心）
           const whatsappPrefs = ref({ weather: true, confirm: true, health: true });
           const whatsappPrefsSaving = ref(false);
@@ -2515,6 +2522,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                   currentMember.value.avatar = data.avatar;
                   if (!data.avatar.startsWith('/')) avatarEmoji.value = data.avatar;
                 }
+
+                // 🆕 一併載入我的健康檔案（長期病患 / 長期用藥 / 過往病歷）
+                loadHealthProfile();
               } else {
                 console.error("❌ 載入個人資料失敗，狀態碼:", response.status);
                 const errorData = await response.json();
@@ -2522,6 +2532,59 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               }
             } catch (error) {
               console.error("❌ 載入個人資料錯誤:", error);
+            }
+          };
+
+          // 🆕 載入我的健康檔案（長期病患 / 長期用藥 / 過往病歷）
+          const loadHealthProfile = async () => {
+            healthProfileLoading.value = true;
+            healthProfileError.value = "";
+            try {
+              const response = await fetch(`${API_URL}/health-profile/me`);
+              if (response.ok) {
+                const data = await response.json();
+                const p = data.profile || {};
+                healthProfile.value = {
+                  chronic_conditions: p.chronic_conditions || "",
+                  long_term_medications: p.long_term_medications || "",
+                  medical_history: p.medical_history || "",
+                };
+                healthProfileSavedAt.value = p.updated_at || null;
+              } else {
+                console.error("❌ 載入健康檔案失敗，狀態碼:", response.status);
+              }
+            } catch (error) {
+              console.error("❌ 載入健康檔案錯誤:", error);
+            } finally {
+              healthProfileLoading.value = false;
+            }
+          };
+
+          // 🆕 儲存我的健康檔案
+          const saveHealthProfile = async () => {
+            healthProfileSaving.value = true;
+            healthProfileError.value = "";
+            try {
+              const response = await fetch(`${API_URL}/health-profile/me`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chronic_conditions: healthProfile.value.chronic_conditions,
+                  long_term_medications: healthProfile.value.long_term_medications,
+                  medical_history: healthProfile.value.medical_history,
+                }),
+              });
+              const data = await response.json().catch(() => ({}));
+              if (response.ok) {
+                healthProfileSavedAt.value = new Date().toISOString();
+              } else {
+                healthProfileError.value = data.error || "儲存失敗，請稍後再試";
+              }
+            } catch (error) {
+              console.error("❌ 儲存健康檔案錯誤:", error);
+              healthProfileError.value = "系統錯誤，請稍後再試";
+            } finally {
+              healthProfileSaving.value = false;
             }
           };
           
@@ -4405,6 +4468,13 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             handleFindUserId,
             loadUserProfile,
             saveProfile,
+            // 🆕 我的健康檔案
+            healthProfile,
+            healthProfileLoading,
+            healthProfileSaving,
+            healthProfileSavedAt,
+            healthProfileError,
+            saveHealthProfile,
             whatsappPrefs,
             whatsappPrefsSaving,
             whatsappPrefsSaved,
