@@ -313,11 +313,7 @@
       })();
     </script>
     <div id="app" v-cloak>
-      <!-- 語言切換（中文 / EN） -->
-      <div class="fixed bottom-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur max-md:bottom-20">
-        <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">中文</button>
-        <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">EN</button>
-      </div>
+      <!-- 功能9：語言切換／登出／更改密碼已移至左欄底部功能選項 -->
 
       <!-- ==================== 登入頁面 ==================== -->
       <div v-if="!isLoggedIn" class="max-w-md mx-auto py-16 px-4">
@@ -425,16 +421,6 @@
                 <div class="text-xs opacity-70 truncate">{{ doctorInfo ? doctorInfo.name : doctorUser.name }}</div>
               </div>
             </div>
-            <button
-              @click="showChangePwd=true"
-              class="mt-2 mx-2 text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
-            >
-              <i class="fas fa-key mr-2"></i>{{ t('更改密碼') }}</button>
-            <button
-              @click="handleLogout"
-              class="mt-2 mx-2 mb-2 text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
-            >
-              <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
             <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide" @click="sidebarOpen=false">
               <button @click="docTab='bookings'" :class="docTab==='bookings' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-list mr-2"></i>{{ t('預約列表') }}</button>
@@ -447,7 +433,25 @@
                 <i class="fas fa-user-cog mr-2"></i>{{ t('我的自助') }}</button>
               <button @click="docTab='healthfiles'; hfReset()" :class="docTab==='healthfiles' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-heart-pulse mr-2"></i>{{ t('客人檔案') }}</button>
+              <button @click="docTab='forum'; loadForum()" :class="docTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
             </nav>
+            <!-- 功能9：左欄底部功能選項（風格與客人端一致） -->
+            <div class="border-t border-slate-700 p-3 space-y-2 flex-shrink-0">
+              <div class="flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-sm">
+                <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">中文</button>
+                <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">EN</button>
+              </div>
+              <button
+                @click="showChangePwd=true; sidebarOpen=false"
+                class="w-full text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <i class="fas fa-key mr-2"></i>{{ t('更改密碼') }}</button>
+              <button
+                @click="handleLogout"
+                class="w-full text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
+            </div>
             <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
               {{ currentDateStr }}
             </div>
@@ -970,6 +974,51 @@
           </div>
 
           <!-- ==== 醫師時段管理（全診所視角 + 拖掃）==== -->
+          <!-- ==== 功能10：中醫討論區 ==== -->
+          <div v-if="docTab==='forum'" class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-comments mr-2 text-emerald-600"></i>{{ t('中醫討論區') }}</h2>
+              <button @click="loadForum()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-sync mr-1"></i>{{ t('重新整理') }}</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div class="bg-white rounded-xl shadow p-5 space-y-3">
+                <h3 class="font-semibold text-slate-800"><i class="fas fa-pen mr-2 text-emerald-600"></i>{{ t('發佈新帖') }}</h3>
+                <input v-model="forumNewCategory" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('分類（如：中醫交流）')" />
+                <input v-model="forumNewTitle" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('標題')" />
+                <textarea v-model="forumNewContent" rows="5" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('內容')"></textarea>
+                <button @click="submitForumPost()" :disabled="forumBusy" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50">
+                  <i class="fas fa-paper-plane mr-1"></i>{{ forumBusy ? t('處理中...') : t('發佈') }}</button>
+              </div>
+              <div class="lg:col-span-2 space-y-3">
+                <div v-if="forumLoading" class="text-slate-500 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中...') }}</div>
+                <div v-if="!forumLoading && !forumPosts.length" class="text-slate-400 text-sm py-6 text-center">{{ t('暫時未有帖子') }}</div>
+                <div v-for="p in forumPosts" :key="p.id" class="bg-white rounded-xl shadow p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 mr-2">{{ p.category || '一般' }}</span>
+                      <b class="text-slate-800">{{ p.title }}</b>
+                      <div class="text-xs text-slate-400 mt-1">{{ p.user_name }} · {{ p.created_at }} · <i class="fas fa-comment-dots"></i> {{ p.reply_count || 0 }}</div>
+                    </div>
+                    <button @click="forumOpenId===p.id ? forumOpenId=null : openForumPost(p.id)" class="text-sm text-emerald-600 hover:underline shrink-0">
+                      {{ forumOpenId===p.id ? t('收起') : t('查看／回覆') }}</button>
+                  </div>
+                  <div v-if="forumOpenId===p.id" class="mt-3 border-t border-slate-100 pt-3 space-y-3">
+                    <p class="text-sm text-slate-600 whitespace-pre-wrap">{{ p.content }}</p>
+                    <div v-for="rp in forumReplies" :key="rp.id" class="bg-slate-50 rounded-lg p-2 text-sm">
+                      <b class="text-slate-700">{{ rp.user_name }}</b>
+                      <span class="text-xs text-slate-400 ml-2">{{ rp.created_at }}</span>
+                      <p class="text-slate-600 whitespace-pre-wrap">{{ rp.content }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <input v-model="forumReplyContent" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('撰寫回覆...')" @keyup.enter="submitForumReply(p.id)" />
+                      <button @click="submitForumReply(p.id)" :disabled="forumBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50">{{ t('回覆') }}</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="docTab==='timeslots'" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-calendar-check mr-2 text-emerald-600"></i>{{ t('時段管理') }}</h2>
@@ -1935,6 +1984,16 @@
 
             // 分頁：bookings=預約列表 / schedule=排程請假
             docTab: "bookings",
+            // 💬 功能10：中醫討論區
+            forumPosts: [],
+            forumLoading: false,
+            forumOpenId: null,
+            forumReplies: [],
+            forumNewTitle: "",
+            forumNewContent: "",
+            forumNewCategory: "中醫交流",
+            forumReplyContent: "",
+            forumBusy: false,
 
             // 🫀 客人健康檔案（搜尋 + 唯讀查看）
             hfQuery: "",
@@ -2130,6 +2189,53 @@
         },
 
         methods: {
+          // ==================== 功能10：中醫討論區 ====================
+          async loadForum() {
+            this.forumLoading = true;
+            try {
+              const r = await fetch(`/api/content/forum/posts`);
+              const d = r.ok ? await r.json() : []; this.forumPosts = Array.isArray(d) ? d : (d.posts || []);
+            } catch (e) { console.warn('載入討論區失敗:', e); }
+            this.forumLoading = false;
+          },
+          async openForumPost(id) {
+            this.forumOpenId = id;
+            this.forumReplies = [];
+            try {
+              const r = await fetch(`/api/content/forum/posts/${id}`);
+              if (r.ok) { const d = await r.json(); this.forumReplies = d.replies || []; }
+            } catch (e) { console.warn('載入帖子失敗:', e); }
+          },
+          async submitForumPost() {
+            if (!this.forumNewTitle.trim() || !this.forumNewContent.trim()) { alert('請填寫標題同內容'); return; }
+            this.forumBusy = true;
+            try {
+              const r = await fetch(`/api/content/forum/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: this.forumNewTitle.trim(), content: this.forumNewContent.trim(), category: this.forumNewCategory })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) { this.forumNewTitle = ''; this.forumNewContent = ''; await this.loadForum(); this.forumOpenId = null; alert('已發佈帖子'); }
+              else alert(d.error || '發佈失敗');
+            } catch (e) { alert('發佈失敗：' + e.message); }
+            this.forumBusy = false;
+          },
+          async submitForumReply(postId) {
+            if (!this.forumReplyContent.trim()) { alert('請填寫回覆內容'); return; }
+            this.forumBusy = true;
+            try {
+              const r = await fetch(`/api/content/forum/posts/${postId}/replies`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: this.forumReplyContent.trim() })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) { this.forumReplyContent = ''; await this.openForumPost(postId); await this.loadForum(); }
+              else alert(d.error || '回覆失敗');
+            } catch (e) { alert('回覆失敗：' + e.message); }
+            this.forumBusy = false;
+          },
           // 🫀 客人健康檔案：搜尋 + 唯讀查看
           hfReset() {
             this.hfResults = [];

@@ -860,8 +860,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  // 管理員：家庭樹狀結構（admin）
-  router.get('/admin/tree', requireAuth, requireRole('admin'), async (req, res) => {
+  // 家庭樹狀結構（admin / staff —— 員工家庭子帳戶管理介面與管理員一致）
+  router.get('/admin/tree', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     try {
       const heads = await q(
         `SELECT u.id, u.name, u.username, u.membership_tier FROM users u
@@ -891,6 +891,63 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
+  // 🌳 GET /api/membership/family/my-tree — 客人（家庭戶主）查看自己嘅家庭帳戶關係圖
+  //    回傳：{ head: {...}, children: [...], links: [{ member, relations: [...] }] }
+  //    功能 4：升級家庭帳戶後，左欄顯示家庭帳戶關係圖，連結功能置於其下方
+  router.get('/family/my-tree', requireAuth, async (req, res) => {
+    try {
+      const me = req.user;
+      if (me.role !== 'customer') return res.status(403).json({ error: '只限客戶帳戶' });
+      // 戶主認定：family_head_id=自己 或 名下已有 family_links 子女
+      let headId = Number(me.family_head_id) === Number(me.id) ? Number(me.id) : null;
+      if (!headId) {
+        const c = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [me.id]);
+        if (c) headId = Number(me.id);
+      }
+      if (!headId) return res.json({ is_head: false, head: null, children: [], links: [] });
+
+      const head = await q1(
+        `SELECT id, name, username, membership_tier, avatar FROM users WHERE id=?`, [headId]);
+      const children = await q(
+        `SELECT u.id, u.name, u.username, u.avatar, u.membership_tier, u.birth_date
+         FROM family_links fl JOIN users u ON u.id = fl.child_user_id
+         WHERE fl.parent_user_id=? ORDER BY u.birth_date ASC`, [headId]);
+
+      // 家庭內每位成員（戶主 + 子女）嘅帳戶連結（親戚／同輩／朋友）
+      const memberIds = [headId, ...children.map(c => c.id)];
+      const linkRows = await q(
+        `SELECT al.id, al.user_a, al.user_b, al.relation, al.custom_relation
+         FROM account_links al
+         WHERE al.user_a IN (${memberIds.map(() => '?').join(',')})
+            OR al.user_b IN (${memberIds.map(() => '?').join(',')})`,
+        [...memberIds, ...memberIds]);
+      const idSet = new Set(memberIds);
+      const links = [];
+      for (const lr of linkRows) {
+        const fromId = idSet.has(Number(lr.user_a)) ? Number(lr.user_a) : Number(lr.user_b);
+        const otherId = Number(fromId) === Number(lr.user_a) ? Number(lr.user_b) : Number(lr.user_a);
+        if (idSet.has(otherId)) continue; // 家庭內部互連（戶主↔子女）唔當對外連結顯示
+        const other = await q1(
+          `SELECT id, name, username, avatar, membership_tier FROM users WHERE id=?`, [otherId]);
+        if (!other) continue;
+        links.push({
+          link_id: lr.id, from_user_id: fromId,
+          relation: lr.custom_relation || lr.relation,
+          other,
+        });
+      }
+      res.json({
+        is_head: true,
+        head: head || null,
+        children: children.map(c => ({ ...c, is_me: Number(c.id) === Number(me.id) })),
+        links,
+      });
+    } catch (e) {
+      console.error('載入家庭關係圖失敗:', e);
+      res.status(500).json({ error: '系統錯誤' });
+    }
+  });
+
   // 🗑️ DELETE /api/membership/admin/link/:childUserId — 職員/管理員移除家庭成員連結
   router.delete('/admin/link/:childUserId', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     try {
@@ -914,9 +971,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   const RELATION_PRESETS = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
   // 無序 pair：細 id → user_a，大 id → user_b，保證 (A,B) 唯一
   const normalizePair = (x, y) => (Number(x) < Number(y) ? [Number(x), Number(y)] : [Number(y), Number(x)]);
-  // 判斷 caller 能否以 fromUserId 身份連結（admin 任意；家庭戶主可代自己或子女）
+  // 判斷 caller 能否以 fromUserId 身份連結（admin/staff 任意；家庭戶主可代自己或子女）
   const canLinkAs = async (user, fromUserId) => {
-    if (user.role === 'admin') return true;
+    if (user.role === 'admin' || user.role === 'staff') return true;
     if (Number(fromUserId) === Number(user.id)) return true;
     // 戶主定義同 GET /membership 一致：family_head_id=自己 或 名下已有 family_links 子女
     let isHead = Number(user.family_head_id) === Number(user.id);
@@ -1270,12 +1327,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       // 查服務
       const svc = await q1("SELECT name, duration FROM services WHERE id=?", [serviceId]);
       if (!svc) return res.status(400).json({ error: "服務不存在" });
-      // 查成員 tier
-      const memberRow = await q1("SELECT membership_tier, family_head_id FROM users WHERE id=?", [forUserId]);
-      const tier = memberRow.membership_tier || 'general';
-      const familyLinked = memberRow.family_head_id != null && Number(memberRow.family_head_id) !== Number(forUserId);
-      if (tier === 'general' && !familyLinked && !svc.name.includes('初體驗')) {
-        return res.status(403).json({ error: "該成員只可預約「初體驗」服務，請先升級家庭會員", code: 'membership_required' });
+      // 🔒 功能3（2026-09-14）：「初體驗」僅限訪客；會員（任何級別）可預約全部其他治療服務
+      if (svc.name.includes('初體驗')) {
+        return res.status(403).json({ error: "「初體驗」僅限訪客預約，會員請選擇其他治療服務", code: 'trial_guest_only' });
       }
       // 醫師 user_id
       const docRow = await q1("SELECT id, user_id FROM doctors WHERE name=? AND is_active=1", [doctorName]);

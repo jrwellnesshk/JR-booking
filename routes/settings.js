@@ -38,6 +38,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const { tuina_beds, acupuncture_beds, vip_rooms, total_doctors, closed_days, holidays_enabled, working_holidays, open_months,
             custom_closed_dates, custom_open_dates,
             morning_start, morning_end, afternoon_start, afternoon_end, slot_interval,
+            saturday_start, saturday_end,
             tuina_bed_names, acupuncture_bed_names, vip_bed_names,
             sms_notification_enabled, whatsapp_notification_enabled, email_notification_enabled } = req.body;
     
@@ -72,6 +73,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     if (afternoon_start !== undefined) updates.push({ key: 'afternoon_start', value: afternoon_start });
     if (afternoon_end !== undefined) updates.push({ key: 'afternoon_end', value: afternoon_end });
     if (slot_interval !== undefined) updates.push({ key: 'slot_interval', value: slot_interval });
+    // 🕐 功能5：星期六營業時間（預設 10:00-13:00）
+    if (saturday_start !== undefined) updates.push({ key: 'saturday_start', value: saturday_start });
+    if (saturday_end !== undefined) updates.push({ key: 'saturday_end', value: saturday_end });
     // SMS/WhatsApp/Email 通知設定
     if (sms_notification_enabled !== undefined) updates.push({ key: 'sms_notification_enabled', value: sms_notification_enabled });
     if (whatsapp_notification_enabled !== undefined) updates.push({ key: 'whatsapp_notification_enabled', value: whatsapp_notification_enabled });
@@ -98,16 +102,25 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // ==================== API 設定 ====================
 
-  // 取得 API 設定
+  // 取得 API 設定（🔒 敏感值遮罩，避免完整密鑰外洩；寫入仍可用完整值更新）
+  const MASK_KEYS = new Set(['whatsapp_token', 'ai_key', 'email_pass']);
+  const maskValue = (v) => {
+    if (v == null || v === '') return '';
+    const s = String(v);
+    if (s.length <= 4) return '****';
+    return s.slice(0, 2) + '****' + s.slice(-2);
+  };
   router.get("/api", (req, res) => {
     db.all("SELECT * FROM api_settings", [], (err, rows) => {
       if (err) return serverError(res, err);
-      
+
       const settings = {};
       rows.forEach(row => {
-        settings[row.setting_key] = row.setting_value;
+        settings[row.setting_key] = MASK_KEYS.has(row.setting_key)
+          ? maskValue(row.setting_value)
+          : row.setting_value;
       });
-      
+
       res.json(settings);
     });
   });

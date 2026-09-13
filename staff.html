@@ -338,11 +338,7 @@
       })();
     </script>
     <div id="app" v-cloak>
-      <!-- 語言切換（中文 / EN） -->
-      <div class="fixed bottom-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur max-md:bottom-20">
-        <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">中文</button>
-        <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">EN</button>
-      </div>
+      <!-- 功能9：語言切換／登出／更改密碼已移至左欄底部功能選項 -->
 
       <!-- ==================== 登入頁面 ==================== -->
       <div v-if="!isLoggedIn" class="max-w-md mx-auto py-16 px-4">
@@ -450,19 +446,16 @@
                 <div class="text-xs opacity-70 truncate">{{ staffUser.name }}</div>
               </div>
             </div>
-            <button
-              @click="handleLogout"
-              class="mt-2 mx-2 mb-2 text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
-            >
-              <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
-            <button
-              @click="openChangePwd"
-              class="mx-2 mb-2 text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors flex-shrink-0 font-medium"
-            >
-              <i class="fas fa-key mr-2"></i>{{ t('更改密碼') }}</button>
             <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide" @click="sidebarOpen=false">
               <button @click="mainTab='list'" :class="mainTab==='list' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-list mr-2"></i>{{ t('預約列表') }}</button>
+              <!-- 功能12：列表各功能拆為左欄獨立選項 -->
+              <div class="pl-8 pr-2 space-y-1">
+                <button @click="mainTab='list'; listSubTab='all'" :class="mainTab==='list' && listSubTab==='all' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-inbox mr-2"></i>{{ t('全部預約') }}</button>
+                <button @click="mainTab='list'; listSubTab='today'" :class="mainTab==='list' && listSubTab==='today' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-user-check mr-2"></i>{{ t('今日應診') }}</button>
+                <button @click="mainTab='list'; listSubTab='dispensing'" :class="mainTab==='list' && listSubTab==='dispensing' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-pills mr-2"></i>{{ t('配藥中') }}</button>
+                <button @click="mainTab='list'; listSubTab='done'" :class="mainTab==='list' && listSubTab==='done' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-flag-checkered mr-2"></i>{{ t('已完成／已離診') }}</button>
+              </div>
               <button @click="mainTab='ess'; loadEss()" :class="mainTab==='ess' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-user-cog mr-2"></i>{{ t('我的自助') }}</button>
               <button @click="mainTab='calendar'; loadCalHolidays()" :class="mainTab==='calendar' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
@@ -474,7 +467,26 @@
               <button @click="mainTab='hr'; loadMyHr()" :class="mainTab==='hr' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-clock mr-2"></i>{{ t('打卡考勤') }}</button>
               <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>{{ t('時段管理') }}</button>
+              <button @click="mainTab='forum'; loadForum()" :class="mainTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
+              <button @click="mainTab='familytree'; loadFamilyTree()" :class="mainTab==='familytree' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-people-roof mr-2"></i>{{ t('家庭帳戶') }}</button>
             </nav>
+            <!-- 功能9：左欄底部功能選項（風格與客人端一致） -->
+            <div class="border-t border-slate-700 p-3 space-y-2 flex-shrink-0">
+              <div class="flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-sm">
+                <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">中文</button>
+                <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">EN</button>
+              </div>
+              <button
+                @click="openChangePwd(); sidebarOpen=false"
+                class="w-full text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <i class="fas fa-key mr-2"></i>{{ t('更改密碼') }}</button>
+              <button
+                @click="handleLogout"
+                class="w-full text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
+            </div>
             <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
               {{ currentDateStr }}
             </div>
@@ -1331,6 +1343,150 @@
             </div>
           </div>
 
+          <!-- ==== 功能13：家庭帳戶管理（與管理員一致）==== -->
+          <div v-if="mainTab==='familytree'" class="space-y-6">
+            <div class="flex justify-between items-center flex-wrap gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-people-roof text-indigo-600 mr-2"></i>{{ t('家庭帳戶結構') }}</h2>
+              <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                <input v-model="familySearch" :placeholder="t('搜尋戶主姓名／會員ID')" class="pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-sm w-60">
+              </div>
+            </div>
+
+            <div v-if="familyTree.loading" class="text-slate-500 py-10 text-center"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中...') }}</div>
+            <div v-else-if="!familyFilteredHeads.length" class="bg-white rounded-xl shadow-lg p-10 text-center text-slate-400">
+              <i class="fas fa-people-roof text-4xl mb-3"></i>
+              <p>{{ t('暫無家庭帳戶') }}</p>
+            </div>
+
+            <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- 左：戶主列表 -->
+              <div class="bg-white rounded-xl shadow overflow-hidden lg:col-span-1">
+                <div class="px-4 py-3 border-b font-semibold text-slate-700 text-sm"><i class="fas fa-user-shield mr-2 text-indigo-500"></i>{{ t('家庭戶主') }}（{{ familyFilteredHeads.length }}）</div>
+                <div class="divide-y max-h-[28rem] overflow-y-auto">
+                  <button v-for="h in familyFilteredHeads" :key="h.id" @click="selectFamilyHead(h)"
+                    :class="selectedFamilyHead && selectedFamilyHead.id===h.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : 'hover:bg-slate-50 border-l-4 border-transparent'"
+                    class="w-full text-left px-4 py-3 transition-colors">
+                    <b class="text-sm text-slate-800">{{ h.name }}</b>
+                    <span class="text-xs text-slate-400 ml-2">{{ h.username }}</span>
+                    <span class="block text-xs text-slate-400 mt-0.5"><i class="fas fa-user-group mr-1"></i>{{ (h.members || []).length }} {{ t('位子女') }}</span>
+                  </button>
+                </div>
+              </div>
+              <!-- 右：家庭結構卡 -->
+              <div class="lg:col-span-2">
+                <div v-if="!selectedFamilyHead" class="bg-white rounded-xl shadow p-10 text-center text-slate-400">
+                  <i class="fas fa-hand-pointer text-3xl mb-3"></i>
+                  <p class="text-sm">{{ t('請從左側選擇一個家庭戶主查看結構') }}</p>
+                </div>
+                <div v-else class="bg-white rounded-xl shadow-lg p-6 space-y-5">
+                  <!-- 戶主 -->
+                  <div class="flex justify-center">
+                    <div class="rounded-xl border-2 border-indigo-400 bg-white px-6 py-3 text-center">
+                      <div class="w-11 h-11 mx-auto rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold"><i class="fas fa-user-shield"></i></div>
+                      <b class="block text-sm mt-1">{{ selectedFamilyHead.name }}</b>
+                      <span class="text-xs text-indigo-500 font-semibold">{{ t('家庭戶主') }} · {{ selectedFamilyHead.username }}</span>
+                    </div>
+                  </div>
+                  <!-- 子女 -->
+                  <template v-if="selectedFamilyHead.members && selectedFamilyHead.members.length">
+                    <div class="flex justify-center"><div class="w-0.5 h-4 bg-indigo-300"></div></div>
+                    <div class="flex flex-wrap justify-center gap-3">
+                      <div v-for="m in selectedFamilyHead.members" :key="m.id" class="rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-center">
+                        <div class="w-8 h-8 mx-auto rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">{{ ((m.name || m.username) || '?').slice(0,1) }}</div>
+                        <b class="block text-xs mt-1 truncate max-w-[110px]">{{ m.name || m.username }}</b>
+                        <span class="text-xs text-gray-400">{{ t('子女') }} · {{ m.username }}</span>
+                      </div>
+                    </div>
+                  </template>
+                  <p v-else class="text-center text-xs text-gray-400">{{ t('此家庭暫無子女帳戶') }}</p>
+                  <!-- 自助連結 -->
+                  <div class="pt-4 border-t border-slate-100">
+                    <b class="text-xs text-slate-500"><i class="fas fa-link text-emerald-500 mr-1"></i>{{ t('自助連結帳戶（親戚／朋友）') }}（{{ headLinks.length }}）</b>
+                    <div v-if="headLinks.length" class="flex flex-wrap gap-2 mt-2">
+                      <span v-for="lk in headLinks" :key="lk.id" class="text-xs px-2 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-600">
+                        <b>{{ lk.other && (lk.other.name || lk.other.username) }}</b>（{{ t(lk.customRelation || lk.relation) }}）<span class="text-gray-400">← {{ lk.linkSourceName || '—' }}</span>
+                      </span>
+                    </div>
+                    <p v-else class="text-xs text-gray-400 mt-1.5">{{ t('暫無自助連結') }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 建立子女帳戶／連結成年成員（原有功能保留） -->
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+              <button @click="familyPanelOpen = !familyPanelOpen" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
+                <span class="text-sm font-semibold text-slate-700"><i class="fas fa-user-plus mr-2 text-indigo-500"></i>{{ t('建立／連結家庭成員') }}</span>
+                <i :class="familyPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-slate-400"></i>
+              </button>
+              <div v-if="familyPanelOpen" class="px-6 pb-6 pt-4 space-y-4 border-t border-slate-100">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <input v-model="familyForm.parentUsername" :placeholder="t('家長會員ID 或 中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.name" :placeholder="t('子女中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.birth_date" type="date" :max="todayStr" :title="t('出生日期 *（必須 18 歲以下，請完整揀選年/月/日）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  <input v-model="familyForm.phone" :placeholder="t('電話（可選，預設用家長電話收 WhatsApp）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button @click="registerFamilyChild" :disabled="familyBusy" class="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-60" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+                    <i v-if="familyBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-user-plus mr-1"></i>{{ t('建立子女帳戶') }}</button>
+                  <button @click="loadFamilyChildren" :disabled="familyBusy || !(familyForm.parentUsername || '').trim()"
+                    class="px-4 py-2 rounded-lg bg-white border border-indigo-300 text-indigo-600 text-sm font-bold hover:bg-indigo-50 disabled:opacity-60">
+                    <i class="fas fa-search mr-1"></i>{{ t('查詢此家庭成員') }}</button>
+                </div>
+                <p v-if="familyFormHint" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ familyFormHint }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==== 功能10：中醫討論區 ==== -->
+          <div v-if="mainTab==='forum'" class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-comments mr-2 text-emerald-600"></i>{{ t('中醫討論區') }}</h2>
+              <button @click="loadForum()" class="text-sm text-emerald-600 hover:underline"><i class="fas fa-sync mr-1"></i>{{ t('重新整理') }}</button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- 發新帖 -->
+              <div class="bg-white rounded-xl shadow p-5 space-y-3">
+                <h3 class="font-semibold text-slate-800"><i class="fas fa-pen mr-2 text-emerald-600"></i>{{ t('發佈新帖') }}</h3>
+                <input v-model="forumNewCategory" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('分類（如：中醫交流）')" />
+                <input v-model="forumNewTitle" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('標題')" />
+                <textarea v-model="forumNewContent" rows="5" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('內容')"></textarea>
+                <button @click="submitForumPost()" :disabled="forumBusy" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50">
+                  <i class="fas fa-paper-plane mr-1"></i>{{ forumBusy ? t('處理中...') : t('發佈') }}</button>
+              </div>
+              <!-- 帖子列表 -->
+              <div class="lg:col-span-2 space-y-3">
+                <div v-if="forumLoading" class="text-slate-500 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中...') }}</div>
+                <div v-if="!forumLoading && !forumPosts.length" class="text-slate-400 text-sm py-6 text-center">{{ t('暫時未有帖子') }}</div>
+                <div v-for="p in forumPosts" :key="p.id" class="bg-white rounded-xl shadow p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 mr-2">{{ p.category || '一般' }}</span>
+                      <b class="text-slate-800">{{ p.title }}</b>
+                      <div class="text-xs text-slate-400 mt-1">{{ p.user_name }} · {{ p.created_at }} · <i class="fas fa-comment-dots"></i> {{ p.reply_count || 0 }}</div>
+                    </div>
+                    <button @click="forumOpenId===p.id ? forumOpenId=null : openForumPost(p.id)" class="text-sm text-emerald-600 hover:underline shrink-0">
+                      {{ forumOpenId===p.id ? t('收起') : t('查看／回覆') }}</button>
+                  </div>
+                  <div v-if="forumOpenId===p.id" class="mt-3 border-t border-slate-100 pt-3 space-y-3">
+                    <p class="text-sm text-slate-600 whitespace-pre-wrap">{{ p.content }}</p>
+                    <div v-for="rp in forumReplies" :key="rp.id" class="bg-slate-50 rounded-lg p-2 text-sm">
+                      <b class="text-slate-700">{{ rp.user_name }}</b>
+                      <span class="text-xs text-slate-400 ml-2">{{ rp.created_at }}</span>
+                      <p class="text-slate-600 whitespace-pre-wrap">{{ rp.content }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <input v-model="forumReplyContent" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('撰寫回覆...')" @keyup.enter="submitForumReply(p.id)" />
+                      <button @click="submitForumReply(p.id)" :disabled="forumBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50">{{ t('回覆') }}</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- ==== 員工時段管理（Google 日曆式拖掃）==== -->
           <div v-if="mainTab==='timeslots'" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1820,9 +1976,9 @@
             <div class="px-6 py-4 border-b flex items-center justify-between">
               <h2 class="font-semibold text-slate-800">
                 <i class="fas fa-list mr-2 text-purple-600"></i>
-                {{ t('預約列表') }}<span v-if="selectedDate" class="text-sm font-normal text-slate-500 ml-2">{{ selectedDate }}</span>
+                {{ subTabLabel }}<span v-if="selectedDate" class="text-sm font-normal text-slate-500 ml-2">{{ selectedDate }}</span>
               </h2>
-              <span class="text-sm text-slate-500">{{ t('共') }} {{ filteredBookings.length }} {{ t('筆') }}</span>
+              <span class="text-sm text-slate-500">{{ t('共') }} {{ subTabBookings.length }} {{ t('筆') }}</span>
             </div>
 
             <!-- 載入中 -->
@@ -1832,7 +1988,7 @@
             </div>
 
             <!-- 無資料 -->
-            <div v-else-if="filteredBookings.length === 0" class="py-12 text-center">
+            <div v-else-if="subTabBookings.length === 0" class="py-12 text-center">
               <i class="fas fa-calendar-times text-4xl text-slate-300 mb-3"></i>
               <p class="text-slate-500">{{ selectedDate ? '該日期沒有預約記錄' : '沒有預約記錄' }}</p>
             </div>
@@ -1840,7 +1996,7 @@
             <!-- 預約卡片（手機版）-->
             <div v-else class="divide-y">
               <div
-                v-for="booking in filteredBookings"
+                v-for="booking in subTabBookings"
                 :key="booking.id"
                 class="p-4 hover:bg-slate-50 transition-colors"
               >
@@ -2271,6 +2427,8 @@
             isLoading: false,
             selectedDate: new Date().toISOString().split("T")[0],
             statusFilter: "",
+            // 功能12：預約列表拆分獨立畫面
+            listSubTab: "all",
 
             // 詳情 Modal
             showDetailModal: false,
@@ -2322,6 +2480,21 @@
 
             // 🗓️ 預約日曆
             mainTab: "list",
+            // 💬 功能10：中醫討論區
+            forumPosts: [],
+            forumLoading: false,
+            forumOpenId: null,
+            forumReplies: [],
+            forumNewTitle: "",
+            forumNewContent: "",
+            forumNewCategory: "中醫交流",
+            forumReplyContent: "",
+            forumBusy: false,
+            // 🌳 功能13：家庭帳戶管理（與管理員一致）
+            familyTree: { loading: false, tree: [] },
+            familySearch: "",
+            selectedFamilyHead: null,
+            headLinks: [],
             // 🗓️ 時段管理（Google 日曆式拖掃）
             doctors: [],
             slotDoctorId: "",
@@ -2496,12 +2669,120 @@
               return a.appointment_time.localeCompare(b.appointment_time);
             });
           },
+          // 功能12：左欄獨立畫面篩選
+          subTabBookings() {
+            const today = new Date().toLocaleDateString('sv-SE');
+            switch (this.listSubTab) {
+              case 'today':
+                return this.filteredBookings.filter(b => b.appointment_date === today && !['completed','no-show','cancelled'].includes(b.status));
+              case 'dispensing':
+                return this.filteredBookings.filter(b => b.status === 'dispensing');
+              case 'done':
+                return this.filteredBookings.filter(b => ['completed','visited','no-show'].includes(b.status));
+              default:
+                return this.filteredBookings;
+            }
+          },
+          subTabLabel() {
+            const m = { all: '預約列表', today: '今日應診', dispensing: '配藥中', done: '已完成／已離診' };
+            return this.t(m[this.listSubTab] || '預約列表');
+          },
+          // 功能13：戶主搜尋過濾
+          familyFilteredHeads() {
+            const q = (this.familySearch || '').toLowerCase();
+            const tree = this.familyTree.tree || [];
+            if (!q) return tree;
+            return tree.filter(h =>
+              (h.name || '').toLowerCase().includes(q) ||
+              (h.username || '').toLowerCase().includes(q)
+            );
+          },
           existingPhotoCount() {
             return this.existingRecordPhotos.length;
           },
         },
 
         methods: {
+          // ==================== 功能13：家庭帳戶管理（與管理員一致） ====================
+          async loadFamilyTree() {
+            this.familyTree.loading = true;
+            try {
+              const res = await fetch("/api/membership/admin/tree");
+              const data = await res.json();
+              this.familyTree.tree = data.tree || [];
+              this.selectedFamilyHead = null;
+              this.headLinks = [];
+            } catch (e) {
+              console.error("載入家庭帳戶失敗:", e);
+              this.familyTree.tree = [];
+            } finally {
+              this.familyTree.loading = false;
+            }
+          },
+          async selectFamilyHead(head) {
+            this.selectedFamilyHead = head;
+            this.headLinks = [];
+            await this.loadHeadLinks(head.id);
+          },
+          async loadHeadLinks(headId) {
+            try {
+              const childIds = new Set((this.selectedFamilyHead.members || []).map(m => m.id));
+              const fetchOne = async (uid) => {
+                const res = await fetch(`/api/membership/account-links?userId=${encodeURIComponent(uid)}`);
+                const data = await res.json().catch(() => ({ links: [] }));
+                return (data.links || []).filter(lk => !childIds.has(lk.other.id));
+              };
+              const all = await Promise.all([headId, ...childIds].map(fetchOne));
+              this.headLinks = all.flat();
+            } catch (e) { console.warn('載入戶主連結失敗:', e); }
+          },
+          // ==================== 功能10：中醫討論區 ====================
+          async loadForum() {
+            this.forumLoading = true;
+            try {
+              const r = await fetch(`/api/content/forum/posts`);
+              const d = r.ok ? await r.json() : []; this.forumPosts = Array.isArray(d) ? d : (d.posts || []);
+            } catch (e) { console.warn('載入討論區失敗:', e); }
+            this.forumLoading = false;
+          },
+          async openForumPost(id) {
+            this.forumOpenId = id;
+            this.forumReplies = [];
+            try {
+              const r = await fetch(`/api/content/forum/posts/${id}`);
+              if (r.ok) { const d = await r.json(); this.forumReplies = d.replies || []; }
+            } catch (e) { console.warn('載入帖子失敗:', e); }
+          },
+          async submitForumPost() {
+            if (!this.forumNewTitle.trim() || !this.forumNewContent.trim()) { alert('請填寫標題同內容'); return; }
+            this.forumBusy = true;
+            try {
+              const r = await fetch(`/api/content/forum/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: this.forumNewTitle.trim(), content: this.forumNewContent.trim(), category: this.forumNewCategory })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) { this.forumNewTitle = ''; this.forumNewContent = ''; await this.loadForum(); this.forumOpenId = null; alert('已發佈帖子'); }
+              else alert(d.error || '發佈失敗');
+            } catch (e) { alert('發佈失敗：' + e.message); }
+            this.forumBusy = false;
+          },
+          async submitForumReply(postId) {
+            if (!this.forumReplyContent.trim()) { alert('請填寫回覆內容'); return; }
+            this.forumBusy = true;
+            try {
+              const r = await fetch(`/api/content/forum/posts/${postId}/replies`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: this.forumReplyContent.trim() })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) { this.forumReplyContent = ''; await this.openForumPost(postId); await this.loadForum(); }
+              else alert(d.error || '回覆失敗');
+            } catch (e) { alert('回覆失敗：' + e.message); }
+            this.forumBusy = false;
+          },
           // ==================== 更改密碼 ====================
           openChangePwd() {
             this.showChangePwd = true;

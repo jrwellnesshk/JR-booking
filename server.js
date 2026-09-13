@@ -714,8 +714,16 @@ app.get("/api/timeslots", async (req, res) => {
   const aftEnd = t2m(await getSetting('afternoon_end') || '19:00');
   const slotInterval = parseInt(await getSetting('slot_interval'), 10) || 30;
   const timeSlots = [];
-  for (let m = morningStart; m < morningEnd; m += slotInterval) timeSlots.push(m2t(m));
-  for (let m = aftStart; m < aftEnd; m += slotInterval) timeSlots.push(m2t(m));
+  // 🕐 功能5（2026-09-14）：星期六 10:00-13:00（saturday_start/end）；星期一至五 10:00-19:00
+  const reqDow = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + 'T00:00:00').getDay() : NaN;
+  if (reqDow === 6) {
+    const satStart = t2m(await getSetting('saturday_start') || '10:00');
+    const satEnd = t2m(await getSetting('saturday_end') || '13:00');
+    for (let m = satStart; m < satEnd; m += slotInterval) timeSlots.push(m2t(m));
+  } else {
+    for (let m = morningStart; m < morningEnd; m += slotInterval) timeSlots.push(m2t(m));
+    for (let m = aftStart; m < aftEnd; m += slotInterval) timeSlots.push(m2t(m));
+  }
 
   if (!date) {
     return res.json({ timeSlots: timeSlots.map(t => ({ time: t, available: true })) });
@@ -946,6 +954,7 @@ app.get("/api/public-clinic-settings", (req, res) => {
     'closed_days', 'holidays_enabled', 'working_holidays', 'open_months',
     'custom_closed_dates', 'custom_open_dates',
     'morning_start', 'morning_end', 'afternoon_start', 'afternoon_end', 'slot_interval',
+    'saturday_start', 'saturday_end',
   ];
   const placeholders = PUBLIC_KEYS.map(() => '?').join(',');
   db.all(

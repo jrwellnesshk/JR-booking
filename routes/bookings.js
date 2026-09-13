@@ -124,6 +124,23 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     return '床位';
   };
 
+  // 🕐 功能5（2026-09-14）：按日期取營業時段
+  //    星期一至五：morning/afternoon 兩段；星期六：saturday_start ~ saturday_end（預設 10:00-13:00）
+  //    回傳 { ranges: [[startMin, endMin], ...] } 供時段生成／營業時間檢查共用
+  const getDayBusinessRanges = async (qGet, date) => {
+    const dow = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + 'T00:00:00').getDay() : NaN;
+    if (dow === 6) {
+      const satStart = timeToMinutes(await qGet('saturday_start')) ?? (10 * 60);
+      const satEnd = timeToMinutes(await qGet('saturday_end')) ?? (13 * 60);
+      return { isSaturday: true, ranges: [[satStart, satEnd]] };
+    }
+    const morningStart = timeToMinutes(await qGet('morning_start')) ?? (10 * 60);
+    const morningEnd = timeToMinutes(await qGet('morning_end')) ?? (14 * 60);
+    const aftStart = timeToMinutes(await qGet('afternoon_start')) ?? (14 * 60);
+    const aftEnd = timeToMinutes(await qGet('afternoon_end')) ?? (19 * 60);
+    return { isSaturday: false, ranges: [[morningStart, morningEnd], [aftStart, aftEnd]], morningStart, aftEnd };
+  };
+
   // ==================== 診所開診日檢查（閉診日/公眾假期/紅字日/特別時段）====================
   // date: 'YYYY-MM-DD'，time: 'HH:MM'，doctorName: 可選，檢查該醫師當日請假。
   // 回傳 { ok:true } 或 { ok:false, error, code }
@@ -179,10 +196,11 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       }
     }
 
-    // 3. 定期閉診日（closed_days，0=星期日）
-    const closedDays = await qGet('closed_days');
-    if (closedDays != null) {
-      const list = String(closedDays).split(',').map(s => parseInt(s, 10)).filter(n => !isNaN(n));
+    // 3. 定期閉診日（closed_days，0=星期日）—— 未設定／空值時預設星期日休息（功能5：一至六營業）
+    const closedDaysRaw = await qGet('closed_days');
+    {
+      const raw = closedDaysRaw == null ? '' : String(closedDaysRaw).trim();
+      const list = raw === '' ? [0] : raw.split(',').map(s => parseInt(s, 10)).filter(n => !isNaN(n));
       const dow = new Date(date + 'T00:00:00').getDay();
       if (list.length && list.includes(dow)) {
         const customOpenDates = (await qGet('custom_open_dates') || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -215,17 +233,16 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       }
     }
 
-    // 5. 營業時間範圍（由 clinic_settings 讀取，預設 10:00-19:00 全日開放）
+    // 5. 營業時間範圍（由 clinic_settings 讀取；星期六用 saturday_start/end = 10:00-13:00，功能5）
     const t = timeToMinutes(time);
-    const morningStart = timeToMinutes(await qGet('morning_start')) ?? (10 * 60);
-    const morningEnd = timeToMinutes(await qGet('morning_end')) ?? (14 * 60);
-    const aftStart = timeToMinutes(await qGet('afternoon_start')) ?? (14 * 60);
-    const aftEnd = timeToMinutes(await qGet('afternoon_end')) ?? (19 * 60);
-    const inMorning = t >= morningStart && t < morningEnd;
-    const inAfternoon = t >= aftStart && t < aftEnd;
-    if (!inMorning && !inAfternoon) {
+    const { ranges, isSaturday } = await getDayBusinessRanges(qGet, date);
+    const inRange = ranges.some(([s, e]) => t >= s && t < e);
+    if (!inRange) {
       const fmt = (m) => minutesToTime(m);
-      return { ok: false, error: `請於營業時間內預約（${fmt(morningStart)}-${fmt(aftEnd)}）`, code: 'business_hours' };
+      const label = isSaturday
+        ? `${fmt(ranges[0][0])}-${fmt(ranges[0][1])}`
+        : `${fmt(timeToMinutes(await qGet('morning_start')) ?? (10 * 60))}-${fmt(timeToMinutes(await qGet('afternoon_end')) ?? (19 * 60))}`;
+      return { ok: false, error: `請於營業時間內預約（${label}）`, code: 'business_hours' };
     }
 
     // 6. 過去日期檢查
@@ -338,6 +355,11 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         // 🔒 訪客模式：強制只能預約「初體驗」服務（防濫用）
         if (guestMode && (!svc || !svc.name || !svc.name.includes('初體驗'))) {
           return res.status(403).json({ error: "訪客模式僅可預約「初體驗（一小時）」服務，如需其他服務請先註冊帳戶。" });
+        }
+        // 🔒 功能3（2026-09-14）：「初體驗」僅限訪客 —— 登入客戶（任何會員級別）不可自約初體驗；
+        //    員工／管理員代落單（walk-in）不受此限
+        if (!guestMode && req.user && req.user.role === 'customer' && svc && svc.name && svc.name.includes('初體驗')) {
+          return res.status(403).json({ error: "「初體驗」僅限訪客預約，會員請選擇其他治療服務。", code: 'trial_guest_only' });
         }
         // 🔓 會員付費門禁已移除（按設計：一本帳戶都可以用晒所有服務；
         //    會員級別只影響折扣 / 免費特定次數門診，遲啲補上，唔影響 access）。
@@ -626,7 +648,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const userId = isStaff ? (req.query.userId || null) : req.userId;
     const queryUsername = isStaff ? (username || null) : (req.user.username || null);
     
-    let query = "SELECT b.*, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status='completed') = 0 END AS is_new FROM bookings b";
+    let query = "SELECT b.*, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b";
     let params = [];
 
     // 支持同時用 userId (數據庫ID) 和 username 查詢，以兼容新舊數據
@@ -1278,21 +1300,17 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
 
       const duration = svc.duration || 30;
       const needsBed = svc.requires_bed === 1;
-      // 營業時段由 clinic_settings 讀取（預設 10:00-19:00），按 slot_interval 產生時段
+      // 營業時段由 clinic_settings 讀取（星期一至五 10:00-19:00；星期六 10:00-13:00，功能5）
       const settingGet = (key) => new Promise((resolve) => {
         db.get("SELECT setting_value FROM clinic_settings WHERE setting_key=?", [key], (e, r) => resolve(r ? r.setting_value : null));
       });
-      const morningStart = timeToMinutes(await settingGet('morning_start')) ?? (10 * 60);
-      const morningEnd = timeToMinutes(await settingGet('morning_end')) ?? (14 * 60);
-      const aftStart = timeToMinutes(await settingGet('afternoon_start')) ?? (14 * 60);
-      const aftEnd = timeToMinutes(await settingGet('afternoon_end')) ?? (19 * 60);
       const slotInterval = parseInt(await settingGet('slot_interval'), 10) || 30;
+      const { ranges } = await getDayBusinessRanges(settingGet, date);
       const slots = [];
-      for (let m = morningStart; m < morningEnd; m += slotInterval) slots.push(minutesToTime(m));
-      for (let m = aftStart; m < aftEnd; m += slotInterval) slots.push(minutesToTime(m));
+      for (const [rs, re] of ranges) for (let m = rs; m < re; m += slotInterval) slots.push(minutesToTime(m));
 
       // 診所開診日檢查（閉診日/假期/紅字日/特別時段/過往日期）
-      const openCheck = await checkClinicOpen(date, minutesToTime(morningStart)).catch(() => ({ ok: true }));
+      const openCheck = await checkClinicOpen(date, minutesToTime(ranges[0][0])).catch(() => ({ ok: true }));
       let dayClosed = false, dayClosedReason = '', specialOpen = null, specialClose = null;
       if (!openCheck.ok) {
         if (openCheck.code === 'special_hours') {
@@ -1472,12 +1490,18 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         });
       }
       
-      const morningStart = clinicSettings.morning_start || '10:30';
+      const morningStart = clinicSettings.morning_start || '10:00';
       const morningEnd = clinicSettings.morning_end || '14:00';
-      const afternoonStart = clinicSettings.afternoon_start || '15:30';
-      const afternoonEnd = clinicSettings.afternoon_end || '19:30';
+      const afternoonStart = clinicSettings.afternoon_start || '14:00';
+      const afternoonEnd = clinicSettings.afternoon_end || '19:00';
       const slotInterval = parseInt(clinicSettings.slot_interval) || 30;
-      
+
+      // 🕐 功能5：星期六 10:00-13:00（saturday_start/end，未設定用預設）
+      const dateDow = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + 'T00:00:00').getDay() : NaN;
+      const isSaturday = dateDow === 6;
+      const satStart = clinicSettings.saturday_start || '10:00';
+      const satEnd = clinicSettings.saturday_end || '13:00';
+
       // 生成所有時段
       const generateTimeSlots = (start, end) => {
         const slots = [];
@@ -1485,7 +1509,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         const [endH, endM] = end.split(':').map(Number);
         let currentMinutes = startH * 60 + startM;
         const endMinutes = endH * 60 + endM;
-        
+
         while (currentMinutes < endMinutes) {
           const h = Math.floor(currentMinutes / 60);
           const m = currentMinutes % 60;
@@ -1494,9 +1518,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         }
         return slots;
       };
-      
-      const morningSlots = generateTimeSlots(morningStart, morningEnd);
-      const afternoonSlots = generateTimeSlots(afternoonStart, afternoonEnd);
+
+      const morningSlots = isSaturday ? generateTimeSlots(satStart, satEnd) : generateTimeSlots(morningStart, morningEnd);
+      const afternoonSlots = isSaturday ? [] : generateTimeSlots(afternoonStart, afternoonEnd);
       const allTimeSlots = [...morningSlots, ...afternoonSlots];
       
       // 獲取醫師列表

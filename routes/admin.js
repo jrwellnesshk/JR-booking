@@ -17,7 +17,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
    * 用於敏感操作前的二次確認（需先通過 requireAuth + requireRole('admin')）
    */
   const verifyAdminPassword = (req, res, next) => {
-    const { adminPassword } = req.body;
+    const { adminPassword } = req.body || {};
     
     if (!adminPassword) {
       return res.status(400).json({ 
@@ -107,9 +107,11 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         // 🔒 新建立的管理員帳號需於首次登入修改密碼
         const mustChange = userRole === 'admin' ? 1 : 0;
         const insurance = ['staff', 'admin'].includes(userRole) ? (insurance_covered ? 1 : 0) : null;
+        // 設計：員工喺診所代客開戶後，客人即可使用全部服務（唔再被 general 鎖死初體驗以外）
+        const memberTier = userRole === 'customer' ? 'premium' : 'general';
         db.run(
-          "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed, must_change_password, insurance_covered) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          [username, hashedPassword, name, name_en || "", phone, email || "", userRole, 1, mustChange, insurance],
+          "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed, must_change_password, insurance_covered, membership_tier) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [username, hashedPassword, name, name_en || "", phone, email || "", userRole, 1, mustChange, insurance, memberTier],
           function(insertErr) {
             if (insertErr) return res.status(500).json({ error: insertErr.message });
             const newUserId = this.lastID;
@@ -483,7 +485,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       db.get("SELECT name FROM doctors WHERE user_id=? AND is_active=1", [userId], (docErr, doctor) => {
         const doctorName = doctor ? doctor.name : user.name;
 
-        let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status='completed') = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE (b.doctor_user_id=? OR b.doctor_name=?)";
+        let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE (b.doctor_user_id=? OR b.doctor_name=?)";
         let params = [userId, doctorName];
 
         if (date) {
@@ -515,7 +517,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (err) return serverError(res, err);
       if (!user) return res.status(403).json({ error: "無此權限" });
 
-      let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status='completed') = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE 1=1";
+      let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE 1=1";
       let params = [];
 
       if (date) {
@@ -557,9 +559,9 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       db.get("SELECT name FROM doctors WHERE user_id=? AND is_active=1", [userId], (docErr, doctor) => {
         const doctorName = doctor ? doctor.name : user.name;
 
-        // 員工可更新任何預約；醫師只能更新自己的預約
+        // 員工/管理員可更新任何預約；醫師只能更新自己的預約
         const checkBooking = (cb) => {
-          if (user.role === 'staff') {
+          if (user.role === 'staff' || user.role === 'admin') {
             db.get("SELECT id FROM bookings WHERE id=?", [id], cb);
           } else {
             db.get("SELECT id FROM bookings WHERE id=? AND (doctor_user_id=? OR doctor_name=?)", [id, userId, doctorName], cb);
@@ -1029,8 +1031,9 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     } = req.body || {};
     const actorId = req.user.id;
     const isClinic = !!clinicWide && req.user.role === 'admin';
+    // 🔒 醫師只可為自己請假；只有 admin 先可代他人 / 全診所
     const doctorUserId = isClinic ? null
-      : (reqDoctorUserId && ['admin', 'doctor'].includes(req.user.role))
+      : (req.user.role === 'admin' && reqDoctorUserId)
         ? Number(reqDoctorUserId)
         : req.user.id;
     if (!exception_date || !/^\d{4}-\d{2}-\d{2}$/.test(exception_date)) {
@@ -1230,6 +1233,38 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           [req.user.id, new Date().toISOString(), notified, id], (e) => e ? reject(e) : resolve());
       });
 
+      // 🔗 同步 HR 考勤請假（leave_requests），避免兩套請假系統報表矛盾
+      if (exc && exc.doctor_user_id && exc.exception_date) {
+        try {
+          const docUser = await new Promise((resolve) => {
+            db.get("SELECT id, name, role FROM users WHERE id=?", [exc.doctor_user_id], (e, r) => resolve(r || null));
+          });
+          if (docUser) {
+            const existing = await new Promise((resolve) => {
+              db.get(
+                `SELECT id FROM leave_requests
+                 WHERE user_id=? AND start_date=? AND end_date=? AND status!='rejected' LIMIT 1`,
+                [exc.doctor_user_id, exc.exception_date, exc.exception_date],
+                (e, r) => resolve(r || null)
+              );
+            });
+            if (!existing) {
+              await new Promise((resolve) => {
+                db.run(
+                  `INSERT INTO leave_requests (user_id, name, role, leave_type, start_date, end_date, reason, status, reviewed_by, reviewed_at, reviewed_note)
+                   VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?)`,
+                  [docUser.id, docUser.name, docUser.role || 'doctor', 'other', exc.exception_date, exc.exception_date,
+                   exc.reason || '醫師排程請假', 'approved', req.user.id, '自動同步自排程請假 doctor_leave#' + id],
+                  () => resolve()
+                );
+              });
+            }
+          }
+        } catch (syncErr) {
+          console.error('同步 leave_requests 失敗:', syncErr.message);
+        }
+      }
+
       res.json({ ok: true, status: 'approved', clinic: isClinic, affected_count: affected.length, notified: notifyResults, needs_arrange_count: needsArrangeCount, reassigned_to: exc.reassigned_to });
     } catch (e) {
       console.error('批核請假失敗:', e);
@@ -1257,6 +1292,10 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     db.get("SELECT * FROM exceptions WHERE id=? AND type='doctor_leave'", [id], (err, exc) => {
       if (err) return serverError(res, err);
       if (!exc) return res.status(404).json({ error: '找不到該請假記錄' });
+      // 🔒 醫師只可取消自己嘅請假（admin 不限）
+      if (req.user.role !== 'admin' && exc.doctor_user_id && Number(exc.doctor_user_id) !== Number(req.user.id)) {
+        return res.status(403).json({ error: '只可以取消自己嘅請假' });
+      }
       // 非管理員唔可以刪過去嘅請假
       if (req.user.role !== 'admin' && exc.exception_date < todayStr) {
         return res.status(400).json({ error: '過去嘅請假記錄不可以刪除' });

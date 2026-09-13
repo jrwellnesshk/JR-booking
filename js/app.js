@@ -128,17 +128,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             },
           ]);
 
-          // 服務可約清單：
-          // - 訪客：全部顯示（後端只准初體驗）
-          // - 一般會員：只見初體驗（設計：先官網初體驗，員工開戶後先全部）
-          // - 高級/家庭會員：全部服務
+          // 服務可約清單（功能3，2026-09-14）：
+          // - 訪客：只見「初體驗」（後端亦只准訪客約初體驗）
+          // - 會員（一般／高級／家庭）：全部治療服務；「初體驗」僅限訪客
           const bookableServices = computed(() => {
-            if (!currentMember.value) return SERVICES.value;
-            const tier = (realTier.value || currentMember.value.tier || currentMember.value.membership_tier || 'general');
-            if (tier === 'general') {
-              return SERVICES.value.filter(s => /初體驗/.test(s.name || ""));
-            }
-            return SERVICES.value;
+            if (!currentMember.value) return SERVICES.value.filter(s => /初體驗/.test(s.name || ""));
+            return SERVICES.value.filter(s => !/初體驗/.test(s.name || ""));
           });
 
           const TOTAL_BEDS = ref({ tuina: 5, vip: 5, acup: 5 });
@@ -254,7 +249,6 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const siteAnnouncements = ref([]);
           const siteVideos = ref([]);
           const siteSocial = ref({});
-          const siteReviews = ref([]);
           const siteCases = ref([]);
           const siteTexts = ref({});
           const forumPosts = ref([]);
@@ -275,18 +269,16 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
           const loadSiteContent = async () => {
             try {
-              const [a, v, s, r, cs, tx] = await Promise.all([
+              const [a, v, s, cs, tx] = await Promise.all([
                 fetch(`${API_URL}/content/announcements`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/videos`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/social`).then(r => r.ok ? r.json() : {}),
-                fetch(`${API_URL}/content/reviews`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/cases`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/texts`).then(r => r.ok ? r.json() : {})
               ]);
               siteAnnouncements.value = (a || []).filter(Boolean);
               siteVideos.value = (v || []).filter(Boolean);
               siteSocial.value = s || {};
-              siteReviews.value = (r || []).filter(Boolean);
               siteCases.value = (cs || []).filter(Boolean);
               siteTexts.value = tx || {};
             } catch (e) { console.error("載入官網內容失敗:", e); }
@@ -1484,10 +1476,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const startGuestTrial = () => {
             console.log("startGuestTrial", currentMember.value);
             if (currentMember.value) {
-              // 已登入：直接跳去初體驗服務（step 1）
-              guestTrialFlow.value = true;
-              const trial = SERVICES.value.find((s) => s.name && s.name.includes('初體驗'));
-              if (trial) selectedService.value = trial.id;
+              // 功能3（2026-09-14）：「初體驗」僅限訪客 —— 已登入會員改為跳去正常預約（全部治療服務）
+              alert("「初體驗」僅限訪客預約。會員可使用全部治療服務，請直接選擇服務。");
               view.value = "booking";
               step.value = 1;
               return;
@@ -3292,11 +3282,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
           
-          // 選擇服務
+          // 選擇服務（功能3：訪客只可初體驗；會員不可約初體驗，其他服務全部可用）
           const isServiceLocked = (svc) => {
-            const tier = realTier.value || 'general';
-            if (tier === 'premium' || tier === 'family') return false;
-            return !(svc && svc.name && svc.name.includes('初體驗'));
+            if (!currentMember.value) return !(svc && svc.name && svc.name.includes('初體驗'));
+            return !!(svc && svc.name && svc.name.includes('初體驗'));
           };
           const selectService = (serviceId) => {
             const svc = SERVICES.value.find((s) => s.id === serviceId);
@@ -3305,8 +3294,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 alert("訪客模式僅可預約「初體驗（一小時）」服務。如需預約其他服務，請先註冊會員。");
                 return;
               }
-              const go = confirm('此服務需要升級至「高級會員」或「家庭會員」方可預約。是否前往會員中心查看升級方案？');
-              if (go) { setView('myMembership'); loadMyMembership(); }
+              alert("「初體驗」僅限訪客預約。會員可使用全部治療服務，請選擇其他服務。");
               return;
             }
             selectedService.value = serviceId;
@@ -4387,7 +4375,6 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             siteVideos,
             siteCases,
             siteSocial,
-            siteReviews,
             siteTexts,
             st,
             forumPosts,
