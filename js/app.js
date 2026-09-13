@@ -504,6 +504,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const healthProfileSaving = ref(false);
           const healthProfileSavedAt = ref(null);
           const healthProfileError = ref("");
+          // Phase 2：醫護確認狀態（verified_at / verified_by_name / verified_by_role）
+          const healthProfileVerifiedLabel = computed(() => {
+            const role = healthProfile.value.verified_by_role;
+            if (!healthProfile.value.verified_at) return "";
+            if (role === "doctor") return "醫師已確認";
+            if (role === "staff") return "職員已確認";
+            if (role === "admin") return "管理員已確認";
+            return "診所已確認";
+          });
 
           // 🆕 WhatsApp 通知偏好（通訊偏好中心）
           const whatsappPrefs = ref({ weather: true, confirm: true, health: true });
@@ -2548,6 +2557,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                   chronic_conditions: p.chronic_conditions || "",
                   long_term_medications: p.long_term_medications || "",
                   medical_history: p.medical_history || "",
+                  verified_at: p.verified_at || null,
+                  verified_by_name: p.verified_by_name || null,
+                  verified_by_role: p.verified_by_role || null,
                 };
                 healthProfileSavedAt.value = p.updated_at || null;
               } else {
@@ -2577,6 +2589,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               const data = await response.json().catch(() => ({}));
               if (response.ok) {
                 healthProfileSavedAt.value = new Date().toISOString();
+                // 內容有改動 → 後端會作廢「已確認」標記，前端同步清除
+                if (data.verification_kept === false) {
+                  healthProfile.value.verified_at = null;
+                  healthProfile.value.verified_by_name = null;
+                  healthProfile.value.verified_by_role = null;
+                }
               } else {
                 healthProfileError.value = data.error || "儲存失敗，請稍後再試";
               }
@@ -4474,6 +4492,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             healthProfileSaving,
             healthProfileSavedAt,
             healthProfileError,
+            healthProfileVerifiedLabel,
             saveHealthProfile,
             whatsappPrefs,
             whatsappPrefsSaving,

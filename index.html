@@ -3696,6 +3696,19 @@
                   <p class="text-sm text-gray-500 mb-4">
                     {{ t('填寫長期病患、長期服用藥物及過往病歷，方便醫師診症時快速了解你的身體狀況，提供更準確嘅診斷。只有本診所醫護人員可以查看，資料絕對保密。') }}</p>
 
+                  <!-- Phase 2：醫護確認狀態 -->
+                  <div v-if="healthProfile.verified_at" class="mb-4 flex items-start gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-lg px-3 py-2">
+                    <i class="fas fa-user-check mt-0.5"></i>
+                    <div>
+                      <b>{{ t(healthProfileVerifiedLabel) }}</b>
+                      <span class="text-emerald-700">（{{ healthProfile.verified_by_name || '—' }} · {{ healthProfile.verified_at }}）</span>
+                      <div class="text-xs text-emerald-700 mt-0.5">{{ t('如你修改以下內容，確認標記會自動取消，需由診所職員重新確認。') }}</div>
+                    </div>
+                  </div>
+                  <div v-else-if="!healthProfileLoading" class="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-3 py-2">
+                    <i class="fas fa-hourglass-half"></i>{{ t('尚未經診所職員確認，診症時職員可為你補充或確認。') }}
+                  </div>
+
                   <div v-if="healthProfileLoading" class="text-gray-500 py-4 text-center">
                     <i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入健康檔案...') }}</div>
 

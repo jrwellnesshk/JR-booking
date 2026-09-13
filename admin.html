@@ -3046,23 +3046,50 @@
                 <div class="bg-slate-50 rounded-lg p-3"><div class="text-xs text-slate-400">{{ t('會籍') }}</div><div class="font-medium text-slate-700">{{ hfDetail.user.membership_tier }}</div></div>
               </div>
 
-              <!-- 三欄健康檔案 -->
+              <!-- 三欄健康檔案（Phase 2：管理員可編輯並確認） -->
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <h4 class="font-bold text-slate-800 flex items-center">
+                  <i class="fas fa-heart-pulse text-red-500 mr-2"></i>{{ t('健康檔案') }}</h4>
+                <span v-if="hfDetail.profile.verified_at" class="text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">
+                  <i class="fas fa-user-check mr-1"></i>{{ t(hfVerifiedLabel()) }}（{{ hfDetail.profile.verified_by_name || '—' }} · {{ hfDetail.profile.verified_at }}）</span>
+                <span v-else class="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
+                  <i class="fas fa-hourglass-half mr-1"></i>{{ t('未確認') }}</span>
+              </div>
+
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="border border-red-100 bg-red-50/50 rounded-xl p-4">
                   <div class="text-sm font-bold text-red-700 mb-2"><i class="fas fa-disease mr-1"></i>{{ t('長期病患') }}</div>
-                  <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ hfDetail.profile.chronic_conditions || t('未填寫') }}</p>
+                  <textarea v-model="hfEdit.chronic_conditions" rows="4"
+                    class="w-full text-sm text-slate-700 bg-white rounded-lg border border-red-200 p-2 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    :placeholder="t('未填寫')"></textarea>
                 </div>
                 <div class="border border-amber-100 bg-amber-50/50 rounded-xl p-4">
                   <div class="text-sm font-bold text-amber-700 mb-2"><i class="fas fa-pills mr-1"></i>{{ t('長期服用藥物') }}</div>
-                  <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ hfDetail.profile.long_term_medications || t('未填寫') }}</p>
+                  <textarea v-model="hfEdit.long_term_medications" rows="4"
+                    class="w-full text-sm text-slate-700 bg-white rounded-lg border border-amber-200 p-2 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                    :placeholder="t('未填寫')"></textarea>
                 </div>
                 <div class="border border-emerald-100 bg-emerald-50/50 rounded-xl p-4">
                   <div class="text-sm font-bold text-emerald-700 mb-2"><i class="fas fa-file-medical mr-1"></i>{{ t('過往病歷紀錄') }}</div>
-                  <p class="text-sm text-slate-700 whitespace-pre-wrap">{{ hfDetail.profile.medical_history || t('未填寫') }}</p>
+                  <textarea v-model="hfEdit.medical_history" rows="4"
+                    class="w-full text-sm text-slate-700 bg-white rounded-lg border border-emerald-200 p-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                    :placeholder="t('未填寫')"></textarea>
                 </div>
               </div>
-              <div v-if="hfDetail.profile.updated_at" class="text-xs text-slate-400">
-                <i class="fas fa-clock mr-1"></i>{{ t('最後更新') }}：{{ hfDetail.profile.updated_at }}</div>
+
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <span v-if="hfDetail.profile.updated_at" class="text-xs text-slate-400">
+                  <i class="fas fa-clock mr-1"></i>{{ t('最後更新') }}：{{ hfDetail.profile.updated_at }}</span>
+                <span v-else></span>
+                <div class="flex flex-wrap gap-2">
+                  <button @click="hfVerify()" :disabled="hfSaving"
+                    class="px-4 py-2 text-sm rounded-lg border border-emerald-300 text-emerald-700 bg-white hover:bg-emerald-50 disabled:opacity-60">
+                    <i class="fas fa-user-check mr-1"></i>{{ t('確認內容無誤') }}</button>
+                  <button @click="hfSave()" :disabled="hfSaving"
+                    class="px-4 py-2 text-sm rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60">
+                    <i class="fas fa-save mr-1"></i>{{ hfSaving ? t('儲存中...') : t('儲存並確認') }}</button>
+                </div>
+              </div>
 
               <!-- 病歷摘要 -->
               <div>
@@ -7075,6 +7102,10 @@
             hfBusy: false,
             hfDetail: null,
             hfDetailLoading: false,
+            // Phase 2：編輯中嘅健康檔案內容 + 儲存狀態
+            hfEdit: { chronic_conditions: "", long_term_medications: "", medical_history: "" },
+            hfSaving: false,
+            hfCanVerify: false,
 
             incomePeriod: 'day',
             incomeData: [],
@@ -8826,6 +8857,13 @@ async handleLogin() {
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.success) {
                 this.hfDetail = { user: data.user, profile: data.profile, records: data.records || [] };
+                const p = data.profile || {};
+                this.hfEdit = {
+                  chronic_conditions: p.chronic_conditions || '',
+                  long_term_medications: p.long_term_medications || '',
+                  medical_history: p.medical_history || '',
+                };
+                this.hfCanVerify = !!data.can_verify;
               } else {
                 alert(data.error || '載入客人檔案失敗');
               }
@@ -8834,6 +8872,57 @@ async handleLogin() {
               alert('檔案服務暫時不可用');
             } finally {
               this.hfDetailLoading = false;
+            }
+          },
+          hfVerifiedLabel() {
+            const role = this.hfDetail && this.hfDetail.profile ? this.hfDetail.profile.verified_by_role : null;
+            if (role === 'doctor') return '醫師已確認';
+            if (role === 'staff') return '職員已確認';
+            if (role === 'admin') return '管理員已確認';
+            return '診所已確認';
+          },
+          async hfSave() {
+            if (!this.hfDetail) return;
+            this.hfSaving = true;
+            try {
+              const res = await fetch('/api/health-profile/user/' + this.hfDetail.user.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chronic_conditions: this.hfEdit.chronic_conditions,
+                  long_term_medications: this.hfEdit.long_term_medications,
+                  medical_history: this.hfEdit.medical_history,
+                }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.success) {
+                await this.hfView(this.hfDetail.user.id);
+              } else {
+                alert(data.error || '儲存失敗');
+              }
+            } catch (e) {
+              console.error(e);
+              alert('儲存服務暫時不可用');
+            } finally {
+              this.hfSaving = false;
+            }
+          },
+          async hfVerify() {
+            if (!this.hfDetail) return;
+            this.hfSaving = true;
+            try {
+              const res = await fetch('/api/health-profile/user/' + this.hfDetail.user.id + '/verify', { method: 'POST' });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.success) {
+                await this.hfView(this.hfDetail.user.id);
+              } else {
+                alert(data.error || '確認失敗');
+              }
+            } catch (e) {
+              console.error(e);
+              alert('確認服務暫時不可用');
+            } finally {
+              this.hfSaving = false;
             }
           },
 

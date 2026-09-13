@@ -363,6 +363,18 @@ function runMigrations(db) {
       if (err) console.error("建立 customer_health_profiles 索引失敗:", err.message);
     });
 
+    // Phase 2：醫師確認欄位（舊資料庫自動升級，重複啟動唔會報錯）
+    db.all("PRAGMA table_info(customer_health_profiles)", (e, cols) => {
+      if (e) { console.error("讀取 customer_health_profiles 結構失敗:", e.message); return; }
+      const existing = new Set((cols || []).map(c => c.name));
+      [['verified_by', 'INTEGER'], ['verified_at', 'TEXT'], ['updated_by', 'INTEGER']].forEach(([col, type]) => {
+        if (existing.has(col)) return;
+        db.run(`ALTER TABLE customer_health_profiles ADD COLUMN ${col} ${type}`, (err2) => {
+          if (err2) console.error(`新增 customer_health_profiles.${col} 欄位失敗:`, err2.message);
+        });
+      });
+    });
+
     // 為 bookings 表添加 is_locked 欄位
     db.all("PRAGMA table_info(bookings)", (err, columns) => {
       if (!err && columns && columns.length > 0) {

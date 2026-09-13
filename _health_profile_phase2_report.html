@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>健康檔案 Phase 2 — 醫護編輯 + 確認標記（驗證報告）</title>
+<style>
+  :root { --p500:#8b5cf6; --p600:#7c3aed; --p700:#6d28d9; }
+  body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; line-height:1.7; color:#1f2937; max-width:960px; margin:0 auto; padding:32px 24px; background:#fafafa; }
+  h1 { color:var(--p700); border-bottom:3px solid var(--p500); padding-bottom:12px; }
+  h2 { color:var(--p600); margin-top:36px; border-left:5px solid var(--p500); padding-left:12px; }
+  h3 { color:#374151; margin-top:22px; }
+  code { background:#f3f4f6; padding:2px 6px; border-radius:4px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; margin:14px 0; background:#fff; }
+  th, td { border:1px solid #e5e7eb; padding:8px 10px; text-align:left; font-size:14px; }
+  th { background:#f5f3ff; color:var(--p700); }
+  .pass { color:#047857; font-weight:bold; }
+  .fail { color:#b91c1c; font-weight:bold; }
+  .box { background:#fff; border:1px solid #e5e7eb; border-left:4px solid var(--p500); border-radius:8px; padding:14px 18px; margin:16px 0; }
+  .warn { border-left-color:#f59e0b; background:#fffbeb; }
+  .ok { border-left-color:#10b981; background:#ecfdf5; }
+  ul { padding-left:22px; }
+  .kpi { display:flex; gap:14px; flex-wrap:wrap; margin:18px 0; }
+  .kpi div { flex:1; min-width:150px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px; text-align:center; }
+  .kpi b { display:block; font-size:26px; color:var(--p600); }
+</style>
+</head>
+<body>
+<h1>健康檔案 Phase 2：醫護編輯 + 確認標記</h1>
+<p>項目：寶天醫館智能預約系統（booking-aurora）　·　日期：2026-09-14　·　基礎提交：<code>d866363</code></p>
+
+<div class="kpi">
+  <div><b>46 / 46</b>Phase 2 驗證</div>
+  <div><b>33 / 33</b>Phase 1 回歸</div>
+  <div><b>23 / 23</b>審計修復回歸</div>
+  <div><b>32 / 32</b>視覺矩陣格</div>
+</div>
+
+<h2>一、需求（Phase 2）</h2>
+<p>Phase 1 已完成「客人自填 + 醫護唯讀搜尋」。Phase 2 追加：</p>
+<ul>
+  <li><b>醫師／員工／管理員</b>三個門戶都可以喺「客人檔案」直接編輯客人嘅長期病患、長期用藥、過往病歷。</li>
+  <li>醫師儲存即視為<b>專業確認</b>，檔案顯示「醫師已確認 · 姓名 · 時間」。</li>
+  <li>員工／管理員儲存只改內容、<b>唔</b>產生確認標記（確認權留俾醫師）。</li>
+  <li>提供獨立「確認內容無誤」掣：只寫確認標記，<b>唔</b>改動任何內容。</li>
+  <li>客人日後修改內容 → 舊確認標記<b>自動作廢</b>，需重新確認；內容不變再儲存則<b>保留</b>標記。</li>
+</ul>
+
+<h2>二、改動</h2>
+<table>
+  <tr><th>檔案</th><th>內容</th></tr>
+  <tr><td><code>config/migrations.js</code></td><td><code>customer_health_profiles</code> 加 <code>verified_by</code> / <code>verified_at</code> / <code>updated_by</code> 三欄（舊庫用 ALTER TABLE 兼容）</td></tr>
+  <tr><td><code>routes/healthProfiles.js</code></td><td>新增 <code>PUT /api/health-profile/user/:user_id</code>（doctor/staff/admin）及 <code>POST /api/health-profile/user/:user_id/verify</code>；<code>GET /user/:id</code> 回傳確認者姓名／角色／時間</td></tr>
+  <tr><td><code>staff.html</code> / <code>doctor.html</code> / <code>admin.html</code></td><td>「客人檔案」詳情改為可編輯三欄 + 「儲存並確認」／「確認內容無誤」掣 + 確認狀態徽章</td></tr>
+  <tr><td><code>index.html</code> / <code>js/app.js</code></td><td>客人端顯示確認徽章（醫師／職員／管理員已確認）；儲存後若內容有改動則清除標記</td></tr>
+  <tr><td><code>js/i18n.js</code></td><td>補中英文鍵（未填寫／已確認／醫師已確認／職員已確認／管理員已確認…）</td></tr>
+</table>
+
+<h3>確認狀態機</h3>
+<table>
+  <tr><th>動作</th><th>內容</th><th>確認標記</th></tr>
+  <tr><td>客人自填／修改</td><td>寫入</td><td>清除（<code>verification_kept=false</code>）</td></tr>
+  <tr><td>客人原內容再儲存</td><td>不變</td><td>保留（<code>verification_kept=true</code>）</td></tr>
+  <tr><td>醫師 PUT</td><td>寫入</td><td>寫入（role=doctor）</td></tr>
+  <tr><td>員工／管理員 PUT</td><td>寫入</td><td>清除（內容已改，需再確認）</td></tr>
+  <tr><td>POST /verify（三角色）</td><td>不變</td><td>寫入（記錄確認者角色）</td></tr>
+</table>
+
+<h2>三、驗證結果</h2>
+
+<h3>A. 後端 API（21 項，全 PASS）</h3>
+<ul>
+  <li>migration 三欄已建立：<code>verified_at, verified_by, updated_by</code></li>
+  <li>醫師 PUT → 200 + <code>verified=true</code>，標記帶 <code>role=doctor</code>、醫師姓名、時間</li>
+  <li>客人改內容 → 標記作廢；原內容再儲存 → 標記保留</li>
+  <li>員工 PUT → <code>role=staff</code>；管理員 <code>POST /verify</code> → <code>role=admin</code> 且內容不變</li>
+  <li>權限矩陣：客人 403 ×2、未登入 401 ×2、非 customer ID 404、非數字 ID 400、未填寫檔案 verify 404</li>
+  <li>邊界：9000 字截斷至 5000；空 body → 200 唔 500；stderr 零 TypeError</li>
+</ul>
+
+<h3>B. 三個醫護門戶真實操作（21 項，全 PASS）</h3>
+<p>staff / doctor / admin 各 7 項：撳入「客人檔案」→ 輸入搜尋 → 撳「查看」→ 三個 textarea + 兩個掣 + 徽章 → 真撳「確認內容無誤」→ 顯示已確認 → 零頁面錯誤。</p>
+
+<h3>C. 客人端 index.html（4 項，全 PASS）</h3>
+<p>撳入「我的設定」→ 健康檔案 section 渲染 → 顯示確認狀態 → 零頁面錯誤。</p>
+
+<h3>D. 回歸</h3>
+<ul>
+  <li><span class="pass">PASS</span> Phase 1（<code>_verify_healthprofile.cjs</code>）：33 / 33</li>
+  <li><span class="pass">PASS</span> 上輪審計修復（<code>_verify_round2.cjs</code>）：23 / 23</li>
+  <li><span class="pass">PASS</span> 視覺矩陣（<code>_audit5_visual.cjs</code>）：32 格，真實錯誤 0、水平溢出 0</li>
+</ul>
+
+<h2>四、排查紀錄（兩個假 FAIL）</h2>
+<div class="box warn">
+<b>客人端「健康檔案 section 未渲染」並非產品 bug。</b>
+同一瀏覽器先開過 <code>admin.html</code>，localStorage 殘留 <code>adminUser</code>；<code>js/app.js:4109</code> 嘅既有邏輯會將佢跳去 <code>admin.html</code>，
+所以 index.html 渲染出嘅係管理員介面。驗證腳本已改為開客人端前先清除其他門戶嘅 localStorage key，模擬乾淨瀏覽器。
+</div>
+<div class="box warn">
+第二個假 FAIL 係等待不足：客人端 Vue mount + 導航需要更長時間，已改為輪詢式等待（最多 ~9 秒）。
+</div>
+
+<h2>五、已知行為（非缺陷，維持原狀）</h2>
+<ul>
+  <li>管理員／員工喺同一瀏覽器開過後台後再開客人頁，會被導去後台 —— 屬既有設計，本輪冇改動。</li>
+  <li>只有「醫師」儲存會直接產生確認標記；員工／管理員儲存只改內容。如日後要畀員工確認權，只需改 <code>routes/healthProfiles.js</code> 嘅 <code>isDoctor</code> 判斷。</li>
+  <li>本輪全程用 <code>VACUUM INTO</code> 快照 + 獨立埠（4763），無觸摸 live database.db；live dev server（:4000）未重啟。</li>
+</ul>
+
+<div class="box ok">
+<b>結論：Phase 2 可上線。</b>46/46 通過，Phase 1 與上輪審計修復無回退，五個門戶中英雙語桌面／手機版零錯誤零溢出。
+</div>
+</body>
+</html>
