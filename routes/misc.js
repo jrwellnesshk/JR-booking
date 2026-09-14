@@ -21,7 +21,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     let reply = "感謝您的提問，我會儘快回覆。";
 
     if (text.includes("取消")) reply = "您可以在預約列表中按『取消預約』即可。";
-    else if (text.includes("營業") || text.includes("時間")) reply = "我們營業時間為週一至週六 9:00 - 18:00。";
+    else if (text.includes("營業") || text.includes("時間")) reply = "我們營業時間為星期一至五 10:00-19:00；星期六 10:00-13:00（星期日及公眾假期休息）。";
     else if (text.includes("價") || text.includes("收費") || text.includes("費用")) 
       reply = "推拿治療 45分鐘、針灸治療 30分鐘、推拿+針灸 60分鐘、新症諮詢 30分鐘。詳細收費請致電查詢。";
     else if (text.includes("服務") || text.includes("項目")) 
