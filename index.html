@@ -2736,10 +2736,10 @@
               </div>
             <button type="button" @click="setLang(lang === 'en' ? 'zh-TW' : 'en')" class="m-side-logout" :title="t('請選擇語言 / Please select language')">
               <i class="fas fa-globe mr-2"></i>{{ lang === 'en' ? '中文' : 'EN' }}</button>
-            <button @click="setView('myMembership'); loadMyMembership()" class="m-side-logout" :title="t('會員中心')">
-              <i class="fas fa-crown mr-2"></i>{{ t('訂閱') }}</button>
             <button @click="handleLogout" class="m-side-logout">
               <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
+            <button @click="setView('myMembership'); loadMyMembership()" class="m-side-logout" :title="t('會員中心')">
+              <i class="fas fa-crown mr-2"></i>{{ t('訂閱') }}</button>
           </div>
         </aside>
 
@@ -3730,19 +3730,8 @@
               v-if="view === 'myMembership'"
               class="m-panel bg-white rounded-2xl shadow-lg p-6"
             >
-              <!-- 🔝 Req1：會員中心頂部顯眼登出掣（無需滾動至頁底） -->
-              <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
-                <h2 class="m-panel-head flex items-center" style="color:var(--p700);">
-                  <i class="fas fa-crown mr-2"></i>{{ t('會員中心') }}</h2>
-                <button
-                  type="button"
-                  @click="handleLogout"
-                  class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white shadow-sm hover:opacity-90 transition"
-                  style="background:#E5392F;"
-                  :title="t('登出')"
-                >
-                  <i class="fas fa-sign-out-alt"></i>{{ t('登出') }}</button>
-              </div>
+              <h2 class="m-panel-head flex items-center mb-6" style="color:var(--p700);">
+                <i class="fas fa-crown mr-2"></i>{{ t('會員中心') }}</h2>
 
               <div v-if="membership.loading" class="text-gray-500 py-8 text-center">
                 <i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入會員資料...') }}</div>
