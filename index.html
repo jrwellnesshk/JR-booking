@@ -4007,11 +4007,6 @@
                         @click="goPrivacy()"
                       >
                         <i class="fas fa-sliders-h mr-1"></i>{{ t('授權設定') }}</button>
-                      <button
-                        class="px-4 py-2 rounded-lg border border-indigo-300 text-indigo-700 text-sm font-bold hover:bg-indigo-50"
-                        @click="goFamilyLinks()"
-                      >
-                        <i class="fas fa-link mr-1"></i>{{ t('連結帳戶（家庭帳戶功能）') }}</button>
                     </div>
                   </div>
 
@@ -4114,8 +4109,8 @@
                   </div>
                 </div>
 
-                <!-- 我的連結帳戶（功能4：家庭戶主及子帳戶都可見） -->
-                <div id="account-links-section" v-if="membership.tier === 'family' && (membership.isFamilyHead || membership.parent)" class="rounded-xl border border-gray-200 p-5 mt-6">
+                <!-- 我的連結帳戶：只有家庭主帳戶可見及使用；子帳戶唔顯示此入口 -->
+                <div id="account-links-section" v-if="membership.tier === 'family' && membership.isFamilyHead" class="rounded-xl border border-gray-200 p-5 mt-6">
                   <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-link text-emerald-500 mr-2"></i>{{ t('我的連結帳戶') }}</h3>
                   <p class="text-sm text-gray-500 mb-4">{{ t('連結親戚、同輩或朋友嘅帳戶，關係由你定義；連結後雙方都會喺「我的連結帳戶」見到對方。你唔需要揀主帳戶，直接以自己嘅帳戶連結即可。') }}</p>
 

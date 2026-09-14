@@ -1124,6 +1124,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.post('/account-links', requireAuth, async (req, res) => {
     try {
       const user = req.user;
+      // 🔒 權限：只有家庭主帳戶（或員工／管理員代操作）先可以建立連結；子帳戶唔可以
+      if (user.role === 'customer') {
+        const me = await q1("SELECT family_head_id FROM users WHERE id=?", [user.id]);
+        const hasChildren = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [user.id]);
+        const isHead = me && (Number(me.family_head_id) === Number(user.id) || !!hasChildren);
+        if (!isHead) {
+          return res.status(403).json({ error: '只有家庭主帳戶才可以連結帳戶；子帳戶請聯絡主帳戶處理。' });
+        }
+      }
       // 🆕 snake_case alias：target_username / target_phone / from_user_id / from_username / custom_relation
       const body = req.body || {};
       const targetUsername = body.targetUsername || body.target_username;
@@ -1252,6 +1261,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.delete('/account-links/:id', requireAuth, async (req, res) => {
     try {
       const user = req.user;
+      // 🔒 權限：只有家庭主帳戶（或員工／管理員）先可以解除連結；子帳戶唔可以
+      if (user.role === 'customer') {
+        const me = await q1("SELECT family_head_id FROM users WHERE id=?", [user.id]);
+        const hasChildren = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [user.id]);
+        const isHead = me && (Number(me.family_head_id) === Number(user.id) || !!hasChildren);
+        if (!isHead) {
+          return res.status(403).json({ error: '只有家庭主帳戶才可以解除連結；子帳戶請聯絡主帳戶處理。' });
+        }
+      }
       const linkId = Number(req.params.id);
       const link = await q1("SELECT * FROM account_links WHERE id=?", [linkId]);
       if (!link) return res.status(404).json({ error: '找不到該連結' });
