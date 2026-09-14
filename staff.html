@@ -308,6 +308,18 @@
   #app main table:not(.no-card) td[colspan]::before{ display:none!important; }
 }
 </style>
+<style>
+/* 員工版左側欄：桌面端固定滿屏高並 sticky，確保底部「登出／更改密碼／中英切換」恆常可見
+   （唔會被長內容推落頁底）。css/tailwind.css 為預建檔，冇 md:sticky / md:h-screen，故喺此直接落地。 */
+@media (min-width: 768px) {
+  aside {
+    position: sticky !important;
+    top: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+  }
+}
+</style>
 </head>
   <body class="text-slate-800 min-h-screen">
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
@@ -436,7 +448,7 @@
         <div class="flex">
           <!-- 左側導航欄（與管理員後台一致） -->
           <aside
-            class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328] fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:static md:translate-x-0 md:z-auto"
+            class="w-64 flex-shrink-0 flex flex-col bg-slate-900 text-[#3E3328] fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:static md:translate-x-0 md:z-auto md:h-screen md:sticky md:top-0"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
           >
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
@@ -447,15 +459,24 @@
               </div>
             </div>
             <nav class="flex-1 overflow-y-auto overflow-x-hidden py-1 space-y-1 scrollbar-hide" @click="sidebarOpen=false">
-              <button @click="mainTab='list'" :class="mainTab==='list' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
-                <i class="fas fa-list mr-2"></i>{{ t('預約列表') }}</button>
-              <!-- 功能12：列表各功能拆為左欄獨立選項 -->
-              <div class="pl-8 pr-2 space-y-1">
-                <button @click="mainTab='list'; listSubTab='all'" :class="mainTab==='list' && listSubTab==='all' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-inbox mr-2"></i>{{ t('全部預約') }}</button>
-                <button @click="mainTab='list'; listSubTab='today'" :class="mainTab==='list' && listSubTab==='today' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-user-check mr-2"></i>{{ t('今日應診') }}</button>
-                <button @click="mainTab='list'; listSubTab='dispensing'" :class="mainTab==='list' && listSubTab==='dispensing' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-pills mr-2"></i>{{ t('配藥中') }}</button>
-                <button @click="mainTab='list'; listSubTab='done'" :class="mainTab==='list' && listSubTab==='done' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-flag-checkered mr-2"></i>{{ t('已完成／已離診') }}</button>
+              <!-- 預約列表：可展開／收埋嘅分類群組 -->
+              <div>
+                <button @click.stop="listExpanded = !listExpanded; mainTab='list'" :class="mainTab==='list' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors flex items-center justify-between">
+                  <span><i class="fas fa-list mr-2"></i>{{ t('預約列表') }}</span>
+                  <i :class="listExpanded ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" class="text-xs"></i>
+                </button>
+                <div v-show="listExpanded" class="pl-8 pr-2 space-y-1">
+                  <button @click="mainTab='list'; listSubTab='today'" :class="mainTab==='list' && listSubTab==='today' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-user-check mr-2"></i>{{ t('今日應診') }}</button>
+                  <button @click="mainTab='list'; listSubTab='dispensing'" :class="mainTab==='list' && listSubTab==='dispensing' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-pills mr-2"></i>{{ t('配藥中') }}</button>
+                  <button @click="mainTab='list'; listSubTab='completed'" :class="mainTab==='list' && listSubTab==='completed' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-flag-checkered mr-2"></i>{{ t('已完成') }}</button>
+                  <button @click="mainTab='list'; listSubTab='departed'" :class="mainTab==='list' && listSubTab==='departed' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors"><i class="fas fa-door-open mr-2"></i>{{ t('已離診') }}</button>
+                </div>
               </div>
+              <!-- 功能3：Walk-in 同客戶帳戶管理抽出做左欄獨立功能 -->
+              <button @click="mainTab='walkin'; walkInOpen=true; ensureWalkInCatalog()" :class="mainTab==='walkin' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-walking mr-2"></i>{{ t('即場落單') }}</button>
+              <button @click="mainTab='accounts'; loadAccounts()" :class="mainTab==='accounts' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
+                <i class="fas fa-users-cog mr-2"></i>{{ t('客戶帳戶管理') }}</button>
               <button @click="mainTab='ess'; loadEss()" :class="mainTab==='ess' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-user-cog mr-2"></i>{{ t('我的自助') }}</button>
               <button @click="mainTab='calendar'; loadCalHolidays()" :class="mainTab==='calendar' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
@@ -496,8 +517,8 @@
         <div class="flex-1 min-w-0 min-h-screen">
           <main class="max-w-7xl mx-auto px-4 py-6 w-full pb-24 md:pb-6">
 
-          <!-- 頂部統計卡片 -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <!-- 頂部統計卡片（只喺「預約列表」出現，唔會喺討論區等其他頁面顯示） -->
+          <div v-if="mainTab==='list'" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-white rounded-xl shadow p-4">
               <div class="flex items-center gap-3">
                 <div class="p-2 bg-blue-100 rounded-lg">
@@ -1414,28 +1435,47 @@
               </div>
             </div>
 
-            <!-- 建立子女帳戶／連結成年成員（原有功能保留） -->
+            <!-- 建立／連結家庭成員（與管理員家庭帳戶一致，唔再限制 18 歲以下） -->
             <div class="bg-white rounded-xl shadow overflow-hidden">
               <button @click="familyPanelOpen = !familyPanelOpen" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
                 <span class="text-sm font-semibold text-slate-700"><i class="fas fa-user-plus mr-2 text-indigo-500"></i>{{ t('建立／連結家庭成員') }}</span>
                 <i :class="familyPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-slate-400"></i>
               </button>
               <div v-if="familyPanelOpen" class="px-6 pb-6 pt-4 space-y-4 border-t border-slate-100">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <input v-model="familyForm.parentUsername" :placeholder="t('家長會員ID 或 中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.name" :placeholder="t('子女中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.birth_date" type="date" :max="todayStr" :title="t('出生日期 *（必須 18 歲以下，請完整揀選年/月/日）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.phone" :placeholder="t('電話（可選，預設用家長電話收 WhatsApp）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                <!-- 建立家庭成員 -->
+                <div>
+                  <p class="text-sm font-medium text-slate-700 mb-2">{{ t('建立家庭成員') }}</p>
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input v-model="familyForm.parentUsername" :placeholder="t('家長會員ID 或 中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <input v-model="familyForm.name" :placeholder="t('成員中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <input v-model="familyForm.birth_date" type="date" :title="t('出生日期（用嚟計年齡，可留空）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <input v-model="familyForm.phone" :placeholder="t('電話（可選）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-3">
+                    <button @click="registerFamilyChild" :disabled="familyBusy" class="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-60" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+                      <i v-if="familyBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-user-plus mr-1"></i>{{ t('建立家庭成員') }}</button>
+                    <button @click="loadFamilyChildren" :disabled="familyBusy || !(familyForm.parentUsername || '').trim()"
+                      class="px-4 py-2 rounded-lg bg-white border border-indigo-300 text-indigo-600 text-sm font-bold hover:bg-indigo-50 disabled:opacity-60">
+                      <i class="fas fa-search mr-1"></i>{{ t('查詢此家庭成員') }}</button>
+                  </div>
+                  <p v-if="familyFormHint" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                    <i class="fas fa-exclamation-circle mr-1"></i>{{ familyFormHint }}</p>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                  <button @click="registerFamilyChild" :disabled="familyBusy" class="px-4 py-2 rounded-lg text-white text-sm font-bold disabled:opacity-60" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
-                    <i v-if="familyBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-user-plus mr-1"></i>{{ t('建立子女帳戶') }}</button>
-                  <button @click="loadFamilyChildren" :disabled="familyBusy || !(familyForm.parentUsername || '').trim()"
-                    class="px-4 py-2 rounded-lg bg-white border border-indigo-300 text-indigo-600 text-sm font-bold hover:bg-indigo-50 disabled:opacity-60">
-                    <i class="fas fa-search mr-1"></i>{{ t('查詢此家庭成員') }}</button>
+                <!-- 連結現有成年成員（與管理員一致） -->
+                <div class="flex flex-wrap items-end gap-3 pt-3 border-t border-slate-100">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('成年成員帳戶名') }}</label>
+                    <input v-model="familyLinkForm.childUsername" :placeholder="t('例如 ADT18')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-44">
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('出生日期（用嚟計年齡）') }}</label>
+                    <input v-model="familyLinkForm.childBirthDate" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  </div>
+                  <button @click="linkAdultFamily" :disabled="familyBusy || !familyForm.parentUsername || !familyLinkForm.childUsername || !familyLinkForm.childBirthDate"
+                    class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 disabled:opacity-50">
+                    <i class="fas fa-link mr-1"></i>{{ t('連結到家庭') }}</button>
+                  <span class="text-xs text-slate-400 self-center">{{ t('成年成員需已有帳戶先連結得到。') }}</span>
                 </div>
-                <p v-if="familyFormHint" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <i class="fas fa-exclamation-circle mr-1"></i>{{ familyFormHint }}</p>
               </div>
             </div>
           </div>
@@ -1708,8 +1748,8 @@
             </div>
           </div>
 
-          <!-- Walk-in 即場落單 -->
-          <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
+          <!-- Walk-in 即場落單（獨立左欄功能） -->
+          <div v-if="mainTab==='walkin'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
             <button @click="walkInOpen = !walkInOpen; if(walkInOpen) ensureWalkInCatalog()" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
               <span class="font-semibold text-slate-800"><i class="fas fa-walking mr-2 text-emerald-600"></i>{{ t('即場落單（Walk-in）') }}</span>
               <i :class="walkInOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="text-slate-400"></i>
@@ -1764,99 +1804,10 @@
             </div>
           </div>
 
-          <!-- 家庭子帳戶管理 -->
-          <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
-            <button @click="familyPanelOpen = !familyPanelOpen" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
-              <span class="font-semibold text-slate-800">
-                <i class="fas fa-user-friends mr-2 text-indigo-500"></i>{{ t('家庭子帳戶管理（18 歲以下）') }}</span>
-              <i :class="familyPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-slate-400"></i>
-            </button>
+          <!-- 家庭子帳戶管理已抽出至左欄「家庭帳戶」tab（與管理員一致），唔再內嵌於預約列表 -->
 
-            <div v-if="familyPanelOpen" class="px-6 pb-6 space-y-4 border-t border-slate-100">
-              <!-- 建立子帳戶 -->
-              <div class="pt-4">
-                <p class="text-sm font-medium text-slate-700 mb-2">{{ t('建立子帳戶') }}</p>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <input v-model="familyForm.parentUsername" :placeholder="t('家長會員ID 或 中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.name" :placeholder="t('子女中文姓名 *')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.birth_date" type="date" :max="todayStr" :title="t('出生日期 *（必須 18 歲以下，請完整揀選年/月/日）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                  <input v-model="familyForm.phone" :placeholder="t('電話（可選，預設用家長電話收 WhatsApp）')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div class="flex gap-2 mt-3">
-                  <button @click="registerFamilyChild"
-                    :disabled="familyBusy"
-                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
-                    <i v-if="familyBusy" class="fas fa-spinner fa-spin mr-1"></i>
-                    <i v-else class="fas fa-user-plus mr-1"></i>{{ t('建立子帳戶') }}</button>
-                  <button @click="loadFamilyChildren" :disabled="familyBusy || !(familyForm.parentUsername || '').trim()"
-                    class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50">
-                    <i class="fas fa-search mr-1"></i>{{ t('查詢此家庭成員') }}</button>
-                </div>
-                <p v-if="familyFormHint" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
-                  <i class="fas fa-exclamation-circle mr-1"></i>{{ familyFormHint }}
-                </p>
-
-                <!-- 🔗 連結成年家庭成員（18 歲以上，連結現有帳戶） -->
-                <div class="flex flex-wrap items-end gap-3 mt-3 pt-3 border-t border-slate-100">
-                  <div>
-                    <label class="block text-xs text-slate-500 mb-1">{{ t('成年成員帳戶名') }}</label>
-                    <input v-model="familyLinkForm.childUsername" :placeholder="t('例如 ADT18')" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-44">
-                  </div>
-                  <div>
-                    <label class="block text-xs text-slate-500 mb-1">{{ t('出生日期（用嚟計年齡）') }}</label>
-                    <input v-model="familyLinkForm.childBirthDate" type="date" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  </div>
-                  <button @click="linkAdultFamily" :disabled="familyBusy || !familyForm.parentUsername || !familyLinkForm.childUsername || !familyLinkForm.childBirthDate"
-                    class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 disabled:opacity-50">
-                    <i class="fas fa-link mr-1"></i>{{ t('連結到家庭') }}</button>
-                  <span class="text-xs text-slate-400 self-center">{{ t('18 歲以上成員唔會自動開戶，需已有帳戶先連結得到。') }}</span>
-                </div>
-                <p class="text-xs text-slate-400 mt-2">{{ t('建立後系統會自動經 WhatsApp 將登入帳戶同暫時密碼發送畀家長；如發送失敗，請喺下方大字資料手動抄低交畀家長。') }}</p>
-              </div>
-
-              <!-- 🔑 登入資料（大字顯示） -->
-              <div v-if="familyCredentials" class="rounded-xl border-2 border-green-300 bg-green-50 p-5">
-                <p class="text-sm font-bold text-green-800 mb-3">
-                  <i class="fas fa-key mr-1"></i>{{ familyCredentials.childName }} 嘅子帳戶登入資料
-                  <span v-if="familyCredentials.notified && familyCredentials.notified.whatsapp" class="ml-2 text-xs font-normal bg-green-600 text-white px-2 py-0.5 rounded-full">{{ t('已發送家長 WhatsApp ✓') }}</span>
-                  <span v-else class="ml-2 text-xs font-normal bg-red-500 text-white px-2 py-0.5 rounded-full">WhatsApp 未發送{{ familyCredentials.notified && familyCredentials.notified.error ? '：' + familyCredentials.notified.error : '' }}，請抄低交畀家長</span>
-                </p>
-                <div class="flex flex-wrap items-end gap-8">
-                  <div>
-                    <p class="text-xs text-slate-500 mb-1">{{ t('登入帳戶') }}</p>
-                    <p class="text-3xl font-mono font-bold tracking-widest text-slate-900">{{ familyCredentials.username }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-slate-500 mb-1">{{ t('暫時密碼') }}</p>
-                    <p class="text-3xl font-mono font-bold tracking-widest text-red-600">{{ familyCredentials.tempPassword }}</p>
-                  </div>
-                  <button @click="copyFamilyCredentials" class="ml-auto bg-white border border-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
-                    <i class="far fa-copy mr-1"></i>{{ t('複製') }}</button>
-                </div>
-                <p class="text-xs text-slate-500 mt-3"><i class="fas fa-info-circle mr-1"></i>{{ t('首次登入後系統會要求修改密碼。') }}</p>
-              </div>
-
-              <!-- 家庭成員列表 -->
-              <div v-if="familyChildren.length">
-                <p class="text-sm font-medium text-slate-700 mb-2">家庭成員（{{ familyChildren.length }}）</p>
-                <div class="space-y-2">
-                  <div v-for="c in familyChildren" :key="c.id" class="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-2.5">
-                    <div class="min-w-0">
-                      <b class="text-sm">{{ c.name }}</b>
-                      <span class="ml-2 text-xs text-slate-500 font-mono">{{ c.username }}</span>
-                      <span class="ml-2 text-xs" :class="c.isAdult ? 'text-slate-400' : 'text-indigo-600 font-medium'">{{ c.age }} 歲{{ c.isAdult ? '（成年，只可連結）' : '' }}</span>
-                    </div>
-                    <button v-if="!c.isAdult" @click="resetChildPassword(c)"
-                      class="shrink-0 bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs hover:bg-amber-100">
-                      <i class="fas fa-sync-alt mr-1"></i>{{ t('重設並發送暫時密碼') }}</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-            <!-- 👥 客戶帳戶管理（職員權限） -->
-            <div v-show="mainTab==='list'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
+            <!-- 👥 客戶帳戶管理（職員權限 · 獨立左欄功能） -->
+            <div v-if="mainTab==='accounts'" class="bg-white rounded-xl shadow mb-6 overflow-hidden">
               <button @click="acctPanelOpen = !acctPanelOpen" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
                 <span class="font-semibold text-slate-800"><i class="fas fa-users-cog mr-2 text-emerald-600"></i>{{ t('客戶帳戶管理') }}</span>
                 <i :class="acctPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'" class="fas text-slate-400"></i>
@@ -1927,8 +1878,8 @@
               </div>
             </div>
 
-            <!-- 📊 每日營業摘要 -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <!-- 📊 每日營業摘要（只喺「預約列表」出現） -->
+            <div v-if="mainTab==='list'" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="far fa-calendar mr-1"></i>{{ t('今日預約') }}</p><p class="text-2xl font-bold text-slate-800">{{ todayBookings.length }}</p></div>
               <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="fas fa-check-circle text-emerald-500 mr-1"></i>{{ t('已完成') }}</p><p class="text-2xl font-bold text-emerald-600">{{ todayCompletedCount }}</p></div>
               <div class="bg-white rounded-xl shadow px-5 py-4"><p class="text-xs text-slate-500"><i class="far fa-clock text-amber-500 mr-1"></i>{{ t('待診／已確認') }}</p><p class="text-2xl font-bold text-amber-600">{{ todayPendingCount }}</p></div>
@@ -2429,6 +2380,8 @@
             statusFilter: "",
             // 功能12：預約列表拆分獨立畫面
             listSubTab: "all",
+            // 左欄「預約列表」分類可展開／收埋
+            listExpanded: true,
 
             // 詳情 Modal
             showDetailModal: false,
@@ -2674,17 +2627,19 @@
             const today = new Date().toLocaleDateString('sv-SE');
             switch (this.listSubTab) {
               case 'today':
-                return this.filteredBookings.filter(b => b.appointment_date === today && !['completed','no-show','cancelled'].includes(b.status));
+                return this.filteredBookings.filter(b => b.appointment_date === today && !['completed','no-show','cancelled','dispensing'].includes(b.status));
               case 'dispensing':
                 return this.filteredBookings.filter(b => b.status === 'dispensing');
-              case 'done':
-                return this.filteredBookings.filter(b => ['completed','visited','no-show'].includes(b.status));
+              case 'completed':
+                return this.filteredBookings.filter(b => b.status === 'completed' && b.appointment_date === today);
+              case 'departed':
+                return this.filteredBookings.filter(b => b.status === 'completed' && b.appointment_date !== today);
               default:
                 return this.filteredBookings;
             }
           },
           subTabLabel() {
-            const m = { all: '預約列表', today: '今日應診', dispensing: '配藥中', done: '已完成／已離診' };
+            const m = { all: '預約列表', today: '今日應診', dispensing: '配藥中', completed: '已完成', departed: '已離診' };
             return this.t(m[this.listSubTab] || '預約列表');
           },
           // 功能13：戶主搜尋過濾
