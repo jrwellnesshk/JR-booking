@@ -500,7 +500,10 @@ function runMigrations(db) {
       const uAdd = [
         { name: 'member_no', ddl: "ALTER TABLE users ADD COLUMN member_no TEXT" },
         { name: 'hide_from_head', ddl: "ALTER TABLE users ADD COLUMN hide_from_head INTEGER DEFAULT 0" },
-        { name: 'family_plan', ddl: "ALTER TABLE users ADD COLUMN family_plan TEXT" }
+        { name: 'family_plan', ddl: "ALTER TABLE users ADD COLUMN family_plan TEXT" },
+        { name: 'hide_medical_from_head', ddl: "ALTER TABLE users ADD COLUMN hide_medical_from_head INTEGER DEFAULT 0" },
+        { name: 'hide_booking_from_head', ddl: "ALTER TABLE users ADD COLUMN hide_booking_from_head INTEGER DEFAULT 0" },
+        { name: 'hide_profile_from_head', ddl: "ALTER TABLE users ADD COLUMN hide_profile_from_head INTEGER DEFAULT 0" }
       ];
       uAdd.forEach((c) => {
         if (!cols.some(col => col.name === c.name)) {

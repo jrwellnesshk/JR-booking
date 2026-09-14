@@ -3436,26 +3436,6 @@
                   </div>
                 </div>
 
-                <!-- 🛡️ 子帳戶私隱：隱藏資料唔俾主帳戶睇 -->
-                <div v-if="privacyIsChild" class="rounded-lg p-4 m-box border border-amber-200" style="background:#fffbeb;">
-                  <h3 class="font-semibold text-slate-700 mb-1 flex items-center">
-                    <i class="fas fa-eye-slash mr-2" style="color:#d97706;"></i>{{ t('私隱設定（家庭帳戶）') }}</h3>
-                  <p class="text-xs text-slate-500 mb-3">{{ t('你係「') }}{{ privacyHeadName }}{{ t('」家庭帳戶嘅子成員。開啟以下開關，主帳戶將唔能夠查看你的病歷、預約紀錄及個人資料（18 歲以上適用）。') }}</p>
-                  <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <span class="flex items-center gap-2 text-sm text-slate-700">
-                      <i class="fas fa-user-secret text-amber-500"></i>{{ t('唔俾主帳戶（') }}{{ privacyHeadName }}{{ t('）睇我資料') }}
-                      <span v-if="hideFromHead" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('已隱藏') }}</span>
-                      <span v-else class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t('公開中') }}</span>
-                    </span>
-                    <span class="relative inline-flex">
-                      <input type="checkbox" :checked="hideFromHead" @change="toggleHideFromHead" :disabled="privacyBusy" class="sr-only peer">
-                      <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-amber-500 transition"></div>
-                      <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
-                    </span>
-                  </label>
-                  <p v-if="privacyMsg" class="text-xs mt-2" :class="hideFromHead ? 'text-amber-600' : 'text-emerald-600'">{{ privacyMsg }}</p>
-                </div>
-
                 <!-- 緊急聯絡人 -->
                 <div class="rounded-lg p-4 m-box">
                   <h3
@@ -3750,8 +3730,19 @@
               v-if="view === 'myMembership'"
               class="m-panel bg-white rounded-2xl shadow-lg p-6"
             >
-              <h2 class="m-panel-head mb-6 flex items-center" style="color:var(--p700);">
-                <i class="fas fa-crown mr-2"></i>{{ t('會員中心') }}</h2>
+              <!-- 🔝 Req1：會員中心頂部顯眼登出掣（無需滾動至頁底） -->
+              <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
+                <h2 class="m-panel-head flex items-center" style="color:var(--p700);">
+                  <i class="fas fa-crown mr-2"></i>{{ t('會員中心') }}</h2>
+                <button
+                  type="button"
+                  @click="handleLogout"
+                  class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white shadow-sm hover:opacity-90 transition"
+                  style="background:#E5392F;"
+                  :title="t('登出')"
+                >
+                  <i class="fas fa-sign-out-alt"></i>{{ t('登出') }}</button>
+              </div>
 
               <div v-if="membership.loading" class="text-gray-500 py-8 text-center">
                 <i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入會員資料...') }}</div>
@@ -3918,7 +3909,8 @@
                   <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-people-roof text-indigo-500 mr-2"></i>{{ t('家庭帳戶') }}</h3>
                   <p class="text-sm text-gray-500 mb-4">{{ t(familyHint) }}</p>
 
-                  <div v-if="membership.tier === 'family' && !membership.isFamilyHead" class="mt-2">
+                  <!-- 家庭會員但非戶主、亦非子帳戶：可啟用家庭帳戶 -->
+                  <div v-if="membership.tier === 'family' && !membership.isFamilyHead && !membership.parent" class="mt-2">
                     <button
                       class="px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700"
                       @click="activateFamily"
@@ -3936,51 +3928,163 @@
                         <i class="fas fa-circle-info mr-1"></i>{{ t('18 歲以下子女由戶主完全管理；年滿 18 歲的子帳戶僅可查看「預約成功」狀態。') }}</p>
                     </div>
 
-                    <!-- 家庭成員列表 -->
+                    <!-- 家庭成員列表（戶主可查看子帳戶資料，受細分授權 + 18 歲規則控制） -->
                     <div v-if="familyList.children && familyList.children.length">
                       <b class="text-sm">{{ t('家庭成員') }}</b>
                       <div class="mt-2 space-y-2">
-                        <div v-for="c in familyList.children" :key="c.id" class="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm">
-                          <div>
-                            <b>{{ c.name }}</b>
-                            <span class="text-gray-500 ml-2">{{ c.username }}</span>
-                            <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ c.age }} 歲{{ c.isAdult ? '（已成年）' : '' }}</span>
+                        <div v-for="c in familyList.children" :key="c.id" class="rounded-lg border border-gray-200 p-3 text-sm">
+                          <div class="flex items-center justify-between">
+                            <div>
+                              <b>{{ c.name }}</b>
+                              <span class="text-gray-500 ml-2">{{ c.username }}</span>
+                              <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ c.age }} 歲{{ c.isAdult ? '（已成年）' : '（未成年）' }}</span>
+                              <span v-if="c.forcedOpen" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('強制開放') }}</span>
+                            </div>
+                            <button
+                              class="text-xs px-3 py-1 rounded bg-blue-50 text-blue-600 border border-blue-200"
+                              @click="loadChildData(c)"
+                            >
+                              <i class="fas fa-folder-open mr-1"></i>{{ t('查看資料') }}</button>
                           </div>
-                          <button
-                            class="text-xs px-3 py-1 rounded bg-blue-50 text-blue-600 border border-blue-200"
-                            @click="loadChildBookings(c)"
-                          >
-                            <i class="fas fa-calendar-check mr-1"></i>{{ t('預約狀態') }}</button>
+
+                          <!-- 展開：個人資料 / 預約記錄 / 病歷（受權限控制） -->
+                          <div v-if="selectedChild && selectedChild.id === c.id" class="mt-3 space-y-3">
+                            <!-- 個人資料 -->
+                            <div class="rounded-lg border p-3" :class="c.canViewProfile ? 'border-emerald-200 bg-emerald-50/40' : 'border-gray-200 bg-gray-50'">
+                              <b class="text-sm flex items-center"><i class="fas fa-user mr-1 text-emerald-600"></i>{{ t('個人資料') }}</b>
+                              <div v-if="c.canViewProfile && childProfile" class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                <div><span class="text-gray-500">姓名：</span>{{ childProfile.name }}</div>
+                                <div><span class="text-gray-500">會員編號：</span>{{ childProfile.member_no || '—' }}</div>
+                                <div><span class="text-gray-500">電話：</span>{{ childProfile.phone || '—' }}</div>
+                                <div><span class="text-gray-500">出生日期：</span>{{ childProfile.birth_date || '—' }}</div>
+                                <div><span class="text-gray-500">保險覆蓋：</span>{{ childProfile.insurance_covered ? t('已覆蓋') : t('未覆蓋') }}</div>
+                                <div><span class="text-gray-500">地址：</span>{{ childProfile.address || '—' }}</div>
+                              </div>
+                              <p v-else-if="c.canViewProfile && childLoading" class="text-gray-400 text-xs mt-1"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中...') }}</p>
+                              <p v-else class="text-xs text-amber-600 mt-1"><i class="fas fa-lock mr-1"></i>{{ t('成員未開放個人資料（18 歲或以上已自行關閉）') }}</p>
+                            </div>
+                            <!-- 預約記錄 -->
+                            <div class="rounded-lg border p-3" :class="c.canViewBooking ? 'border-blue-200 bg-blue-50/40' : 'border-gray-200 bg-gray-50'">
+                              <b class="text-sm flex items-center"><i class="fas fa-calendar-check mr-1 text-blue-600"></i>{{ t('預約記錄') }}</b>
+                              <div v-if="c.canViewBooking && childBookings">
+                                <div v-if="childBookings.length === 0" class="text-gray-500 text-sm mt-2">{{ t('暫無預約記錄') }}</div>
+                                <table v-else class="w-full text-sm mt-2">
+                                  <thead><tr class="text-left text-gray-500"><th class="py-1">{{ t('日期') }}</th><th>{{ t('時間') }}</th><th>{{ t('狀態') }}</th></tr></thead>
+                                  <tbody>
+                                    <tr v-for="b in childBookings" :key="b.id">
+                                      <td class="py-1">{{ b.appointment_date }}</td>
+                                      <td>{{ b.appointment_time }}</td>
+                                      <td><span class="px-2 py-0.5 rounded text-xs font-bold" :class="{ 'bg-green-100 text-green-700': b.status==='預約成功'||b.status==='confirmed','bg-gray-200 text-gray-600': b.status==='cancelled' }">{{ b.status }}</span></td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p v-else-if="c.canViewBooking && childLoading" class="text-gray-400 text-xs mt-1"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中...') }}</p>
+                              <p v-else class="text-xs text-amber-600 mt-1"><i class="fas fa-lock mr-1"></i>{{ t('成員未開放預約記錄（18 歲或以上已自行關閉）') }}</p>
+                            </div>
+                            <!-- 病歷 -->
+                            <div class="rounded-lg border p-3" :class="c.canViewMedical ? 'border-purple-200 bg-purple-50/40' : 'border-gray-200 bg-gray-50'">
+                              <b class="text-sm flex items-center"><i class="fas fa-file-medical-alt mr-1 text-purple-600"></i>{{ t('病歷') }}</b>
+                              <div v-if="c.canViewMedical && childMedical">
+                                <div v-if="childMedical.length === 0" class="text-gray-500 text-sm mt-2">{{ t('暫無病歷記錄') }}</div>
+                                <div v-else class="mt-2 space-y-2">
+                                  <div v-for="r in childMedical" :key="r.id" class="rounded border border-purple-100 bg-white p-2 text-sm">
+                                    <div class="flex justify-between"><b>{{ r.record_date }}</b><span class="text-gray-500">{{ r.service_name || r.doctor_name || '' }}</span></div>
+                                    <div class="text-gray-700 mt-1"><span class="text-gray-500">診斷：</span>{{ r.diagnosis || '—' }}</div>
+                                    <div class="text-gray-700"><span class="text-gray-500">治療方案：</span>{{ r.treatment_plan || '—' }}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              <p v-else-if="c.canViewMedical && childLoading" class="text-gray-400 text-xs mt-1"><i class="fas fa-spinner fa-spin mr-1"></i>{{ t('載入中...') }}</p>
+                              <p v-else class="text-xs text-amber-600 mt-1"><i class="fas fa-lock mr-1"></i>{{ t('成員未開放病歷（18 歲或以上已自行關閉）') }}</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    </div>
+                    <div v-else class="text-sm text-gray-400">{{ t('暫未連結子女帳戶。') }}</div>
+                  </div>
 
-                      <!-- 子帳戶預約 -->
-                      <div v-if="selectedChildBookings" class="mt-3 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-                        <b class="text-sm text-blue-700">{{ selectedChildBookings.label }}</b>
-                        <div v-if="selectedChildBookings.bookings.length === 0" class="text-gray-500 text-sm mt-2">{{ t('暫無預約記錄') }}</div>
-                        <table v-else class="w-full text-sm mt-2">
-                          <thead><tr class="text-left text-gray-500"><th class="py-1">{{ t('日期') }}</th><th>{{ t('時間') }}</th><th>{{ t('狀態') }}</th></tr></thead>
-                          <tbody>
-                            <tr v-for="b in selectedChildBookings.bookings" :key="b.id">
-                              <td class="py-1">{{ b.appointment_date }}</td>
-                              <td>{{ b.appointment_time }}</td>
-                              <td>
-                                <span class="px-2 py-0.5 rounded text-xs font-bold"
-                                  :class="{ 'bg-green-100 text-green-700': b.status === '預約成功' || b.status === 'confirmed', 'bg-gray-200 text-gray-600': b.status === 'cancelled' }">
-                                  {{ b.status }}
-                                </span>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                  <!-- 家庭子帳戶：可見 + 授權設定入口 + 家庭帳戶功能入口 -->
+                  <div v-if="membership.parent" class="mt-4 rounded-lg border border-indigo-200 p-4 bg-indigo-50/40">
+                    <div class="flex items-center gap-2 mb-1">
+                      <i class="fas fa-user-graduate text-indigo-500"></i>
+                      <b class="text-sm">{{ t('你係') }} {{ membership.parent.name }} {{ t('嘅家庭子帳戶') }}</b>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">{{ t('你可以管理主帳戶可以睇到嘅資料範圍，亦可以檢視所屬嘅家庭關係。') }}</p>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700"
+                        @click="goPrivacy()"
+                      >
+                        <i class="fas fa-sliders-h mr-1"></i>{{ t('授權設定') }}</button>
+                      <button
+                        class="px-4 py-2 rounded-lg border border-indigo-300 text-indigo-700 text-sm font-bold hover:bg-indigo-50"
+                        @click="goFamilyLinks()"
+                      >
+                        <i class="fas fa-link mr-1"></i>{{ t('連結帳戶（家庭帳戶功能）') }}</button>
                     </div>
                   </div>
 
-                  <!-- 非家庭戶主提示 -->
-                  <p v-if="membership.parent" class="text-sm text-gray-500 mt-3">
-                    <i class="fas fa-link mr-1"></i>{{ t('哩個帳戶已加入家人嘅家庭帳戶') }}（{{ membership.parent.name }}）
-                  </p>
+                  <!-- 🛡️ 子帳戶私隱：細分授權（病歷 / 預約記錄 / 個人資料）— 會員中心內可設定（Req4） -->
+                  <div id="privacy-section" v-if="privacyIsChild" class="mt-4 rounded-lg p-4 m-box border border-amber-200" style="background:#fffbeb;">
+                    <h3 class="font-semibold text-slate-700 mb-1 flex items-center">
+                      <i class="fas fa-eye-slash mr-2" style="color:#d97706;"></i>{{ t('授權設定（家庭帳戶）') }}</h3>
+
+                    <!-- 未滿 18 歲：強制開放，不可關閉 -->
+                    <div v-if="privacyForcedOpen" class="rounded-lg bg-amber-100/70 border border-amber-200 p-3 text-sm text-amber-800">
+                      <i class="fas fa-lock mr-1"></i>{{ t('你未滿 18 歲，病歷、預約記錄及個人資料會強制開放畀主帳戶（') }}{{ privacyHeadName }}{{ t('），暫時唔可以關閉。') }}
+                    </div>
+
+                    <!-- 18 歲或以上：可自行選擇開放範圍 -->
+                    <template v-else>
+                      <p class="text-xs text-slate-500 mb-3">{{ t('你係「') }}{{ privacyHeadName }}{{ t('」家庭帳戶嘅子成員。開啟以下開關，主帳戶將唔能夠查看相應資料（18 歲以上適用）。') }}</p>
+
+                      <!-- 病歷 -->
+                      <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer mb-2">
+                        <span class="flex items-center gap-2 text-sm text-slate-700">
+                          <i class="fas fa-file-medical-alt text-purple-500"></i>{{ t('唔俾主帳戶睇病歷') }}
+                          <span v-if="hideMedical" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('已隱藏') }}</span>
+                          <span v-else class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t('公開中') }}</span>
+                        </span>
+                        <span class="relative inline-flex">
+                          <input type="checkbox" :checked="hideMedical" @change="toggleChildPrivacy('medical')" :disabled="privacyBusy" class="sr-only peer">
+                          <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-amber-500 transition"></div>
+                          <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
+                        </span>
+                      </label>
+
+                      <!-- 預約記錄 -->
+                      <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer mb-2">
+                        <span class="flex items-center gap-2 text-sm text-slate-700">
+                          <i class="fas fa-calendar-check text-blue-500"></i>{{ t('唔俾主帳戶睇預約記錄') }}
+                          <span v-if="hideBooking" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('已隱藏') }}</span>
+                          <span v-else class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t('公開中') }}</span>
+                        </span>
+                        <span class="relative inline-flex">
+                          <input type="checkbox" :checked="hideBooking" @change="toggleChildPrivacy('booking')" :disabled="privacyBusy" class="sr-only peer">
+                          <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-amber-500 transition"></div>
+                          <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
+                        </span>
+                      </label>
+
+                      <!-- 個人資料 -->
+                      <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                        <span class="flex items-center gap-2 text-sm text-slate-700">
+                          <i class="fas fa-user text-emerald-500"></i>{{ t('唔俾主帳戶睇個人資料') }}
+                          <span v-if="hideProfile" class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('已隱藏') }}</span>
+                          <span v-else class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">{{ t('公開中') }}</span>
+                        </span>
+                        <span class="relative inline-flex">
+                          <input type="checkbox" :checked="hideProfile" @change="toggleChildPrivacy('profile')" :disabled="privacyBusy" class="sr-only peer">
+                          <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-amber-500 transition"></div>
+                          <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
+                        </span>
+                      </label>
+                    </template>
+
+                    <p v-if="privacyMsg" class="text-xs mt-2" :class="hideFromHead ? 'text-amber-600' : 'text-emerald-600'">{{ privacyMsg }}</p>
+                  </div>
                 </div>
 
                 <!-- 功能4：家庭帳戶關係圖（僅家庭戶主顯示） -->
@@ -4021,8 +4125,8 @@
                   </div>
                 </div>
 
-                <!-- 我的連結帳戶（功能4：僅家庭戶主可見） -->
-                <div v-if="membership.tier === 'family' && membership.isFamilyHead" class="rounded-xl border border-gray-200 p-5 mt-6">
+                <!-- 我的連結帳戶（功能4：家庭戶主及子帳戶都可見） -->
+                <div id="account-links-section" v-if="membership.tier === 'family' && (membership.isFamilyHead || membership.parent)" class="rounded-xl border border-gray-200 p-5 mt-6">
                   <h3 class="font-bold mb-2 flex items-center"><i class="fas fa-link text-emerald-500 mr-2"></i>{{ t('我的連結帳戶') }}</h3>
                   <p class="text-sm text-gray-500 mb-4">{{ t('連結親戚、同輩或朋友嘅帳戶，關係由你定義；連結後雙方都會喺「我的連結帳戶」見到對方。你唔需要揀主帳戶，直接以自己嘅帳戶連結即可。') }}</p>
 

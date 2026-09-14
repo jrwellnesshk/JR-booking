@@ -214,7 +214,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const subStatus = (subStatusRow && subStatusRow.subscription_status) || 'none';
       const sub = await q1("SELECT * FROM subscriptions WHERE user_id=? AND status='active' ORDER BY id DESC LIMIT 1", [user.id]);
       const children = await q(
-        `SELECT u.id, u.name, u.username, u.birth_date, u.created_at, fl.relation, fl.created_at AS linked_at
+        `SELECT u.id, u.name, u.username, u.birth_date, u.hide_medical_from_head, u.hide_booking_from_head, u.hide_profile_from_head, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
          FROM family_links fl JOIN users u ON u.id = fl.child_user_id
          WHERE fl.parent_user_id=? ORDER BY u.id`, [user.id]);
       const parent = await q1(
@@ -230,7 +230,23 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         isFamilyHead,
         canApplyFamily: tier === 'family' && !isFamilyHead,
         parent: parent || null,
-        children: children.map(c => ({ ...c, age: computeAge(c.birth_date), isAdult: computeAge(c.birth_date) >= 18 })),
+        children: children.map((c) => {
+          const age = computeAge(c.birth_date);
+          const isAdult = age >= 18;
+          const forcedOpen = !isAdult; // 未滿 18 歲強制開放
+          const hm = c.hide_medical_from_head === 1;
+          const hb = c.hide_booking_from_head === 1;
+          const hp = c.hide_profile_from_head === 1;
+          return {
+            ...c, age, isAdult, forcedOpen,
+            hideMedical: hm, hideBooking: hb, hideProfile: hp,
+            hiddenFromHead: (c.hide_from_head === 1),
+            // 未滿 18 歲：三類資料強制開放；18+：視乎該成員授權
+            canViewMedical: forcedOpen || !hm,
+            canViewBooking: forcedOpen || !hb,
+            canViewProfile: forcedOpen || !hp,
+          };
+        }),
         insurance: Number(user.insurance_covered) === 1,
         profile_completed: user.profile_completed
       });
@@ -685,20 +701,31 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         parentName = p.name;
       }
       const children = await q(
-        `SELECT u.id, u.name, u.username, u.birth_date, u.member_no, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
+        `SELECT u.id, u.name, u.username, u.birth_date, u.member_no, u.hide_medical_from_head, u.hide_booking_from_head, u.hide_profile_from_head, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
          FROM family_links fl JOIN users u ON u.id = fl.child_user_id
          WHERE fl.parent_user_id=? ORDER BY u.id`, [parentId]);
       const withPerm = children.map((c) => {
         const age = computeAge(c.birth_date);
+        const isAdult = age >= 18;
+        const forcedOpen = !isAdult; // 未滿 18 歲強制開放
+        const hm = c.hide_medical_from_head === 1;
+        const hb = c.hide_booking_from_head === 1;
+        const hp = c.hide_profile_from_head === 1;
         return {
           ...c,
           age,
-          isAdult: age >= 18,
-          hiddenFromHead: (c.hide_from_head === 1 && age >= 18),
+          isAdult,
+          forcedOpen,
+          hiddenFromHead: (c.hide_from_head === 1), // 舊版主開關（兼容 staff/admin）
+          hideMedical: hm,
+          hideBooking: hb,
+          hideProfile: hp,
+          // 未滿 18 歲：三類資料強制開放；18+：視乎該成員授權
+          canViewMedical: forcedOpen || !hm,
+          canViewBooking: forcedOpen || !hb,
+          canViewProfile: forcedOpen || !hp,
           canManage: age < 18,
-          canViewBookings: !(c.hide_from_head === 1 && age >= 18),
-          canViewMedical: !(c.hide_from_head === 1 && age >= 18),
-          canViewLateness: !(c.hide_from_head === 1 && age >= 18)
+          canViewLateness: forcedOpen || !hb
         };
       });
       const inv = await q1("SELECT invoice_no, plan FROM family_invoices WHERE family_head_id=?", [parentId]);
@@ -769,32 +796,59 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  // 🆕 同時接受 POST + PUT，hide / private / is_private 任一字段都接受
+  // 🆕 同時接受 POST + PUT，支援細分授權：hideMedical / hideBooking / hideProfile（任一）或舊版 hide（一次過隱藏全部）
+  const recomputeHideFromHead = (med, book, prof) => (med || book || prof ? 1 : 0);
   const privacyHandler = async (req, res) => {
     try {
       if (req.user.role !== 'customer') return res.status(403).json({ error: '只限客戶' });
       const b = req.body || {};
-      const hide = b.hide ?? b.private ?? b.is_private ?? false;
-      const v = hide ? 1 : 0;
-      await run("UPDATE users SET hide_from_head=? WHERE id=?", [v, req.user.id]);
-      res.json({ ok: true, hide_from_head: v });
+      // 舊版：hide / private / is_private 一次過控制全部三類
+      if (b.hide !== undefined || b.private !== undefined || b.is_private !== undefined) {
+        const v = (b.hide ?? b.private ?? b.is_private) ? 1 : 0;
+        await run("UPDATE users SET hide_medical_from_head=?, hide_booking_from_head=?, hide_profile_from_head=?, hide_from_head=? WHERE id=?",
+          [v, v, v, v, req.user.id]);
+        return res.json({ ok: true, hideMedical: v, hideBooking: v, hideProfile: v, hide_from_head: v });
+      }
+      // 新版：細分授權（未傳嘅類別維持原值）
+      const cur = await q1("SELECT hide_medical_from_head, hide_booking_from_head, hide_profile_from_head FROM users WHERE id=?", [req.user.id]);
+      const med = (b.hideMedical !== undefined) ? (b.hideMedical ? 1 : 0) : (cur ? cur.hide_medical_from_head : 0);
+      const book = (b.hideBooking !== undefined) ? (b.hideBooking ? 1 : 0) : (cur ? cur.hide_booking_from_head : 0);
+      const prof = (b.hideProfile !== undefined) ? (b.hideProfile ? 1 : 0) : (cur ? cur.hide_profile_from_head : 0);
+      const master = recomputeHideFromHead(med, book, prof);
+      await run("UPDATE users SET hide_medical_from_head=?, hide_booking_from_head=?, hide_profile_from_head=?, hide_from_head=? WHERE id=?",
+        [med, book, prof, master, req.user.id]);
+      res.json({ ok: true, hideMedical: med, hideBooking: book, hideProfile: prof, hide_from_head: master });
     } catch (e) { res.status(500).json({ error: e.message }); }
   };
   router.post('/privacy', requireAuth, privacyHandler);
   router.put('/privacy',  requireAuth, privacyHandler);
 
-  // GET /api/membership/privacy — 讀取子帳戶「唔俾主帳戶睇我資料」嘅目前狀態
+  // GET /api/membership/privacy — 讀取子帳戶細分授權狀態（含年齡/強制開放判斷）
   router.get('/privacy', requireAuth, async (req, res) => {
     try {
       if (req.user.role !== 'customer') return res.status(403).json({ error: '只限客戶' });
-      const u = await q1("SELECT hide_from_head, family_head_id, id FROM users WHERE id=?", [req.user.id]);
+      const u = await q1("SELECT hide_medical_from_head, hide_booking_from_head, hide_profile_from_head, hide_from_head, family_head_id, id, birth_date FROM users WHERE id=?", [req.user.id]);
       const isChild = !!(u && u.family_head_id && Number(u.family_head_id) !== Number(u.id));
+      const age = computeAge(u && u.birth_date);
+      const isAdult = age >= 18;
+      const forcedOpen = !isAdult; // 未滿 18 歲：資料強制開放畀主帳戶
       let headName = null;
       if (isChild) {
         const h = await q1("SELECT name FROM users WHERE id=?", [u.family_head_id]);
         headName = h ? h.name : null;
       }
-      res.json({ ok: true, hide_from_head: u ? u.hide_from_head : 0, isChild, headName });
+      res.json({
+        ok: true,
+        isChild,
+        headName,
+        age,
+        isAdult,
+        forcedOpen,
+        hideMedical: u ? u.hide_medical_from_head : 0,
+        hideBooking: u ? u.hide_booking_from_head : 0,
+        hideProfile: u ? u.hide_profile_from_head : 0,
+        hide_from_head: u ? u.hide_from_head : 0
+      });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -818,17 +872,27 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  // POST /api/membership/family/:id/privacy — 職員/管理員代 18+ 子帳戶開關「唔俾主帳戶睇我資料」
+  // POST /api/membership/family/:id/privacy — 職員/管理員代 18+ 子帳戶開關授權
   router.post('/family/:id/privacy', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     try {
       const childId = Number(req.params.id);
-      const { hide } = req.body || {};
-      const child = await q1("SELECT id, birth_date FROM users WHERE id=?", [childId]);
+      const b = req.body || {};
+      const child = await q1("SELECT id, birth_date, hide_medical_from_head, hide_booking_from_head, hide_profile_from_head FROM users WHERE id=?", [childId]);
       if (!child) return res.status(404).json({ error: '找不到該成員' });
-      if (computeAge(child.birth_date) < 18) return res.status(400).json({ error: '只有 18 歲或以上嘅成員可以設定隱私' });
-      const v = hide ? 1 : 0;
-      await run("UPDATE users SET hide_from_head=? WHERE id=?", [v, childId]);
-      res.json({ ok: true, hide_from_head: v });
+      if (computeAge(child.birth_date) < 18) return res.status(400).json({ error: '只有 18 歲或以上嘅成員可以設定私隱' });
+      let med, book, prof;
+      if (b.hide !== undefined || b.private !== undefined || b.is_private !== undefined) {
+        const v = (b.hide ?? b.private ?? b.is_private) ? 1 : 0;
+        med = book = prof = v;
+      } else {
+        med = (b.hideMedical !== undefined) ? (b.hideMedical ? 1 : 0) : (child.hide_medical_from_head || 0);
+        book = (b.hideBooking !== undefined) ? (b.hideBooking ? 1 : 0) : (child.hide_booking_from_head || 0);
+        prof = (b.hideProfile !== undefined) ? (b.hideProfile ? 1 : 0) : (child.hide_profile_from_head || 0);
+      }
+      const master = (med || book || prof) ? 1 : 0;
+      await run("UPDATE users SET hide_medical_from_head=?, hide_booking_from_head=?, hide_profile_from_head=?, hide_from_head=? WHERE id=?",
+        [med, book, prof, master, childId]);
+      res.json({ ok: true, hideMedical: med, hideBooking: book, hideProfile: prof, hide_from_head: master });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -840,12 +904,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     try {
       const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
       if (!link) return res.status(403).json({ error: '沒有權限' });
-      const child = await q1("SELECT birth_date, hide_from_head FROM users WHERE id=?", [childId]);
+      const child = await q1("SELECT birth_date, hide_booking_from_head FROM users WHERE id=?", [childId]);
       const age = computeAge(child && child.birth_date);
       const isAdult = age >= 18;
-      // 🔒 18+ 且開啟私隱 → 戶主不可見其預約
-      if (isAdult && child && child.hide_from_head === 1) {
-        return res.status(403).json({ error: '該成員已設定私隱，戶主不可查看其預約', code: 'hidden_from_head' });
+      // 🔒 18+ 且開啟預約私隱 → 戶主不可見其預約（未滿 18 歲強制開放）
+      if (isAdult && child && child.hide_booking_from_head === 1) {
+        return res.status(403).json({ error: '該成員未開放預約記錄', code: 'hidden_from_head' });
       }
       const rows = await q(
         "SELECT id, service_id, appointment_date, appointment_time, status FROM bookings WHERE user_id=? ORDER BY appointment_date DESC, appointment_time DESC",
@@ -858,6 +922,74 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     } catch (e) {
       res.status(500).json({ error: '系統錯誤' });
     }
+  });
+
+  // GET /api/membership/family/:id/profile — 子帳戶個人資料（戶主可睇）
+  // 規則：未滿 18 歲強制開放；18+ 若 hide_profile_from_head=1 則戶主不可見
+  router.get('/family/:id/profile', requireAuth, async (req, res) => {
+    const childId = Number(req.params.id);
+    const user = req.user;
+    try {
+      const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
+      if (!link) return res.status(403).json({ error: '沒有權限' });
+      const child = await q1(
+        "SELECT id, name, username, birth_date, phone, email, id_card, address, emergency_contact, emergency_phone, insurance_covered, member_no, profile_completed, hide_profile_from_head FROM users WHERE id=?",
+        [childId]);
+      if (!child) return res.status(404).json({ error: '找不到該成員' });
+      const age = computeAge(child.birth_date);
+      const isAdult = age >= 18;
+      if (isAdult && child.hide_profile_from_head === 1) {
+        return res.status(403).json({ error: '該成員未開放個人資料', code: 'hidden_from_head' });
+      }
+      res.json({
+        ok: true,
+        profile: {
+          id: child.id,
+          name: child.name,
+          username: child.username,
+          birth_date: child.birth_date,
+          age,
+          isAdult,
+          phone: child.phone,
+          email: child.email,
+          id_card: child.id_card,
+          address: child.address,
+          emergency_contact: child.emergency_contact,
+          emergency_phone: child.emergency_phone,
+          insurance_covered: child.insurance_covered,
+          member_no: child.member_no,
+          profile_completed: child.profile_completed
+        }
+      });
+    } catch (e) { res.status(500).json({ error: '系統錯誤' }); }
+  });
+
+  // GET /api/membership/family/:id/medical — 子帳戶病歷（戶主可睇）
+  // 規則：未滿 18 歲強制開放；18+ 若 hide_medical_from_head=1 則戶主不可見
+  router.get('/family/:id/medical', requireAuth, async (req, res) => {
+    const childId = Number(req.params.id);
+    const user = req.user;
+    try {
+      const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
+      if (!link) return res.status(403).json({ error: '沒有權限' });
+      const child = await q1("SELECT birth_date, hide_medical_from_head FROM users WHERE id=?", [childId]);
+      if (!child) return res.status(404).json({ error: '找不到該成員' });
+      const age = computeAge(child.birth_date);
+      const isAdult = age >= 18;
+      if (isAdult && child.hide_medical_from_head === 1) {
+        return res.status(403).json({ error: '該成員未開放病歷', code: 'hidden_from_head' });
+      }
+      const records = await q(
+        `SELECT mr.id, mr.record_date, mr.diagnosis, mr.treatment_plan, mr.notes, mr.created_at,
+                COALESCE(u.name, b.doctor_name) as doctor_name, b.appointment_date, b.appointment_time, s.name as service_name
+         FROM medical_records mr
+         LEFT JOIN users u ON mr.doctor_user_id = u.id
+         LEFT JOIN bookings b ON mr.booking_id = b.id
+         LEFT JOIN services s ON b.service_id = s.id
+         WHERE mr.user_id=? ORDER BY mr.record_date DESC, mr.id DESC`,
+        [childId]);
+      res.json({ ok: true, records: records || [] });
+    } catch (e) { res.status(500).json({ error: '系統錯誤' }); }
   });
 
   // 家庭樹狀結構（admin / staff —— 員工家庭子帳戶管理介面與管理員一致）

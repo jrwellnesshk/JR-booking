@@ -198,7 +198,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const familyList = ref({ children: [] });
           // 🆕 F7：家庭計劃供款狀態（中性文案「家庭計劃生效中」+ 子帳戶接手掣）
           const familyPayment = ref(null);
-          const selectedChildBookings = ref(null);
+          // 🔍 戶主檢視直屬子女資料（個人資料 / 預約記錄 / 病歷）
+          const selectedChild = ref(null);
+          const childProfile = ref(null);
+          const childBookings = ref(null);
+          const childMedical = ref(null);
+          const childLoading = ref(false);
           // 🆕 通用帳戶連結（親戚／同輩／朋友，客人自助連結）
           const accountLinks = ref([]);
           const linkLoading = ref(false);
@@ -219,9 +224,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const couponBusy = ref(false);
           const couponMsg = ref('');
           const couponMsgType = ref(''); // 'ok' | 'err'
-          // 🛡️ 子帳戶私隱：隱藏資料唔俾主帳戶睇
-          const hideFromHead = ref(false);
+          // 🛡️ 子帳戶私隱：細分授權（病歷 / 預約記錄 / 個人資料）
+          const hideMedical = ref(false);   // 隱藏病歷畀主帳戶
+          const hideBooking = ref(false);   // 隱藏預約記錄
+          const hideProfile = ref(false);   // 隱藏個人資料
+          const hideFromHead = computed(() => (hideMedical.value || hideBooking.value || hideProfile.value));
           const privacyIsChild = ref(false);
+          const privacyIsAdult = ref(false);
+          const privacyForcedOpen = ref(false); // 未滿 18 歲 → 強制開放，不可關閉
+          const privacyAge = ref(0);
           const privacyHeadName = ref('');
           const privacyBusy = ref(false);
           const privacyMsg = ref('');
@@ -1718,7 +1729,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (window.location.hash) history.replaceState(null, "", window.location.pathname);
             realTier.value = null;
             upgradeTier.value = null;
-            selectedChildBookings.value = null;
+            selectedChild.value = null;
+            childProfile.value = null;
+            childBookings.value = null;
+            childMedical.value = null;
             familyList.value = { children: [] };
           };
 
@@ -1764,6 +1778,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             } else if (newView === "myMembership") {
               // 當切換到「會員中心」時載入會員資料
               loadMyMembership();
+              // 🛡️ 子帳戶私隱狀態（授權設定需要）
+              loadPrivacyState();
             } else if (newView === "coupons") {
               // 當切換到「優惠券」時載入我的優惠券
               loadCoupons();
@@ -1885,7 +1901,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
 
-          // 🛡️ 讀取子帳戶私隱狀態（只影響 18 歲以上自己）
+          // 🛡️ 讀取子帳戶細分授權狀態（含年齡 / 強制開放判斷）
           const loadPrivacyState = async () => {
             try {
               const res = await fetch(`${API_URL}/membership/privacy`, {
@@ -1893,29 +1909,43 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               });
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.ok) {
-                hideFromHead.value = !!data.hide_from_head;
+                hideMedical.value = !!data.hideMedical;
+                hideBooking.value = !!data.hideBooking;
+                hideProfile.value = !!data.hideProfile;
                 privacyIsChild.value = !!data.isChild;
+                privacyIsAdult.value = !!data.isAdult;
+                privacyForcedOpen.value = !!data.forcedOpen; // 未滿 18 歲 → 強制開放
+                privacyAge.value = data.age || 0;
                 privacyHeadName.value = data.headName || '';
               }
             } catch (e) {}
           };
 
-          // 🛡️ 切換「唔俾主帳戶睇我資料」
-          const toggleHideFromHead = async () => {
-            if (!privacyIsChild.value) return;
+          // 🛡️ 切換子帳戶細分授權（病歷 / 預約記錄 / 個人資料）
+          // 未滿 18 歲（forcedOpen）唔可以關閉，由戶主強制管理
+          const toggleChildPrivacy = async (type) => {
+            if (!privacyIsChild.value || privacyForcedOpen.value) return;
             privacyBusy.value = true;
             privacyMsg.value = '';
-            const next = !hideFromHead.value;
+            const label = type === 'medical' ? '病歷' : type === 'booking' ? '預約記錄' : '個人資料';
+            const body = type === 'medical' ? { hideMedical: !hideMedical.value }
+                       : type === 'booking' ? { hideBooking: !hideBooking.value }
+                       : { hideProfile: !hideProfile.value };
             try {
               const res = await fetch(`${API_URL}/membership/privacy`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` },
-                body: JSON.stringify({ hide: next })
+                body: JSON.stringify(body)
               });
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.ok) {
-                hideFromHead.value = !!data.hide_from_head;
-                privacyMsg.value = hideFromHead.value ? '已隱藏你的資料，主帳戶將唔能夠查看。' : '已恢復畀主帳戶查看你的資料。';
+                hideMedical.value = !!data.hideMedical;
+                hideBooking.value = !!data.hideBooking;
+                hideProfile.value = !!data.hideProfile;
+                const nowHidden = type === 'medical' ? hideMedical.value : type === 'booking' ? hideBooking.value : hideProfile.value;
+                privacyMsg.value = nowHidden
+                  ? `已隱藏你的${label}，主帳戶將唔能夠查看。`
+                  : `已恢復畀主帳戶查看你的${label}。`;
               } else {
                 privacyMsg.value = data.error || '操作失敗';
               }
@@ -2098,29 +2128,49 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
 
-          const loadChildBookings = async (child) => {
+          // 🔍 戶主檢視直屬子女嘅 個人資料 / 預約記錄 / 病歷（受細分授權 + 18 歲規則控制）
+          const loadChildData = async (child) => {
+            selectedChild.value = child;
+            childProfile.value = null;
+            childBookings.value = null;
+            childMedical.value = null;
+            childLoading.value = true;
+            const auth = { headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` } };
             try {
-              const res = await fetch(`${API_URL}/membership/family/${child.id}/bookings`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` }
-              });
-              const data = await res.json();
-              if (!res.ok) {
-                alert(data.error || '無法載入預約狀態');
-                return;
+              // 個人資料（受 canViewProfile 控制；未滿 18 歲強制開放）
+              if (child.canViewProfile) {
+                const rp = await fetch(`${API_URL}/membership/family/${child.id}/profile`, auth);
+                const dp = await rp.json().catch(() => ({}));
+                childProfile.value = (rp.ok && dp.ok) ? dp.profile : null;
               }
-              // 18+ 私隱：後端可能回 403 hidden_from_head
-              if (data.code === 'hidden_from_head') {
-                alert(data.error || '該成員已設定私隱');
-                return;
+              // 預約記錄（受 canViewBooking 控制；18+ 只見「預約成功」中性狀態）
+              if (child.canViewBooking) {
+                const rb = await fetch(`${API_URL}/membership/family/${child.id}/bookings`, auth);
+                const db = await rb.json().catch(() => ({}));
+                childBookings.value = (rb.ok && db.bookings) ? db.bookings : (rb.ok ? [] : null);
               }
-              selectedChildBookings.value = {
-                label: `${child.name} 的預約記錄`,
-                bookings: data.bookings || []
-              };
+              // 病歷（受 canViewMedical 控制；未滿 18 歲強制開放）
+              if (child.canViewMedical) {
+                const rm = await fetch(`${API_URL}/membership/family/${child.id}/medical`, auth);
+                const dm = await rm.json().catch(() => ({}));
+                childMedical.value = (rm.ok && dm.records) ? dm.records : (rm.ok ? [] : null);
+              }
             } catch (e) {
               console.error(e);
-              alert('無法載入預約狀態');
+            } finally {
+              childLoading.value = false;
             }
+          };
+
+          // 🧭 由子帳戶面板跳去「授權設定」區塊
+          const goPrivacy = () => {
+            const el = document.getElementById('privacy-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          };
+          // 🧭 由子帳戶面板跳去「連結帳戶」功能（家庭帳戶功能入口）
+          const goFamilyLinks = () => {
+            const el = document.getElementById('account-links-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           };
 
           // 重設密碼功能（電郵驗證碼方式）
@@ -4584,13 +4634,19 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             cancellingSub,
             familyList,
             familyPayment,
-            selectedChildBookings,
+            selectedChild,
+            childProfile,
+            childBookings,
+            childMedical,
+            childLoading,
+            loadChildData,
+            goPrivacy,
+            goFamilyLinks,
             loadMyMembership,
             loadFamilyPayment,
             startCheckout,
             cancelSubscription,
             activateFamily,
-            loadChildBookings,
             // 🆕 通用帳戶連結
             accountLinks,
             linkLoading,
@@ -4623,14 +4679,20 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             couponMsgType,
             loadCoupons,
             redeemCoupon,
-            // 🛡️ 子帳戶私隱
+            // 🛡️ 子帳戶私隱（細分授權）
+            hideMedical,
+            hideBooking,
+            hideProfile,
             hideFromHead,
             privacyIsChild,
+            privacyIsAdult,
+            privacyForcedOpen,
+            privacyAge,
             privacyHeadName,
             privacyBusy,
             privacyMsg,
             loadPrivacyState,
-            toggleHideFromHead,
+            toggleChildPrivacy,
             // 🍔 手機版頂欄漢堡包選單（public 官網 .aq 頂欄使用）
             menuOpen,
             toggleMenu,
