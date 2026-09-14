@@ -517,6 +517,22 @@ function runMigrations(db) {
       db.run("UPDATE users SET member_no = phone WHERE (member_no IS NULL OR member_no='') AND phone IS NOT NULL AND phone<>''", (e) => {
         if (!e) console.log("✅ 已回填 member_no = phone");
       });
+      // 🔢 重新格式化會員編號：S/M/J + 電話後 4 位（2026-09-14 規格；覆蓋舊嘅「純電話」格式，idempotent）
+      // S=主帳戶(family_head_id=自己) / M=子帳戶(family_head_id=其他人) / J=一般帳戶(非家庭)
+      db.all("SELECT id, phone, family_head_id, member_no FROM users", (e0, rows) => {
+        if (e0 || !rows) return;
+        const stmt = db.prepare("UPDATE users SET member_no=? WHERE id=?");
+        rows.forEach(u => {
+          let prefix = 'J';
+          if (u.family_head_id && Number(u.family_head_id) !== Number(u.id)) prefix = 'M';
+          else if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) prefix = 'S';
+          else prefix = 'J';
+          const digits = String(u.phone || '').replace(/\D/g, '');
+          const no = prefix + (digits.slice(-4) || '0000');
+          if (no !== u.member_no) stmt.run(no, u.id);
+        });
+        stmt.finalize(() => console.log("✅ 已重新格式化 member_no 為 S/M/J + 電話後4位"));
+      });
     });
 
     // doctor_time_slots.status 回填（open=開放 / rest=休息 / waiting=候診 / blank=空白關閉）

@@ -71,6 +71,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   const PLAN_INVOICE_PREFIX = { A: 'JRA', B: 'JRB', C: 'JRC' };
   const familyInvoicePrefix = (plan) => PLAN_INVOICE_PREFIX[plan] || 'JRA';
 
+  // 🔢 計劃上限：A 最多 2 人、B 最多 9 人、C 10+ 無上限（用家 2026-09-14 要求）
+  const PLAN_ORDER = { A: 0, B: 1, C: 2 };
+  const PLAN_MAX = { A: 2, B: 9, C: Infinity };
+  const nextPlanOf = (p) => (p === 'A' ? 'B' : p === 'B' ? 'C' : null);
+
   // 收集家庭所有成員 id：戶主 + family_links 子女 + 戶主/子女經 account_links 連結嘅親戚
   // （account_links 嘅人一樣計入張家庭單，呢個先符合「連結後喺張單入邊」）
   async function getFamilyMemberIds(headId) {
@@ -103,7 +108,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   }
 
   async function syncFamilyPlan(headId) {
-    const { total, plan } = await computeFamilyPlan(headId);
+    const { total, plan: derived } = await computeFamilyPlan(headId);
+    const cur = await q1("SELECT family_plan FROM users WHERE id=?", [headId]);
+    const curPlan = (cur && cur.family_plan) || 'A';
+    // 計劃只會升唔會降：取「按人數推」同「已升級 plan」嘅較高者（用家升級後唔會因加人少而變返低）
+    const plan = PLAN_ORDER[derived] >= PLAN_ORDER[curPlan] ? derived : curPlan;
     await run("UPDATE users SET family_plan=? WHERE id=?", [plan, headId]);
     const exist = await q1("SELECT id, invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
     const desiredPrefix = familyInvoicePrefix(plan);
@@ -122,6 +131,37 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       await run("UPDATE family_invoices SET plan=? WHERE family_head_id=?", [plan, headId]);
     }
     return { plan, total };
+  }
+
+  // 🔒 家庭計劃加人上限檢查：返回是否封鎖 + 當前計劃 + 下一個計劃
+  // 加到當前 plan 上限（A:2 / B:9）就封鎖，提示升級；C（10+）無上限
+  async function checkFamilyPlanLimit(headId) {
+    const { total, plan: derived } = await computeFamilyPlan(headId);
+    const cur = await q1("SELECT family_plan FROM users WHERE id=?", [headId]);
+    const curPlan = (cur && cur.family_plan) || 'A';
+    // 計劃只升唔降：實際人數推出嘅 plan 比存儲低（例如 legacy/seed 數據未同步）時，
+    // 以實際人數為準，避免存儲計劃過低而誤封鎖加人（C 仍不設上限）。
+    const effPlan = PLAN_ORDER[curPlan] >= PLAN_ORDER[derived] ? curPlan : derived;
+    const max = PLAN_MAX[effPlan];
+    if (effPlan !== 'C' && total >= max) {
+      return { blocked: true, currentPlan: effPlan, next: nextPlanOf(effPlan), max };
+    }
+    return { blocked: false, currentPlan: effPlan, max };
+  }
+
+  // 🔢 會員編號 = S/M/J + 電話後 4 位（S=主帳戶 / M=子帳戶 / J=一般帳戶）
+  // 前綴按 family_head_id 決定：=自己→S（主帳戶）；=其他人→M（子帳戶）；null/非家庭→J（一般帳戶）
+  async function recomputeMemberNo(userId) {
+    const u = await q1("SELECT id, phone, family_head_id, member_no FROM users WHERE id=?", [userId]);
+    if (!u) return;
+    let prefix;
+    if (u.family_head_id && Number(u.family_head_id) !== Number(u.id)) prefix = 'M';
+    else if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) prefix = 'S';
+    else prefix = 'J';
+    const digits = String(u.phone || '').replace(/\D/g, '');
+    const last4 = digits.slice(-4) || '0000';
+    const no = prefix + last4;
+    if (no !== u.member_no) await run("UPDATE users SET member_no=? WHERE id=?", [no, userId]);
   }
 
   const activateSubscription = async (userId, tier, paymentId) => {
@@ -210,11 +250,16 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     try {
       const user = req.user;
       const tier = user.membership_tier || 'general';
-      const subStatusRow = await q1("SELECT subscription_status FROM users WHERE id=?", [user.id]);
+      const subStatusRow = await q1("SELECT subscription_status, member_no, family_plan FROM users WHERE id=?", [user.id]);
       const subStatus = (subStatusRow && subStatusRow.subscription_status) || 'none';
+      const memberNo = (subStatusRow && subStatusRow.member_no) || '';
+      // 🔢 顯示計劃以「存儲 vs 實際人數」較高者為準（計劃只升唔降，避免 legacy/seed 未同步數據顯示偏低）
+      const storedPlan = (subStatusRow && subStatusRow.family_plan) || 'A';
+      const { plan: derivedPlan } = await computeFamilyPlan(user.id);
+      const familyPlan = PLAN_ORDER[storedPlan] >= PLAN_ORDER[derivedPlan] ? storedPlan : derivedPlan;
       const sub = await q1("SELECT * FROM subscriptions WHERE user_id=? AND status='active' ORDER BY id DESC LIMIT 1", [user.id]);
       const children = await q(
-        `SELECT u.id, u.name, u.username, u.birth_date, u.hide_medical_from_head, u.hide_booking_from_head, u.hide_profile_from_head, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
+        `SELECT u.id, u.name, u.username, u.birth_date, u.member_no, u.hide_medical_from_head, u.hide_booking_from_head, u.hide_profile_from_head, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
          FROM family_links fl JOIN users u ON u.id = fl.child_user_id
          WHERE fl.parent_user_id=? ORDER BY u.id`, [user.id]);
       const parent = await q1(
@@ -248,7 +293,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
           };
         }),
         insurance: Number(user.insurance_covered) === 1,
-        profile_completed: user.profile_completed
+        profile_completed: user.profile_completed,
+        memberNo,
+        familyPlan
       });
     } catch (e) {
       console.error('查詢會員資料失敗:', e);
@@ -412,6 +459,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
     try {
       await familyService.enableHead(user.id);
+      // 🔢 啟用後按 family_head_id 重算會員編號（主帳戶 S）— 否則新戶主會殘留 J 前綴
+      await recomputeMemberNo(user.id);
       res.json({ ok: true, message: '已啟用家庭帳戶，可以開始加入子帳戶' });
     } catch (e) {
       res.status(500).json({ error: '啟用失敗' });
@@ -453,6 +502,14 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       });
     }
     const head = parent.user;
+    // 🔒 家庭計劃加人上限檢查（A:2 / B:9 / C:∞）
+    const planLim = await checkFamilyPlanLimit(head.id);
+    if (planLim.blocked) {
+      return res.status(403).json({
+        error: `你的家庭計劃【${planLim.currentPlan}】已達上限（${planLim.max} 人），請升級至計劃 ${planLim.next} 以添加更多成員。`,
+        code: 'PLAN_LIMIT', currentPlan: planLim.currentPlan, nextPlan: planLim.next
+      });
+    }
     try {
       const child = await q1("SELECT id, username, birth_date FROM users WHERE username=? COLLATE NOCASE", [childUsername]);
       if (!child) return res.status(404).json({ error: '找不到該用戶名嘅帳戶' });
@@ -468,6 +525,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       // 👨‍👩‍👧 連結入家庭：general 級自動升做 family 級（premium 保持不變，永不降級）
       await run("UPDATE users SET birth_date=? WHERE id=?", [childBirthDate, child.id]);
       await familyService.addChild(head.id, child.id, relation || 'parent');
+      await recomputeMemberNo(child.id);
+      await recomputeMemberNo(head.id);
       await syncFamilyPlan(head.id);
       res.json({ ok: true, message: '已加入子帳戶', child: { id: child.id, username: child.username } });
     } catch (e) {
@@ -576,6 +635,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
     const head = parent.user;
 
+    // 🔒 家庭計劃加人上限檢查（A:2 / B:9 / C:∞）
+    const planLim = await checkFamilyPlanLimit(head.id);
+    if (planLim.blocked) {
+      return res.status(403).json({
+        error: `你的家庭計劃【${planLim.currentPlan}】已達上限（${planLim.max} 人），請升級至計劃 ${planLim.next} 以添加更多成員。`,
+        code: 'PLAN_LIMIT', currentPlan: planLim.currentPlan, nextPlan: planLim.next
+      });
+    }
+
     if (!name || !/[\u4E00-\u9FFF]/.test(name)) {
       return res.status(400).json({ error: '子帳戶姓名必須包含中文字元' });
     }
@@ -616,6 +684,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
           'customer', 'family', 1, 1, 1]);
       const childId = inserted.lastID;
       await familyService.addChild(head.id, childId, relation || 'parent');
+      await recomputeMemberNo(childId);
+      await recomputeMemberNo(head.id);
       await syncFamilyPlan(head.id);
 
       // 📲 自動經 WhatsApp 將登入帳戶 + 暫時密碼發送給家長
@@ -1187,6 +1257,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         return res.status(409).json({ error: '對方已經屬於另一個家庭帳戶，唔可以再連結' });
       }
 
+      // 🔒 家庭計劃加人上限檢查（A:2 / B:9 / C:∞）
+      const planLim = await checkFamilyPlanLimit(headId);
+      if (planLim.blocked) {
+        return res.status(403).json({
+          error: `你的家庭計劃【${planLim.currentPlan}】已達上限（${planLim.max} 人），請升級至計劃 ${planLim.next} 以添加更多成員。`,
+          code: 'PLAN_LIMIT', currentPlan: planLim.currentPlan, nextPlan: planLim.next
+        });
+      }
+
       const ins = await run(
         "INSERT INTO account_links (user_a, user_b, relation, custom_relation, initiated_by, created_at) VALUES (?,?,?,?,?,?)",
         [a, b, relation, displayRelation, user.id, new Date().toISOString()]);
@@ -1217,10 +1296,34 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       }
       // 重算計劃 + 確保張單存在（新成員都會入張單）
       await syncFamilyPlan(headId);
+      // 🔢 連結後按 family_head_id 重算會員編號（主帳戶 S / 子帳戶 M / 一般 J）
+      await recomputeMemberNo(target.id);
+      await recomputeMemberNo(fromId);
+      await recomputeMemberNo(headId);
       res.json({ ok: true, id: ins.lastID, relation, customRelation: displayRelation, fromId, targetId: target.id, ownerUpgradedToFamily, targetUpgradedToFamily, headId });
     } catch (e) {
       console.error('連結帳戶失敗:', e);
       res.status(500).json({ error: '連結失敗' });
+    }
+  });
+
+  // POST /api/membership/family/upgrade-plan — 家庭戶主自助升級計劃（A→B→C），突破加人上限
+  router.post('/family/upgrade-plan', requireAuth, async (req, res) => {
+    try {
+      const user = req.user;
+      const me = await q1("SELECT id, family_head_id, family_plan FROM users WHERE id=?", [user.id]);
+      const hasChildren = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [user.id]);
+      const isHead = me && (Number(me.family_head_id) === Number(me.id) || !!hasChildren);
+      if (!isHead) return res.status(403).json({ error: '只有家庭主帳戶才可以升級家庭計劃' });
+      const cur = (me.family_plan) || 'A';
+      const nxt = nextPlanOf(cur);
+      if (!nxt) return res.status(400).json({ error: '已是最高的計劃 C，無需升級' });
+      await run("UPDATE users SET family_plan=? WHERE id=?", [nxt, user.id]);
+      await syncFamilyPlan(user.id);
+      res.json({ ok: true, plan: nxt, message: `已升級至家庭計劃 ${nxt}` });
+    } catch (e) {
+      console.error('升級家庭計劃失敗:', e);
+      res.status(500).json({ error: '升級失敗' });
     }
   });
 

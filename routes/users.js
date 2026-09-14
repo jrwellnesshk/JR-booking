@@ -220,20 +220,41 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           params.push(val);
         }
       });
-      // 會員編號 = 電話（改電話即同步 member_no）
-      if (phone !== undefined) { sets.push('member_no=?'); params.push(phone); }
-      if (sets.length === 0) {
-        return res.status(400).json({ error: "沒有提供任何可更新的欄位" });
+      // 🔢 會員編號 = S/M/J 前綴 + 電話後 4 位（改電話即同步；保留原有前綴）
+      if (phone !== undefined) {
+        db.get("SELECT member_no, family_head_id, id FROM users WHERE id=?", [id], (e2, urow) => {
+          if (e2) return serverError(res, e2);
+          let prefix = 'J';
+          if (urow) {
+            const curNo = urow.member_no || '';
+            if (/^[SMJ]/.test(curNo)) prefix = curNo[0];
+            else if (urow.family_head_id && Number(urow.family_head_id) === Number(urow.id)) prefix = 'S';
+            else if (urow.family_head_id && Number(urow.family_head_id) !== Number(urow.id)) prefix = 'M';
+            else prefix = 'J';
+          }
+          const digits = String(phone || '').replace(/\D/g, '');
+          sets.push('member_no=?');
+          params.push(prefix + (digits.slice(-4) || '0000'));
+          finalizeUpdate();
+        });
+        return;
       }
-      params.push(id);
-      db.run(
-        `UPDATE users SET ${sets.join(", ")} WHERE id=?`,
-        params,
-        function (err) {
-          if (err) return serverError(res, err);
-          res.json({ ok: true, message: "個人資料已更新" });
+      finalizeUpdate();
+
+      function finalizeUpdate() {
+        if (sets.length === 0) {
+          return res.status(400).json({ error: "沒有提供任何可更新的欄位" });
         }
-      );
+        params.push(id);
+        db.run(
+          `UPDATE users SET ${sets.join(", ")} WHERE id=?`,
+          params,
+          function (err) {
+            if (err) return serverError(res, err);
+            res.json({ ok: true, message: "個人資料已更新" });
+          }
+        );
+      }
     }
   });
 

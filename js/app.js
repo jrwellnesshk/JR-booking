@@ -209,6 +209,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const linkLoading = ref(false);
           const linkBusy = ref(false);
           const linkError = ref('');
+          const linkPlanLimit = ref(null); // { currentPlan, nextPlan } 加人上限提示
           const linkForm = ref({ targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null });
           const linkRelationOptions = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
           // 🔍 搜尋要連結嘅帳戶（支援 姓名/用戶名/電話）
@@ -2023,12 +2024,41 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 linkSearchResults.value = [];
                 linkSearchQ.value = '';
                 linkSearchMsg.value = '';
+                linkPlanLimit.value = null;
                 await loadMyMembership();
+              } else if (data.code === 'PLAN_LIMIT') {
+                // 🔒 家庭計劃加人上限：提示升級計劃
+                linkPlanLimit.value = { currentPlan: data.currentPlan, nextPlan: data.nextPlan };
+                linkError.value = data.error || '已達家庭計劃上限';
               } else {
                 linkError.value = data.error || '連結失敗';
               }
             } catch (e) {
               linkError.value = '連結服務暫時不可用';
+            } finally {
+              linkBusy.value = false;
+            }
+          };
+
+          // 🔒 家庭計劃升級（戶主自助 A→B→C，突破加人上限）
+          const upgradeFamilyPlan = async () => {
+            if (linkBusy.value) return;
+            linkBusy.value = true;
+            try {
+              const res = await fetch(`${API_URL}/membership/family/upgrade-plan`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json();
+              if (res.ok && data.ok) {
+                linkPlanLimit.value = null;
+                linkError.value = '';
+                await loadMyMembership();
+              } else {
+                linkError.value = data.error || '升級失敗';
+              }
+            } catch (e) {
+              linkError.value = '升級服務暫時不可用';
             } finally {
               linkBusy.value = false;
             }
@@ -4652,6 +4682,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             linkLoading,
             linkBusy,
             linkError,
+            linkPlanLimit,
+            upgradeFamilyPlan,
             linkForm,
             linkRelationOptions,
             // 🔍 搜尋要連結嘅帳戶

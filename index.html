@@ -3765,6 +3765,12 @@
                   </div>
                 </div>
 
+                <!-- 🔢 會員編號 + 家庭計劃 -->
+                <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600 mb-4">
+                  <span><span class="text-gray-400">會員編號：</span><b class="font-mono">{{ membership.memberNo || '—' }}</b></span>
+                  <span v-if="membership.isFamilyHead && membership.familyPlan"><span class="text-gray-400">家庭計劃：</span><b>{{ membership.familyPlan }}</b>（{{ membership.familyPlan === 'A' ? '1-2 人' : membership.familyPlan === 'B' ? '3-9 人' : '10 人以上' }}，上限 {{ membership.familyPlan === 'A' ? 2 : membership.familyPlan === 'B' ? 9 : '∞' }} 人）</span>
+                </div>
+
                 <!-- 💎 會員計劃比較 + 升級付款 -->
                 <div class="rounded-xl border border-gray-200 p-5 mb-6">
                   <h3 class="font-bold mb-1 flex items-center"><i class="fas fa-arrow-trend-up text-amber-500 mr-2"></i>{{ t('會員計劃') }}</h3>
@@ -3924,6 +3930,7 @@
                             <div>
                               <b>{{ c.name }}</b>
                               <span class="text-gray-500 ml-2">{{ c.username }}</span>
+                              <span v-if="c.member_no" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200 font-mono">{{ c.member_no }}</span>
                               <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ c.age }} 歲{{ c.isAdult ? '（已成年）' : '（未成年）' }}</span>
                               <span v-if="c.forcedOpen" class="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">{{ t('強制開放') }}</span>
                             </div>
@@ -4193,6 +4200,11 @@
                         </div>
                         <input v-if="linkForm.relation === '其他'" v-model="linkForm.customRelation" :placeholder="t('請輸入關係說明（例如：表哥、契姐）')" class="w-full rounded border border-gray-300 p-2 text-sm">
                         <p v-if="linkError" class="text-red-500 text-xs">{{ linkError }}</p>
+                        <div v-if="linkPlanLimit" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+                          <p class="text-amber-700"><i class="fas fa-triangle-exclamation mr-1"></i>{{ t('您嘅家庭計劃') }} <b>{{ linkPlanLimit.currentPlan }}</b> {{ t('已達加人上限（最多') }} {{ linkPlanLimit.currentPlan === 'A' ? '2' : '9' }} {{ t('人）。') }}</p>
+                          <p class="text-amber-700 mt-1">{{ t('請升級至計劃') }} <b>{{ linkPlanLimit.nextPlan }}</b> {{ t('以繼續添加家庭成員（計劃 C 為 10 人或以上、不設上限）。') }}</p>
+                          <button class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 disabled:opacity-60" :disabled="linkBusy" @click="upgradeFamilyPlan"><i class="fas fa-arrow-up mr-1"></i>{{ t('升級至計劃') }} {{ linkPlanLimit.nextPlan }}</button>
+                        </div>
                         <button class="w-full px-4 py-2 rounded-lg text-white font-bold text-sm disabled:opacity-60" style="background:linear-gradient(135deg,var(--p600),var(--p500));" :disabled="linkBusy" @click="createAccountLink">
                           <i v-if="linkBusy" class="fas fa-spinner fa-spin mr-1"></i><i v-else class="fas fa-plus mr-1"></i>{{ linkBusy ? t('連結中...') : t('連結帳戶') }}
                         </button>
@@ -4211,15 +4223,15 @@
               <h2 class="m-panel-head mb-2 flex items-center" style="color:var(--p700);">
                 <i class="fas fa-ticket-alt mr-2"></i>{{ t('優惠券') }}</h2>
               <p class="text-sm text-gray-500 mb-4">
-                {{ t('輸入優惠券密碼即可啟用免費診症次數；會員編號即你的手機號碼。') }}</p>
+                {{ t('輸入優惠券密碼即可啟用免費診症次數；會員編號格式為「主帳戶 S／子帳戶 M／一般帳戶 J」加電話號碼尾 4 位。') }}</p>
 
-              <!-- 會員編號（會員編號 = 電話號碼）-->
+              <!-- 會員編號（S/M/J + 電話尾 4 位）-->
               <div class="rounded-xl border p-4 mb-6" style="border-color:var(--p300);">
                 <div class="text-sm text-gray-500">{{ t('會員編號') }}</div>
-                <div class="text-2xl font-bold mt-1" style="color:var(--p700);">
-                  {{ currentMember && currentMember.phone ? currentMember.phone : '—' }}
+                <div class="text-2xl font-bold mt-1 font-mono" style="color:var(--p700);">
+                  {{ membership && membership.memberNo ? membership.memberNo : (currentMember && currentMember.phone ? currentMember.phone : '—') }}
                 </div>
-                <div class="text-xs text-gray-400 mt-1">{{ t('會員編號 = 你的手機號碼') }}</div>
+                <div class="text-xs text-gray-400 mt-1">{{ t('會員編號：S（主帳戶）／ M（子帳戶）／ J（一般帳戶）＋ 電話尾 4 位') }}</div>
               </div>
 
               <!-- 剩餘免費診症 -->
