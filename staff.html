@@ -696,7 +696,7 @@
               <button @click="mainTab='hr'; loadMyHr()" :class="mainTab==='hr' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-clock mr-2"></i>{{ t('打卡考勤') }}</button>
               <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>{{ t('時段管理') }}</button>
-              <button @click="mainTab='forum'; loadForum()" :class="mainTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
+              <button @click="mainTab='forum'; loadForum(); loadForumModeration()" :class="mainTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
               <button @click="mainTab='voices'" :class="mainTab==='voices' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comment-medical mr-2"></i>{{ t('客人心聲') }}</button>
               <button @click="mainTab='familytree'; loadFamilyTree()" :class="mainTab==='familytree' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-people-roof mr-2"></i>{{ t('家庭帳戶') }}</button>
             </nav>
@@ -2053,8 +2053,8 @@
             <!-- 討論區審核（醫護） -->
             <div class="bg-white rounded-xl shadow p-5 space-y-3 mt-2">
               <h3 class="font-semibold text-slate-800"><i class="fas fa-gavel mr-2 text-emerald-600"></i>{{ t('討論區審核') }}</h3>
-              <div v-if="!forumPosts.length" class="text-slate-400 text-sm py-4 text-center">{{ t('暫時未有帖子') }}</div>
-              <div v-for="p in forumPosts" :key="'mod-'+p.id" class="border rounded-lg p-3">
+                <div v-if="!forumModerationPosts.length" class="text-slate-400 text-sm py-4 text-center">{{ t('暫時未有帖子') }}</div>
+              <div v-for="p in forumModerationPosts" :key="'mod-'+p.id" class="border rounded-lg p-3">
                 <div class="flex items-center justify-between gap-2">
                   <div class="min-w-0">
                     <b class="text-slate-800">{{ p.title }}</b>
@@ -2371,7 +2371,10 @@
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-slate-600 mb-1">{{ t('時間') }}</label>
-                  <input type="time" v-model="walkIn.time" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                  <select v-model="walkIn.time" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                    <option value="">{{ t('請選擇時間') }}</option>
+                    <option v-for="t in walkInTimeOptions" :key="t" :value="t">{{ t }}</option>
+                  </select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-slate-600 mb-1">{{ t('備註') }}</label>
@@ -3013,6 +3016,7 @@
             mainTab: "list",
             // 💬 功能10：中醫討論區
             forumPosts: [],
+            forumModerationPosts: [],
             forumLoading: false,
             forumOpenId: null,
             forumReplies: [],
@@ -3131,6 +3135,16 @@
         },
 
         computed: {
+          // 🕐 即場落單：時間選項（15 分鐘相隔，10:00 至 19:00，與時段管理一致）
+          walkInTimeOptions() {
+            const opts = [];
+            for (let total = 10 * 60; total <= 19 * 60; total += 15) {
+              const h = Math.floor(total / 60);
+              const m = total % 60;
+              opts.push(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+            }
+            return opts;
+          },
           filteredHeads() {
             const q = (this.familySearch || '').trim().toLowerCase();
             const tree = this.familyTree.tree || [];
@@ -3786,9 +3800,16 @@
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') },
                 body: JSON.stringify({ status })
               });
-              if (r.ok) await this.loadForum();
+              if (r.ok) { await this.loadForumModeration(); }
               else { const d = await r.json().catch(() => ({})); alert(d.error || '更新失敗'); }
             } catch (e) { alert('更新失敗：' + e.message); }
+          },
+          // 🌳 討論區審核列表（全部帖子，含待審核）
+          async loadForumModeration() {
+            try {
+              const r = await fetch('/api/admin/content/forum/posts', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') } });
+              if (r.ok) this.forumModerationPosts = await r.json();
+            } catch (e) { console.error('載入審核列表失敗:', e); }
           },
           // 🗣️ 客人心聲（到診意見）提交
           async submitVoice() {

@@ -310,6 +310,53 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const userAvatar = ref("");
           const avatarEmoji = ref("🙂");
           const avatarUploading = ref(false);
+          // 🆕 客人家庭關係圖（消費 GET /api/membership/family/my-tree）
+          const myFamilyTree = ref(null);
+          const myFamilyTreeLoading = ref(false);
+          const isAvatarUrl = (u) => typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
+          const loadMyFamilyTree = async () => {
+            if (!currentMember.value) return;
+            myFamilyTreeLoading.value = true;
+            try {
+              const resp = await fetch(`${API_URL}/membership/family/my-tree`, {
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              if (resp.ok) myFamilyTree.value = await resp.json();
+              else myFamilyTree.value = null;
+            } catch (e) { console.error("載入家庭關係圖失敗:", e); myFamilyTree.value = null; }
+            finally { myFamilyTreeLoading.value = false; }
+          };
+          const myFamilyTreeData = computed(() => {
+            const d = myFamilyTree.value;
+            if (!d || !d.head) return null;
+            const ageOf = (bd) => {
+              if (!bd) return null;
+              const t = new Date(); const b = new Date(bd);
+              if (isNaN(b.getTime())) return null;
+              let a = t.getFullYear() - b.getFullYear();
+              const m = t.getMonth() - b.getMonth();
+              if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
+              return a;
+            };
+            const headNode = {
+              id: d.head.id, name: d.head.name, username: d.head.username,
+              avatar: d.head.avatar, tier: d.head.membership_tier, is_me: !!d.is_head,
+            };
+            const children = (d.children || []).map(c => {
+              const age = ageOf(c.birth_date);
+              return {
+                id: c.id, name: c.name, username: c.username, avatar: c.avatar,
+                tier: c.membership_tier, age,
+                isAdult: age !== null && age >= 18, is_me: !!c.is_me,
+                extendedLinks: (d.links || []).filter(lk => Number(lk.from_user_id) === Number(c.id))
+                  .map(lk => ({ id: lk.link_id, other: lk.other, relation: lk.relation })),
+              };
+            });
+            const links = (d.links || [])
+              .filter(lk => Number(lk.from_user_id) === Number(d.head.id))
+              .map(lk => ({ id: lk.link_id, relation: lk.relation, other: lk.other }));
+            return { headNode, children, links };
+          });
 
           // 網站文字 helper：管理員修改後即時反映
           const st = (key, fallback = "") => siteTexts.value[key] || fallback;
@@ -4919,6 +4966,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             privacyMsg,
             loadPrivacyState,
             toggleChildPrivacy,
+            // 🆕 客人家庭關係圖
+            myFamilyTree,
+            myFamilyTreeLoading,
+            loadMyFamilyTree,
+            myFamilyTreeData,
+            isAvatarUrl,
             // 🍔 手機版頂欄漢堡包選單（public 官網 .aq 頂欄使用）
             menuOpen,
             toggleMenu,

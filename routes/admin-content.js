@@ -260,7 +260,21 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // ==================== 討論區審核（醫護審批後先公開）====================
 
-  router.put('/forum/posts/:id/status', ...adminOnly, (req, res) => {
+  // 審核列表（醫護 + 管理員）：返回全部帖子（含待審核 pending），供審核介面使用
+  router.get('/forum/posts', requireAuth, requireRole('admin', 'staff'), (req, res) => {
+    db.all(
+      `SELECT p.id, p.user_id, p.user_name, p.avatar, p.title, p.content, p.category,
+              p.reply_count, p.is_pinned, p.status, p.created_at
+       FROM forum_posts p
+       ORDER BY (p.status <> 'approved') DESC, p.created_at DESC LIMIT 200`,
+      [], (err, rows) => {
+        if (err) return serverError(res, err);
+        res.json(rows || []);
+      }
+    );
+  });
+
+  router.put('/forum/posts/:id/status', requireAuth, requireRole('admin', 'staff'), (req, res) => {
     const id = parseInt(req.params.id);
     const { status } = req.body || {};
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });

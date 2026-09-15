@@ -1293,6 +1293,141 @@
       .gap-4 { gap: 1.4rem; }
       .gap-6 { gap: 2rem; }
     </style>
+
+    <!-- 🆕 客人會員中心「家庭關係圖」：相框風格（沿用 admin 視覺，改用官網暖色 token） -->
+    <style id="customer-ftree">
+      .ftree-canvas{
+        position:relative;
+        border-radius:2rem;
+        background:linear-gradient(160deg, rgba(255,253,250,.95), rgba(245,232,220,.92));
+        border:1px solid rgba(192,136,117,.22);
+        box-shadow:0 30px 60px -30px rgba(94,64,55,.4), inset 0 0 60px rgba(192,136,117,.06);
+        padding:2.2rem 1.8rem 2rem;
+        overflow:hidden;
+      }
+      .ftree-canvas::before, .ftree-canvas::after{
+        content:''; position:absolute; width:120px; height:120px;
+        background-repeat:no-repeat; background-size:contain; opacity:.55; pointer-events:none;
+      }
+      .ftree-canvas::before{
+        top:-18px; left:-18px;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cg fill='%237E9476' fill-opacity='.55'%3E%3Ccircle cx='28' cy='34' r='12'/%3E%3Ccircle cx='55' cy='22' r='15'/%3E%3Ccircle cx='18' cy='62' r='10'/%3E%3Cpath d='M30 30 Q55 5 80 25 Q95 40 80 60 Q60 80 35 70 Q15 60 30 30'/%3E%3Cpath d='M25 55 Q5 75 20 95 Q35 110 55 95'/%3E%3C/g%3E%3Cpath fill='none' stroke='%23C08875' stroke-width='1.2' stroke-opacity='.45' d='M45 45 Q70 20 95 40'/%3E%3C/svg%3E");
+      }
+      .ftree-canvas::after{
+        bottom:-18px; right:-18px;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cg fill='%23C08875' fill-opacity='.5'%3E%3Ccircle cx='92' cy='86' r='12'/%3E%3Ccircle cx='65' cy='98' r='15'/%3E%3Ccircle cx='102' cy='58' r='10'/%3E%3Cpath d='M90 90 Q65 115 40 95 Q25 80 40 60 Q60 40 85 50 Q105 60 90 90'/%3E%3Cpath d='M95 65 Q115 45 100 25 Q85 10 65 25'/%3E%3C/g%3E%3Cpath fill='none' stroke='%237E9476' stroke-width='1.2' stroke-opacity='.45' d='M75 75 Q50 100 25 80'/%3E%3C/svg%3E");
+      }
+      .ftree-title{
+        font-family:var(--headserif); font-size:1.6rem; font-weight:600;
+        color:var(--mossd); text-align:center; letter-spacing:.06em;
+        margin-bottom:1.2rem; position:relative; z-index:1;
+      }
+      .ftree-title small{
+        display:block; font-family:"Noto Sans TC",sans-serif; font-size:.65rem;
+        color:var(--tauped); letter-spacing:.18em; margin-top:.25rem;
+      }
+      .ftree-gen, .ftree-gen ul{ margin:0; padding:0; list-style:none; position:relative; }
+      .ftree-gen{ display:flex; justify-content:center; padding-top:2.2rem; }
+      .ftree-gen > li{ float:left; text-align:center; position:relative; padding:2.2rem .7rem 0 .7rem; }
+      .ftree-gen > li::before, .ftree-gen > li::after{
+        content:''; position:absolute; top:0; right:50%;
+        width:50%; height:2.2rem; border-top:2px solid rgba(192,136,117,.38); z-index:0;
+      }
+      .ftree-gen > li::after{ right:auto; left:50%; border-left:2px solid rgba(192,136,117,.38); }
+      .ftree-gen > li:only-child::after, .ftree-gen > li:only-child::before{ display:none; }
+      .ftree-gen > li:first-child::before, .ftree-gen > li:last-child::after{ border:0 none; }
+      .ftree-gen > li:last-child::before{ border-right:2px solid rgba(192,136,117,.38); border-radius:0 10px 0 0; }
+      .ftree-gen > li:first-child::after{ border-radius:10px 0 0 0; }
+      .ftree-gen ul::before{
+        content:''; position:absolute; top:0; left:50%;
+        border-left:2px solid rgba(192,136,117,.38); width:0; height:2.2rem; z-index:0;
+      }
+      .ftree-gen-root > li > .ftree-couple + ul::before{ display:none; }
+      .ftree-couple{ display:inline-flex; gap:1.4rem; position:relative; justify-content:center; padding:0 .6rem; }
+      .ftree-couple .ftree-node{ position:relative; }
+      .ftree-couple::before{
+        content:''; position:absolute; top:33%; left:20%; right:20%; height:2px;
+        background:rgba(192,136,117,.42); z-index:1;
+      }
+      .ftree-couple::after{
+        content:''; position:absolute; left:50%; top:33%; bottom:-2.2rem; width:2px;
+        background:rgba(192,136,117,.42); transform:translateX(-50%); z-index:1;
+      }
+      .ftree-node-wrapper{ display:inline-block; position:relative; z-index:2; }
+      .ftree-node{
+        position:relative; display:inline-flex; flex-direction:column; align-items:center;
+        text-align:center; transition:transform .2s ease; z-index:2;
+      }
+      .ftree-node:hover{ transform:translateY(-3px); }
+      .ftree-node[data-role="head"] .ftree-avatar-wrap{ width:96px; height:96px; }
+      .ftree-node[data-role="relative"] .ftree-avatar-wrap{ width:78px; height:78px; }
+      .ftree-node[data-role="child"] .ftree-avatar-wrap{ width:68px; height:68px; }
+      .ftree-node[data-role="extended"] .ftree-avatar-wrap{ width:60px; height:60px; }
+      .ftree-node[data-role="placeholder"] .ftree-avatar-wrap{ width:76px; height:76px; }
+      .ftree-avatar-wrap{
+        position:relative; border-radius:50%; padding:5px;
+        background:linear-gradient(135deg, var(--sage), var(--p300));
+        box-shadow:0 10px 24px -10px rgba(99,124,93,.35);
+      }
+      .ftree-node[data-role="head"] .ftree-avatar-wrap{
+        padding:6px; background:linear-gradient(135deg, #C08875, #A8B89A, #C08875);
+        background-size:200% 200%; animation:ftreeShimmer 5s ease infinite;
+      }
+      .ftree-node[data-role="relative"] .ftree-avatar-wrap{ background:linear-gradient(135deg, #E5E8D9, #CCD2BC); }
+      .ftree-node[data-role="extended"] .ftree-avatar-wrap{ background:linear-gradient(135deg, #F5E5D5, #EFD2BD); }
+      .ftree-avatar{
+        width:100%; height:100%; border-radius:50%;
+        background:linear-gradient(135deg, #FDF6FA, #F5E5D5);
+        display:flex; align-items:center; justify-content:center;
+        color:var(--tauped); font-size:1.4rem; overflow:hidden; border:2px solid rgba(255,255,255,.8);
+      }
+      .ftree-node[data-role="head"] .ftree-avatar{ font-size:1.8rem; }
+      .ftree-node[data-role="placeholder"] .ftree-avatar{
+        background:linear-gradient(135deg, rgba(245,229,213,.6), rgba(232,201,181,.4));
+        border:2px dashed rgba(192,136,117,.4); color:rgba(94,64,55,.5); font-size:1.6rem;
+      }
+      .ftree-node[data-role="extended"] .ftree-avatar{ font-size:1.15rem; }
+      .ftree-avatar img{ width:100%; height:100%; object-fit:cover; border-radius:50%; }
+      .ftree-name{
+        margin-top:.55rem; font-weight:600; color:var(--mossd); font-size:.85rem; line-height:1.25;
+        max-width:110px; word-break:break-word;
+      }
+      .ftree-node[data-role="head"] .ftree-name{ font-size:1rem; }
+      .ftree-node[data-role="relative"] .ftree-name{ color:var(--moss); }
+      .ftree-node[data-role="extended"] .ftree-name{ font-size:.78rem; color:var(--tauped); }
+      .ftree-meta{ font-size:.7rem; color:var(--tauped); margin-top:.15rem; line-height:1.3; }
+      .ftree-tag{
+        display:inline-block; margin-top:.35rem; padding:.15rem .5rem; border-radius:999px;
+        font-size:.65rem; font-weight:600; background:rgba(216,197,182,.5); color:var(--p600);
+      }
+      .ftree-tag.sage{ background:rgba(216,197,182,.45); color:var(--moss); }
+      .ftree-tag.adult{ background:#FBEAE8; color:#B4453A; }
+      .ftree-tag.me{ background:#C08875; color:#fff; }
+      .ftree-node.is-me .ftree-avatar-wrap{
+        box-shadow:0 0 0 4px rgba(192,136,117,.35), 0 10px 24px -10px rgba(99,124,93,.45);
+      }
+      .ftree-gen-ext{ padding-top:1.6rem; }
+      .ftree-gen-ext > li{ padding-top:1.6rem; }
+      .ftree-gen-ext > li::before, .ftree-gen-ext > li::after{ border-top:1.5px dashed rgba(126,148,118,.45); }
+      .ftree-gen-ext > li::after{ border-left:1.5px dashed rgba(126,148,118,.45); }
+      .ftree-gen-ext > li:last-child::before{ border-right:1.5px dashed rgba(126,148,118,.45); }
+      .ftree-gen-ext ul::before{ border-left:1.5px dashed rgba(126,148,118,.45); height:1.6rem; }
+      .ftree-links-card{
+        margin-top:1.4rem; background:#fff; border:1px solid rgba(199,180,166,.4);
+        border-radius:1.2rem; padding:1.1rem 1.3rem;
+      }
+      .ftree-links-card h4{ font-family:var(--headserif); color:var(--mossd); font-size:1rem; margin:0 0 .7rem; }
+      .ftree-links-card .ftree-link-row{
+        display:flex; align-items:center; gap:.6rem; padding:.45rem 0; border-top:1px dashed rgba(199,180,166,.35);
+        font-size:.85rem; color:var(--inkd);
+      }
+      .ftree-links-card .ftree-link-row:first-of-type{ border-top:0; }
+      .ftree-links-card .ftree-link-row .ftree-link-rel{
+        flex-shrink:0; font-size:.65rem; font-weight:600; background:rgba(216,197,182,.5);
+        color:var(--p600); padding:.15rem .5rem; border-radius:999px;
+      }
+      @keyframes ftreeShimmer{ 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    </style>
   </head>
   <body class="bg-gradient-to-br from-slate-50 to-slate-100 text-slate-800">
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出（防止原始範本閃現） -->
@@ -1439,7 +1574,7 @@
 
           <!-- 背景右側大型「寶天」圖案 -->
           <div class="aq-hero-brandmark" aria-hidden="true">
-            <span class="aq-hero-brandmark-seal"><b>{{ t('寶') }}</b><b>{{ t('天') }}</b><i>{{ t('醫館') }}</i></span>
+            <span class="aq-hero-brandmark-seal"><b>{{ t('寶') }}</b><b>{{ t('天') }}</b><i>{{ t('JR') }}</i></span>
             <span class="aq-hero-brandmark-sub">NATURAL HEALING · CENTRAL</span>
           </div>
 
@@ -2882,6 +3017,16 @@
               :class="{ active: view === 'forum' }"
             >
               <i class="fas fa-comments"></i>{{ t('中醫討論區') }}</button>
+            <button
+              @click="setView('voices'); loadCustomerVoices()"
+              :class="{ active: view === 'voices' }"
+            >
+              <i class="fas fa-comment-medical"></i>{{ t('客人心聲') }}</button>
+            <button
+              @click="setView('familytree'); loadMyFamilyTree()"
+              :class="{ active: view === 'familytree' }"
+            >
+              <i class="fas fa-people-roof"></i>{{ t('家庭關係圖') }}</button>
           </nav>
 
             <div class="m-side-foot">
@@ -3003,6 +3148,156 @@
                       <small>{{ m.category }} · {{ m.created_at }}</small>
                     </div>
                     <span class="px-2 py-0.5 rounded text-xs font-bold" :class="forumStatusBadge(m.status).cls">{{ forumStatusBadge(m.status).text }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 客人心聲（會員版，連接官網展示） -->
+            <div v-if="view === 'voices'" class="m-panel">
+              <div class="aq-head">
+                <span class="aq-eyebrow">Voices</span>
+                <h2>{{ t('客人心聲') }}</h2>
+                <p>{{ t('聽聽到診客人的真實分享，亦歡迎您分享自己的到診體驗') }}</p>
+                <button v-if="currentMember" @click="openVoiceForm" class="m-register-btn">
+                  <i class="fas fa-comment-medical mr-2"></i>{{ t('分享您的到診意見') }}</button>
+              </div>
+
+              <!-- 提交表單 -->
+              <div v-if="customerVoicesOpen" class="site-voices-form">
+                <div class="site-voices-form-head">
+                  <b>{{ t('分享您的到診意見') }}</b>
+                  <button @click="customerVoicesOpen = false" class="site-voices-close"><i class="fas fa-times"></i></button>
+                </div>
+                <div v-if="voiceThanks" class="site-voices-thanks">
+                  <i class="fas fa-circle-check"></i>{{ t('多謝您的意見，待管理員審核後會公開展示') }}
+                </div>
+                <template v-else>
+                  <input v-model="voiceName" class="site-forum-input" :placeholder="t('您的稱呼')" readonly>
+                  <div class="site-voices-row">
+                    <label class="site-voices-label">{{ t('評分') }}</label>
+                    <div class="site-review-stars">
+                      <i v-for="i in 5" :key="'vr' + i" class="fas fa-star" :class="{ on: i <= voiceRating }" @click="voiceRating = i" style="cursor:pointer;"></i>
+                    </div>
+                  </div>
+                  <input v-model="voiceVisitType" class="site-forum-input" :placeholder="t('到診類型（例如：針灸／推拿／內科）')">
+                  <textarea v-model="voiceContent" class="site-forum-input site-forum-textarea" :placeholder="t('請分享您的到診體驗...')"></textarea>
+                  <button @click="submitCustomerVoice" :disabled="voiceSending" class="m-ghost-btn">
+                    <i v-if="voiceSending" class="fas fa-spinner fa-spin mr-2"></i>{{ t('提交意見') }}</button>
+                </template>
+              </div>
+
+              <!-- 列表 -->
+              <div v-if="customerVoicesLoading" class="site-reviews-grid">
+                <div v-for="n in 3" :key="'vsk' + n" class="site-review-card animate-pulse">
+                  <div class="h-4 rounded w-1/3 mb-2" style="background:#EDE6DD;"></div>
+                  <div class="h-3 rounded w-5/6 mb-1" style="background:#F3EEE7;"></div>
+                  <div class="h-3 rounded w-2/3" style="background:#F3EEE7;"></div>
+                </div>
+              </div>
+              <div v-else class="site-reviews-grid">
+                <div v-for="v in customerVoices" :key="v.id" class="site-review-card">
+                  <div class="site-review-top">
+                    <img v-if="v.avatar && v.avatar.startsWith('/')" :src="v.avatar" class="site-review-avatar">
+                    <span v-else class="site-review-avatar">{{ v.avatar || '🙂' }}</span>
+                    <div>
+                      <b>{{ v.user_name }}</b>
+                      <small>{{ v.visit_type }} · {{ formatVoiceDate(v.created_at) }}</small>
+                    </div>
+                  </div>
+                  <div class="site-review-stars"><i v-for="i in 5" :key="'vs' + i" class="fas fa-star" :class="{ on: i <= (v.rating || 0) }"></i></div>
+                  <p class="site-review-text">{{ v.content }}</p>
+                </div>
+                <div v-if="!customerVoices.length" class="site-reviews-empty">{{ t('暫時未有客人心聲，歡迎成為第一位分享嘅客人！') }}</div>
+              </div>
+
+              <!-- 分頁 -->
+              <div v-if="customerVoicesPages > 1" class="site-voices-pager">
+                <button :disabled="customerVoicesPage <= 1" @click="loadCustomerVoices(customerVoicesPage - 1)"><i class="fas fa-chevron-left"></i> {{ t('上一頁') }}</button>
+                <span>{{ customerVoicesPage }} / {{ customerVoicesPages }}</span>
+                <button :disabled="customerVoicesPage >= customerVoicesPages" @click="loadCustomerVoices(customerVoicesPage + 1)">{{ t('下一頁') }} <i class="fas fa-chevron-right"></i></button>
+              </div>
+            </div>
+
+            <!-- 家庭關係圖（會員版，唯讀，同輩同一層） -->
+            <div v-if="view === 'familytree'" class="m-panel">
+              <div class="aq-head">
+                <span class="aq-eyebrow">Family</span>
+                <h2>{{ t('家庭關係圖') }}</h2>
+                <p>{{ t('查看您家庭帳戶的成員結構，同輩會顯示於同一層') }}</p>
+                <button v-if="currentMember" @click="loadMyFamilyTree" class="m-register-btn">
+                  <i class="fas fa-sync mr-2"></i>{{ t('重新整理') }}</button>
+              </div>
+
+              <div v-if="myFamilyTreeLoading" class="text-center py-10 text-slate-500">{{ t('載入中...') }}</div>
+              <div v-else-if="!myFamilyTreeData" class="bg-white rounded-xl shadow-lg p-10 text-center text-slate-400">
+                <i class="fas fa-people-roof text-4xl mb-3 block"></i>{{ t('您尚未建立家庭帳戶') }}
+              </div>
+              <div v-else class="ftree-canvas">
+                <div class="ftree-title">
+                  Family Tree
+                  <small>{{ myFamilyTreeData.headNode.name }} 的家庭帳戶</small>
+                </div>
+
+                <ul class="ftree-gen ftree-gen-root">
+                  <li>
+                    <!-- 戶主層 -->
+                    <div class="ftree-node" data-role="head" :class="{ 'is-me': myFamilyTreeData.headNode.is_me }">
+                      <div class="ftree-avatar-wrap">
+                        <div class="ftree-avatar">
+                          <img v-if="isAvatarUrl(myFamilyTreeData.headNode.avatar)" :src="myFamilyTreeData.headNode.avatar" :alt="myFamilyTreeData.headNode.name">
+                          <i v-else class="fas fa-crown"></i>
+                        </div>
+                      </div>
+                      <div class="ftree-name">{{ myFamilyTreeData.headNode.name }}</div>
+                      <div class="ftree-meta">{{ myFamilyTreeData.headNode.username }}</div>
+                      <span v-if="myFamilyTreeData.headNode.is_me" class="ftree-tag me">{{ t('我') }}</span>
+                      <span v-else class="ftree-tag">{{ t('戶主') }}</span>
+                    </div>
+
+                    <!-- 子女層（同輩同一層） -->
+                    <ul v-if="myFamilyTreeData.children.length" class="ftree-gen ftree-gen-children">
+                      <li v-for="child in myFamilyTreeData.children" :key="child.id">
+                        <div class="ftree-node" data-role="child" :class="{ 'is-me': child.is_me }">
+                          <div class="ftree-avatar-wrap">
+                            <div class="ftree-avatar">
+                              <img v-if="isAvatarUrl(child.avatar)" :src="child.avatar" :alt="child.name">
+                              <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
+                            </div>
+                          </div>
+                          <div class="ftree-name">{{ child.name }}</div>
+                          <div class="ftree-meta">{{ child.age !== null ? (child.age + ' ' + t('歲')) : '' }} · {{ t(child.tier) || child.tier }}</div>
+                          <span v-if="child.is_me" class="ftree-tag me">{{ t('我') }}</span>
+                          <span v-else class="ftree-tag" :class="child.isAdult ? 'adult' : 'sage'">{{ child.isAdult ? t('已成年') : t('18歲以下') }}</span>
+                        </div>
+                        <!-- 子女嘅延伸連結（親戚／同輩／朋友） -->
+                        <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
+                          <li v-for="lk in child.extendedLinks" :key="lk.id">
+                            <div class="ftree-node" data-role="extended">
+                              <div class="ftree-avatar-wrap">
+                                <div class="ftree-avatar">
+                                  <img v-if="isAvatarUrl(lk.other.avatar)" :src="lk.other.avatar" :alt="lk.other.name">
+                                  <i v-else class="fas fa-user"></i>
+                                </div>
+                              </div>
+                              <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
+                              <div class="ftree-meta">{{ lk.other.username }}</div>
+                              <span class="ftree-tag sage">{{ lk.relation }}</span>
+                            </div>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                    <div v-else class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
+                  </li>
+                </ul>
+
+                <!-- 戶主嘅其他連結關係（唯讀） -->
+                <div v-if="myFamilyTreeData.links.length" class="ftree-links-card">
+                  <h4><i class="fas fa-link mr-1"></i>{{ t('其他連結關係') }}</h4>
+                  <div v-for="lk in myFamilyTreeData.links" :key="lk.id" class="ftree-link-row">
+                    <span class="ftree-link-rel">{{ lk.relation }}</span>
+                    <span>{{ lk.other.name || lk.other.username }} <small class="text-slate-400">({{ lk.other.username }})</small></span>
                   </div>
                 </div>
               </div>
