@@ -9,6 +9,14 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+// 🔒 UGC 基本轉義：防止 stored XSS（討論區/評價等用戶內容）
+const escapeHtml = (s) => String(s ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 module.exports = (db, { requireAuth, requireRole } = {}) => {
   const router = express.Router();
 
@@ -144,10 +152,51 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     db.run(
       `INSERT INTO reviews (user_id, user_name, avatar, rating, service, content, status)
        VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-      [req.user.id, req.user.name, req.user.avatar || null, r, (service || '').slice(0, 50), content.trim().slice(0, 2000)],
+      [req.user.id, req.user.name, req.user.avatar || null, r, escapeHtml((service || '').slice(0, 50)), escapeHtml(content.trim().slice(0, 2000))],
       function (err) {
         if (err) return serverError(res, err);
         res.json({ ok: true, id: this.lastID, message: '評價已提交，待管理員審核' });
+      }
+    );
+  });
+
+  // ==================== 客人心聲（到診意見 / 感受）====================
+
+  // 公開列表（只顯示已審核，支援分頁：?page=1&limit=10）
+  router.get('/customer-voices', (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const offset = (page - 1) * limit;
+    db.get(
+      `SELECT COUNT(*) AS total FROM customer_voices WHERE status='approved'`,
+      [], (e1, c) => {
+        if (e1) return serverError(res, e1);
+        const total = (c && c.total) || 0;
+        db.all(
+          `SELECT id, user_name, avatar, rating, visit_type, content, created_at
+           FROM customer_voices WHERE status='approved'
+           ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+          [limit, offset], (err, rows) => {
+            if (err) return serverError(res, err);
+            res.json({ items: rows || [], page, limit, total, pages: Math.ceil(total / limit) || 1 });
+          }
+        );
+      }
+    );
+  });
+
+  // 提交客人心聲（登入用戶，待審核）
+  router.post('/customer-voices', requireAuth, (req, res) => {
+    const { rating, visit_type, content } = req.body || {};
+    if (!content || !content.trim()) return res.status(400).json({ error: '請填寫您嘅到診意見' });
+    const r = Math.max(1, Math.min(5, parseInt(rating) || 5));
+    db.run(
+      `INSERT INTO customer_voices (user_id, user_name, avatar, rating, visit_type, content, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+      [req.user.id, req.user.name, req.user.avatar || null, r, escapeHtml((visit_type || '').slice(0, 50)), escapeHtml(content.trim().slice(0, 2000))],
+      function (err) {
+        if (err) return serverError(res, err);
+        res.json({ ok: true, id: this.lastID, status: 'pending', message: '多謝您的意見，待管理員審核後會公開展示' });
       }
     );
   });
@@ -156,15 +205,33 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   const getAvatarForUser = (user) => user && user.avatar ? user.avatar : (user ? null : null);
 
-  // 帖子列表（含回覆數）
+  // 帖子列表（公開：只顯示已審核 approved；作者自己嘅待審核帖由 /forum/posts/mine 提供）
   router.get('/forum/posts', (req, res) => {
     db.all(
       `SELECT p.id, p.user_id, p.user_name, p.avatar, p.title, p.content, p.category,
-              p.reply_count, p.is_pinned, p.created_at,
+              p.reply_count, p.is_pinned, p.status, p.created_at,
               u.avatar AS user_avatar
        FROM forum_posts p LEFT JOIN users u ON u.id=p.user_id
+       WHERE p.status='approved'
        ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT 100`,
       [], (err, rows) => {
+        if (err) return serverError(res, err);
+        (rows || []).forEach(r => { if (!r.avatar && r.user_avatar) r.avatar = r.user_avatar; });
+        res.json(rows || []);
+      }
+    );
+  });
+
+  // 作者自己嘅帖子（含待審核 pending，畀作者睇到自己嘅「待審核」狀態）
+  router.get('/forum/posts/mine', requireAuth, (req, res) => {
+    db.all(
+      `SELECT p.id, p.user_id, p.user_name, p.avatar, p.title, p.content, p.category,
+              p.reply_count, p.is_pinned, p.status, p.created_at,
+              u.avatar AS user_avatar
+       FROM forum_posts p LEFT JOIN users u ON u.id=p.user_id
+       WHERE p.user_id=?
+       ORDER BY p.created_at DESC LIMIT 100`,
+      [req.user.id], (err, rows) => {
         if (err) return serverError(res, err);
         (rows || []).forEach(r => { if (!r.avatar && r.user_avatar) r.avatar = r.user_avatar; });
         res.json(rows || []);
@@ -206,13 +273,13 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
     const avatar = req.user.avatar || null;
     db.run(
-      `INSERT INTO forum_posts (user_id, user_name, avatar, title, content, category)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, req.user.name, avatar, title.trim().slice(0, 80), content.trim().slice(0, 5000),
+      `INSERT INTO forum_posts (user_id, user_name, avatar, title, content, category, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+      [req.user.id, req.user.name, avatar, escapeHtml(title.trim().slice(0, 80)), escapeHtml(content.trim().slice(0, 5000)),
        (category || '中醫問題').slice(0, 20)],
       function (err) {
         if (err) return serverError(res, err);
-        res.json({ ok: true, id: this.lastID });
+        res.json({ ok: true, id: this.lastID, status: 'pending', message: '帖子已提交，待醫護審核後公開' });
       }
     );
   });
@@ -230,7 +297,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       db.run(
         `INSERT INTO forum_replies (post_id, user_id, user_name, avatar, content)
          VALUES (?, ?, ?, ?, ?)`,
-        [postId, req.user.id, req.user.name, avatar, content.trim().slice(0, 3000)],
+        [postId, req.user.id, req.user.name, avatar, escapeHtml(content.trim().slice(0, 3000))],
         function (err2) {
           if (err2) return res.status(500).json({ error: err2.message });
           db.run('UPDATE forum_posts SET reply_count=reply_count+1 WHERE id=?', [postId]);

@@ -60,11 +60,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               document.documentElement.lang = l === 'en' ? 'en' : 'zh-TW';
               // 同步 <title> 同 meta 標籤（佢哋喺 <head>，Vue 唔會編譯）
               try {
-                document.title = t('寶天醫館');
+                document.title = t('寶天JR');
                 const metaDesc = document.querySelector('meta[name="description"]');
-                if (metaDesc) metaDesc.content = t('寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
+                if (metaDesc) metaDesc.content = t('寶天JR網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
                 const ogTitle = document.querySelector('meta[property="og:title"]');
-                if (ogTitle) ogTitle.content = t('寶天醫館');
+                if (ogTitle) ogTitle.content = t('寶天JR');
                 const ogDesc = document.querySelector('meta[property="og:description"]');
                 if (ogDesc) ogDesc.content = t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認');
                 const ogLocale = document.querySelector('meta[property="og:locale"]');
@@ -76,11 +76,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           if (typeof document !== 'undefined') {
             document.documentElement.lang = lang.value === 'en' ? 'en' : 'zh-TW';
             try {
-              document.title = t('寶天醫館');
+              document.title = t('寶天JR');
               const metaDesc = document.querySelector('meta[name="description"]');
-              if (metaDesc) metaDesc.content = t('寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
+              if (metaDesc) metaDesc.content = t('寶天JR網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
               const ogTitle = document.querySelector('meta[property="og:title"]');
-              if (ogTitle) ogTitle.content = t('寶天醫館');
+              if (ogTitle) ogTitle.content = t('寶天JR');
               const ogDesc = document.querySelector('meta[property="og:description"]');
               if (ogDesc) ogDesc.content = t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認');
               const ogLocale = document.querySelector('meta[property="og:locale"]');
@@ -192,7 +192,19 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (realTier.value === 'premium') return '高級會員';
             return '一般會員';
           });
+          // 🏠 家庭計劃 A/B/C/D 資訊（前後端共用價格／人數，避免 UI 硬編碼走樣）
+          const PLAN_INFO = {
+            A: { name: '家庭帳戶 A', price: 8800, range: '1-2 人', popular: false },
+            B: { name: '家庭帳戶 B', price: 12800, range: '3-5 人', popular: true },
+            C: { name: '家庭帳戶 C', price: 16800, range: '6-9 人', popular: false },
+            D: { name: '家庭帳戶 D', price: 20800, range: '10 人以上', popular: false }
+          };
+          const planName = (p) => (PLAN_INFO[p] ? PLAN_INFO[p].name : '');
+          const planPrice = (p) => (PLAN_INFO[p] ? PLAN_INFO[p].price : 0);
+          const planRange = (p) => (PLAN_INFO[p] ? PLAN_INFO[p].range : '');
+          const planMax = (p) => ({ A: 2, B: 5, C: 9, D: Infinity }[p] || 0);
           const upgradeTier = ref(null);
+          const upgradePlan = ref(null); // 所選家庭計劃 A/B/C/D（升級用）
           const upgrading = ref(false);
           const cancellingSub = ref(false);
           const familyList = ref({ children: [] });
@@ -272,6 +284,29 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const forumNewPostCategory = ref("中醫問題");
           const forumNewPostContent = ref("");
           const forumPostSending = ref(false);
+          // 🆕 客人心聲（Customer Voices）
+          const customerVoices = ref([]);
+          const customerVoicesLoading = ref(false);
+          const customerVoicesPage = ref(1);
+          const customerVoicesPages = ref(1);
+          const customerVoicesOpen = ref(false);
+          const voiceName = ref("");
+          const voiceRating = ref(5);
+          const voiceVisitType = ref("");
+          const voiceContent = ref("");
+          const voiceSending = ref(false);
+          const voiceThanks = ref(false);
+          // 🆕 論壇「我的帖子」（含待審核狀態）
+          const myForumPosts = ref([]);
+          const myForumLoading = ref(false);
+          // 🆕 家庭戶主自助新增成員
+          const addFamilyName = ref("");
+          const addFamilyBirth = ref("");
+          const addFamilyPhone = ref("");
+          const addFamilyBusy = ref(false);
+          const addFamilyResult = ref(null);
+          const addFamilyPlanLimit = ref(null);
+          const addFamilyError = ref("");
           const userAvatar = ref("");
           const avatarEmoji = ref("🙂");
           const avatarUploading = ref(false);
@@ -367,6 +402,124 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               }
             } catch (e) { console.error("發帖失敗:", e); }
             finally { forumPostSending.value = false; }
+          };
+
+          // 🆕 客人心聲：載入列表（分頁）
+          const loadCustomerVoices = async (page = 1) => {
+            customerVoicesLoading.value = true;
+            try {
+              const resp = await fetch(`${API_URL}/content/customer-voices?page=${page}&limit=6`);
+              if (resp.ok) {
+                const d = await resp.json();
+                const list = Array.isArray(d) ? d : (d.items || []);
+                customerVoices.value = (list || []).filter(Boolean);
+                customerVoicesPage.value = d.page || page;
+                customerVoicesPages.value = d.pages || (d.total ? Math.ceil(d.total / 6) : 1);
+              }
+            } catch (e) { console.error("載入客人心聲失敗:", e); }
+            finally { customerVoicesLoading.value = false; }
+          };
+
+          // 🆕 客人心聲：打開提交表單（姓名自動帶入登入用戶）
+          const openVoiceForm = () => {
+            voiceName.value = currentMember.value?.name || "";
+            voiceRating.value = 5;
+            voiceVisitType.value = "";
+            voiceContent.value = "";
+            voiceThanks.value = false;
+            customerVoicesOpen.value = true;
+          };
+
+          // 🆕 客人心聲：提交到診意見
+          const submitCustomerVoice = async () => {
+            if (!voiceContent.value.trim()) { alert("請填寫您的到診意見"); return; }
+            voiceSending.value = true;
+            voiceThanks.value = false;
+            try {
+              const resp = await fetch(`${API_URL}/content/customer-voices`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
+                body: JSON.stringify({ rating: voiceRating.value, visit_type: voiceVisitType.value, content: voiceContent.value })
+              });
+              const d = await resp.json().catch(() => ({}));
+              if (resp.ok && d.ok !== false) {
+                voiceThanks.value = true;
+                voiceContent.value = "";
+                voiceVisitType.value = "";
+                loadCustomerVoices(customerVoicesPage.value);
+              } else {
+                alert(d.error || d.message || "提交失敗");
+              }
+            } catch (e) { console.error("提交客人心聲失敗:", e); alert("網絡錯誤，請稍後再試"); }
+            finally { voiceSending.value = false; }
+          };
+
+          // 🆕 客人心聲：簡短日期
+          const formatVoiceDate = (s) => {
+            if (!s) return "";
+            const d = new Date(s);
+            if (isNaN(d.getTime())) return s;
+            return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+          };
+
+          // 🆕 論壇「我的帖子」：載入當前用戶自己的帖子（含待審核）
+          const loadMyForumPosts = async () => {
+            if (!currentMember.value?.dbId) return;
+            myForumLoading.value = true;
+            try {
+              const resp = await fetch(`${API_URL}/content/forum/posts/mine`, {
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              if (resp.ok) myForumPosts.value = (await resp.json()).filter(Boolean);
+            } catch (e) { console.error("載入我的帖子失敗:", e); }
+            finally { myForumLoading.value = false; }
+          };
+
+          // 🆕 論壇帖子狀態徽章
+          const forumStatusBadge = (status) => {
+            if (status === "approved") return { text: "已公開", cls: "bg-green-100 text-green-700" };
+            if (status === "rejected") return { text: "未獲批", cls: "bg-red-100 text-red-700" };
+            return { text: "待審核", cls: "bg-amber-100 text-amber-700" };
+          };
+
+          // 🆕 論壇內文截斷
+          const forumSnippet = (txt, n = 60) => {
+            if (!txt) return "";
+            return txt.length > n ? txt.slice(0, n) + "…" : txt;
+          };
+
+          // 🆕 家庭戶主自助新增成員
+          const submitAddFamilyMember = async () => {
+            if (!addFamilyName.value.trim() || !addFamilyBirth.value.trim() || !addFamilyPhone.value.trim()) {
+              addFamilyError.value = "請填寫姓名、出生日期及電話";
+              return;
+            }
+            addFamilyBusy.value = true;
+            addFamilyError.value = "";
+            addFamilyResult.value = null;
+            addFamilyPlanLimit.value = null;
+            try {
+              const resp = await fetch(`${API_URL}/membership/family/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") },
+                body: JSON.stringify({ name: addFamilyName.value, birth_date: addFamilyBirth.value, phone: addFamilyPhone.value })
+              });
+              const d = await resp.json().catch(() => ({}));
+              if (d.code === "PLAN_LIMIT") {
+                addFamilyPlanLimit.value = d;
+                return;
+              }
+              if (resp.ok && d.ok !== false) {
+                addFamilyResult.value = d.credentials || { username: d.username, tempPassword: d.tempPassword };
+                addFamilyName.value = "";
+                addFamilyBirth.value = "";
+                addFamilyPhone.value = "";
+                await loadMyMembership();
+              } else {
+                addFamilyError.value = d.error || "建立失敗";
+              }
+            } catch (e) { console.error("新增家庭成員失敗:", e); addFamilyError.value = "網絡錯誤，請稍後再試"; }
+            finally { addFamilyBusy.value = false; }
           };
 
           const setAvatarEmoji = (emoji) => { avatarEmoji.value = emoji; };
@@ -1787,6 +1940,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             } else if (newView === "forum") {
               // 當切換到「中醫討論區」時載入最新帖子
               loadForumPosts();
+              // 🆕 載入「我的帖子」（含待審核）
+              loadMyForumPosts();
             }
           };
 
@@ -2080,7 +2235,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
           };
 
-          const startCheckout = async (tier) => {
+          const startCheckout = async (tier, plan) => {
             if (!tier || upgrading.value) return;
             upgrading.value = true;
             try {
@@ -2090,7 +2245,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}`
                 },
-                body: JSON.stringify({ tier })
+                body: JSON.stringify({ tier, plan: plan || null })
               });
               const data = await res.json();
               if (data.url) {
@@ -3508,7 +3663,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               booking.start
             )} 的 ${service.name}，由 ${
               doctor.name
-            } 為您服務。\n\n📍 寶天醫館\n📞 服務專線：2345-6789`;
+            } 為您服務。\n\n📍 寶天JR\n📞 服務專線：2345-6789`;
 
             console.log("電子郵件通知已發送:", message);
             alert(
@@ -4190,6 +4345,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             loadSiteContent();
             // 🆕 載入討論區帖子
             loadForumPosts();
+            // 🆕 載入客人心聲
+            loadCustomerVoices();
 
             // 🔐 先同步恢復登入狀態，避免重整/登入/登出時「登入畫面閃一下」或彈出登入頁
             const savedUser = localStorage.getItem('userToken');
@@ -4335,7 +4492,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (!r) return;
             const progressArr = r.progress && r.progress.length > 0 ? r.progress : [];
             const lines = [
-              '=== 寶天醫館 病歷摘要 ===',
+              '=== 寶天JR 病歷摘要 ===',
               `日期: ${r.appointment_date || r.record_date || r.progress_date || ''} ${r.appointment_time || ''}`,
               `醫師: ${r.doctor_name || '—'}`,
               '',
@@ -4468,6 +4625,28 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             forumPostSending,
             forumLoading,
             printPage,
+            // 🆕 客人心聲
+            customerVoices,
+            customerVoicesLoading,
+            customerVoicesPage,
+            customerVoicesPages,
+            customerVoicesOpen,
+            voiceName,
+            voiceRating,
+            voiceVisitType,
+            voiceContent,
+            voiceSending,
+            voiceThanks,
+            loadCustomerVoices,
+            submitCustomerVoice,
+            openVoiceForm,
+            formatVoiceDate,
+            // 🆕 論壇我的帖子
+            myForumPosts,
+            myForumLoading,
+            loadMyForumPosts,
+            forumStatusBadge,
+            forumSnippet,
             loadForumPosts,
             openForumPost,
             closeForumPost,
@@ -4660,6 +4839,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             tierLabel,
             familyHint,
             upgradeTier,
+            upgradePlan,
+            PLAN_INFO,
+            planName,
+            planPrice,
+            planRange,
+            planMax,
             upgrading,
             cancellingSub,
             familyList,
@@ -4677,6 +4862,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             startCheckout,
             cancelSubscription,
             activateFamily,
+            // 🆕 家庭戶主自助新增成員
+            addFamilyName,
+            addFamilyBirth,
+            addFamilyPhone,
+            addFamilyBusy,
+            addFamilyResult,
+            addFamilyPlanLimit,
+            addFamilyError,
+            submitAddFamilyMember,
             // 🆕 通用帳戶連結
             accountLinks,
             linkLoading,

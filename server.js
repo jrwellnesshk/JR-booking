@@ -1,5 +1,5 @@
 /**
- * 寶天醫館預約系統 - 主伺服器
+ * 寶天JR預約系統 - 主伺服器
  * 精簡版：所有 API 已模組化到 routes/ 資料夾
  */
 
@@ -563,7 +563,7 @@ app.post('/api/notifications/test-whatsapp', requireAuth, requireRole('admin'), 
     }
     
     console.log(`💬 測試 WhatsApp 發送到: ${cleanPhone}`);
-    const result = await whatsappService.sendWhatsApp(cleanPhone, '🏥 *寶天醫館*\n\n這是一條測試訊息，如果您收到此訊息，表示 WhatsApp 服務配置成功！✅');
+    const result = await whatsappService.sendWhatsApp(cleanPhone, '🏥 *寶天JR*\n\n這是一條測試訊息，如果您收到此訊息，表示 WhatsApp 服務配置成功！✅');
     res.json(result);
   } catch (error) {
     console.error('測試 WhatsApp 錯誤:', error);
@@ -1061,7 +1061,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║                   🏥 寶天醫館預約系統                      ║
+║                   🏥 寶天JR預約系統                      ║
 ╠════════════════════════════════════════════════════════════╣
 ║  伺服器已啟動：http://localhost:${PORT}                      ║
 ║  管理後台：http://localhost:${PORT}/admin.html               ║

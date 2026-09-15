@@ -293,9 +293,9 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
 
         // 進行註冊
         const hashedPassword = hashPassword(password);
-        // 🔢 會員編號 = J（一般帳戶）+ 電話後 4 位（S/M/J + 後4位 規格，2026-09-14）
+        // 🔢 會員編號 = JR（一般帳戶）+ 電話後 4 位（2026-09-15 新規格：SA/MA/JR）
         const regDigits = String(phone || '').replace(/\D/g, '');
-        const regMemberNo = 'J' + (regDigits.slice(-4) || '0000');
+        const regMemberNo = 'JR' + (regDigits.slice(-4) || '0000');
         db.run(
           "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed, member_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [username, hashedPassword, name, name_en || "", phone, email || "", "customer", 0, regMemberNo],

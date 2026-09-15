@@ -79,7 +79,7 @@ async function sendWhatsApp(to, message) {
 async function sendBookingConfirmationWhatsApp(to, bookingDetails) {
   const { patientName, date, time, service, doctor } = bookingDetails;
   
-  const message = `🏥 *寶天醫館* - 預約確認
+  const message = `🏥 *寶天JR* - 預約確認
 
 ${patientName} 您好！
 
@@ -92,7 +92,7 @@ ${doctor ? `👨‍⚕️ *醫師*：${doctor}` : ''}
 
 如需更改或取消，請致電診所或回覆此訊息。
 
-感謝您選擇寶天醫館！`;
+感謝您選擇寶天JR！`;
 
   return sendWhatsApp(to, message);
 }
@@ -103,7 +103,7 @@ ${doctor ? `👨‍⚕️ *醫師*：${doctor}` : ''}
 async function sendBookingReminderWhatsApp(to, bookingDetails) {
   const { patientName, date, time } = bookingDetails;
   
-  const message = `🏥 *寶天醫館* - 預約提醒
+  const message = `🏥 *寶天JR* - 預約提醒
 
 ${patientName} 您好！
 
@@ -125,7 +125,7 @@ ${patientName} 您好！
 async function sendBookingCancellationWhatsApp(to, bookingDetails) {
   const { patientName, date, time, reason } = bookingDetails;
   
-  const message = `🏥 *寶天醫館* - 預約取消通知
+  const message = `🏥 *寶天JR* - 預約取消通知
 
 ${patientName} 您好！
 

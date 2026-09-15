@@ -66,15 +66,37 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     db.run(sql, params, function (err) { err ? reject(err) : resolve(this); });
   });
 
-  // 🏠 家庭計劃 A/B/C + 跟死全家嘅單號（JRA/JRB/JRC 順序；A→JRA、B→JRB、C→JRC）
+  // 🏠 家庭計劃 A/B/C/D + 跟死全家嘅單號（JRA/JRB/JRC/JRD 順序）
   // 單號每個計劃對應自己嘅 prefix，一張單 = 一個家庭帳戶
-  const PLAN_INVOICE_PREFIX = { A: 'JRA', B: 'JRB', C: 'JRC' };
+  const PLAN_INVOICE_PREFIX = { A: 'JRA', B: 'JRB', C: 'JRC', D: 'JRD' };
   const familyInvoicePrefix = (plan) => PLAN_INVOICE_PREFIX[plan] || 'JRA';
 
-  // 🔢 計劃上限：A 最多 2 人、B 最多 9 人、C 10+ 無上限（用家 2026-09-14 要求）
-  const PLAN_ORDER = { A: 0, B: 1, C: 2 };
-  const PLAN_MAX = { A: 2, B: 9, C: Infinity };
-  const nextPlanOf = (p) => (p === 'A' ? 'B' : p === 'B' ? 'C' : null);
+  // 🔢 計劃上限：A 1-2 人、B 3-5 人、C 6-9 人、D 10 人以上（不設上限）
+  // （用家 2026-09-15 要求：A=2 / B=5 / C=9 / D=∞）
+  const PLAN_ORDER = { A: 0, B: 1, C: 2, D: 3 };
+  const PLAN_MAX = { A: 2, B: 5, C: 9, D: Infinity };
+  const nextPlanOf = (p) => (p === 'A' ? 'B' : p === 'B' ? 'C' : p === 'C' ? 'D' : null);
+
+  // 💰 各家庭計劃月費（用家 2026-09-15 提供：A 8,800 / B 12,800 / C 16,800 / D 20,800）
+  const PLAN_PRICE = { A: 8800, B: 12800, C: 16800, D: 20800 };
+  const familyPlanPrice = (plan) => PLAN_PRICE[plan] != null ? PLAN_PRICE[plan] : PLAN_PRICE.A;
+
+  // 📋 各計劃人數描述（前後端共用，避免 UI 硬編碼走樣）
+  const PLAN_RANGE_LABEL = { A: '1-2 人', B: '3-5 人', C: '6-9 人', D: '10 人以上' };
+
+  // 取得某用戶所屬家庭嘅戶主 id（用於資料隔離 / Item 10）：
+  //   - 本身係戶主（family_head_id=自己）或有子女 → 自己
+  //   - 係子帳戶（family_head_id 指向戶主）→ 該戶主
+  //   - 非家庭成員 → null
+  async function familyHeadOf(userId) {
+    const u = await q1("SELECT id, family_head_id FROM users WHERE id=?", [userId]);
+    if (!u) return null;
+    if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) return Number(u.id);
+    if (u.family_head_id) return Number(u.family_head_id);
+    const asParent = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [userId]);
+    if (asParent) return Number(u.id);
+    return null;
+  }
 
   // 收集家庭所有成員 id：戶主 + family_links 子女 + 戶主/子女經 account_links 連結嘅親戚
   // （account_links 嘅人一樣計入張家庭單，呢個先符合「連結後喺張單入邊」）
@@ -93,11 +115,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     return [...ids];
   }
 
-  // 計家庭總人數 → 計劃（A:1-2 / B:3-9 / C:10+）
+  // 計家庭總人數 → 計劃（A:1-2 / B:3-5 / C:6-9 / D:10+）
   async function computeFamilyPlan(headId) {
     const memIds = await getFamilyMemberIds(headId);
     const total = memIds.length;
-    return { total, plan: total <= 2 ? 'A' : (total <= 9 ? 'B' : 'C') };
+    return { total, plan: total <= 2 ? 'A' : (total <= 5 ? 'B' : (total <= 9 ? 'C' : 'D')) };
   }
 
   // 生成下一個家庭單號（全 prefix 共一條順序，1001 起）
@@ -134,34 +156,51 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   }
 
   // 🔒 家庭計劃加人上限檢查：返回是否封鎖 + 當前計劃 + 下一個計劃
-  // 加到當前 plan 上限（A:2 / B:9）就封鎖，提示升級；C（10+）無上限
+  // 加到當前 plan 上限（A:2 / B:5 / C:9）就封鎖，提示升級；D（10+）無上限
   async function checkFamilyPlanLimit(headId) {
     const { total, plan: derived } = await computeFamilyPlan(headId);
     const cur = await q1("SELECT family_plan FROM users WHERE id=?", [headId]);
     const curPlan = (cur && cur.family_plan) || 'A';
     // 計劃只升唔降：實際人數推出嘅 plan 比存儲低（例如 legacy/seed 數據未同步）時，
-    // 以實際人數為準，避免存儲計劃過低而誤封鎖加人（C 仍不設上限）。
+    // 以實際人數為準，避免存儲計劃過低而誤封鎖加人（D 仍不設上限）。
     const effPlan = PLAN_ORDER[curPlan] >= PLAN_ORDER[derived] ? curPlan : derived;
     const max = PLAN_MAX[effPlan];
-    if (effPlan !== 'C' && total >= max) {
+    if (effPlan !== 'D' && total >= max) {
       return { blocked: true, currentPlan: effPlan, next: nextPlanOf(effPlan), max };
     }
     return { blocked: false, currentPlan: effPlan, max };
   }
 
-  // 🔢 會員編號 = S/M/J + 電話後 4 位（S=主帳戶 / M=子帳戶 / J=一般帳戶）
-  // 前綴按 family_head_id 決定：=自己→S（主帳戶）；=其他人→M（子帳戶）；null/非家庭→J（一般帳戶）
+  // 🔢 會員編號（2026-09-15 新規格）：
+  //   主帳戶   = S  + 方案字母 + 電話末 4 碼（如 SA1234）
+  //   子帳戶   = M  + 方案字母 + 電話末 4 碼（如 MA1234）
+  //   一般帳戶 = JR + 電話末 4 碼（如 JR1234）
+  // 前綴按 family_head_id 決定：=自己→主帳戶；=其他人→子帳戶（用該戶主嘅方案字母）；null/非家庭→一般
+  const planLetter = (p) => (PLAN_ORDER[p] != null ? p : 'A');
   async function recomputeMemberNo(userId) {
-    const u = await q1("SELECT id, phone, family_head_id, member_no FROM users WHERE id=?", [userId]);
+    const u = await q1("SELECT id, phone, family_head_id, family_plan, member_no FROM users WHERE id=?", [userId]);
     if (!u) return;
     let prefix;
-    if (u.family_head_id && Number(u.family_head_id) !== Number(u.id)) prefix = 'M';
-    else if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) prefix = 'S';
-    else prefix = 'J';
+    if (u.family_head_id && Number(u.family_head_id) !== Number(u.id)) {
+      const h = await q1("SELECT family_plan FROM users WHERE id=?", [u.family_head_id]);
+      prefix = 'M' + planLetter(h && h.family_plan);
+    } else if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) {
+      prefix = 'S' + planLetter(u.family_plan);
+    } else {
+      prefix = 'JR';
+    }
     const digits = String(u.phone || '').replace(/\D/g, '');
     const last4 = digits.slice(-4) || '0000';
     const no = prefix + last4;
     if (no !== u.member_no) await run("UPDATE users SET member_no=? WHERE id=?", [no, userId]);
+  }
+
+  // 🔁 方案升降級 / 家庭成員變動後，重算全家人嘅會員編號（編號內含方案字母，會跟住變）
+  async function recomputeFamilyMemberNos(headId) {
+    const ids = await getFamilyMemberIds(headId);
+    for (const id of ids) {
+      try { await recomputeMemberNo(id); } catch (e) { /* 單一會員出錯唔影響其他人 */ }
+    }
   }
 
   const activateSubscription = async (userId, tier, paymentId) => {
@@ -182,7 +221,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const lookupKey = `bw_membership_${tier}_monthly`;
     const list = await stripe.prices.list({ lookup_key: lookupKey, active: true, limit: 1 });
     if (list.data && list.data.length) return list.data[0].id;
-    const product = await stripe.products.create({ name: `寶天醫館 ${info.name}`, metadata: { tier } });
+    const product = await stripe.products.create({ name: `寶天JR ${info.name}`, metadata: { tier } });
     const price = await stripe.prices.create({
       currency: 'hkd',
       unit_amount: info.price * 100,
@@ -310,13 +349,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // POST /api/membership/checkout — 建立 Stripe Checkout Session（Subscription 模式，每月自動扣款）
   router.post('/checkout', requireAuth, async (req, res) => {
-    const { tier } = req.body || {};
+    const { tier, plan } = req.body || {};
     if (!['premium', 'family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
     const user = req.user;
     const stripe = getStripe();
     if (!stripe) {
       return res.status(503).json({ error: '支付服務未設定（請在 .env 設定 STRIPE_SECRET_KEY）', code: 'stripe_not_configured' });
     }
+    // 🏠 家庭計劃所選方案（A/B/C/D）：記錄落 family_plan（驅動會員編號字母），Stripe 金額按家庭計劃統一處理
+    const chosenPlan = (tier === 'family' && ['A', 'B', 'C', 'D'].includes(plan)) ? plan : null;
     try {
       const fullUser = await q1("SELECT id, username, name, email, phone, stripe_customer_id, family_head_id FROM users WHERE id=?", [user.id]);
       // 🔒 家庭計劃「一張單一個付款人」：若家庭已有人供緊款，擋第二個付款人（符「是但一個俾錢張單就完成」）
@@ -338,6 +379,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
             });
           }
         }
+        // 記錄所選方案（樂觀寫入 family_plan，供會員編號／計劃顯示；Webhook 完成付款後會再確認）
+        if (chosenPlan) {
+          const headId = (fullUser.family_head_id && Number(fullUser.family_head_id) !== Number(fullUser.id))
+            ? Number(fullUser.family_head_id) : Number(fullUser.id);
+          await run("UPDATE users SET family_plan=? WHERE id=?", [chosenPlan, headId]);
+        }
       }
       const customerId = await getOrCreateCustomer(stripe, fullUser);
       const priceId = await getOrCreatePrice(stripe, tier);
@@ -349,7 +396,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         success_url: `${baseUrl}/index.html?payment=success&tier=${tier}`,
         cancel_url: `${baseUrl}/index.html?payment=cancelled`,
         client_reference_id: String(user.id),
-        metadata: { userId: String(user.id), tier, initiatedBy: 'self' }
+        metadata: { userId: String(user.id), tier, plan: chosenPlan || '', initiatedBy: 'self' }
       });
       res.json({ url: session.url });
     } catch (e) {
@@ -490,19 +537,30 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  router.post('/family/add', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
+  router.post('/family/add', requireAuth, async (req, res) => {
     const { parentUserId, parentUsername, childUsername, childBirthDate, relation, name } = req.body || {};
     if (!childUsername) return res.status(400).json({ error: '請輸入子帳戶的用戶名' });
     if (!childBirthDate) return res.status(400).json({ error: '請提供子帳戶的出生日期' });
-    const parent = await resolveParent(parentUserId, parentUsername, { allowNonFamilyTier: !!req.body.allowNonFamilyTier });
-    if (!parent.ok) {
-      return res.status(parent.status || 400).json({
-        error: parent.error,
-        ...(parent.code ? { code: parent.code, tier: parent.tier } : {})
-      });
+    const isPrivileged = (req.user.role === 'staff' || req.user.role === 'admin');
+    let head;
+    if (isPrivileged) {
+      const parent = await resolveParent(parentUserId, parentUsername, { allowNonFamilyTier: !!req.body.allowNonFamilyTier });
+      if (!parent.ok) {
+        return res.status(parent.status || 400).json({
+          error: parent.error,
+          ...(parent.code ? { code: parent.code, tier: parent.tier } : {})
+        });
+      }
+      head = parent.user;
+    } else {
+      // 🔒 客人家庭戶主自助理連結（僅限自己家庭）
+      const me = await q1("SELECT id, username, name, phone, family_head_id, membership_tier FROM users WHERE id=?", [req.user.id]);
+      const isHead = Number(me.family_head_id) === Number(me.id) || !!(await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [me.id]));
+      if (!isHead) return res.status(403).json({ error: '只有家庭戶主可以連結家庭成員，請由職員協助或先啟用家庭帳戶' });
+      if (Number(me.family_head_id) !== Number(me.id)) await familyService.enableHead(me.id);
+      head = me;
     }
-    const head = parent.user;
-    // 🔒 家庭計劃加人上限檢查（A:2 / B:9 / C:∞）
+    // 🔒 家庭計劃加人上限檢查（A:2 / B:5 / C:9；D 不設上限）
     const planLim = await checkFamilyPlanLimit(head.id);
     if (planLim.blocked) {
       return res.status(403).json({
@@ -548,7 +606,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         // 非 8 位（國際號碼）保持原樣，交由 WhatsApp 服務處理
       }
       const message = [
-        `【寶天醫館】${title}`,
+        `【寶天JR】${title}`,
         '',
         `成員姓名：${childName}`,
         `登入帳戶：${username}`,
@@ -622,20 +680,31 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   };
 
   // POST /api/membership/family/register — 親子家庭成員註冊（自動生成帳戶 + 一次性臨時密碼）
-  // 🔒 規格：子帳戶申請必須喺員工/管理員帳戶實行（需指定戶主 parentUserId / parentUsername）
-  router.post('/family/register', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
+  // 🔒 規格：職員/管理員代辦（可指定戶主），或用戶自己係家庭戶主亦可自助理兒童開戶（限自己家庭）
+  router.post('/family/register', requireAuth, async (req, res) => {
     const { parentUserId, parentUsername, name, name_en, birth_date, phone, id_card, address, relation, gender } = req.body || {};
-
-    const parent = await resolveParent(parentUserId, parentUsername, { allowNonFamilyTier: !!req.body.allowNonFamilyTier });
-    if (!parent.ok) {
-      return res.status(parent.status || 400).json({
-        error: parent.error,
-        ...(parent.code ? { code: parent.code, tier: parent.tier } : {})
-      });
+    const isPrivileged = (req.user.role === 'staff' || req.user.role === 'admin');
+    let head;
+    if (isPrivileged) {
+      const parent = await resolveParent(parentUserId, parentUsername, { allowNonFamilyTier: !!req.body.allowNonFamilyTier });
+      if (!parent.ok) {
+        return res.status(parent.status || 400).json({
+          error: parent.error,
+          ...(parent.code ? { code: parent.code, tier: parent.tier } : {})
+        });
+      }
+      head = parent.user;
+    } else {
+      // 🔒 客人家庭戶主自助理兒童開戶（僅限自己家庭，受計劃人數上限約束）
+      const me = await q1("SELECT id, username, name, phone, family_head_id, membership_tier FROM users WHERE id=?", [req.user.id]);
+      const isHead = Number(me.family_head_id) === Number(me.id) || !!(await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [me.id]));
+      if (!isHead) return res.status(403).json({ error: '只有家庭戶主可以新增家庭成員，請由職員協助或先啟用家庭帳戶' });
+      if ((me.membership_tier || 'general') !== 'family') return res.status(403).json({ error: '請先升級至家庭計劃以新增家庭成員', code: 'NEED_FAMILY_TIER' });
+      if (Number(me.family_head_id) !== Number(me.id)) await familyService.enableHead(me.id);
+      head = me;
     }
-    const head = parent.user;
 
-    // 🔒 家庭計劃加人上限檢查（A:2 / B:9 / C:∞）
+    // 🔒 家庭計劃加人上限檢查（A:2 / B:5 / C:9；D 不設上限）
     const planLim = await checkFamilyPlanLimit(head.id);
     if (planLim.blocked) {
       return res.status(403).json({
@@ -769,6 +838,14 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         if (!p) return res.status(404).json({ error: '找不到該家庭帳戶戶主（請輸入會員ID 或 完整中文姓名）' });
         parentId = p.id;
         parentName = p.name;
+      } else if (user.role === 'customer') {
+        // 🔒 資料隔離（Item 10）：客人查自己家庭——戶主用自己，子帳戶用所屬戶主
+        const myHead = await familyHeadOf(user.id);
+        if (myHead) {
+          parentId = myHead;
+          const h = await q1("SELECT name, username FROM users WHERE id=?", [myHead]);
+          parentName = h ? h.name : user.name;
+        }
       }
       const children = await q(
         `SELECT u.id, u.name, u.username, u.birth_date, u.member_no, u.hide_medical_from_head, u.hide_booking_from_head, u.hide_profile_from_head, u.hide_from_head, u.created_at, fl.relation, fl.created_at AS linked_at
@@ -972,13 +1049,16 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const childId = Number(req.params.id);
     const user = req.user;
     try {
-      const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
-      if (!link) return res.status(403).json({ error: '沒有權限' });
+      // 🔒 資料隔離（Item 10）：只可查閱自己家庭（同戶主）成員；跨家庭一律 403
+      const targetHead = await familyHeadOf(childId);
+      const myHead = await familyHeadOf(user.id);
+      if (!(targetHead && myHead && targetHead === myHead)) return res.status(403).json({ error: '沒有權限' });
+      const viewerIsHead = Number(myHead) === Number(user.id);
       const child = await q1("SELECT birth_date, hide_booking_from_head FROM users WHERE id=?", [childId]);
       const age = computeAge(child && child.birth_date);
       const isAdult = age >= 18;
-      // 🔒 18+ 且開啟預約私隱 → 戶主不可見其預約（未滿 18 歲強制開放）
-      if (isAdult && child && child.hide_booking_from_head === 1) {
+      // 🔒 18+ 且開啟預約私隱 → 戶主不可見其預約（未滿 18 歲強制開放；子帳戶檢視不受此限）
+      if (viewerIsHead && isAdult && child && child.hide_booking_from_head === 1) {
         return res.status(403).json({ error: '該成員未開放預約記錄', code: 'hidden_from_head' });
       }
       const rows = await q(
@@ -1000,15 +1080,18 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const childId = Number(req.params.id);
     const user = req.user;
     try {
-      const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
-      if (!link) return res.status(403).json({ error: '沒有權限' });
+      // 🔒 資料隔離（Item 10）：只可查閱自己家庭（同戶主）成員；跨家庭一律 403
+      const targetHead = await familyHeadOf(childId);
+      const myHead = await familyHeadOf(user.id);
+      if (!(targetHead && myHead && targetHead === myHead)) return res.status(403).json({ error: '沒有權限' });
+      const viewerIsHead = Number(myHead) === Number(user.id);
       const child = await q1(
         "SELECT id, name, username, birth_date, phone, email, id_card, address, emergency_contact, emergency_phone, insurance_covered, member_no, profile_completed, hide_profile_from_head FROM users WHERE id=?",
         [childId]);
       if (!child) return res.status(404).json({ error: '找不到該成員' });
       const age = computeAge(child.birth_date);
       const isAdult = age >= 18;
-      if (isAdult && child.hide_profile_from_head === 1) {
+      if (viewerIsHead && isAdult && child.hide_profile_from_head === 1) {
         return res.status(403).json({ error: '該成員未開放個人資料', code: 'hidden_from_head' });
       }
       res.json({
@@ -1040,13 +1123,16 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const childId = Number(req.params.id);
     const user = req.user;
     try {
-      const link = await q1("SELECT * FROM family_links WHERE parent_user_id=? AND child_user_id=?", [user.id, childId]);
-      if (!link) return res.status(403).json({ error: '沒有權限' });
+      // 🔒 資料隔離（Item 10）：只可查閱自己家庭（同戶主）成員；跨家庭一律 403
+      const targetHead = await familyHeadOf(childId);
+      const myHead = await familyHeadOf(user.id);
+      if (!(targetHead && myHead && targetHead === myHead)) return res.status(403).json({ error: '沒有權限' });
+      const viewerIsHead = Number(myHead) === Number(user.id);
       const child = await q1("SELECT birth_date, hide_medical_from_head FROM users WHERE id=?", [childId]);
       if (!child) return res.status(404).json({ error: '找不到該成員' });
       const age = computeAge(child.birth_date);
       const isAdult = age >= 18;
-      if (isAdult && child.hide_medical_from_head === 1) {
+      if (viewerIsHead && isAdult && child.hide_medical_from_head === 1) {
         return res.status(403).json({ error: '該成員未開放病歷', code: 'hidden_from_head' });
       }
       const records = await q(
@@ -1100,12 +1186,8 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     try {
       const me = req.user;
       if (me.role !== 'customer') return res.status(403).json({ error: '只限客戶帳戶' });
-      // 戶主認定：family_head_id=自己 或 名下已有 family_links 子女
-      let headId = Number(me.family_head_id) === Number(me.id) ? Number(me.id) : null;
-      if (!headId) {
-        const c = await q1("SELECT 1 FROM family_links WHERE parent_user_id=? LIMIT 1", [me.id]);
-        if (c) headId = Number(me.id);
-      }
+      // 🔒 資料隔離（Item 10）：戶主或子帳戶都可睇自己家庭（同戶主）關係圖
+      const headId = await familyHeadOf(me.id);
       if (!headId) return res.json({ is_head: false, head: null, children: [], links: [] });
 
       const head = await q1(
@@ -1139,7 +1221,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         });
       }
       res.json({
-        is_head: true,
+        is_head: Number(me.id) === Number(headId),
         head: head || null,
         children: children.map(c => ({ ...c, is_me: Number(c.id) === Number(me.id) })),
         links,
@@ -1307,7 +1389,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  // POST /api/membership/family/upgrade-plan — 家庭戶主自助升級計劃（A→B→C），突破加人上限
+  // POST /api/membership/family/upgrade-plan — 家庭戶主自助升級計劃（A→B→C→D），突破加人上限
   router.post('/family/upgrade-plan', requireAuth, async (req, res) => {
     try {
       const user = req.user;
@@ -1317,10 +1399,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       if (!isHead) return res.status(403).json({ error: '只有家庭主帳戶才可以升級家庭計劃' });
       const cur = (me.family_plan) || 'A';
       const nxt = nextPlanOf(cur);
-      if (!nxt) return res.status(400).json({ error: '已是最高的計劃 C，無需升級' });
+      if (!nxt) return res.status(400).json({ error: '已是最高的計劃 D，無需升級' });
       await run("UPDATE users SET family_plan=? WHERE id=?", [nxt, user.id]);
       await syncFamilyPlan(user.id);
-      res.json({ ok: true, plan: nxt, message: `已升級至家庭計劃 ${nxt}` });
+      // 🔢 編號內含方案字母（SA→SB…），升級後要重算全家會員編號
+      await recomputeFamilyMemberNos(user.id);
+      res.json({ ok: true, plan: nxt, price: familyPlanPrice(nxt), message: `已升級至家庭計劃 ${nxt}` });
     } catch (e) {
       console.error('升級家庭計劃失敗:', e);
       res.status(500).json({ error: '升級失敗' });

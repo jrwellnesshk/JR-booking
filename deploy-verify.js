@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 寶天醫館預約系統 — 部署後自動驗證腳本
+ * 寶天JR預約系統 — 部署後自動驗證腳本
  *
  * 用法：
  *   BASE=http://localhost ADMIN_PW='your-admin-pw' node deploy-verify.js

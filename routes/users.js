@@ -220,17 +220,28 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           params.push(val);
         }
       });
-      // 🔢 會員編號 = S/M/J 前綴 + 電話後 4 位（改電話即同步；保留原有前綴）
+      // 🔢 會員編號（2026-09-15 新規格：主 S+方案字母 / 子 M+方案字母 / 一般 JR）+ 電話後 4 位
+      //   改電話即同步末 4 碼；前綴依家庭狀態重算（方案字母取 family_plan，缺省 A）
       if (phone !== undefined) {
-        db.get("SELECT member_no, family_head_id, id FROM users WHERE id=?", [id], (e2, urow) => {
+        db.get("SELECT member_no, family_head_id, family_plan, id FROM users WHERE id=?", [id], (e2, urow) => {
           if (e2) return serverError(res, e2);
-          let prefix = 'J';
-          if (urow) {
-            const curNo = urow.member_no || '';
-            if (/^[SMJ]/.test(curNo)) prefix = curNo[0];
-            else if (urow.family_head_id && Number(urow.family_head_id) === Number(urow.id)) prefix = 'S';
-            else if (urow.family_head_id && Number(urow.family_head_id) !== Number(urow.id)) prefix = 'M';
-            else prefix = 'J';
+          const planLetter = (p) => (['A', 'B', 'C', 'D'].includes(p) ? p : 'A');
+          let prefix = 'JR';
+          if (urow && urow.family_head_id) {
+            const hid = Number(urow.family_head_id);
+            if (hid === Number(urow.id)) {
+              prefix = 'S' + planLetter(urow.family_plan);
+            } else {
+              // 子帳戶：需取戶主嘅方案字母
+              db.get("SELECT family_plan FROM users WHERE id=?", [hid], (e3, hrow) => {
+                const hprefix = 'M' + planLetter(hrow && hrow.family_plan);
+                const digits = String(phone || '').replace(/\D/g, '');
+                sets.push('member_no=?');
+                params.push(hprefix + (digits.slice(-4) || '0000'));
+                finalizeUpdate();
+              });
+              return;
+            }
           }
           const digits = String(phone || '').replace(/\D/g, '');
           sets.push('member_no=?');

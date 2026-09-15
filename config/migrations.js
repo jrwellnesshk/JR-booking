@@ -513,27 +513,68 @@ function runMigrations(db) {
           });
         }
       });
-      // 回填：會員編號 = 電話（客戶 / 家庭成員）
+      // 回填：會員編號 = 電話（客戶 / 家庭成員）— 僅填空者
       db.run("UPDATE users SET member_no = phone WHERE (member_no IS NULL OR member_no='') AND phone IS NOT NULL AND phone<>''", (e) => {
-        if (!e) console.log("✅ 已回填 member_no = phone");
+        if (!e) console.log("✅ 已回填 member_no = phone（空值）");
       });
-      // 🔢 重新格式化會員編號：S/M/J + 電話後 4 位（2026-09-14 規格；覆蓋舊嘅「純電話」格式，idempotent）
-      // S=主帳戶(family_head_id=自己) / M=子帳戶(family_head_id=其他人) / J=一般帳戶(非家庭)
-      db.all("SELECT id, phone, family_head_id, member_no FROM users", (e0, rows) => {
+      // 🔢 重新格式化會員編號（2026-09-15 新規格，idempotent）：
+      //   主帳戶 = S + 方案字母 + 電話末 4 碼（SA1234）
+      //   子帳戶 = M + 方案字母 + 電話末 4 碼（MA1234）
+      //   一般帳戶 = JR + 電話末 4 碼（JR1234）
+      //   方案字母取 family_plan（A/B/C/D），缺省 A
+      db.all("SELECT id, phone, family_head_id, family_plan, member_no FROM users", (e0, rows) => {
         if (e0 || !rows) return;
+        const byId = {};
+        rows.forEach(u => { byId[u.id] = u; });
+        const planLetter = (p) => (['A', 'B', 'C', 'D'].includes(p) ? p : 'A');
         const stmt = db.prepare("UPDATE users SET member_no=? WHERE id=?");
         rows.forEach(u => {
-          let prefix = 'J';
-          if (u.family_head_id && Number(u.family_head_id) !== Number(u.id)) prefix = 'M';
-          else if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) prefix = 'S';
-          else prefix = 'J';
+          let prefix;
+          if (u.family_head_id) {
+            const hid = Number(u.family_head_id);
+            if (hid === Number(u.id)) prefix = 'S' + planLetter(u.family_plan);
+            else {
+              const h = byId[hid];
+              prefix = 'M' + planLetter(h && h.family_plan);
+            }
+          } else prefix = 'JR';
           const digits = String(u.phone || '').replace(/\D/g, '');
           const no = prefix + (digits.slice(-4) || '0000');
           if (no !== u.member_no) stmt.run(no, u.id);
         });
-        stmt.finalize(() => console.log("✅ 已重新格式化 member_no 為 S/M/J + 電話後4位"));
+        stmt.finalize(() => console.log("✅ 已重新格式化 member_no 為 S/M+方案字母 / JR + 電話後4位"));
       });
     });
+
+    // 討論區審核機制：forum_posts 加 status 欄（pending / approved / rejected）
+    // 舊有帖（status 為 NULL）視為已公開（approved），新帖預設 pending 待審核
+    db.all("PRAGMA table_info(forum_posts)", (fpErr, fpCols) => {
+      if (!fpErr && fpCols && !fpCols.some(c => c.name === 'status')) {
+        db.run("ALTER TABLE forum_posts ADD COLUMN status TEXT DEFAULT 'pending'", (e) => {
+          if (e) console.error("添加 forum_posts.status 失敗:", e.message);
+          else {
+            console.log("✅ 已添加 forum_posts.status 欄位");
+            db.run("UPDATE forum_posts SET status='approved' WHERE status IS NULL OR status=''", (e2) => {
+              if (!e2) console.log("✅ 已將舊有討論區帖子標記為 approved（既得公開）");
+            });
+          }
+        });
+      }
+    });
+
+    // 客人心聲表（customer_voices）：確保存在（db.js 已 IF NOT EXISTS 建立，此處雙重保險）
+    db.run(`CREATE TABLE IF NOT EXISTS customer_voices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      user_name TEXT NOT NULL,
+      avatar TEXT,
+      rating INTEGER DEFAULT 5,
+      visit_type TEXT,
+      content TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )`, (e) => { if (e) console.error("建立 customer_voices 表失敗:", e.message); });
 
     // doctor_time_slots.status 回填（open=開放 / rest=休息 / waiting=候診 / blank=空白關閉）
     db.all("PRAGMA table_info(doctor_time_slots)", (err, cols) => {

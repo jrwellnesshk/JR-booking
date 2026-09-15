@@ -7,7 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title data-i18n="寶天醫館 - 管理員後台">寶天醫館 - 管理員後台</title>
+    <title data-i18n="寶天JR - 管理員後台">寶天JR - 管理員後台</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -519,13 +519,26 @@
   #app main table:not(.no-card) td[colspan]::before{ display:none!important; }
 }
 </style>
-</head>
+    <!-- 🆕 11) 版面間距優化：卡片/盒之間留多啲位（覆寫預建 tailwind 間距類） -->
+    <style id="spacing-bump-11">
+      .space-y-2 > * + * { margin-top: .8rem; }
+      .space-y-3 > * + * { margin-top: 1.1rem; }
+      .space-y-4 > * + * { margin-top: 1.4rem; }
+      .space-y-5 > * + * { margin-top: 1.7rem; }
+      .space-y-6 > * + * { margin-top: 2rem; }
+      .space-y-8 > * + * { margin-top: 2.5rem; }
+      .gap-2 { gap: .8rem; }
+      .gap-3 { gap: 1.1rem; }
+      .gap-4 { gap: 1.4rem; }
+      .gap-6 { gap: 2rem; }
+    </style>
+  </head>
   <body>
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-logo" data-i18n="寶">寶</div>
-      <div class="boot-name" data-i18n="寶天醫館">寶天醫館</div>
+      <div class="boot-name" data-i18n="寶天JR">寶天JR</div>
       <div class="boot-sub" data-i18n="管理後台">管理後台</div>
       <div class="boot-ring"></div>
     </div>
@@ -584,7 +597,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
           <div class="text-center mb-8">
             <i class="fas fa-user-shield text-emerald-600 text-5xl mb-4"></i>
-            <h1 class="text-2xl font-bold text-emerald-700">{{ t('寶天醫館') }}</h1>
+            <h1 class="text-2xl font-bold text-emerald-700">{{ t('寶天JR') }}</h1>
             <p class="text-slate-500 mt-2">{{ t('管理員後台系統') }}</p>
           </div>
 
@@ -678,7 +691,7 @@
           >
             <i class="fas fa-bars text-lg"></i>
           </button>
-          <span class="font-bold text-[#5D4037] tracking-wide truncate">{{ t('寶天醫館 · 管理') }}</span>
+          <span class="font-bold text-[#5D4037] tracking-wide truncate">{{ t('寶天JR · 管理') }}</span>
         </header>
         <div
           v-show="sidebarOpen"
@@ -695,7 +708,7 @@
           <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
             <i class="fas fa-user-shield text-emerald-400 text-3xl"></i>
             <div class="min-w-0">
-              <div class="text-sm font-bold truncate">{{ t('寶天醫館後台') }}</div>
+              <div class="text-sm font-bold truncate">{{ t('寶天JR後台') }}</div>
               <div class="text-xs opacity-70 truncate">{{ adminUser.name }}</div>
             </div>
           </div>
@@ -1110,7 +1123,7 @@
               <div class="bg-white rounded-xl shadow-lg p-6 border-t-4 border-purple-400">
                 <p class="text-sm text-slate-500"><i class="fas fa-people-roof mr-1 text-purple-400"></i>{{ t('家庭會員') }}</p>
                 <p class="text-2xl font-bold text-purple-600 mt-1">{{ incomeSummary.subscription?.counts?.family || 0 }}</p>
-                <p class="text-xs text-slate-400 mt-1">{{ t('HK$16,800 / 月') }}</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('家庭計劃 A–D，按計劃收費') }}</p>
               </div>
               <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white">
                 <p class="text-sm text-emerald-100"><i class="fas fa-coins mr-1"></i>{{ t('每月訂閱收入（經常性）') }}</p>
@@ -2363,9 +2376,8 @@
                     <div>
                       <label class="block text-slate-500 mb-1">{{ t('開通／續費級別') }}</label>
                       <select v-model="mpRecordForm.tier" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                        <option value="premium">{{ t('高級會員（HK$8,800／月）') }}</option>
-                        <option value="family">{{ t('家庭會員（HK$16,800／月）') }}</option>
-                        <option value="general">{{ t('一般會員（免費）') }}</option>
+                        <option value="family">{{ t('家庭計劃（A $8,800／B $12,800／C $16,800／D $20,800 每月）') }}</option>
+                        <option value="general">{{ t('一般帳戶（免費）') }}</option>
                       </select>
                     </div>
                     <div>
@@ -2477,10 +2489,17 @@
                   <small>{{ selectedFamilyHead.name }} 的家庭帳戶</small>
                 </div>
 
+                <!-- 🌳 世代篩選 -->
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <span class="text-sm text-slate-500 mr-1">{{ t('世代篩選：') }}</span>
+                  <button @click="ftreeGenFilter = null" :class="!ftreeGenFilter ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors">{{ t('全部世代') }}</button>
+                  <button v-for="g in ftreeGens" :key="g.level" @click="ftreeGenFilter = g.level" :class="ftreeGenFilter === g.level ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors">{{ g.label }}</button>
+                </div>
+
                 <ul class="ftree-gen ftree-gen-root">
                   <li>
                     <!-- 祖父母層（預留） -->
-                    <div class="ftree-couple">
+                    <div class="ftree-couple" v-show="ftreeGenVisible(1)">
                       <div class="ftree-node" data-role="placeholder">
                         <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
                         <div class="ftree-name">{{ t('上一代') }}<br><span class="text-[10px] opacity-70">{{ t('（預留）') }}</span></div>
@@ -2494,12 +2513,12 @@
                     </div>
 
                     <!-- 父母層：經由戶主連入嘅「父母」關係 -->
-                    <ul v-if="familyTreeData.parentLevel.length" class="ftree-gen">
+                    <ul v-if="familyTreeData.parentLevel.length" class="ftree-gen" v-show="ftreeGenWrapVisible(1)">
                       <li v-for="gp in familyTreeData.parentLevel" :key="gp.id">
-                        <div class="ftree-node" data-role="relative">
+                        <div class="ftree-node" data-role="relative" v-show="ftreeGenVisible(1)">
                           <div class="ftree-avatar-wrap">
                             <div class="ftree-avatar">
-                              <img v-if="gp.primary.avatar_url" :src="gp.primary.avatar_url" :alt="gp.primary.name">
+                              <img v-if="isAvatarUrl(gp.primary.avatar_url)" :src="gp.primary.avatar_url" :alt="gp.primary.name">
                               <i v-else class="fas fa-user"></i>
                             </div>
                           </div>
@@ -2509,15 +2528,15 @@
                         </div>
 
                         <!-- 戶主層 -->
-                        <ul class="ftree-gen">
+                        <ul class="ftree-gen" v-show="ftreeGenWrapVisible(2)">
                           <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
-                            <div class="ftree-node-wrapper">
+                            <div class="ftree-node-wrapper" v-show="ftreeGenVisible(2)">
                               <div v-if="parent.type === 'couple'" class="ftree-couple">
                                 <!-- 戶主 -->
                                 <div class="ftree-node" data-role="head">
                                   <div class="ftree-avatar-wrap">
                                     <div class="ftree-avatar">
-                                      <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                      <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
                                       <i v-else class="fas fa-crown"></i>
                                     </div>
                                   </div>
@@ -2531,7 +2550,7 @@
                                 <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
                                   <div class="ftree-avatar-wrap">
                                     <div class="ftree-avatar">
-                                      <img v-if="parent.spouse && parent.spouse.avatar_url" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
+                                      <img v-if="parent.spouse && isAvatarUrl(parent.spouse.avatar_url)" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
                                       <i v-else class="fas fa-user"></i>
                                     </div>
                                   </div>
@@ -2544,7 +2563,7 @@
                               <div v-else class="ftree-node" data-role="relative">
                                 <div class="ftree-avatar-wrap">
                                   <div class="ftree-avatar">
-                                    <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                    <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
                                     <i v-else class="fas fa-user"></i>
                                   </div>
                                 </div>
@@ -2555,12 +2574,12 @@
                             </div>
 
                             <!-- 子女層 -->
-                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
+                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children" v-show="ftreeGenWrapVisible(3)">
                               <li v-for="child in parent.children" :key="child.id">
-                                <div class="ftree-node" data-role="child">
+                                <div class="ftree-node" data-role="child" v-show="ftreeGenVisible(3)">
                                   <div class="ftree-avatar-wrap">
                                     <div class="ftree-avatar">
-                                      <img v-if="child.avatar_url" :src="child.avatar_url" :alt="child.name">
+                                      <img v-if="isAvatarUrl(child.avatar_url)" :src="child.avatar_url" :alt="child.name">
                                       <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
                                     </div>
                                   </div>
@@ -2572,12 +2591,12 @@
                                   <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
                                 </div>
                                 <!-- 延伸連結（由子女連出） -->
-                                <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
+                                <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext" v-show="ftreeGenWrapVisible(4)">
                                   <li v-for="lk in child.extendedLinks" :key="lk.id">
-                                    <div class="ftree-node" data-role="extended">
+                                    <div class="ftree-node" data-role="extended" v-show="ftreeGenVisible(4)">
                                       <div class="ftree-avatar-wrap">
                                         <div class="ftree-avatar">
-                                          <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                                          <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
                                           <i v-else class="fas fa-user"></i>
                                         </div>
                                       </div>
@@ -2597,7 +2616,7 @@
                     </ul>
 
                     <!-- 無父母連結：戶主層直接喺祖父母下面 -->
-                    <ul v-else class="ftree-gen">
+                    <ul v-else class="ftree-gen" v-show="ftreeGenWrapVisible(2)">
                       <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
                         <div class="ftree-node-wrapper">
                           <div v-if="parent.type === 'couple'" class="ftree-couple">
@@ -2605,7 +2624,7 @@
                             <div class="ftree-node" data-role="head">
                               <div class="ftree-avatar-wrap">
                                 <div class="ftree-avatar">
-                                  <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                  <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
                                   <i v-else class="fas fa-crown"></i>
                                 </div>
                               </div>
@@ -2619,7 +2638,7 @@
                             <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
                               <div class="ftree-avatar-wrap">
                                 <div class="ftree-avatar">
-                                  <img v-if="parent.spouse && parent.spouse.avatar_url" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
+                                  <img v-if="parent.spouse && isAvatarUrl(parent.spouse.avatar_url)" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
                                   <i v-else class="fas fa-user"></i>
                                 </div>
                               </div>
@@ -2632,7 +2651,7 @@
                           <div v-else class="ftree-node" data-role="relative">
                             <div class="ftree-avatar-wrap">
                               <div class="ftree-avatar">
-                                <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
+                                <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
                                 <i v-else class="fas fa-user"></i>
                               </div>
                             </div>
@@ -2645,10 +2664,10 @@
                         <!-- 子女層 -->
                         <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
                           <li v-for="child in parent.children" :key="child.id">
-                            <div class="ftree-node" data-role="child">
+                            <div class="ftree-node" data-role="child" v-show="ftreeGenVisible(3)">
                               <div class="ftree-avatar-wrap">
                                 <div class="ftree-avatar">
-                                  <img v-if="child.avatar_url" :src="child.avatar_url" :alt="child.name">
+                                  <img v-if="isAvatarUrl(child.avatar_url)" :src="child.avatar_url" :alt="child.name">
                                   <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
                                 </div>
                               </div>
@@ -2660,12 +2679,12 @@
                               <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
                             </div>
                             <!-- 延伸連結（由子女連出） -->
-                            <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
+                            <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext" v-show="ftreeGenWrapVisible(4)">
                               <li v-for="lk in child.extendedLinks" :key="lk.id">
-                                <div class="ftree-node" data-role="extended">
+                                <div class="ftree-node" data-role="extended" v-show="ftreeGenVisible(4)">
                                   <div class="ftree-avatar-wrap">
                                     <div class="ftree-avatar">
-                                      <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                                      <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
                                       <i v-else class="fas fa-user"></i>
                                     </div>
                                   </div>
@@ -2707,12 +2726,14 @@
                       <template v-if="familyDetail.plan === 'A'">{{ t('A 計劃') }}</template>
                       <template v-else-if="familyDetail.plan === 'B'">{{ t('B 計劃') }}</template>
                       <template v-else-if="familyDetail.plan === 'C'">{{ t('C 計劃') }}</template>
+                      <template v-else-if="familyDetail.plan === 'D'">{{ t('D 計劃') }}</template>
                       <template v-else>—</template>
                     </div>
                     <div class="text-xs text-slate-400 mt-1">
                       <template v-if="familyDetail.plan === 'A'">{{ t('1–2 人') }}</template>
-                      <template v-else-if="familyDetail.plan === 'B'">{{ t('3–9 人') }}</template>
-                      <template v-else-if="familyDetail.plan === 'C'">{{ t('10 人以上') }}</template>
+                      <template v-else-if="familyDetail.plan === 'B'">{{ t('3–5 人') }}</template>
+                      <template v-else-if="familyDetail.plan === 'C'">{{ t('6–9 人') }}</template>
+                      <template v-else-if="familyDetail.plan === 'D'">{{ t('10 人以上（不設上限）') }}</template>
                       <template v-else>{{ t('未設定') }}</template>
                     </div>
                   </div>
@@ -2724,7 +2745,7 @@
                   <div class="rounded-xl border border-slate-200 p-4">
                     <div class="text-sm text-slate-500">{{ t('戶主會員編號') }}</div>
                     <div class="text-2xl font-bold mt-1 text-slate-800">{{ familyDetail.headMemberNo || '—' }}</div>
-                    <div class="text-xs text-slate-400 mt-1">會員編號 = 戶主電話號碼</div>
+                    <div class="text-xs text-slate-400 mt-1">會員編號 = S + 方案字母 + 電話後4位（如 SA1234）</div>
                   </div>
                 </div>
 
@@ -5123,6 +5144,12 @@
                   >
                     <i class="fas fa-comments mr-2"></i>{{ t('討論區管理') }}</button>
                   <button
+                    @click="siteContentTab = 'voices'; loadCustomerVoices();"
+                    :class="siteContentTab === 'voices' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                    class="px-5 py-4 border-b-2 font-medium whitespace-nowrap"
+                  >
+                    <i class="fas fa-comment-medical mr-2"></i>{{ t('客人心聲') }}</button>
+                  <button
                     @click="siteContentTab = 'cases'; loadAdminCases();"
                     :class="siteContentTab === 'cases' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'"
                     class="px-5 py-4 border-b-2 font-medium whitespace-nowrap"
@@ -5331,11 +5358,56 @@
                         <p class="font-medium text-slate-800">{{ p.title }}</p>
                         <p class="text-sm text-slate-500">{{ p.user_name }} · {{ p.category }} · {{ p.reply_count }} 回覆 · {{ p.created_at }}</p>
                       </div>
-                      <button @click="deleteForumPost(p.id)" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                      <div class="flex items-center gap-2">
+                        <span class="px-2 py-1 text-xs rounded-full"
+                          :class="p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+                          {{ p.status === 'approved' ? t('已公開') : p.status === 'rejected' ? t('未獲批') : t('待審核') }}
+                        </span>
+                        <button @click="deleteForumPost(p.id)" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                      </div>
                     </div>
                     <p class="text-sm text-slate-700 mt-2">{{ p.content }}</p>
+                    <div class="mt-3 flex gap-2">
+                      <button v-if="p.status !== 'approved'" @click="setForumPostStatus(p.id, 'approved')" class="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">{{ t('通過') }}</button>
+                      <button v-if="p.status !== 'rejected'" @click="setForumPostStatus(p.id, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">{{ t('駁回') }}</button>
+                    </div>
                   </div>
                   <div v-if="!adminForumPosts.length" class="text-center py-8 text-slate-400">{{ t('暫無帖子') }}</div>
+                </div>
+              </div>
+
+              <!-- 客人心聲（到診意見）管理 -->
+              <div v-if="siteContentTab === 'voices'" class="p-6">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4">
+                  <i class="fas fa-comment-medical text-emerald-600 mr-2"></i>{{ t('客人心聲') }}<span class="text-sm text-slate-400 font-normal ml-2">{{ t('（到診意見，審批後喺官網顯示）') }}</span>
+                </h3>
+                <div class="space-y-3">
+                  <div v-for="v in customerVoices" :key="v.id" class="border rounded-lg p-4 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="flex items-center gap-3">
+                        <img v-if="isAvatarUrl(v.avatar)" :src="v.avatar" class="w-9 h-9 rounded-full object-cover">
+                        <span v-else class="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-lg">{{ v.avatar || '客' }}</span>
+                        <div>
+                          <p class="font-medium text-slate-800">{{ v.user_name || t('匿名客人') }}</p>
+                          <p class="text-sm text-slate-500">
+                            <span class="text-amber-500">{{ '★'.repeat(v.rating || 0) }}<span class="text-slate-300">{{ '★'.repeat(5 - (v.rating || 0)) }}</span></span>
+                            · {{ v.visit_type || t('一般到診') }} · {{ v.created_at }}
+                          </p>
+                        </div>
+                      </div>
+                      <span class="px-2 py-1 text-xs rounded-full"
+                        :class="v.status === 'approved' ? 'bg-green-100 text-green-700' : v.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+                        {{ v.status === 'approved' ? t('已公開') : v.status === 'rejected' ? t('未獲批') : t('待審核') }}
+                      </span>
+                    </div>
+                    <p class="text-sm text-slate-700">{{ v.content }}</p>
+                    <div class="mt-3 flex gap-2">
+                      <button v-if="v.status !== 'approved'" @click="setVoiceStatus(v.id, 'approved')" class="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">{{ t('通過') }}</button>
+                      <button v-if="v.status !== 'rejected'" @click="setVoiceStatus(v.id, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">{{ t('駁回') }}</button>
+                      <button @click="deleteVoice(v.id)" class="px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300">{{ t('刪除') }}</button>
+                    </div>
+                  </div>
+                  <div v-if="!customerVoices.length" class="text-center py-8 text-slate-400">{{ t('暫無客人心聲') }}</div>
                 </div>
               </div>
 
@@ -5844,7 +5916,7 @@
               <p class="text-sm font-medium text-green-800 mb-2">
                 <i class="fas fa-eye mr-2"></i>{{ t('訊息預覽') }}</p>
               <p class="text-sm text-green-700">
-                {{ t('【寶天醫館提醒您】') }}<br>
+                {{ t('【寶天JR提醒您】') }}<br>
                 {{ solarTermForm.emoji }}{{ solarTermForm.custom_message || editingSolarTerm?.default_message }}
               </p>
             </div>
@@ -7210,7 +7282,7 @@
             mpTierFilter: "",
             mpLoading: false,
             mpDetail: null,
-            mpRecordForm: { tier: 'premium', method: 'cash', amount: '', note: '' },
+            mpRecordForm: { tier: 'family', method: 'cash', amount: '', note: '' },
             mpRecordMsg: null,
             mpRecordBusy: false,
             mpStatusFilters: [
@@ -7243,6 +7315,8 @@
             },
             familySearch: '',
             selectedFamilyHead: null,
+            // 🌳 家庭樹世代篩選（null = 全部；1-4 = 指定世代）
+            ftreeGenFilter: null,
             // 🆕 戶主嘅通用連結（親戚／同輩）
             headLinks: [],
             // 🆕 連結帳戶（統一左/右框）搜尋狀態
@@ -7484,6 +7558,8 @@
             adminReviews: [],
             adminSiteTexts: [],
             adminForumPosts: [],
+            // 🆕 客人心聲（到診意見）管理
+            customerVoices: [],
 
             // 成功案例庫
             adminCases: [],
@@ -7697,6 +7773,29 @@ addUserForm: {
             }));
 
             return { parentLevel, headGeneration };
+          },
+          // 🌳 家庭樹：頭像 URL 判斷（emoji / 相對路徑 / 絕對網址）
+          isAvatarUrl(u) {
+            return typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
+          },
+          // 🌳 家庭樹：世代篩選
+          ftreeGenVisible(level) {
+            return !this.ftreeGenFilter || this.ftreeGenFilter === level;
+          },
+          ftreeGenWrapVisible(level) {
+            // 容器 <ul> 喺篩選更深世代時必須保留（深層節點嵌喺入面），所以 filter>=level 都顯示
+            return !this.ftreeGenFilter || this.ftreeGenFilter >= level;
+          },
+          ftreeGens() {
+            const d = this.familyTreeData || { parentLevel: [], headGeneration: [] };
+            const gens = [];
+            if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('第一代 · 上一代') });
+            gens.push({ level: 2, label: this.t('第二代 · 戶主') });
+            if ((d.headGeneration || []).some(p => (p.children || []).length)) gens.push({ level: 3, label: this.t('第三代 · 子女') });
+            let hasExt = false;
+            (d.headGeneration || []).forEach(p => (p.children || []).forEach(c => { if ((c.extendedLinks || []).length) hasExt = true; }));
+            if (hasExt) gens.push({ level: 4, label: this.t('第四代 · 延伸') });
+            return gens;
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
           headSubAccounts() {
@@ -8147,6 +8246,7 @@ addUserForm: {
             else if (this.siteContentTab === 'texts') await this.loadSiteTexts();
             else if (this.siteContentTab === 'reviews') await this.loadAdminReviews();
             else if (this.siteContentTab === 'forum') await this.loadAdminForumPosts();
+            else if (this.siteContentTab === 'voices') await this.loadCustomerVoices();
           },
 
           async loadAdminAnnouncements() {
@@ -8362,18 +8462,59 @@ addUserForm: {
 
           async loadAdminForumPosts() {
             try {
-              const resp = await fetch('/api/api/content/forum/posts');
+              const resp = await fetch('/api/content/forum/posts');
               if (resp.ok) this.adminForumPosts = await resp.json();
             } catch (e) { console.error('載入討論區失敗:', e); }
+          },
+
+          async setForumPostStatus(id, status) {
+            try {
+              const resp = await fetch(`/api/admin/content/forum/posts/${id}/status`, {
+                method: 'PUT',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({ status })
+              });
+              if (resp.ok) await this.loadAdminForumPosts();
+              else { const d = await resp.json(); alert(d.error || '更新失敗'); }
+            } catch (e) { console.error('更新討論區狀態失敗:', e); }
           },
 
           async deleteForumPost(id) {
             if (!confirm('確定要刪除此帖子（包含回覆）？')) return;
             try {
-              const resp = await fetch(`/api/admin/api/content/forum/posts/${id}`, { method: 'DELETE', headers: this.adminAuthHeaders() });
+              const resp = await fetch(`/api/admin/content/forum/posts/${id}`, { method: 'DELETE', headers: this.adminAuthHeaders() });
               if (resp.ok) await this.loadAdminForumPosts();
               else { const d = await resp.json(); alert(d.error || '刪除失敗'); }
             } catch (e) { console.error('刪除帖子失敗:', e); }
+          },
+
+          // ==================== 客人心聲（到診意見）管理 ====================
+          async loadCustomerVoices() {
+            try {
+              const resp = await fetch('/api/admin/content/customer-voices', { headers: this.adminAuthHeaders() });
+              if (resp.ok) this.customerVoices = await resp.json();
+            } catch (e) { console.error('載入客人心聲失敗:', e); }
+          },
+
+          async setVoiceStatus(id, status) {
+            try {
+              const resp = await fetch(`/api/admin/content/customer-voices/${id}/status`, {
+                method: 'PUT',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({ status })
+              });
+              if (resp.ok) await this.loadCustomerVoices();
+              else { const d = await resp.json(); alert(d.error || '更新失敗'); }
+            } catch (e) { console.error('更新客人心聲狀態失敗:', e); }
+          },
+
+          async deleteVoice(id) {
+            if (!confirm('確定要刪除此客人心聲？')) return;
+            try {
+              const resp = await fetch(`/api/admin/content/customer-voices/${id}`, { method: 'DELETE', headers: this.adminAuthHeaders() });
+              if (resp.ok) await this.loadCustomerVoices();
+              else { const d = await resp.json(); alert(d.error || '刪除失敗'); }
+            } catch (e) { console.error('刪除客人心聲失敗:', e); }
           },
 
           // ==================== 成功案例庫管理 ====================

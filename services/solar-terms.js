@@ -386,7 +386,7 @@ function getSolarTermMessage(termName) {
   const term = SOLAR_TERMS[termName];
   if (!term) return null;
   
-  return `【寶天醫館提醒您】\n${term.emoji}${term.message}`;
+  return `【寶天JR提醒您】\n${term.emoji}${term.message}`;
 }
 
 /**

@@ -221,7 +221,7 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
     ? `HK$${servicePrice}\n💳 *已付訂金：* HK$${depositPaid}\n💵 *到診需付：* HK$${remainingAmount}`
     : '請到診所查詢';
   
-  const message = `🏥 *寶天醫館 - 預約確認*
+  const message = `🏥 *寶天JR - 預約確認*
 
 您好！您的預約已確認 ✅
 
@@ -236,7 +236,7 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
 
 如需更改或取消預約，請登入系統或致電診所。
 
-感謝您選擇寶天醫館！🙏`;
+感謝您選擇寶天JR！🙏`;
 
   return await sendWhatsApp(phone, message);
 };
@@ -247,7 +247,7 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
  * @param {object} booking - 預約資訊
  */
 const sendBookingReminderWhatsApp = async (phone, booking) => {
-  const message = `🔔 *寶天醫館 - 預約提醒*
+  const message = `🔔 *寶天JR - 預約提醒*
 
 您好！提醒您明天有預約：
 
@@ -268,7 +268,7 @@ const sendBookingReminderWhatsApp = async (phone, booking) => {
  * @param {object} booking - 預約資訊
  */
 const sendBookingCancellationWhatsApp = async (phone, booking) => {
-  const message = `📋 *寶天醫館 - 預約已取消*
+  const message = `📋 *寶天JR - 預約已取消*
 
 您的預約已成功取消：
 
@@ -290,7 +290,7 @@ const sendBookingCancellationWhatsApp = async (phone, booking) => {
  * @param {object} newBooking - 新預約資訊
  */
 const sendBookingUpdateWhatsApp = async (phone, oldBooking, newBooking) => {
-  const message = `📝 *寶天醫館 - 預約已更改*
+  const message = `📝 *寶天JR - 預約已更改*
 
 您的預約已成功更改：
 

@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title data-i18n="員工版面 - 寶天醫館">員工版面 - 寶天醫館</title>
+    <title data-i18n="員工版面 - 寶天JR">員工版面 - 寶天JR</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <link rel="stylesheet" href="css/tailwind.css?v=20260909" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -515,13 +515,26 @@
         .ftree-meta{ font-size:.6rem; }
         .ftree-tag{ font-size:.55rem; }
 </style>
-</head>
+    <!-- 🆕 11) 版面間距優化：卡片/盒之間留多啲位（覆寫預建 tailwind 間距類） -->
+    <style id="spacing-bump-11">
+      .space-y-2 > * + * { margin-top: .8rem; }
+      .space-y-3 > * + * { margin-top: 1.1rem; }
+      .space-y-4 > * + * { margin-top: 1.4rem; }
+      .space-y-5 > * + * { margin-top: 1.7rem; }
+      .space-y-6 > * + * { margin-top: 2rem; }
+      .space-y-8 > * + * { margin-top: 2.5rem; }
+      .gap-2 { gap: .8rem; }
+      .gap-3 { gap: 1.1rem; }
+      .gap-4 { gap: 1.4rem; }
+      .gap-6 { gap: 2rem; }
+    </style>
+  </head>
   <body class="text-slate-800 min-h-screen">
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-logo" data-i18n="寶">寶</div>
-      <div class="boot-name" data-i18n="寶天醫館">寶天醫館</div>
+      <div class="boot-name" data-i18n="寶天JR">寶天JR</div>
       <div class="boot-sub" data-i18n="員工版">員工版</div>
       <div class="boot-ring"></div>
     </div>
@@ -555,7 +568,7 @@
               <i class="fas fa-user-tie text-4xl text-cyan-600"></i>
             </div>
             <h1 class="text-2xl font-bold text-slate-800">{{ t('員工登入') }}</h1>
-            <p class="text-slate-500 text-sm mt-1">{{ t('寶天醫館 · 員工管理系統') }}</p>
+            <p class="text-slate-500 text-sm mt-1">{{ t('寶天JR · 員工管理系統') }}</p>
           </div>
 
           <div class="space-y-4">
@@ -636,7 +649,7 @@
         <!-- 手機版頂部列 + 抽屜遮罩 -->
         <header class="m-topbar">
           <button @click="sidebarOpen = !sidebarOpen" :aria-label="t('開啟/關閉選單')"><i class="fas fa-bars"></i></button>
-          <span>{{ t('寶天醫館 · 員工') }}</span>
+          <span>{{ t('寶天JR · 員工') }}</span>
         </header>
         <div v-show="sidebarOpen" @click="sidebarOpen = false" class="m-overlay"></div>
 
@@ -649,7 +662,7 @@
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
               <i class="fas fa-user-tie text-emerald-400 text-3xl"></i>
               <div class="min-w-0">
-                <div class="text-sm font-bold truncate">{{ t('寶天醫館 · 員工版') }}</div>
+                <div class="text-sm font-bold truncate">{{ t('寶天JR · 員工版') }}</div>
                 <div class="text-xs opacity-70 truncate">{{ staffUser.name }}</div>
               </div>
             </div>
@@ -684,6 +697,7 @@
                 <i class="fas fa-clock mr-2"></i>{{ t('打卡考勤') }}</button>
               <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>{{ t('時段管理') }}</button>
               <button @click="mainTab='forum'; loadForum()" :class="mainTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
+              <button @click="mainTab='voices'" :class="mainTab==='voices' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comment-medical mr-2"></i>{{ t('客人心聲') }}</button>
               <button @click="mainTab='familytree'; loadFamilyTree()" :class="mainTab==='familytree' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-people-roof mr-2"></i>{{ t('家庭帳戶') }}</button>
             </nav>
             <!-- 功能9：左欄底部功能選項（風格與客人端一致） -->
@@ -1614,6 +1628,13 @@
                   <small>{{ selectedFamilyHead.name }} 的家庭帳戶</small>
                 </div>
 
+                <!-- 🌳 世代篩選 -->
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                  <span class="text-sm text-slate-500 mr-1">{{ t('世代篩選：') }}</span>
+                  <button @click="ftreeGenFilter = null" :class="!ftreeGenFilter ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors">{{ t('全部世代') }}</button>
+                  <button v-for="g in ftreeGens" :key="g.level" @click="ftreeGenFilter = g.level" :class="ftreeGenFilter === g.level ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors">{{ g.label }}</button>
+                </div>
+
                 <ul class="ftree-gen ftree-gen-root">
                   <li>
                     <!-- 祖父母層（預留） -->
@@ -1648,7 +1669,7 @@
                         <!-- 戶主層 -->
                         <ul class="ftree-gen">
                           <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
-                            <div class="ftree-node-wrapper">
+                            <div class="ftree-node-wrapper" v-show="ftreeGenVisible(2)">
                               <div v-if="parent.type === 'couple'" class="ftree-couple">
                                 <!-- 戶主 -->
                                 <div class="ftree-node" data-role="head">
@@ -1678,7 +1699,7 @@
                                 </div>
                               </div>
                               <!-- 其他經由戶主連入嘅親屬 -->
-                              <div v-else class="ftree-node" data-role="relative">
+                              <div v-else class="ftree-node" data-role="relative" v-show="ftreeGenVisible(2)">
                                 <div class="ftree-avatar-wrap">
                                   <div class="ftree-avatar">
                                     <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
@@ -1692,7 +1713,7 @@
                             </div>
 
                             <!-- 子女層 -->
-                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
+                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children" v-show="ftreeGenWrapVisible(3)">
                               <li v-for="child in parent.children" :key="child.id">
                                 <div class="ftree-node" data-role="child">
                                   <div class="ftree-avatar-wrap">
@@ -1714,7 +1735,7 @@
                                     <div class="ftree-node" data-role="extended">
                                       <div class="ftree-avatar-wrap">
                                         <div class="ftree-avatar">
-                                          <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                                          <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
                                           <i v-else class="fas fa-user"></i>
                                         </div>
                                       </div>
@@ -1734,7 +1755,7 @@
                     </ul>
 
                     <!-- 無父母連結：戶主層直接喺祖父母下面 -->
-                    <ul v-else class="ftree-gen">
+                    <ul v-else class="ftree-gen" v-show="ftreeGenWrapVisible(2)">
                       <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
                         <div class="ftree-node-wrapper">
                           <div v-if="parent.type === 'couple'" class="ftree-couple">
@@ -1766,7 +1787,7 @@
                             </div>
                           </div>
                           <!-- 其他經由戶主連入嘅親屬 -->
-                          <div v-else class="ftree-node" data-role="relative">
+                          <div v-else class="ftree-node" data-role="relative" v-show="ftreeGenVisible(2)">
                             <div class="ftree-avatar-wrap">
                               <div class="ftree-avatar">
                                 <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
@@ -1802,7 +1823,7 @@
                                 <div class="ftree-node" data-role="extended">
                                   <div class="ftree-avatar-wrap">
                                     <div class="ftree-avatar">
-                                      <img v-if="lk.other.avatar_url" :src="lk.other.avatar_url" :alt="lk.other.name">
+                                      <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
                                       <i v-else class="fas fa-user"></i>
                                     </div>
                                   </div>
@@ -1844,12 +1865,14 @@
                       <template v-if="familyDetail.plan === 'A'">{{ t('A 計劃') }}</template>
                       <template v-else-if="familyDetail.plan === 'B'">{{ t('B 計劃') }}</template>
                       <template v-else-if="familyDetail.plan === 'C'">{{ t('C 計劃') }}</template>
+                      <template v-else-if="familyDetail.plan === 'D'">{{ t('D 計劃') }}</template>
                       <template v-else>—</template>
                     </div>
                     <div class="text-xs text-slate-400 mt-1">
                       <template v-if="familyDetail.plan === 'A'">{{ t('1–2 人') }}</template>
-                      <template v-else-if="familyDetail.plan === 'B'">{{ t('3–9 人') }}</template>
-                      <template v-else-if="familyDetail.plan === 'C'">{{ t('10 人以上') }}</template>
+                      <template v-else-if="familyDetail.plan === 'B'">{{ t('3–5 人') }}</template>
+                      <template v-else-if="familyDetail.plan === 'C'">{{ t('6–9 人') }}</template>
+                      <template v-else-if="familyDetail.plan === 'D'">{{ t('10 人以上（不設上限）') }}</template>
                       <template v-else>{{ t('未設定') }}</template>
                     </div>
                   </div>
@@ -1861,7 +1884,7 @@
                   <div class="rounded-xl border border-slate-200 p-4">
                     <div class="text-sm text-slate-500">{{ t('戶主會員編號') }}</div>
                     <div class="text-2xl font-bold mt-1 text-slate-800">{{ familyDetail.headMemberNo || '—' }}</div>
-                    <div class="text-xs text-slate-400 mt-1">會員編號 = 戶主電話號碼</div>
+                    <div class="text-xs text-slate-400 mt-1">會員編號 = S + 方案字母 + 電話後4位（如 SA1234）</div>
                   </div>
                 </div>
 
@@ -2025,6 +2048,65 @@
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- 討論區審核（醫護） -->
+            <div class="bg-white rounded-xl shadow p-5 space-y-3 mt-2">
+              <h3 class="font-semibold text-slate-800"><i class="fas fa-gavel mr-2 text-emerald-600"></i>{{ t('討論區審核') }}</h3>
+              <div v-if="!forumPosts.length" class="text-slate-400 text-sm py-4 text-center">{{ t('暫時未有帖子') }}</div>
+              <div v-for="p in forumPosts" :key="'mod-'+p.id" class="border rounded-lg p-3">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <b class="text-slate-800">{{ p.title }}</b>
+                    <div class="text-xs text-slate-400 mt-0.5">{{ p.user_name }} · {{ p.created_at }}</div>
+                  </div>
+                  <span class="px-2 py-1 text-xs rounded-full whitespace-nowrap"
+                    :class="p.status === 'approved' ? 'bg-green-100 text-green-700' : p.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+                    {{ p.status === 'approved' ? t('已公開') : p.status === 'rejected' ? t('未獲批') : t('待審核') }}
+                  </span>
+                </div>
+                <p class="text-sm text-slate-600 mt-1">{{ p.content }}</p>
+                <div class="mt-2 flex gap-2">
+                  <button v-if="p.status !== 'approved'" @click="setForumPostStatus(p.id, 'approved')" class="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">{{ t('通過') }}</button>
+                  <button v-if="p.status !== 'rejected'" @click="setForumPostStatus(p.id, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">{{ t('駁回') }}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==== 客人心聲（到診意見）==== -->
+          <div v-if="mainTab==='voices'" class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-comment-medical mr-2 text-emerald-600"></i>{{ t('客人心聲') }}</h2>
+            </div>
+            <div class="bg-white rounded-xl shadow p-5 space-y-4 max-w-2xl">
+              <h3 class="font-semibold text-slate-800"><i class="fas fa-pen mr-2 text-emerald-600"></i>{{ t('記錄到診意見') }}</h3>
+              <div>
+                <label class="block text-sm text-slate-600 mb-1">{{ t('評分') }}</label>
+                <div class="flex gap-1 text-2xl">
+                  <button v-for="n in 5" :key="n" @click="voiceRating = n" :class="n <= voiceRating ? 'text-amber-400' : 'text-slate-300'" class="focus:outline-none">★</button>
+                  <span class="text-sm text-slate-500 ml-2 self-center">{{ voiceRating }} / 5</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-600 mb-1">{{ t('到診類型') }}</label>
+                <select v-model="voiceVisitType" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                  <option value="">{{ t('請選擇') }}</option>
+                  <option value="初診">{{ t('初診') }}</option>
+                  <option value="覆診">{{ t('覆診') }}</option>
+                  <option value="針灸">{{ t('針灸') }}</option>
+                  <option value="推拿">{{ t('推拿') }}</option>
+                  <option value="代煎/藥療">{{ t('代煎/藥療') }}</option>
+                  <option value="一般諮詢">{{ t('一般諮詢') }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-slate-600 mb-1">{{ t('意見內容') }}</label>
+                <textarea v-model="voiceContent" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('請分享今次到診嘅感受或建議...')"></textarea>
+              </div>
+              <div v-if="voiceMsg" class="text-sm px-3 py-2 rounded-lg bg-amber-50 text-amber-700">{{ voiceMsg }}</div>
+              <button @click="submitVoice()" :disabled="voiceBusy" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50">
+                <i class="fas fa-paper-plane mr-1"></i>{{ voiceBusy ? t('處理中...') : t('提交意見') }}</button>
             </div>
           </div>
 
@@ -2399,7 +2481,7 @@
               }
             </style>
             <div v-if="printPreparing && mainTab==='list'" class="print-area">
-              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px;">{{ t('寶天醫館 · 當日預約表') }}</h2>
+              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px;">{{ t('寶天JR · 當日預約表') }}</h2>
               <p style="font-size:12px;color:#555;margin-bottom:12px;">{{ t('日期：') }}{{ selectedDate }}{{ t('｜列印時間：') }}{{ new Date().toLocaleString('zh-HK') }}{{ t('｜合共') }} {{ filteredBookings.length }} {{ t('筆') }}</p>
               <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
@@ -2939,6 +3021,12 @@
             forumNewCategory: "中醫交流",
             forumReplyContent: "",
             forumBusy: false,
+            // 🗣️ 客人心聲（到診意見）提交
+            voiceRating: 5,
+            voiceVisitType: '',
+            voiceContent: '',
+            voiceBusy: false,
+            voiceMsg: '',
             // 🌳 功能13：家庭帳戶管理（與管理員一致）
             familyTree: {
               loading: false,
@@ -2946,6 +3034,8 @@
             },
             familySearch: '',
             selectedFamilyHead: null,
+            // 🌳 家庭樹世代篩選（null = 全部；1-4 = 指定世代）
+            ftreeGenFilter: null,
             // 🆕 戶主嘅通用連結（親戚／同輩）
             headLinks: [],
             // 🆕 連結帳戶（統一左/右框）搜尋狀態
@@ -3118,6 +3208,28 @@
             }));
 
             return { parentLevel, headGeneration };
+          },
+          // 🌳 家庭樹：頭像 URL 判斷（emoji / 相對路徑 / 絕對網址）
+          isAvatarUrl(u) {
+            return typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
+          },
+          // 🌳 家庭樹：世代篩選
+          ftreeGenVisible(level) {
+            return !this.ftreeGenFilter || this.ftreeGenFilter === level;
+          },
+          ftreeGenWrapVisible(level) {
+            return !this.ftreeGenFilter || this.ftreeGenFilter >= level;
+          },
+          ftreeGens() {
+            const d = this.familyTreeData || { parentLevel: [], headGeneration: [] };
+            const gens = [];
+            if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('第一代 · 上一代') });
+            gens.push({ level: 2, label: this.t('第二代 · 戶主') });
+            if ((d.headGeneration || []).some(p => (p.children || []).length)) gens.push({ level: 3, label: this.t('第三代 · 子女') });
+            let hasExt = false;
+            (d.headGeneration || []).forEach(p => (p.children || []).forEach(c => { if ((c.extendedLinks || []).length) hasExt = true; }));
+            if (hasExt) gens.push({ level: 4, label: this.t('第四代 · 延伸') });
+            return gens;
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
           headSubAccounts() {
@@ -3665,6 +3777,34 @@
               else alert(d.error || '回覆失敗');
             } catch (e) { alert('回覆失敗：' + e.message); }
             this.forumBusy = false;
+          },
+          // 🌳 討論區審核（醫護）
+          async setForumPostStatus(id, status) {
+            try {
+              const r = await fetch(`/api/admin/content/forum/posts/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') },
+                body: JSON.stringify({ status })
+              });
+              if (r.ok) await this.loadForum();
+              else { const d = await r.json().catch(() => ({})); alert(d.error || '更新失敗'); }
+            } catch (e) { alert('更新失敗：' + e.message); }
+          },
+          // 🗣️ 客人心聲（到診意見）提交
+          async submitVoice() {
+            if (!this.voiceContent.trim()) { this.voiceMsg = this.t('請填寫意見內容'); return; }
+            this.voiceBusy = true; this.voiceMsg = '';
+            try {
+              const r = await fetch('/api/content/customer-voices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') },
+                body: JSON.stringify({ rating: this.voiceRating, visit_type: this.voiceVisitType || '一般到診', content: this.voiceContent.trim() })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok) { this.voiceContent = ''; this.voiceRating = 5; this.voiceVisitType = ''; this.voiceMsg = this.t('已提交，待審核'); }
+              else this.voiceMsg = d.error || this.t('提交失敗');
+            } catch (e) { this.voiceMsg = this.t('提交失敗：') + e.message; }
+            this.voiceBusy = false;
           },
           // ==================== 更改密碼 ====================
           openChangePwd() {

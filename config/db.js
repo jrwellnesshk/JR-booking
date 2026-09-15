@@ -470,6 +470,7 @@ CREATE TABLE IF NOT EXISTS bookings (
         category TEXT DEFAULT '中醫問題',
         reply_count INTEGER DEFAULT 0,
         is_pinned INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'pending',        -- pending / approved / rejected（醫護審核後先公開）
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
@@ -486,6 +487,22 @@ CREATE TABLE IF NOT EXISTS bookings (
         content TEXT NOT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(post_id) REFERENCES forum_posts(id),
+        FOREIGN KEY(user_id) REFERENCES users(id)
+      )
+    `);
+
+    // 客人心聲（到診意見 / 感受）：管理員審核後先公開，支援分頁
+    db.run(`
+      CREATE TABLE IF NOT EXISTS customer_voices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        user_name TEXT NOT NULL,
+        avatar TEXT,
+        rating INTEGER DEFAULT 5,
+        visit_type TEXT,            -- 到診類型（初體驗 / 內科 / 針灸 等）
+        content TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',   -- pending / approved / rejected
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
     `);

@@ -10,9 +10,9 @@
     />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>寶天醫館</title>
-    <meta name="description" content="寶天醫館網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。" />
-    <meta property="og:title" content="寶天醫館" />
+    <title>寶天JR</title>
+    <meta name="description" content="寶天JR網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。" />
+    <meta property="og:title" content="寶天JR" />
     <meta property="og:description" content="資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="zh_HK" />
@@ -58,7 +58,7 @@
       }
       @keyframes bootSpin{ to{ transform:rotate(360deg);} }
 
-      /* 🌿 寶天醫館 · 溫柔 earthy spa 調 — 暖奶油 + 霧粉 + 鼠尾草 + 暖棕 */
+      /* 🌿 寶天JR · 溫柔 earthy spa 調 — 暖奶油 + 霧粉 + 鼠尾草 + 暖棕 */
       :root {
         --p50:#faf3ea;   --p100:#f5e3d2;   --p200:#efd2bd;   --p300:#e7b89c;   --p400:#d99c80;
         --p500:#c08268;  --p600:#a06853;   --p700:#7e5140;   --p800:#5a3a2c;   --p900:#3c2620;
@@ -664,6 +664,29 @@
         .site-review-text{ color:var(--n600); font-size:.92rem; line-height:1.7; margin-bottom:.8rem; }
         .site-review-card small{ color:var(--n400); font-size:.75rem; }
         .site-reviews-empty{ grid-column:1/-1; text-align:center; color:var(--n400); padding:2rem 0; }
+        /* 客人心聲 */
+        .site-voices{ background:var(--p50); }
+        .site-voices-form{ background:#fff; border:1px solid var(--n200); border-radius:1.2rem; padding:1.4rem; max-width:720px; margin:0 auto 2rem; box-shadow:0 18px 40px -30px rgba(0,0,0,.3); display:flex; flex-direction:column; gap:.9rem; }
+        .site-voices-form-head{ display:flex; align-items:center; justify-content:space-between; }
+        .site-voices-close{ background:none; border:none; font-size:1.1rem; color:var(--n500); cursor:pointer; }
+        .site-voices-row{ display:flex; align-items:center; gap:.8rem; }
+        .site-voices-label{ color:var(--n700); font-size:.9rem; }
+        .site-voices-thanks{ background:var(--p100); border:1px solid var(--p300); color:var(--p800); border-radius:.8rem; padding:.9rem 1rem; line-height:1.6; }
+        .site-voices-pager{ display:flex; align-items:center; justify-content:center; gap:1.2rem; margin-top:1.6rem; }
+        .site-voices-pager button{ background:#fff; border:1px solid var(--n200); border-radius:.7rem; padding:.5rem 1rem; color:var(--n700); cursor:pointer; }
+        .site-voices-pager button:disabled{ opacity:.4; cursor:not-allowed; }
+        .site-voices-pager span{ color:var(--n600); font-size:.9rem; }
+        /* 我的討論區帖子 */
+        .site-my-posts{ max-width:1100px; margin:2.2rem auto 0; background:rgba(255,255,255,.7); border:1px solid var(--n200); border-radius:1.2rem; padding:1.3rem 1.4rem; }
+        .site-my-posts-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:.9rem; }
+        .site-my-posts-refresh{ background:none; border:none; color:var(--p600); cursor:pointer; font-size:1rem; }
+        .site-my-posts-list{ display:flex; flex-direction:column; gap:.7rem; }
+        .site-my-post{ display:flex; align-items:center; justify-content:space-between; gap:1rem; background:#fff; border:1px solid var(--n200); border-radius:.9rem; padding:.9rem 1.1rem; cursor:pointer; }
+        .site-my-post:hover{ border-color:var(--p400); }
+        .site-my-post-main{ display:flex; flex-direction:column; gap:.2rem; min-width:0; }
+        .site-my-post-main b{ color:var(--n800); }
+        .site-my-post-snippet{ color:var(--n500); font-size:.85rem; }
+        .site-my-post-main small{ color:var(--n400); font-size:.75rem; }
 
         /* 討論區 */
         .site-forum{ background:var(--bg); }
@@ -914,6 +937,15 @@
 
       /* ---------- 評價 / 討論區 ---------- */
       .site-reviews{ background:var(--cream2); }
+      .site-voices{ background:var(--cream2); }
+      .site-voices-form{ background:rgba(255,255,255,.86); border-color:rgba(199,180,166,.32); box-shadow:0 24px 50px -34px rgba(80,60,45,.5); }
+      .site-voices-thanks{ background:rgba(216,197,182,.45); border-color:rgba(199,180,166,.5); color:var(--mossd); }
+      .site-voices-pager button{ background:rgba(255,255,255,.8); border-color:rgba(199,180,166,.3); color:var(--inkd); }
+      .site-my-posts{ background:rgba(255,255,255,.55); border-color:rgba(199,180,166,.3); }
+      .site-my-post{ background:rgba(255,255,255,.9); border-color:rgba(199,180,166,.3); }
+      .site-my-post-main b{ color:var(--inkd); }
+      .site-my-post-snippet{ color:var(--insoft); }
+      .site-my-post-main small{ color:var(--insoft); }
       .site-reviews-head h2,.site-forum-head h2{ font-family:var(--headserif); color:var(--inkd); }
       .site-reviews-head p,.site-forum-head p{ color:var(--insoft); }
       .site-review-card{ background:rgba(255,255,255,.86); border-color:rgba(199,180,166,.32); box-shadow:0 24px 50px -34px rgba(80,60,45,.5); border-radius:1.4rem; }
@@ -1248,12 +1280,25 @@
       }
       </style>
 
+      <!-- 🆕 11) 版面間距優化：卡片/盒之間留多啲位（覆寫預建 tailwind 間距類） -->
+    <style id="spacing-bump-11">
+      .space-y-2 > * + * { margin-top: .8rem; }
+      .space-y-3 > * + * { margin-top: 1.1rem; }
+      .space-y-4 > * + * { margin-top: 1.4rem; }
+      .space-y-5 > * + * { margin-top: 1.7rem; }
+      .space-y-6 > * + * { margin-top: 2rem; }
+      .space-y-8 > * + * { margin-top: 2.5rem; }
+      .gap-2 { gap: .8rem; }
+      .gap-3 { gap: 1.1rem; }
+      .gap-4 { gap: 1.4rem; }
+      .gap-6 { gap: 2rem; }
+    </style>
   </head>
   <body class="bg-gradient-to-br from-slate-50 to-slate-100 text-slate-800">
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出（防止原始範本閃現） -->
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-logo">寶</div>
-      <div class="boot-name">寶天醫館</div>
+      <div class="boot-name">寶天JR</div>
       <div class="boot-sub">NATURAL HEALING</div>
       <div class="boot-ring"></div>
     </div>
@@ -1316,8 +1361,8 @@
             <div class="aq-brand-group">
               <button type="button" class="aq-menu-btn" @click="toggleMenu" :aria-label="t('選單')" aria-label="Menu"><i class="fas fa-bars"></i></button>
               <a href="#aq-top" class="aq-logo">
-                <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天醫館')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events:none;user-select:none;-webkit-user-drag:none;">
-                <span><b>{{ t('寶天醫館') }}</b><span class="aq-logo-sub" style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
+                <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天JR')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events:none;user-select:none;-webkit-user-drag:none;">
+                <span><b>{{ t('寶天JR') }}</b><span class="aq-logo-sub" style="display:block;font-size:.62rem;letter-spacing:.3em;color:var(--taupe);font-weight:600;">NATURAL HEALING · CENTRAL</span></span>
               </a>
             </div>
             <div class="aq-links" :class="{ open: menuOpen }" @click="closeMenu">
@@ -1384,7 +1429,7 @@
             <div class="aq-hero-title">
               <h1>{{ t('讓身體回歸') }}<em>{{ t('自然') }}</em>{{ t('的節奏') }}</h1>
             </div>
-            <p>{{ t('寶天醫館 JR 以大自然為師，將千年中醫智慧融入現代生活。在青蔥與暖米色的寧靜之間，為您喚醒身體的自癒之力。') }}</p>
+            <p>{{ t('寶天JR JR 以大自然為師，將千年中醫智慧融入現代生活。在青蔥與暖米色的寧靜之間，為您喚醒身體的自癒之力。') }}</p>
             <div class="aq-hero-actions">
               <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-solid"><i class="fas fa-calendar-check"></i>{{ t('初體驗預約 · 一小時') }}</a>
               <a href="#aq-doctors" class="aq-btn aq-btn-line"><i class="fas fa-user-md"></i>{{ t('認識醫師團隊') }}</a>
@@ -1450,7 +1495,7 @@
               <span class="aq-idx" aria-hidden="true">02</span>
               <span class="aq-eyebrow">About Us</span>
               <h2>{{ t('始於中環，源於自然') }}</h2>
-              <p>{{ t('寶天醫館 JR 位於香港中環，是一家以自然療法為本的現代中醫診所。我們相信，人體與大自然一樣，懂得自我修復——只要我們懂得聆聽。') }}</p>
+              <p>{{ t('寶天JR JR 位於香港中環，是一家以自然療法為本的現代中醫診所。我們相信，人體與大自然一樣，懂得自我修復——只要我們懂得聆聽。') }}</p>
               <p>{{ t('由資深註冊中醫師團隊主理，我們將傳統診療與現代管理結合，提供真正個人化的養生體驗。') }}</p>
               <div class="aq-about-est">{{ t('Est · 中環 診所') }}</div>
               <div class="aq-points">
@@ -1474,7 +1519,7 @@
           </svg>
           <span class="aq-phi-mark">❝</span>
           <p>{{ t('人與自然，本是同一個節奏。順四時、調陰陽、養正氣，疾病自然遠離，身心自然安寧。') }}</p>
-          <span class="aq-phi-name">{{ t('—— 寶天醫館 中醫養生理念') }}</span>
+          <span class="aq-phi-name">{{ t('—— 寶天JR 中醫養生理念') }}</span>
         </section>
 
         <!-- 醫師團隊 -->
@@ -1716,7 +1761,7 @@
           <div style="max-width:1180px;margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.4rem;">
             <!-- 一般 -->
             <div style="background:#fff;border:1px solid #EDE6DD;border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;">
-              <b style="font-size:1.05rem;color:#40372E;">{{ t('一般會員') }}</b>
+              <b style="font-size:1.05rem;color:#40372E;">{{ t('一般帳戶') }}</b>
               <div style="margin:.6rem 0 .2rem;"><span style="font-size:2rem;font-weight:800;color:#40372E;">{{ t('免費') }}</span></div>
               <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('開戶即可使用 · 想試下？先約個初體驗') }}</p>
               <ul style="font-size:.9rem;color:#5D5248;line-height:1.9;padding-left:0;list-style:none;margin:0 0 1.4rem;">
@@ -1728,34 +1773,61 @@
               <a href="#aq-login" @click.prevent="startGuestTrial" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-calendar-check"></i>{{ t('初體驗預約') }}</a>
             </div>
 
-            <!-- 高級 -->
-            <div style="background:#fff;border:2px solid var(--p500);border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;position:relative;box-shadow:0 18px 40px -22px rgba(64,55,46,.35);">
-              <span style="position:absolute;top:-0.75rem;left:50%;transform:translateX(-50%);background:var(--p600);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:.28rem .9rem;border-radius:999px;">{{ t('最受歡迎') }}</span>
-              <b style="font-size:1.05rem;color:#40372E;">{{ t('高級會員') }}</b>
+            <!-- 家庭帳戶 A -->
+            <div style="background:#fff;border:1px solid #EDE6DD;border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;">
+              <b style="font-size:1.05rem;color:#40372E;">{{ t('家庭帳戶 A') }}</b>
               <div style="margin:.6rem 0 .2rem;"><span style="font-size:2rem;font-weight:800;color:#40372E;">$8,800</span><span style="font-size:.85rem;color:#8A7F72;"> {{ t('/ 月') }}</span></div>
-              <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('注重療程連貫性嘅您') }}</p>
+              <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('1–2 位成員的小家庭') }}</p>
               <ul style="font-size:.9rem;color:#5D5248;line-height:1.9;padding-left:0;list-style:none;margin:0 0 1.4rem;">
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('一般會員全部功能') }}</li>
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('優先預約時段') }}</li>
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('案例庫完整瀏覽') }}</li>
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('療程進度追蹤報告') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('一般帳戶全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('家庭帳戶：集中管理家人預約') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('子女病歷查看') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('家庭單號 JRA 帳單') }}</li>
               </ul>
-              <a href="#aq-login" class="aq-btn aq-btn-solid" style="justify-content:center;margin-top:auto;"><i class="fas fa-crown"></i>{{ t('升級高級') }}</a>
+              <a href="#aq-family" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-people-roof"></i>{{ t('揀 A 計劃') }}</a>
             </div>
 
-            <!-- 家庭 -->
-            <div style="background:#fff;border:1px solid #EDE6DD;border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;">
-              <b style="font-size:1.05rem;color:#40372E;">{{ t('家庭會員') }}</b>
-              <div style="margin:.6rem 0 .2rem;"><span style="font-size:2rem;font-weight:800;color:#40372E;">$16,800</span><span style="font-size:.85rem;color:#8A7F72;"> {{ t('/ 月') }}</span></div>
-              <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('一家大細一齊打理') }}</p>
+            <!-- 家庭帳戶 B -->
+            <div style="background:#fff;border:2px solid #7E9476;border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;position:relative;box-shadow:0 18px 40px -22px rgba(64,55,46,.35);">
+              <span style="position:absolute;top:-0.75rem;left:50%;transform:translateX(-50%);background:#7E9476;color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:.28rem .9rem;border-radius:999px;">{{ t('最受歡迎') }}</span>
+              <b style="font-size:1.05rem;color:#40372E;">{{ t('家庭帳戶 B') }}</b>
+              <div style="margin:.6rem 0 .2rem;"><span style="font-size:2rem;font-weight:800;color:#40372E;">$12,800</span><span style="font-size:.85rem;color:#8A7F72;"> {{ t('/ 月') }}</span></div>
+              <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('3–5 位成員的三代同堂') }}</p>
               <ul style="font-size:.9rem;color:#5D5248;line-height:1.9;padding-left:0;list-style:none;margin:0 0 1.4rem;">
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('高級會員全部功能') }}</li>
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('家庭帳戶：集中管理子女預約') }}</li>
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('18 歲以下子女病歷查看') }}</li>
-                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('子女保險覆蓋標示') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('A 計劃全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('全家預約／病歷／療程追蹤') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('每成員獨立登入管理') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('家庭單號 JRB 帳單') }}</li>
               </ul>
-              <a href="#aq-login" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-people-roof"></i>{{ t('升級家庭') }}</a>
-              <a href="#aq-family" style="display:block;text-align:center;font-size:.78rem;color:#7E9476;margin-top:.7rem;text-decoration:underline;">{{ t('認識 Plan A / B / C 計劃詳情 →') }}</a>
+              <a href="#aq-family" class="aq-btn aq-btn-solid" style="justify-content:center;margin-top:auto;background:linear-gradient(135deg,#7E9476,#5F7457);"><i class="fas fa-crown"></i>{{ t('揀 B 計劃') }}</a>
+            </div>
+
+            <!-- 家庭帳戶 C -->
+            <div style="background:#fff;border:1px solid #EDE6DD;border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;">
+              <b style="font-size:1.05rem;color:#40372E;">{{ t('家庭帳戶 C') }}</b>
+              <div style="margin:.6rem 0 .2rem;"><span style="font-size:2rem;font-weight:800;color:#40372E;">$16,800</span><span style="font-size:.85rem;color:#8A7F72;"> {{ t('/ 月') }}</span></div>
+              <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('6–9 位成員的大家庭') }}</p>
+              <ul style="font-size:.9rem;color:#5D5248;line-height:1.9;padding-left:0;list-style:none;margin:0 0 1.4rem;">
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('B 計劃全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('全家預約／病歷／療程追蹤') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('專人協助安排家庭會籍') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('家庭單號 JRC 帳單') }}</li>
+              </ul>
+              <a href="#aq-family" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-people-roof"></i>{{ t('揀 C 計劃') }}</a>
+            </div>
+
+            <!-- 家庭帳戶 D -->
+            <div style="background:#fff;border:1px solid #EDE6DD;border-radius:1.4rem;padding:2rem 1.6rem;display:flex;flex-direction:column;">
+              <b style="font-size:1.05rem;color:#40372E;">{{ t('家庭帳戶 D') }}</b>
+              <div style="margin:.6rem 0 .2rem;"><span style="font-size:2rem;font-weight:800;color:#40372E;">$20,800</span><span style="font-size:.85rem;color:#8A7F72;"> {{ t('/ 月') }}</span></div>
+              <p style="font-size:.85rem;color:#8A7F72;margin:0 0 1rem;">{{ t('10 位以上成員的跨代大家族') }}</p>
+              <ul style="font-size:.9rem;color:#5D5248;line-height:1.9;padding-left:0;list-style:none;margin:0 0 1.4rem;">
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('C 計劃全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('不設成員人數上限') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('最齊全家庭管理功能') }}</li>
+                <li><i class="fas fa-check" style="color:var(--p500);margin-right:.5rem;"></i>{{ t('家庭單號 JRD 帳單') }}</li>
+              </ul>
+              <a href="#aq-family" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-people-roof"></i>{{ t('揀 D 計劃') }}</a>
             </div>
           </div>
 
@@ -1776,7 +1848,7 @@
             <div style="background:#fff;border:1px solid #EADFD2;border-radius:1.3rem;padding:1.3rem 1.4rem;display:flex;gap:.9rem;align-items:flex-start;">
               <i class="fas fa-file-invoice" style="color:#7E9476;font-size:1.25rem;margin-top:.15rem;"></i>
               <div>
-                <b style="color:#3E2A1E;display:block;margin-bottom:.25rem;">{{ t('全家一張單（JRA / JRB / JRC）') }}</b>
+                <b style="color:#3E2A1E;display:block;margin-bottom:.25rem;">{{ t('全家一張單（JRA / JRB / JRC / JRD）') }}</b>
                 <span style="font-size:.85rem;color:#8A7F72;line-height:1.6;">{{ t('每位付費戶主一張家庭單號，跟死成個家庭嘅會籍同帳單。') }}</span>
               </div>
             </div>
@@ -1796,8 +1868,8 @@
             </div>
           </div>
 
-          <!-- Plan A / B / C 三卡 -->
-          <div style="max-width:1180px;margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.4rem;">
+          <!-- Plan A / B / C / D 四卡 -->
+          <div style="max-width:1180px;margin:0 auto;padding:0 1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.4rem;">
             <!-- PLAN A -->
             <div style="background:#fff;border:1px solid #EADFD2;border-radius:1.6rem;padding:2rem 1.7rem;display:flex;flex-direction:column;position:relative;">
               <span style="position:absolute;top:-0.75rem;left:1.6rem;background:#EFD2BD;color:#5D4037;font-size:.72rem;font-weight:700;letter-spacing:.14em;padding:.3rem .95rem;border-radius:999px;">PLAN A</span>
@@ -1806,7 +1878,7 @@
               <p style="font-size:.88rem;color:#8A7F72;margin:0 0 .9rem;">{{ t('情侶、兩公婆、或一個家長＋一位小朋友嘅小家庭') }}</p>
               <ul style="font-size:.9rem;color:#5D5248;line-height:2;padding-left:0;list-style:none;margin:0 0 1.2rem;">
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('戶主＋最多 1 位家庭成員') }}</li>
-                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('高級會員全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('一般帳戶全部功能') }}</li>
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('子女預約／病歷集中管理') }}</li>
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('家庭單號 JRA 帳單') }}</li>
               </ul>
@@ -1817,11 +1889,11 @@
             <div style="background:#fff;border:2px solid #7E9476;border-radius:1.6rem;padding:2rem 1.7rem;display:flex;flex-direction:column;position:relative;box-shadow:0 22px 46px -26px rgba(62,82,64,.5);">
               <span style="position:absolute;top:-0.75rem;left:1.6rem;background:#7E9476;color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.14em;padding:.3rem .95rem;border-radius:999px;">{{ t('PLAN B · 最受歡迎') }}</span>
               <b style="font-size:1.15rem;color:#3E2A1E;">{{ t('B 計劃') }}</b>
-              <div style="margin:.5rem 0 .15rem;"><span style="font-size:2rem;font-weight:800;color:#3E2A1E;">3–9</span><span style="color:#8A7F72;font-size:.95rem;"> {{ t('位成員') }}</span></div>
+              <div style="margin:.5rem 0 .15rem;"><span style="font-size:2rem;font-weight:800;color:#3E2A1E;">3–5</span><span style="color:#8A7F72;font-size:.95rem;"> {{ t('位成員') }}</span></div>
               <p style="font-size:.88rem;color:#8A7F72;margin:0 0 .9rem;">{{ t('多仔女家庭、三代同堂、或連同長輩一齊照顧') }}</p>
               <ul style="font-size:.9rem;color:#5D5248;line-height:2;padding-left:0;list-style:none;margin:0 0 1.2rem;">
-                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('戶主＋最多 8 位家庭成員') }}</li>
-                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('高級會員全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('戶主＋最多 4 位家庭成員') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('一般帳戶全部功能') }}</li>
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('全家預約／病歷／療程追蹤') }}</li>
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('每成員獨立登入管理') }}</li>
               </ul>
@@ -1832,21 +1904,36 @@
             <div style="background:#fff;border:1px solid #EADFD2;border-radius:1.6rem;padding:2rem 1.7rem;display:flex;flex-direction:column;position:relative;">
               <span style="position:absolute;top:-0.75rem;left:1.6rem;background:#E5E8D9;color:#3E5240;font-size:.72rem;font-weight:700;letter-spacing:.14em;padding:.3rem .95rem;border-radius:999px;">PLAN C</span>
               <b style="font-size:1.15rem;color:#3E2A1E;">{{ t('C 計劃') }}</b>
-              <div style="margin:.5rem 0 .15rem;"><span style="font-size:2rem;font-weight:800;color:#3E2A1E;">10+</span><span style="color:#8A7F72;font-size:.95rem;"> {{ t('位成員') }}</span></div>
-              <p style="font-size:.88rem;color:#8A7F72;margin:0 0 .9rem;">{{ t('大家族、跨代同堂，一次過管理所有家人健康') }}</p>
+              <div style="margin:.5rem 0 .15rem;"><span style="font-size:2rem;font-weight:800;color:#3E2A1E;">6–9</span><span style="color:#8A7F72;font-size:.95rem;"> {{ t('位成員') }}</span></div>
+              <p style="font-size:.88rem;color:#8A7F72;margin:0 0 .9rem;">{{ t('大家庭、跨代同堂，一次過管理大部分家人健康') }}</p>
               <ul style="font-size:.9rem;color:#5D5248;line-height:2;padding-left:0;list-style:none;margin:0 0 1.2rem;">
-                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('戶主＋9 位以上家庭成員') }}</li>
-                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('高級會員全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('戶主＋最多 8 位家庭成員') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('一般帳戶全部功能') }}</li>
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('全家預約／病歷／療程追蹤') }}</li>
                 <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('專人協助安排家庭會籍') }}</li>
               </ul>
               <a href="#aq-login" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-people-roof"></i>{{ t('揀 C 計劃') }}</a>
             </div>
+
+            <!-- PLAN D -->
+            <div style="background:#fff;border:1px solid #EADFD2;border-radius:1.6rem;padding:2rem 1.7rem;display:flex;flex-direction:column;position:relative;">
+              <span style="position:absolute;top:-0.75rem;left:1.6rem;background:#D9C2E5;color:#4A2E5D;font-size:.72rem;font-weight:700;letter-spacing:.14em;padding:.3rem .95rem;border-radius:999px;">PLAN D</span>
+              <b style="font-size:1.15rem;color:#3E2A1E;">{{ t('D 計劃') }}</b>
+              <div style="margin:.5rem 0 .15rem;"><span style="font-size:2rem;font-weight:800;color:#3E2A1E;">10+</span><span style="color:#8A7F72;font-size:.95rem;"> {{ t('位成員') }}</span></div>
+              <p style="font-size:.88rem;color:#8A7F72;margin:0 0 .9rem;">{{ t('10 位以上成員嘅跨代大家族，不設人數上限') }}</p>
+              <ul style="font-size:.9rem;color:#5D5248;line-height:2;padding-left:0;list-style:none;margin:0 0 1.2rem;">
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('戶主＋9 位以上家庭成員') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('一般帳戶全部功能') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('全家預約／病歷／療程追蹤') }}</li>
+                <li><i class="fas fa-check" style="color:#7E9476;margin-right:.5rem;"></i>{{ t('不設成員人數上限 · 最齊全管理') }}</li>
+              </ul>
+              <a href="#aq-login" class="aq-btn aq-btn-line" style="justify-content:center;margin-top:auto;"><i class="fas fa-people-roof"></i>{{ t('揀 D 計劃') }}</a>
+            </div>
           </div>
 
           <!-- 家庭計劃與其他級別比較表 -->
           <div style="max-width:960px;margin:2.8rem auto 0;padding:0 1.5rem;">
-            <h3 style="text-align:center;color:#3E2A1E;font-size:1.35rem;margin:0 0 1.2rem;letter-spacing:.05em;">{{ t('三個家庭計劃點揀？') }}</h3>
+            <h3 style="text-align:center;color:#3E2A1E;font-size:1.35rem;margin:0 0 1.2rem;letter-spacing:.05em;">{{ t('四個家庭計劃點揀？') }}</h3>
             <div style="border-radius:1.4rem;border:1px solid #EADFD2;background:#fff;">
               <div style="overflow-x:auto;border-radius:1.4rem;-webkit-overflow-scrolling:touch;">
               <table style="width:100%;min-width:560px;border-collapse:collapse;font-size:.9rem;">
@@ -1856,23 +1943,27 @@
                     <th style="padding:.9rem 1rem;color:#5D4037;">{{ t('A 計劃') }}</th>
                     <th style="padding:.9rem 1rem;color:#3E5240;">{{ t('B 計劃') }}</th>
                     <th style="padding:.9rem 1rem;color:#3E5240;">{{ t('C 計劃') }}</th>
+                    <th style="padding:.9rem 1rem;color:#4A2E5D;">{{ t('D 計劃') }}</th>
                   </tr>
                 </thead>
                 <tbody style="color:#5D5248;">
                   <tr style="border-top:1px solid #F1E8DE;">
                     <td style="padding:.8rem 1.2rem;">{{ t('成員人數') }}</td>
                     <td style="padding:.8rem 1rem;text-align:center;">{{ t('1–2 位') }}</td>
-                    <td style="padding:.8rem 1rem;text-align:center;">{{ t('3–9 位') }}</td>
+                    <td style="padding:.8rem 1rem;text-align:center;">{{ t('3–5 位') }}</td>
+                    <td style="padding:.8rem 1rem;text-align:center;">{{ t('6–9 位') }}</td>
                     <td style="padding:.8rem 1rem;text-align:center;">{{ t('10 位以上') }}</td>
                   </tr>
                   <tr style="border-top:1px solid #F1E8DE;">
                     <td style="padding:.8rem 1.2rem;">{{ t('適合對象') }}</td>
                     <td style="padding:.8rem 1rem;text-align:center;">{{ t('小家庭') }}</td>
                     <td style="padding:.8rem 1rem;text-align:center;">{{ t('三代同堂') }}</td>
-                    <td style="padding:.8rem 1rem;text-align:center;">{{ t('大家族') }}</td>
+                    <td style="padding:.8rem 1rem;text-align:center;">{{ t('大家庭') }}</td>
+                    <td style="padding:.8rem 1rem;text-align:center;">{{ t('跨代大家族') }}</td>
                   </tr>
                   <tr style="border-top:1px solid #F1E8DE;">
                     <td style="padding:.8rem 1.2rem;">{{ t('18 歲以下子女管理') }}</td>
+                    <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
                     <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
                     <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
                     <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
@@ -1882,12 +1973,14 @@
                     <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
                     <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
                     <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
+                    <td style="padding:.8rem 1rem;text-align:center;"><i class="fas fa-check" style="color:#7E9476;"></i></td>
                   </tr>
                   <tr style="border-top:1px solid #F1E8DE;background:#FAF5EE;">
                     <td style="padding:.8rem 1.2rem;">{{ t('家庭單號') }}</td>
                     <td style="padding:.8rem 1rem;text-align:center;">JRA-xxxx</td>
                     <td style="padding:.8rem 1rem;text-align:center;">JRB-xxxx</td>
                     <td style="padding:.8rem 1rem;text-align:center;">JRC-xxxx</td>
+                    <td style="padding:.8rem 1rem;text-align:center;">JRD-xxxx</td>
                   </tr>
                 </tbody>
               </table>
@@ -1898,7 +1991,7 @@
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.6rem;">
               <div style="background:rgba(126,148,118,.12);border:1px dashed #A8B89A;border-radius:1.2rem;padding:1.2rem 1.3rem;">
                 <b style="color:#3E5240;display:block;margin-bottom:.3rem;"><span style="display:inline-flex;width:1.6rem;height:1.6rem;border-radius:50%;background:#7E9476;color:#fff;align-items:center;justify-content:center;font-size:.85rem;margin-right:.45rem;">1</span>{{ t('開戶／升級') }}</b>
-                <span style="font-size:.85rem;color:#6B6258;line-height:1.7;">{{ t('登入會員中心揀「家庭會員」付款，或致電 2555-1136 由職員開通。') }}</span>
+                <span style="font-size:.85rem;color:#6B6258;line-height:1.7;">{{ t('登入會員中心揀「家庭帳戶 A–D」付款，或致電 2555-1136 由職員開通。') }}</span>
               </div>
               <div style="background:rgba(126,148,118,.12);border:1px dashed #A8B89A;border-radius:1.2rem;padding:1.2rem 1.3rem;">
                 <b style="color:#3E5240;display:block;margin-bottom:.3rem;"><span style="display:inline-flex;width:1.6rem;height:1.6rem;border-radius:50%;background:#7E9476;color:#fff;align-items:center;justify-content:center;font-size:.85rem;margin-right:.45rem;">2</span>{{ t('連結家庭成員') }}</b>
@@ -1911,7 +2004,73 @@
             </div>
 
             <p style="text-align:center;font-size:.82rem;color:#8A7F72;margin:1.6rem 0 0;">
-              <i class="fas fa-circle-info" style="margin-right:.35rem;color:#7E9476;"></i>{{ t('家庭成員總數達到下一級時，系統會自動將家庭計劃升到 A → B → C，單號一齊跟住變 JRA → JRB → JRC（維持同一張單）。計劃詳情可致電') }}<b>2555-1136</b> {{ t('或親臨診所查詢。') }}</p>
+              <i class="fas fa-circle-info" style="margin-right:.35rem;color:#7E9476;"></i>{{ t('家庭成員總數達到下一級時，系統會自動將家庭計劃升到 A → B → C → D，單號一齊跟住變 JRA → JRB → JRC → JRD（維持同一張單）。計劃詳情可致電') }}<b>2555-1136</b> {{ t('或親臨診所查詢。') }}</p>
+          </div>
+        </section>
+
+        <!-- 客人心聲：到診意見分享 -->
+        <section id="voices" class="site-section site-voices">
+          <div class="aq-head">
+            <span class="aq-eyebrow">Voices</span>
+            <h2>{{ t('客人心聲') }}</h2>
+            <p>{{ t('聽聽到診客人的真實分享，亦歡迎您分享自己的到診體驗') }}</p>
+            <button v-if="currentMember" @click="openVoiceForm" class="m-register-btn">
+              <i class="fas fa-comment-medical mr-2"></i>{{ t('分享您的到診意見') }}</button>
+          </div>
+
+          <!-- 提交表單 -->
+          <div v-if="customerVoicesOpen" class="site-voices-form">
+            <div class="site-voices-form-head">
+              <b>{{ t('分享您的到診意見') }}</b>
+              <button @click="customerVoicesOpen = false" class="site-voices-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div v-if="voiceThanks" class="site-voices-thanks">
+              <i class="fas fa-circle-check"></i>{{ t('多謝您的意見，待管理員審核後會公開展示') }}
+            </div>
+            <template v-else>
+              <input v-model="voiceName" class="site-forum-input" :placeholder="t('您的稱呼')" readonly>
+              <div class="site-voices-row">
+                <label class="site-voices-label">{{ t('評分') }}</label>
+                <div class="site-review-stars">
+                  <i v-for="i in 5" :key="'vr' + i" class="fas fa-star" :class="{ on: i <= voiceRating }" @click="voiceRating = i" style="cursor:pointer;"></i>
+                </div>
+              </div>
+              <input v-model="voiceVisitType" class="site-forum-input" :placeholder="t('到診類型（例如：針灸／推拿／內科）')">
+              <textarea v-model="voiceContent" class="site-forum-input site-forum-textarea" :placeholder="t('請分享您的到診體驗...')"></textarea>
+              <button @click="submitCustomerVoice" :disabled="voiceSending" class="m-ghost-btn">
+                <i v-if="voiceSending" class="fas fa-spinner fa-spin mr-2"></i>{{ t('提交意見') }}</button>
+            </template>
+          </div>
+
+          <!-- 列表 -->
+          <div v-if="customerVoicesLoading" class="site-reviews-grid">
+            <div v-for="n in 3" :key="'vsk' + n" class="site-review-card animate-pulse">
+              <div class="h-4 rounded w-1/3 mb-2" style="background:#EDE6DD;"></div>
+              <div class="h-3 rounded w-5/6 mb-1" style="background:#F3EEE7;"></div>
+              <div class="h-3 rounded w-2/3" style="background:#F3EEE7;"></div>
+            </div>
+          </div>
+          <div v-else class="site-reviews-grid">
+            <div v-for="v in customerVoices" :key="v.id" class="site-review-card">
+              <div class="site-review-top">
+                <img v-if="v.avatar && v.avatar.startsWith('/')" :src="v.avatar" class="site-review-avatar">
+                <span v-else class="site-review-avatar">{{ v.avatar || '🙂' }}</span>
+                <div>
+                  <b>{{ v.user_name }}</b>
+                  <small>{{ v.visit_type }} · {{ formatVoiceDate(v.created_at) }}</small>
+                </div>
+              </div>
+              <div class="site-review-stars"><i v-for="i in 5" :key="'vs' + i" class="fas fa-star" :class="{ on: i <= (v.rating || 0) }"></i></div>
+              <p class="site-review-text">{{ v.content }}</p>
+            </div>
+            <div v-if="!customerVoices.length" class="site-reviews-empty">{{ t('暫時未有客人心聲，歡迎成為第一位分享嘅客人！') }}</div>
+          </div>
+
+          <!-- 分頁 -->
+          <div v-if="customerVoicesPages > 1" class="site-voices-pager">
+            <button :disabled="customerVoicesPage <= 1" @click="loadCustomerVoices(customerVoicesPage - 1)"><i class="fas fa-chevron-left"></i> {{ t('上一頁') }}</button>
+            <span>{{ customerVoicesPage }} / {{ customerVoicesPages }}</span>
+            <button :disabled="customerVoicesPage >= customerVoicesPages" @click="loadCustomerVoices(customerVoicesPage + 1)">{{ t('下一頁') }} <i class="fas fa-chevron-right"></i></button>
           </div>
         </section>
 
@@ -2054,7 +2213,7 @@
         </section>
 
         <footer class="aq-footer">
-          <div class="aq-footer-logo">{{ t('寶天醫館 · JR') }}</div>
+          <div class="aq-footer-logo">{{ t('寶天JR · JR') }}</div>
           <div class="aq-footer-tag">NATURAL WELLNESS · CENTRAL</div>
           <div class="aq-footer-links">
             <a href="#aq-services">{{ t('服務') }}</a>
@@ -2068,7 +2227,7 @@
             <a href="#aq-contact">{{ t('聯絡我們') }}</a>
             <a href="privacy.html" target="_blank" rel="noopener">{{ t('私隱政策') }}</a>
           </div>
-          <div class="aq-footer-bottom">{{ t('© 2026 寶天醫館 JR · 自然養生預約系統 ·') }}<a href="privacy.html" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">{{ t('私隱政策') }}</a></div>
+          <div class="aq-footer-bottom">{{ t('© 2026 寶天JR JR · 自然養生預約系統 ·') }}<a href="privacy.html" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">{{ t('私隱政策') }}</a></div>
         </footer>
       </div><!-- /.aq -->
 
@@ -2655,9 +2814,9 @@
         <!-- 毛玻璃導航欄 -->
         <aside class="m-sidebar">
           <div class="m-side-brand">
-            <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天醫館')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events: none; user-select: none; -webkit-user-drag: none;">
+            <img src="picture/WhatsApp Image 2025-12-29 at 3.52.39 PM.jpeg" :alt="t('寶天JR')" oncontextmenu="return false;" ondragstart="return false;" style="pointer-events: none; user-select: none; -webkit-user-drag: none;">
             <div>
-              <h1>{{ t('寶天醫館') }}<span style="color:var(--p400);font-weight:600;font-size:.85em;"> JR</span></h1>
+              <h1>{{ t('寶天JR') }}<span style="color:var(--p400);font-weight:600;font-size:.85em;"> JR</span></h1>
               <small>{{ t('智慧預約 · 醫療分流') }}</small>
             </div>
           </div>
@@ -2824,6 +2983,26 @@
                     <textarea v-model="forumReplyContent" class="site-forum-input site-forum-textarea" :placeholder="t('寫低您嘅回應...')"></textarea>
                     <button @click="submitForumReply" :disabled="forumReplySending" class="m-ghost-btn">
                       <i v-if="forumReplySending" class="fas fa-spinner fa-spin mr-2"></i>{{ t('回覆') }}</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 🆕 我的討論區帖子（含待審核狀態） -->
+              <div v-if="currentMember" class="site-my-posts">
+                <div class="site-my-posts-head">
+                  <b><i class="fas fa-list mr-1"></i>{{ t('我的討論區帖子') }}</b>
+                  <button v-if="!myForumLoading" @click="loadMyForumPosts" class="site-my-posts-refresh" :title="t('重新整理')"><i class="fas fa-rotate"></i></button>
+                </div>
+                <div v-if="myForumLoading" class="site-reviews-empty"><i class="fas fa-spinner fa-spin"></i> {{ t('載入中...') }}</div>
+                <div v-else-if="!myForumPosts.length" class="site-reviews-empty">{{ t('您仲未發過帖，快啲嚟分享啦！') }}</div>
+                <div v-else class="site-my-posts-list">
+                  <div v-for="m in myForumPosts" :key="m.id" class="site-my-post" @click="openForumPost(m)">
+                    <div class="site-my-post-main">
+                      <b>{{ m.title }}</b>
+                      <span class="site-my-post-snippet">{{ forumSnippet(m.content) }}</span>
+                      <small>{{ m.category }} · {{ m.created_at }}</small>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-xs font-bold" :class="forumStatusBadge(m.status).cls">{{ forumStatusBadge(m.status).text }}</span>
                   </div>
                 </div>
               </div>
@@ -3776,11 +3955,11 @@
                   <h3 class="font-bold mb-1 flex items-center"><i class="fas fa-arrow-trend-up text-amber-500 mr-2"></i>{{ t('會員計劃') }}</h3>
                   <p class="text-sm text-gray-500 mb-4">{{ t('點選方案後按下方掣以 Stripe 付款升級；月費制，可隨時使用至期滿。') }}</p>
 
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- 一般 -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <!-- 一般帳戶 -->
                     <div class="rounded-lg border p-4" :class="membership.tier === 'general' ? 'border-emerald-400 bg-emerald-50/60' : 'border-gray-200'" style="cursor:default;">
                       <div class="flex justify-between items-center">
-                        <b>{{ t('一般會員') }}</b>
+                        <b>{{ t('一般帳戶') }}</b>
                         <span v-if="membership.tier === 'general'" class="text-xs px-2 py-0.5 rounded-full text-white" style="background:var(--p600);">{{ t('目前方案') }}</span>
                       </div>
                       <div class="mt-1"><span class="text-xl font-bold">{{ t('免費') }}</span></div>
@@ -3792,51 +3971,52 @@
                       <p v-if="membership.tier !== 'general'" class="text-xs text-gray-400 mt-3 border-t pt-2">
                         <i class="fas fa-circle-info mr-1"></i>{{ t('降級返一般：請用下方「取消月費計劃」掣') }}</p>
                     </div>
-                    <!-- 高級 -->
-                    <div class="rounded-lg border p-4 transition" :class="membership.tier === 'premium' ? 'border-emerald-400 bg-emerald-50/60' : (membership.tier === 'family' ? 'border-gray-200 bg-gray-50/60 opacity-75' : ['cursor-pointer','hover:shadow-md', upgradeTier === 'premium' ? 'border-emerald-300 bg-emerald-50/40' : 'border-emerald-200 bg-emerald-50/30'])" @click="membership.tier === 'general' && (upgradeTier = 'premium')">
-                      <div class="flex justify-between items-center">
-                        <b>{{ t('高級會員') }}</b>
-                        <span v-if="membership.tier === 'premium'" class="text-xs px-2 py-0.5 rounded-full text-white" style="background:var(--p600);">{{ t('目前方案') }}</span>
-                        <span v-else-if="membership.tier === 'family'" class="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">{{ t('已包含於家庭會員') }}</span>
+
+                    <!-- 家庭帳戶 A / B / C / D -->
+                    <template v-for="p in ['A','B','C','D']" :key="p">
+                      <div class="rounded-lg border p-4 transition relative cursor-pointer hover:shadow-md"
+                           :class="[
+                             membership.tier === 'family' && membership.familyPlan === p ? 'border-amber-400 bg-amber-50/60' : '',
+                             membership.tier === 'family' && membership.familyPlan !== p ? 'border-gray-200 bg-gray-50/60 opacity-75' : '',
+                             (membership.tier !== 'family' || membership.familyPlan !== p) ? (upgradePlan === p ? 'border-amber-300 bg-amber-50/40' : 'border-amber-200 bg-amber-50/30') : ''
+                           ]"
+                           @click="(membership.tier !== 'family' || membership.familyPlan !== p) ? (upgradePlan = p) : null">
+                        <span v-if="PLAN_INFO[p].popular" class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">{{ t('最受歡迎') }}</span>
+                        <div class="flex justify-between items-center">
+                          <b>{{ planName(p) }}</b>
+                          <span v-if="membership.tier === 'family' && membership.familyPlan === p" class="text-xs px-2 py-0.5 rounded-full text-white" style="background:var(--p600);">{{ t('目前方案') }}</span>
+                        </div>
+                        <div class="mt-1"><span class="text-xl font-bold">${{ planPrice(p).toLocaleString() }}</span><span class="text-xs text-gray-400"> {{ t('/ 月') }}</span></div>
+                        <div class="text-xs text-gray-500 mt-0.5">{{ planRange(p) }}</div>
+                        <ul class="text-sm text-gray-600 mt-2 space-y-1">
+                          <li><i class="fas fa-check text-amber-500 mr-1"></i>{{ t('一般帳戶全部功能') }}</li>
+                          <li><i class="fas fa-check text-amber-500 mr-1"></i>{{ t('家庭帳戶（集中管理家人）') }}</li>
+                          <li><i class="fas fa-check text-amber-500 mr-1"></i>{{ t('18 歲以下子女保險覆蓋') }}</li>
+                        </ul>
                       </div>
-                      <div class="mt-1"><span class="text-xl font-bold">$8,800</span><span class="text-xs text-gray-400"> {{ t('/ 月') }}</span></div>
-                      <ul class="text-sm text-gray-600 mt-2 space-y-1">
-                        <li><i class="fas fa-check text-emerald-500 mr-1"></i>{{ t('一般會員全部功能') }}</li>
-                        <li><i class="fas fa-check text-emerald-500 mr-1"></i>{{ t('優先預約時段') }}</li>
-                        <li><i class="fas fa-check text-emerald-500 mr-1"></i>{{ t('案例庫完整瀏覽') }}</li>
-                      </ul>
-                    </div>
-                    <!-- 家庭 -->
-                    <div class="rounded-lg border p-4 cursor-pointer hover:shadow-md transition" :class="membership.tier === 'family' ? 'border-amber-400 bg-amber-50/60' : (upgradeTier === 'family' ? 'border-amber-300 bg-amber-50/40' : 'border-amber-200 bg-amber-50/30')" @click="membership.tier !== 'family' && (upgradeTier = 'family')">
-                      <div class="flex justify-between items-center">
-                        <b>{{ t('家庭會員') }}</b>
-                        <span v-if="membership.tier === 'family'" class="text-xs px-2 py-0.5 rounded-full text-white" style="background:var(--p600);">{{ t('目前方案') }}</span>
-                      </div>
-                      <div class="mt-1"><span class="text-xl font-bold">$16,800</span><span class="text-xs text-gray-400"> {{ t('/ 月') }}</span></div>
-                      <ul class="text-sm text-gray-600 mt-2 space-y-1">
-                        <li><i class="fas fa-check text-amber-500 mr-1"></i>{{ t('高級會員全部功能') }}</li>
-                        <li><i class="fas fa-check text-amber-500 mr-1"></i>{{ t('家庭帳戶（子女管理）') }}</li>
-                        <li><i class="fas fa-check text-amber-500 mr-1"></i>{{ t('18 歲以下子女保險覆蓋') }}</li>
-                      </ul>
-                    </div>
+                    </template>
                   </div>
 
                   <!-- 支付方式 -->
                   <div class="mt-4 flex flex-wrap items-center gap-3">
-                    <template v-if="membership.tier !== 'family'">
+                    <template v-if="upgradePlan">
                       <button
                         class="px-5 py-2.5 rounded-lg text-white font-bold"
                         style="background:linear-gradient(135deg,var(--p600),var(--p500));"
-                        :disabled="!upgradeTier || upgrading"
-                        @click="startCheckout(upgradeTier)"
+                        :disabled="upgrading"
+                        @click="startCheckout('family', upgradePlan)"
                       >
-                        <i class="fas fa-credit-card mr-2"></i>{{ upgrading ? t('處理中...') : (upgradeTier ? (t('以 Stripe 付款升級至「') + (upgradeTier === 'family' ? t('家庭會員') : t('高級會員')) + t('」 $') + (upgradeTier === 'family' ? '16,800' : '8,800')) : t('請先點選上方一個方案')) }}
+                        <i class="fas fa-credit-card mr-2"></i>{{ upgrading ? t('處理中...') : (t('以 Stripe 付款升級至「') + planName(upgradePlan) + t('」 $') + planPrice(upgradePlan).toLocaleString()) }}
                       </button>
-                      <span class="text-xs text-gray-400"><i class="fas fa-shield-halved mr-1"></i>{{ t('Stripe 安全付款：Visa / Mastercard / Apple Pay / Google Pay') }}</span>
+                      <button class="px-3 py-2.5 rounded-lg border border-gray-300 text-gray-600 text-sm" @click="upgradePlan = null">{{ t('取消選擇') }}</button>
+                    </template>
+                    <template v-else-if="membership.tier === 'family'">
+                      <span class="text-sm text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>{{ t('您已經係「') + planName(membership.familyPlan || 'A') + t('」，感謝支持！') }}</span>
                     </template>
                     <template v-else>
-                      <span class="text-sm text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>{{ t('您已經係最高級別「家庭會員」，感謝支持！') }}</span>
+                      <span class="text-xs text-gray-500"><i class="fas fa-circle-info mr-1"></i>{{ t('請點選上方一個家庭計劃，再按掣以 Stripe 付款升級') }}</span>
                     </template>
+                    <span class="text-xs text-gray-400"><i class="fas fa-shield-halved mr-1"></i>{{ t('Stripe 安全付款：Visa / Mastercard / Apple Pay / Google Pay') }}</span>
                     <button
                       v-if="membership.tier !== 'general' && membership.subStatus === 'active' && (membership.tier !== 'family' || membership.isFamilyHead)"
                       class="px-5 py-2.5 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50"
@@ -3877,7 +4057,7 @@
                         :disabled="upgrading"
                         @click="startCheckout('family')"
                       >
-                        <i class="fas fa-hand-holding-dollar mr-2"></i>{{ upgrading ? '處理中...' : '接手供款（家庭計劃 $16,800 / 月）' }}
+                        <i class="fas fa-hand-holding-dollar mr-2"></i>{{ upgrading ? '處理中...' : ('接手供款（' + planName(membership.familyPlan || 'A') + ' $' + planPrice(membership.familyPlan || 'A').toLocaleString() + ' / 月）') }}
                       </button>
                       <!-- 戶主續費掣（戶主 + 全家無人供款） -->
                       <button
@@ -3887,7 +4067,7 @@
                         :disabled="upgrading"
                         @click="startCheckout('family')"
                       >
-                        <i class="fas fa-sync mr-2"></i>{{ upgrading ? '處理中...' : '續費家庭計劃 $16,800 / 月' }}
+                        <i class="fas fa-sync mr-2"></i>{{ upgrading ? '處理中...' : ('續費' + planName(membership.familyPlan || 'A') + ' $' + planPrice(membership.familyPlan || 'A').toLocaleString() + ' / 月') }}
                       </button>
                     </div>
                   </div>
@@ -3919,6 +4099,33 @@
                         {{ t('子女帳戶（18 歲以下）須由診所職工於後台核實資料後建立，一般家庭帳戶只可觀看子女的狀況及病歷。 如需為子女開戶，請致電') }}<b>2555-1136</b> {{ t('或親臨診所，並備妥子女姓名、出生日期及保險覆蓋資料。') }}</p>
                       <p class="text-xs text-gray-500 mt-2">
                         <i class="fas fa-circle-info mr-1"></i>{{ t('18 歲以下子女由戶主完全管理；年滿 18 歲的子帳戶僅可查看「預約成功」狀態。') }}</p>
+                    </div>
+
+                    <!-- 🆕 家庭戶主自助新增成員 -->
+                    <div class="rounded-lg bg-emerald-50/60 p-4 mt-4">
+                      <b class="text-sm"><i class="fas fa-user-plus mr-1 text-emerald-600"></i>{{ t('新增家庭成員（戶主自助）') }}</b>
+                      <p class="text-sm text-gray-600 mt-2 leading-relaxed">{{ t('戶主可即時為家庭新增成員（子女／家人）帳戶，系統會自動建立並顯示登入資料。') }}</p>
+
+                      <div v-if="addFamilyResult" class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
+                        <b class="text-emerald-700"><i class="fas fa-circle-check mr-1"></i>{{ t('已建立子帳戶，登入資料') }}</b>
+                        <div class="mt-1">{{ t('帳戶') }}：<b class="font-mono">{{ addFamilyResult.username }}</b></div>
+                        <div>{{ t('暫時密碼') }}：<b class="font-mono">{{ addFamilyResult.tempPassword }}</b></div>
+                      </div>
+
+                      <div v-else-if="addFamilyPlanLimit" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                        <b class="text-amber-700">{{ t('已達家庭計劃人數上限') }}</b>
+                        <p class="mt-1">{{ t('請升級至計劃') }} <b>{{ addFamilyPlanLimit.nextPlan }}</b> {{ t('以繼續添加家庭成員（') }}{{ addFamilyPlanLimit.nextPlan === 'D' ? t('不設人數上限') : (t('上限 ') + planMax(addFamilyPlanLimit.nextPlan) + t(' 人')) }}{{ t('）。') }}</p>
+                        <button class="mt-2 px-4 py-1.5 rounded-lg bg-amber-600 text-white font-bold" @click="startCheckout('family', addFamilyPlanLimit.nextPlan)"><i class="fas fa-arrow-up mr-1"></i>{{ t('升級計劃') }}</button>
+                      </div>
+
+                      <div v-else class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input v-model="addFamilyName" :placeholder="t('成員姓名')" class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        <input v-model="addFamilyBirth" type="date" class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        <input v-model="addFamilyPhone" :placeholder="t('聯絡電話')" class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                      </div>
+                      <p v-if="addFamilyError" class="text-xs text-red-600 mt-2">{{ addFamilyError }}</p>
+                      <button v-if="!addFamilyResult && !addFamilyPlanLimit" class="mt-3 px-5 py-2.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700" :disabled="addFamilyBusy" @click="submitAddFamilyMember">
+                        <i v-if="addFamilyBusy" class="fas fa-spinner fa-spin mr-2"></i><i v-else class="fas fa-user-plus mr-2"></i>{{ t('建立成員帳戶') }}</button>
                     </div>
 
                     <!-- 家庭成員列表（戶主可查看子帳戶資料，受細分授權 + 18 歲規則控制） -->
@@ -4201,8 +4408,8 @@
                         <input v-if="linkForm.relation === '其他'" v-model="linkForm.customRelation" :placeholder="t('請輸入關係說明（例如：表哥、契姐）')" class="w-full rounded border border-gray-300 p-2 text-sm">
                         <p v-if="linkError" class="text-red-500 text-xs">{{ linkError }}</p>
                         <div v-if="linkPlanLimit" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
-                          <p class="text-amber-700"><i class="fas fa-triangle-exclamation mr-1"></i>{{ t('您嘅家庭計劃') }} <b>{{ linkPlanLimit.currentPlan }}</b> {{ t('已達加人上限（最多') }} {{ linkPlanLimit.currentPlan === 'A' ? '2' : '9' }} {{ t('人）。') }}</p>
-                          <p class="text-amber-700 mt-1">{{ t('請升級至計劃') }} <b>{{ linkPlanLimit.nextPlan }}</b> {{ t('以繼續添加家庭成員（計劃 C 為 10 人或以上、不設上限）。') }}</p>
+                          <p class="text-amber-700"><i class="fas fa-triangle-exclamation mr-1"></i>{{ t('您嘅家庭計劃') }} <b>{{ linkPlanLimit.currentPlan }}</b> {{ t('已達加人上限（最多') }} {{ linkPlanLimit.currentPlan === 'D' ? '∞' : planMax(linkPlanLimit.currentPlan) }} {{ t('人）。') }}</p>
+                          <p class="text-amber-700 mt-1">{{ t('請升級至計劃') }} <b>{{ linkPlanLimit.nextPlan }}</b> {{ t('以繼續添加家庭成員（') }}{{ linkPlanLimit.nextPlan === 'D' ? t('不設人數上限') : (t('上限 ') + planMax(linkPlanLimit.nextPlan) + t(' 人')) }}{{ t('）。') }}</p>
                           <button class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 disabled:opacity-60" :disabled="linkBusy" @click="upgradeFamilyPlan"><i class="fas fa-arrow-up mr-1"></i>{{ t('升級至計劃') }} {{ linkPlanLimit.nextPlan }}</button>
                         </div>
                         <button class="w-full px-4 py-2 rounded-lg text-white font-bold text-sm disabled:opacity-60" style="background:linear-gradient(135deg,var(--p600),var(--p500));" :disabled="linkBusy" @click="createAccountLink">
@@ -4647,7 +4854,7 @@
             >
               <!-- Hero 歡迎區 -->
               <div class="m-hero">
-                <span class="m-hero-badge"><i class="fas fa-spa"></i> {{ t('寶天醫館 · JR Medical') }}</span>
+                <span class="m-hero-badge"><i class="fas fa-spa"></i> {{ t('寶天JR · JR Medical') }}</span>
                 <h2>{{ currentMember.name }}{{ t('，歡迎回來') }}</h2>
                 <p>{{ t('以千年中醫智慧結合現代精準科技，為您度身訂造個人化養生與治療方案，悉心守護每一刻健康。') }}</p>
                 <div class="m-hero-actions">
@@ -5176,12 +5383,12 @@
 
           <!-- 側邊欄 -->
           <aside class="m-aside-panel">
-            <!-- 關於寶天醫館 -->
+            <!-- 關於寶天JR -->
             <div class="m-aside-card">
               <h4>
-                <i class="fas fa-leaf mr-2"></i>{{ t('關於寶天醫館') }}</h4>
+                <i class="fas fa-leaf mr-2"></i>{{ t('關於寶天JR') }}</h4>
               <p class="m-about-desc">
-                {{ t('寶天醫館 JR 秉承千年中醫智慧，結合現代診療科技，以「仁心仁術」為本，為每位顧客度身訂造個人化養生與治療方案。') }}</p>
+                {{ t('寶天JR JR 秉承千年中醫智慧，結合現代診療科技，以「仁心仁術」為本，為每位顧客度身訂造個人化養生與治療方案。') }}</p>
               <div class="m-about-list">
                 <div class="m-about-item">
                   <i class="fas fa-clock"></i>
@@ -5386,7 +5593,7 @@
         <footer
           class="text-center text-sm text-slate-500 mt-10 pt-6 border-t border-slate-200"
         >
-          <p>{{ t('© 2026 寶天醫館 JR Medical 預約系統 · 智慧中醫 ·') }}<a href="privacy.html" target="_blank" rel="noopener" class="underline hover:text-slate-700">{{ t('私隱政策') }}</a></p>
+          <p>{{ t('© 2026 寶天JR JR Medical 預約系統 · 智慧中醫 ·') }}<a href="privacy.html" target="_blank" rel="noopener" class="underline hover:text-slate-700">{{ t('私隱政策') }}</a></p>
         </footer>
         </div>
       </div>

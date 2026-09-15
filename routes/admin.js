@@ -934,8 +934,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       const whatsappService = require('../services/whatsapp');
       const notifyResults = { whatsapp: 0, email: 0, failed: 0 };
       const messageText = excType === 'weather'
-        ? `【寶天醫館】通知：因天氣影響（${reason || '天氣惡劣'}），${exception_date} 全日暫停營業，您嘅預約需要改期。請致電 2555-1136 或登入系統重新預約，造成不便敬請原諒。`
-        : `【寶天醫館】通知：${doctor.name}醫師於 ${exception_date} 請假（${reason || '休假'}），您嘅預約需要改期。請致電 2555-1136 或登入系統重新預約，造成不便敬請原諒。`;
+        ? `【寶天JR】通知：因天氣影響（${reason || '天氣惡劣'}），${exception_date} 全日暫停營業，您嘅預約需要改期。請致電 2555-1136 或登入系統重新預約，造成不便敬請原諒。`
+        : `【寶天JR】通知：${doctor.name}醫師於 ${exception_date} 請假（${reason || '休假'}），您嘅預約需要改期。請致電 2555-1136 或登入系統重新預約，造成不便敬請原諒。`;
 
       for (const b of affected) {
         // WhatsApp
@@ -1117,8 +1117,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       // 通知管理員批核（WA 如配置）
       const whatsappService = require('../services/whatsapp');
       const adminMsg = isClinic
-        ? `【寶天醫館】全診所休診申請：${exception_date}${partial ? ` ${time_open}-${time_close}` : ''}（${reason || '休息'}），請登入後台批核。`
-        : `【寶天醫館】${doctor.name}醫師申請 ${exception_date}${partial ? ` ${time_open}-${time_close}` : ''} 請假（${reason || '休息'}），請登入後台批核。${coverDoc ? `已揀補位：${coverDoc.name}。` : ''}`;
+        ? `【寶天JR】全診所休診申請：${exception_date}${partial ? ` ${time_open}-${time_close}` : ''}（${reason || '休息'}），請登入後台批核。`
+        : `【寶天JR】${doctor.name}醫師申請 ${exception_date}${partial ? ` ${time_open}-${time_close}` : ''} 請假（${reason || '休息'}），請登入後台批核。${coverDoc ? `已揀補位：${coverDoc.name}。` : ''}`;
       if (whatsappService.isConfigured()) {
         const admins = await new Promise((resolve) => db.all("SELECT phone FROM users WHERE role='admin' AND phone IS NOT NULL AND phone<>''", [], (e, r) => resolve(r || [])));
         for (const a of admins) {
@@ -1203,8 +1203,8 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (exc.notify_customer) {
         const whenTxt = partial ? ` ${exc.time_open}-${exc.time_close}` : '';
         const msg = isClinic
-          ? `【寶天醫館】通知：診所於 ${exc.exception_date}${whenTxt} 全診所休診（${exc.reason || '休息'}），您的預約唔使改期，我哋會為您安排第二位醫師跟進。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。`
-          : `【寶天醫館】通知：${(doctor ? doctor.name : '該')}醫師於 ${exc.exception_date}${whenTxt} 請假（${exc.reason || '休息'}），您的預約唔使改期，我哋會為您安排第二位醫師跟進。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。`;
+          ? `【寶天JR】通知：診所於 ${exc.exception_date}${whenTxt} 全診所休診（${exc.reason || '休息'}），您的預約唔使改期，我哋會為您安排第二位醫師跟進。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。`
+          : `【寶天JR】通知：${(doctor ? doctor.name : '該')}醫師於 ${exc.exception_date}${whenTxt} 請假（${exc.reason || '休息'}），您的預約唔使改期，我哋會為您安排第二位醫師跟進。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。`;
         for (const b of affected) {
           if (whatsappService.isConfigured() && b.customer_phone) {
             try {
@@ -1406,7 +1406,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
                   try {
                     let phone = String(b.customer_phone);
                     if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
-                    await whatsappService.sendWhatsApp(phone, `【寶天醫館】通知：您於 ${exc.exception_date} ${b.appointment_time} 嘅預約，我哋已為您安排 ${coverDoc.name} 醫師跟進（唔使改期）。唔使額外操作，多謝惠顧。`);
+                    await whatsappService.sendWhatsApp(phone, `【寶天JR】通知：您於 ${exc.exception_date} ${b.appointment_time} 嘅預約，我哋已為您安排 ${coverDoc.name} 醫師跟進（唔使改期）。唔使額外操作，多謝惠顧。`);
                   } catch (e2) { /* ignore */ }
                 }
               } else {
@@ -1418,7 +1418,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
               try {
                 let phone = String(coverDoc.phone);
                 if (!phone.startsWith('+')) phone = '+852' + phone.replace(/^852/, '');
-                await whatsappService.sendWhatsApp(phone, `【寶天醫館】${exc.exception_date} 有醫師請假，以下 ${reassignedCount} 個預約已安排畀你跟進，請登入系統查看。`);
+                await whatsappService.sendWhatsApp(phone, `【寶天JR】${exc.exception_date} 有醫師請假，以下 ${reassignedCount} 個預約已安排畀你跟進，請登入系統查看。`);
               } catch (e2) { /* ignore */ }
             }
           }

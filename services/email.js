@@ -20,7 +20,7 @@ const transporter = nodemailer.createTransport({
 
 // 診所資訊（可從資料庫讀取）
 const CLINIC_INFO = {
-  name: '寶天醫館',
+  name: '寶天JR',
   phone: '2555-1136',
   address: '香港九龍新蒲崗大有街3號萬迪廣場9樓E鋪',
   email: 'info@potinhk.com'

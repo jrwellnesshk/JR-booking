@@ -505,7 +505,7 @@ async function sendSolarTermNotification() {
   
   // 使用自訂訊息（如果有）
   const termData = await getSolarTermMessage(todayTerm.name);
-  const message = `【寶天醫館提醒您】\n${termData.emoji}${termData.message}`;
+  const message = `【寶天JR提醒您】\n${termData.emoji}${termData.message}`;
   
   const users = await getEligibleUsers();
   const eligibleUsers = users.filter(u => u.receive_solar_terms);
@@ -628,7 +628,7 @@ async function sendWeatherNotification() {
     if (currentTemp !== null && currentTemp !== undefined && currentTemp <= coldThreshold) {
       shouldSend = true;
       triggerReason = `溫度 ${currentTemp}°C ≤ 閾值 ${coldThreshold}°C`;
-      weatherMessage = `【寶天醫館提醒您】\n🌡️天氣轉涼提醒\n\n今日氣溫約 ${currentTemp}°C，天氣${weatherDescription}。\n\n請注意添衣保暖，預防感冒。老人、小孩及長期病患者應特別注意保暖。\n\n如有不適，請及早求醫。`;
+      weatherMessage = `【寶天JR提醒您】\n🌡️天氣轉涼提醒\n\n今日氣溫約 ${currentTemp}°C，天氣${weatherDescription}。\n\n請注意添衣保暖，預防感冒。老人、小孩及長期病患者應特別注意保暖。\n\n如有不適，請及早求醫。`;
     }
     
     // 檢查天氣警告
@@ -636,7 +636,7 @@ async function sendWeatherNotification() {
       shouldSend = true;
       triggerReason = `天氣警告: ${warnings.map(w => w.name || w).join(', ')}`;
       const warningText = warnings.map(w => `⚠️ ${w.name || w}`).join('\n');
-      weatherMessage = `【寶天醫館提醒您】\n🌡️天氣警告\n\n${warningText}\n\n請注意安全，如有不適請及早求醫。`;
+      weatherMessage = `【寶天JR提醒您】\n🌡️天氣警告\n\n${warningText}\n\n請注意安全，如有不適請及早求醫。`;
     }
     
     if (!shouldSend) {
@@ -785,7 +785,7 @@ async function sendBookingReminders() {
       urgencyEmoji = '📅';
     }
     
-    const message = `【寶天醫館】${urgencyEmoji} 預約提醒
+    const message = `【寶天JR】${urgencyEmoji} 預約提醒
 
 您有一個預約在${daysText}：
 📅 日期：${booking.appointment_date}
@@ -971,7 +971,7 @@ async function sendTestNotification(type, phone, customMessage = null, channel =
       const selectedTerm = allTerms[termIndex];
       // 使用資料庫版本的 getSolarTermMessage（支援自訂訊息）
       const termData = await getSolarTermMessage(selectedTerm.name);
-      message = `【寶天醫館提醒您】\n${termData.emoji}${termData.message}`;
+      message = `【寶天JR提醒您】\n${termData.emoji}${termData.message}`;
       testInfo.currentItem = selectedTerm.name;
       testInfo.currentIndex = termIndex + 1;
       testInfo.totalCount = allTerms.length;
@@ -1003,15 +1003,15 @@ async function sendTestNotification(type, phone, customMessage = null, channel =
       break;
       
     case 'weather':
-      message = `【寶天醫館提醒您】\n🌡️天氣轉涼提醒（測試）\n\n今日氣溫約 15°C，天氣清涼。\n\n請注意添衣保暖，預防感冒。`;
+      message = `【寶天JR提醒您】\n🌡️天氣轉涼提醒（測試）\n\n今日氣溫約 15°C，天氣清涼。\n\n請注意添衣保暖，預防感冒。`;
       break;
       
     case 'custom':
-      message = customMessage || '【寶天醫館】這是一條測試訊息';
+      message = customMessage || '【寶天JR】這是一條測試訊息';
       break;
       
     default:
-      message = '【寶天醫館】這是一條測試訊息';
+      message = '【寶天JR】這是一條測試訊息';
   }
   
   // 根據指定渠道發送測試通知

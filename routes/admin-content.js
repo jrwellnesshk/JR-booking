@@ -83,6 +83,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     const { title, category, content, publish_date, is_active } = req.body || {};
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+    if (!title || !title.trim() || !content || !content.trim()) {
+      return res.status(400).json({ error: '請填寫標題及內容' });
+    }
     db.run(
       `UPDATE announcements SET title=?, category=?, content=?, publish_date=?, is_active=? WHERE id=?`,
       [title.trim().slice(0, 120), (category || '診所資訊').slice(0, 20), content.trim().slice(0, 5000),
@@ -135,6 +138,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     const id = parseInt(req.params.id);
     const { title, source, youtube_id, file_path, description, is_active } = req.body || {};
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+    if (!title || !title.trim()) return res.status(400).json({ error: '請填寫影片標題' });
     const src = source === 'upload' ? 'upload' : 'youtube';
     db.run(
       `UPDATE videos SET title=?, source=?, youtube_id=?, file_path=?, description=?, is_active=? WHERE id=?`,
@@ -251,6 +255,55 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         if (row) db.run('UPDATE forum_posts SET reply_count=MAX(0,reply_count-1) WHERE id=?', [row.post_id]);
         res.json({ ok: true });
       });
+    });
+  });
+
+  // ==================== 討論區審核（醫護審批後先公開）====================
+
+  router.put('/forum/posts/:id/status', ...adminOnly, (req, res) => {
+    const id = parseInt(req.params.id);
+    const { status } = req.body || {};
+    if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ error: '無效狀態' });
+    }
+    db.run('UPDATE forum_posts SET status=? WHERE id=?', [status, id], function (err) {
+      if (err) return serverError(res, err);
+      if (this.changes === 0) return res.status(404).json({ error: '帖子不存在' });
+      res.json({ ok: true });
+    });
+  });
+
+  // ==================== 客人心聲（到診意見）管理 ====================
+
+  router.get('/customer-voices', ...adminOnly, (req, res) => {
+    db.all('SELECT * FROM customer_voices ORDER BY created_at DESC', [], (err, rows) => {
+      if (err) return serverError(res, err);
+      res.json(rows || []);
+    });
+  });
+
+  router.put('/customer-voices/:id/status', ...adminOnly, (req, res) => {
+    const id = parseInt(req.params.id);
+    const { status } = req.body || {};
+    if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ error: '無效狀態' });
+    }
+    db.run('UPDATE customer_voices SET status=? WHERE id=?', [status, id], function (err) {
+      if (err) return serverError(res, err);
+      if (this.changes === 0) return res.status(404).json({ error: '客人心聲不存在' });
+      res.json({ ok: true });
+    });
+  });
+
+  router.delete('/customer-voices/:id', ...adminOnly, (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
+    db.run('DELETE FROM customer_voices WHERE id=?', [id], function (err) {
+      if (err) return serverError(res, err);
+      if (this.changes === 0) return res.status(404).json({ error: '客人心聲不存在' });
+      res.json({ ok: true });
     });
   });
 
