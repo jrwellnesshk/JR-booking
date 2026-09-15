@@ -12,6 +12,7 @@ const crypto = require('crypto');
 module.exports = (db, { requireAuth, requireRole } = {}) => {
   const router = express.Router();
   const adminOnly = [requireAuth, requireRole('admin')];
+  const adminOrStaff = [requireAuth, requireRole('admin', 'staff')];
 
   // ==================== 上傳設定 ====================
 
@@ -290,14 +291,14 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
 
   // ==================== 客人心聲（到診意見）管理 ====================
 
-  router.get('/customer-voices', ...adminOnly, (req, res) => {
+  router.get('/customer-voices', ...adminOrStaff, (req, res) => {
     db.all('SELECT * FROM customer_voices ORDER BY created_at DESC', [], (err, rows) => {
       if (err) return serverError(res, err);
       res.json(rows || []);
     });
   });
 
-  router.put('/customer-voices/:id/status', ...adminOnly, (req, res) => {
+  router.put('/customer-voices/:id/status', ...adminOrStaff, (req, res) => {
     const id = parseInt(req.params.id);
     const { status } = req.body || {};
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
@@ -311,7 +312,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     });
   });
 
-  router.delete('/customer-voices/:id', ...adminOnly, (req, res) => {
+  router.delete('/customer-voices/:id', ...adminOrStaff, (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: '無效 ID' });
     db.run('DELETE FROM customer_voices WHERE id=?', [id], function (err) {

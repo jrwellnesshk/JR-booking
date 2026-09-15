@@ -432,6 +432,16 @@
       .ftree-gen-ext > li:last-child::before{ border-right:1.5px dashed rgba(126,148,118,.45); }
       .ftree-gen-ext ul::before{ border-left:1.5px dashed rgba(126,148,118,.45); height:1.6rem; }
 
+      /* 🆕 第五代 · 其他連結（親戚／朋友）— 非同輩，與戶主層明顯分隔 */
+      .ftree-relatives-block{ margin-top:1.8rem; padding-top:1.2rem; border-top:2px dashed rgba(192,136,117,.4); }
+      .ftree-relatives-label{ text-align:center; font-size:13px; color:#9a8c7d; margin-bottom:.8rem; letter-spacing:.04em; }
+      .ftree-gen-relatives{ display:flex; flex-wrap:wrap; justify-content:center; gap:1.4rem; padding-top:1.6rem; }
+      .ftree-gen-relatives > li{ padding-top:1.6rem; position:relative; }
+      .ftree-gen-relatives > li::before{
+        content:""; position:absolute; top:0; left:50%; width:2px; height:1.6rem;
+        border-left:1.5px dashed rgba(192,136,117,.5); transform:translateX(-50%);
+      }
+
       .ftree-actions{
         position:relative; z-index:3; display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem;
         margin-top:1.6rem; padding-top:1.2rem; border-top:1px dashed rgba(192,136,117,.25);
@@ -1443,7 +1453,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
+                        {{ booking.member_no ? booking.member_no + ' · ' : '' }}{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1571,7 +1581,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
+                        {{ booking.member_no ? booking.member_no + ' · ' : '' }}{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1674,7 +1684,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
+                        {{ booking.member_no ? booking.member_no + ' · ' : '' }}{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1781,7 +1791,7 @@
                     >
                       <td class="px-4 py-3 text-sm">{{ booking.id }}</td>
                       <td class="px-4 py-3 text-sm">
-                        {{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
+                        {{ booking.member_no ? booking.member_no + ' · ' : '' }}{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         {{ booking.customer_phone }}
@@ -1897,7 +1907,7 @@
                         <div class="text-xs text-slate-500">{{ tb.appointment_time }}</div>
                       </td>
                       <td class="px-4 py-3">
-                        <div class="font-medium text-slate-800">{{ tb.customer_name }}</div>
+                        <div class="font-medium text-slate-800">{{ tb.member_no ? tb.member_no + ' · ' : '' }}{{ tb.customer_name }}</div>
                         <div v-if="tb.customer_name_en" class="text-xs text-slate-500">{{ tb.customer_name_en }}</div>
                       </td>
                       <td class="px-4 py-3 text-slate-600">{{ tb.customer_phone }}</td>
@@ -2126,9 +2136,9 @@
                           class="text-emerald-600 hover:text-emerald-800 hover:underline font-medium"
                           :title="t('查看個人資料')"
                         >
-                          {{ user.name }}
+                          {{ user.member_no ? user.member_no + ' · ' : '' }}{{ user.name }}
                         </button>
-                        <span v-else>{{ user.name }}</span>
+                        <span v-else>{{ user.member_no ? user.member_no + ' · ' : '' }}{{ user.name }}</span>
                       </td>
                       <td class="px-4 py-3 text-sm">{{ user.phone }}</td>
                       <td class="px-4 py-3 text-sm">{{ user.email }}</td>
@@ -2698,10 +2708,31 @@
                           </li>
                         </ul>
                         <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
-                      </li>
-                    </ul>
                   </li>
                 </ul>
+              </li>
+            </ul>
+
+                <!-- 🆕 第五代 · 戶主嘅其他連結（親戚／朋友／同事）— 非同輩，另置底部，唔喺戶主同一層 -->
+                <div v-if="familyTreeData.relativeLinks && familyTreeData.relativeLinks.length" class="ftree-relatives-block" v-show="ftreeGenWrapVisible(5)">
+                  <div class="ftree-relatives-label"><i class="fas fa-link mr-1"></i>{{ t('其他連結（親戚／朋友）') }}</div>
+                  <ul class="ftree-gen ftree-gen-relatives">
+                    <li v-for="rl in familyTreeData.relativeLinks" :key="'rel-'+rl.id">
+                      <div class="ftree-node" data-role="relative" v-show="ftreeGenVisible(5)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(rl.other.avatar_url)" :src="rl.other.avatar_url" :alt="rl.other.name">
+                            <i v-else class="fas fa-user"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ rl.other.name || rl.other.username }}</div>
+                        <div class="ftree-meta">{{ rl.other.username }}</div>
+                        <span class="ftree-tag sage">{{ t(rl.customRelation || rl.relation) }}</span>
+                        <button @click="removeHeadLink(rl)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
 
                 <div class="ftree-actions">
                   <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>{{ t('加子女') }}</button>
@@ -2926,7 +2957,7 @@
                     <tr v-else-if="adminMedicalRecords.length === 0"><td colspan="9" class="py-8 text-center text-slate-400">{{ t('沒有病歷記錄') }}</td></tr>
                     <tr v-for="r in adminMedicalRecords" :key="r.id" class="border-b border-slate-100 hover:bg-slate-50">
                       <td class="py-2.5 pr-3 whitespace-nowrap">{{ r.appointment_date || r.record_date }}<span class="text-xs text-slate-400">{{ r.appointment_time ? ' ' + r.appointment_time.slice(0,5) : '' }}</span></td>
-                      <td class="py-2.5 pr-3"><b class="text-slate-800">{{ r.customer_name || '—' }}</b><span class="block text-xs text-slate-400">{{ r.customer_username || '' }}</span></td>
+                      <td class="py-2.5 pr-3"><b class="text-slate-800">{{ r.member_no ? r.member_no + ' · ' : '' }}{{ r.customer_name || '—' }}</b><span class="block text-xs text-slate-400">{{ r.customer_username || '' }}</span></td>
                       <td class="py-2.5 pr-3">{{ r.doctor_name || '—' }}</td>
                       <td class="py-2.5 pr-3 text-xs text-slate-600">{{ r.service_name || '—' }}</td>
                       <td class="py-2.5 pr-3 max-w-[180px] truncate" :title="r.diagnosis">{{ r.diagnosis || '—' }}</td>
@@ -2949,7 +2980,7 @@
               <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] overflow-y-auto p-6">
                 <div class="flex items-start justify-between mb-4">
                   <div>
-                    <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-file-medical mr-2 text-emerald-600"></i>{{ amrDetail.customer_name }} 嘅病歷</h3>
+                    <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-file-medical mr-2 text-emerald-600"></i>{{ amrDetail.member_no ? amrDetail.member_no + ' · ' : '' }}{{ amrDetail.customer_name }} 嘅病歷</h3>
                     <p class="text-xs text-slate-500 mt-1">
                       會員ID：{{ amrDetail.customer_username || '—' }}
                       ｜就診：{{ amrDetail.appointment_date || amrDetail.record_date }} {{ (amrDetail.appointment_time || '').slice(0,5) }}
@@ -3037,7 +3068,7 @@
                   </thead>
                   <tbody>
                     <tr v-for="r in hfResults" :key="r.id" class="border-b border-slate-100 hover:bg-slate-50">
-                      <td class="py-2.5 pr-3 font-medium text-slate-800">{{ r.name }}</td>
+                      <td class="py-2.5 pr-3 font-medium text-slate-800">{{ r.member_no ? r.member_no + ' · ' : '' }}{{ r.name }}</td>
                       <td class="py-2.5 pr-3 text-slate-600">{{ r.phone || '—' }}</td>
                       <td class="py-2.5 pr-3 text-slate-600">{{ r.member_no || '—' }}</td>
                       <td class="py-2.5 pr-3 text-slate-600">{{ r.membership_tier }}</td>
@@ -7014,7 +7045,7 @@
                   />
                   <div class="flex-1">
                     <div class="flex items-center gap-2">
-                      <span class="font-medium">{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></span>
+                      <span class="font-medium">{{ booking.member_no ? booking.member_no + ' · ' : '' }}{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></span>
                       <span
                         :class="{
                           'bg-green-100 text-green-700': booking.status === 'completed',
@@ -7749,13 +7780,22 @@ addUserForm: {
             const isSpouse = (lk) => either(lk, spouseKeys);
             const isChild = (lk) => either(lk, childKeys);
             const isParent = (lk) => either(lk, parentKeys);
+            // 🆕 兄弟姊妹 = 同輩（留喺戶主同一層）；其他連結（親戚／朋友／同事）＝非同輩（另置第 5 代）
+            const siblingKeys = ['兄弟', '姊妹', '兄弟姐妹', '兄弟姊妹', '家姐', '細佬', '哥哥', '姐姐', '妹妹', '弟弟', '兄長', 'sibling', 'brother', 'sister'];
+            const isSibling = (lk) => either(lk, siblingKeys);
 
             // 經由戶主嘅連結
             const spouseLink = links.find(lk => isSpouse(lk) && lk.linkSourceName === head.name);
             const parentLinks = links.filter(lk => isParent(lk) && lk.linkSourceName === head.name);
             const siblingLinks = links.filter(lk => {
               if (lk === spouseLink) return false;
-              if (isChild(lk) || isParent(lk)) return false;
+              if (isChild(lk) || isParent(lk) || isSpouse(lk)) return false;
+              return isSibling(lk) && lk.linkSourceName === head.name;
+            });
+            // 🆕 戶主嘅「其他連結」（親戚／朋友／同事等）— 唔係同輩，另置第 5 代
+            const relativeLinks = links.filter(lk => {
+              if (lk === spouseLink) return false;
+              if (isChild(lk) || isParent(lk) || isSpouse(lk) || isSibling(lk)) return false;
               return lk.linkSourceName === head.name;
             });
 
@@ -7798,10 +7838,10 @@ addUserForm: {
               isHead: false
             }));
 
-            return { parentLevel, headGeneration };
+            return { parentLevel, headGeneration, relativeLinks };
           },
           ftreeGens() {
-            const d = this.familyTreeData || { parentLevel: [], headGeneration: [] };
+            const d = this.familyTreeData || { parentLevel: [], headGeneration: [], relativeLinks: [] };
             const gens = [];
             if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('第一代 · 上一代') });
             gens.push({ level: 2, label: this.t('第二代 · 戶主') });
@@ -7809,6 +7849,7 @@ addUserForm: {
             let hasExt = false;
             (d.headGeneration || []).forEach(p => (p.children || []).forEach(c => { if ((c.extendedLinks || []).length) hasExt = true; }));
             if (hasExt) gens.push({ level: 4, label: this.t('第四代 · 延伸') });
+            if ((d.relativeLinks || []).length) gens.push({ level: 5, label: this.t('第五代 · 其他連結') });
             return gens;
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結

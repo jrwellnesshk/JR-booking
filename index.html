@@ -3034,6 +3034,7 @@
                 <img v-if="userAvatar && userAvatar.startsWith('/')" :src="userAvatar" class="m-side-avatar">
                 <span v-else class="m-side-avatar">{{ userAvatar && !userAvatar.startsWith('/') ? userAvatar : '🙂' }}</span>
                 <div class="min-w-0">
+                  <div v-if="currentMember.member_no" style="font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#047857;line-height:1;margin-bottom:2px;">{{ currentMember.member_no }}</div>
                   <b class="truncate">{{ currentMember.name }}</b>
                   <span>{{ t(tierLabel) }}</span>
                 </div>
@@ -5151,6 +5152,7 @@
               <div class="m-hero">
                 <span class="m-hero-badge"><i class="fas fa-spa"></i> {{ t('寶天JR · JR Medical') }}</span>
                 <h2>{{ currentMember.name }}{{ t('，歡迎回來') }}</h2>
+                <div v-if="currentMember.member_no" style="margin-top:6px;font-size:14px;color:#0f766e;">{{ t('會員編號') }}：<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">{{ currentMember.member_no }}</span></div>
                 <p>{{ t('以千年中醫智慧結合現代精準科技，為您度身訂造個人化養生與治療方案，悉心守護每一刻健康。') }}</p>
                 <div class="m-hero-actions">
                   <button class="m-hero-btn m-hero-btn-primary" @click="setView('booking')"><i class="fas fa-calendar-plus"></i>{{ t('立即預約') }}</button>

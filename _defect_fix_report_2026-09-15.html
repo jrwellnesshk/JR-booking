@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>寶天JR · 6 項生產缺陷修復驗收報告 (2026-09-15)</title>
+<style>
+  :root{ --moss:#5B7B5A; --taupe:#C08875; --sage:#8FA98C; --ink:#2c2a26; --paper:#FBF7F0; --line:#E7DECF; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:-apple-system,"PingFang HK","Microsoft YaHei",sans-serif; background:var(--paper); color:var(--ink); line-height:1.6; }
+  .wrap{ max-width:960px; margin:0 auto; padding:40px 24px 80px; }
+  h1{ color:var(--moss); font-size:28px; margin:0 0 4px; }
+  .sub{ color:#8a8377; margin:0 0 28px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:22px 24px; margin:18px 0; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  h2{ color:var(--taupe); font-size:20px; margin:0 0 14px; border-left:4px solid var(--sage); padding-left:10px; }
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th,td{ border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top; }
+  th{ background:#F3EDE2; color:var(--moss); }
+  .ok{ color:#2e7d32; font-weight:700; }
+  .bad{ color:#c62828; font-weight:700; }
+  .tag{ display:inline-block; background:var(--sage); color:#fff; border-radius:999px; font-size:12px; padding:2px 9px; }
+  code{ background:#F3EDE2; padding:1px 6px; border-radius:5px; font-size:13px; }
+  pre{ background:#2c2a26; color:#f3ead9; padding:14px 16px; border-radius:10px; overflow:auto; font-size:12.5px; }
+  .evi{ font-size:13px; }
+  .note{ font-size:13px; color:#6f685c; }
+  ul{ margin:8px 0 0; padding-left:20px; } li{ margin:3px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>寶天JR · 6 項生產缺陷修復驗收報告</h1>
+  <p class="sub">2026-09-15 · 提交 <code>414c968</code> · 隔離 harness E2E 驗收（VACUUM 快照 + 獨立埠 + 獨立 browser context）· 零 console error</p>
+
+  <div class="card">
+    <h2>缺陷狀態總覽</h2>
+    <table>
+      <tr><th>編號</th><th>缺陷（客戶原話）</th><th>狀態</th><th>根因 / 修復</th></tr>
+      <tr>
+        <td>#1</td><td>管理員家庭帳戶選擇冇反應，關係圖風格要還原（同輩同一層）</td>
+        <td class="ok">✅ 已修復 + 驗收</td>
+        <td><code>ftreeGenVisible/ftreeGenWrapVisible/isAvatarUrl</code> 誤放 <code>computed:</code> 區（變 non-callable），template call 拋 <code>TypeError</code> 令 tree 唔 render。搬到 <code>methods:</code>（admin.html:8116-8128）。CSS 同 pre-revamp byte-identical，風格已還原。</td>
+      </tr>
+      <tr>
+        <td>#2</td><td>官網背景仲係寶天醫館</td>
+        <td class="ok">✅ 已修復（prior）</td>
+        <td>品牌 seal / 背景圖烘焙文字改「寶天JR」（commit 3085d53）</td>
+      </tr>
+      <tr>
+        <td>#3</td><td>管理員完全見唔到審核功能，員工未檢查</td>
+        <td class="ok">✅ 已修復 + 驗收</td>
+        <td>admin 討論區審核 inline（prior）；本 session 修復員工 + 管理員審核 list 原本 approved-only 壞咗嘅問題（見 #80）</td>
+      </tr>
+      <tr>
+        <td>#4</td><td>員工即時落單時間設定冇變（應 15 分鐘相隔 10:00–19:00）</td>
+        <td class="ok">✅ 已修復（prior）</td>
+        <td>staff walk-in 時間 select 改 15 分鐘相隔、10:00–19:00（commit 3085d53）</td>
+      </tr>
+      <tr>
+        <td>#5</td><td>客人主帳戶關係圖（似管理員之前，同輩同一層）</td>
+        <td class="ok">✅ 已修復 + 驗收</td>
+        <td>index.html 加 <code>.ftree-*</code> 暖色 frame 樣式 + nav 掣 + 唯讀 panel（<code>v-if view==='familytree'</code>）；js/app.js 加 <code>loadMyFamilyTree</code> / <code>myFamilyTreeData</code>（食 <code>GET /membership/family/my-tree</code>）。戶主「我」highlight、同輩同一層。</td>
+      </tr>
+      <tr>
+        <td>#6</td><td>客人完全見唔到客人心聲功能</td>
+        <td class="ok">✅ 已修復（prior）+ 本 session 驗收</td>
+        <td>index.html 會員版 voices panel（<code>v-if view==='voices'</code>）+ <code>fa-comment-medical</code> nav 掣</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>本 session 額外發現並修復：員工 / 管理員討論區審核原本壞咗（#80）</h2>
+    <p>客戶 #3 要求「檢查埋員工有冇審核功能」。驗證發現 staff.html 個「討論區審核」section 雖然喺 UI 度，但實際唔work：</p>
+    <ul>
+      <li><b>列表錯誤</b>：staff / admin 審核 list 都用 <code>GET /api/content/forum/posts</code>（公開 endpoint，只返 <code>approved</code> 帖）→ <b>待審核（pending）帖永不顯示</b>，所以通過/駁回掣永遠唔出。</li>
+      <li><b>權限錯誤</b>：<code>PUT /api/admin/content/forum/posts/:id/status</code> 係 <code>adminOnly</code> → 員工 call 會 403。</li>
+    </ul>
+    <p><b>修復</b>：</p>
+    <ul>
+      <li><code>routes/admin-content.js</code>：新增 <code>GET /api/admin/content/forum/posts</code>（返全部帖，含 pending，開放 admin+staff）；將 status PUT 由 admin-only 改為 admin+staff。</li>
+      <li><code>staff.html</code>：加 <code>loadForumModeration()</code> 填 <code>forumModerationPosts</code>；審核 section 改 iterate <code>forumModerationPosts</code>；論壇 tab 掣觸發載入。</li>
+      <li><code>admin.html</code>：<code>loadAdminForumPosts</code> 改食新 endpoint（admin 審核 list 一併修好）。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>E2E 驗收證據（隔離 harness，零 console error）</h2>
+    <p class="evi">用 live DB 只讀 <code>VACUUM INTO</code> 快照 → 獨立埠 server（:4764）→ puppeteer；每個 role 用獨立 browser context 避免 role-gate 交叉感染。三個帳戶登入後斷言 DOM：</p>
+    <table>
+      <tr><th>測試</th><th>斷言結果</th><th>結果</th></tr>
+      <tr><td>#1 管理員關係圖</td><td><code>.ftree-canvas</code> 存在；head 1 / child 2；canvas visible；names = 李家豪 / 李一心 / 李二朗 / 王小明</td><td class="ok">PASS</td></tr>
+      <tr><td>#5 客人關係圖</td><td><code>.ftree-canvas</code> 存在；head 1（李家豪，tag「我」）/ child 2（李一心 / 李二朗 同層）</td><td class="ok">PASS</td></tr>
+      <tr><td>#82 客人客人心聲</td><td>會員中心 nav 含「客人心聲」；panel 標題存在；「分享您的到診意見」掣 render</td><td class="ok">PASS</td></tr>
+      <tr><td>#80 員工審核</td><td>「討論區審核」section 可見；seed 一個 pending 帖後通過掣 1 / 駁回掣 1 出現</td><td class="ok">PASS</td></tr>
+    </table>
+    <p class="note">consoleErrorCount = 0（三個角色合計，含 403 資源載入外嘅 JS / page error）。</p>
+  </div>
+
+  <div class="card">
+    <h2>變更檔案</h2>
+    <table>
+      <tr><th>檔案</th><th>變更</th></tr>
+      <tr><td><code>admin.html</code></td><td>+54/-? ：#1 methods 修復（8116-8128）+ #80 <code>loadAdminForumPosts</code> 改食新 endpoint</td></tr>
+      <tr><td><code>index.html</code></td><td>+297 ：#5 <code>.ftree-*</code> 樣式 + nav + panel；#82 voices panel + nav</td></tr>
+      <tr><td><code>js/app.js</code></td><td>+53 ：#5 <code>loadMyFamilyTree</code> / <code>myFamilyTreeData</code> / <code>isAvatarUrl</code></td></tr>
+      <tr><td><code>routes/admin-content.js</code></td><td>+16 ：#80 新增 <code>GET /forum/posts</code>（全部帖）+ 開放 status PUT 畀 staff</td></tr>
+      <tr><td><code>staff.html</code></td><td>+31 ：#80 <code>loadForumModeration</code> + 審核 section 改用 <code>forumModerationPosts</code></td></tr>
+    </table>
+    <p class="note">提交 <code>414c968</code>。用戶 WIP（hr.html / middlewares/auth.js / coupons.js / hr.js / _i18n_sync.cjs 等）未代為提交。</p>
+  </div>
+
+  <div class="card">
+    <h2>未提交 / 備註</h2>
+    <ul>
+      <li>驗收腳本 <code>_verify_defects.cjs</code>（PORT 4764）、<code>_dbg_cust.cjs</code> 及快照 <code>_verify_test.db</code> 為隔離測試產物，未提交。</li>
+      <li>live dev server（:4000）全程未觸及；所有測試喺隔離埠 + 快照 DB 進行。</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

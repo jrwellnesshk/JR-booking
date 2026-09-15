@@ -648,7 +648,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const userId = isStaff ? (req.query.userId || null) : req.userId;
     const queryUsername = isStaff ? (username || null) : (req.user.username || null);
     
-    let query = "SELECT b.*, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b";
+    let query = "SELECT b.*, u.member_no as member_no, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b LEFT JOIN users u ON b.user_id = u.id";
     let params = [];
 
     // 支持同時用 userId (數據庫ID) 和 username 查詢，以兼容新舊數據

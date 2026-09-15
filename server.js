@@ -672,7 +672,7 @@ app.use('/api', miscRoutes(db, getLocalTimeString, { requireAuth, requireRole })
 app.get("/api/users", requireAuth, requireRole('admin'), (req, res) => {
   db.all(`
     SELECT u.id, u.username, u.name, u.name_en, u.phone, u.email, u.role, u.profile_completed, u.created_at,
-           u.membership_tier, u.insurance_covered, u.family_head_id,
+           u.membership_tier, u.insurance_covered, u.family_head_id, u.member_no,
            (SELECT COUNT(*) FROM bookings b WHERE b.user_id = u.id AND b.lateness_minutes > 0) AS late_count,
            (SELECT COALESCE(SUM(b.lateness_minutes), 0) FROM bookings b WHERE b.user_id = u.id AND b.lateness_minutes > 0) AS late_total_minutes,
            (SELECT b.appointment_date || ' ' || b.appointment_time || '（遲到 ' || b.lateness_minutes || ' 分鐘）'

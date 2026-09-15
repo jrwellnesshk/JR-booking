@@ -457,6 +457,15 @@
       .ftree-meta{
         font-size:.7rem; color:var(--taupe-500); margin-top:.15rem; line-height:1.3;
       }
+      /* 🆕 第五代 · 其他連結（親戚／朋友）— 非同輩，與戶主層明顯分隔 */
+      .ftree-relatives-block{ margin-top:1.8rem; padding-top:1.2rem; border-top:2px dashed rgba(192,136,117,.4); }
+      .ftree-relatives-label{ text-align:center; font-size:13px; color:#9a8c7d; margin-bottom:.8rem; letter-spacing:.04em; }
+      .ftree-gen-relatives{ display:flex; flex-wrap:wrap; justify-content:center; gap:1.4rem; padding-top:1.6rem; }
+      .ftree-gen-relatives > li{ padding-top:1.6rem; position:relative; }
+      .ftree-gen-relatives > li::before{
+        content:""; position:absolute; top:0; left:50%; width:2px; height:1.6rem;
+        border-left:1.5px dashed rgba(192,136,117,.5); transform:translateX(-50%);
+      }
       .ftree-tag{
         display:inline-block; margin-top:.35rem; padding:.15rem .5rem; border-radius:999px;
         font-size:.65rem; font-weight:600; background:var(--pink-soft); color:var(--pink-700);
@@ -697,7 +706,7 @@
                 <i class="fas fa-clock mr-2"></i>{{ t('打卡考勤') }}</button>
               <button @click="mainTab='timeslots'; openSlotManager()" :class="mainTab==='timeslots' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-calendar-check mr-2"></i>{{ t('時段管理') }}</button>
               <button @click="mainTab='forum'; loadForum(); loadForumModeration()" :class="mainTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
-              <button @click="mainTab='voices'" :class="mainTab==='voices' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comment-medical mr-2"></i>{{ t('客人心聲') }}</button>
+              <button @click="mainTab='voices'; loadCustomerVoices()" :class="mainTab==='voices' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comment-medical mr-2"></i>{{ t('客人心聲') }}</button>
               <button @click="mainTab='familytree'; loadFamilyTree()" :class="mainTab==='familytree' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-people-roof mr-2"></i>{{ t('家庭帳戶') }}</button>
             </nav>
             <!-- 功能9：左欄底部功能選項（風格與客人端一致） -->
@@ -834,7 +843,7 @@
                   <tbody class="divide-y divide-gray-100">
                     <tr v-for="b in calSelectedBookings" :key="'s'+b.id">
                       <td class="py-1.5 pr-3 font-semibold">{{ b.appointment_time }}</td>
-                      <td class="py-1.5 pr-3">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
+                      <td class="py-1.5 pr-3">{{ b.member_no ? b.member_no + ' · ' : '' }}{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.customer_phone }}</td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.service_name }}</td>
                       <td class="py-1.5 pr-3 text-slate-500">{{ b.doctor_name }}</td>
@@ -919,7 +928,7 @@
                   <tr v-else-if="mrRecords.length === 0"><td colspan="9" class="py-8 text-center text-slate-400">{{ t('沒有病歷記錄') }}</td></tr>
                   <tr v-for="r in mrRecords" :key="r.id" class="border-b border-slate-100 hover:bg-slate-50">
                     <td class="py-2.5 pr-3 whitespace-nowrap">{{ r.appointment_date || r.record_date }}<span class="text-xs text-slate-400">{{ r.appointment_time ? ' ' + r.appointment_time.slice(0,5) : '' }}</span></td>
-                    <td class="py-2.5 pr-3"><b class="text-slate-800">{{ r.customer_name || '—' }}</b><span class="block text-xs text-slate-400">{{ r.customer_username || '' }}</span></td>
+                    <td class="py-2.5 pr-3"><b class="text-slate-800">{{ r.member_no ? r.member_no + ' · ' : '' }}{{ r.customer_name || '—' }}</b><span class="block text-xs text-slate-400">{{ r.customer_username || '' }}</span></td>
                     <td class="py-2.5 pr-3">{{ r.doctor_name || '—' }}</td>
                     <td class="py-2.5 pr-3 text-xs text-slate-600">{{ r.service_name || '—' }}</td>
                     <td class="py-2.5 pr-3 max-w-[180px] truncate" :title="r.diagnosis">{{ r.diagnosis || '—' }}</td>
@@ -942,7 +951,7 @@
             <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[88vh] overflow-y-auto p-6">
               <div class="flex items-start justify-between mb-4">
                 <div>
-                  <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-file-medical mr-2 text-emerald-600"></i>{{ mrDetail.customer_name }} 嘅病歷</h3>
+                  <h3 class="text-lg font-bold text-slate-800"><i class="fas fa-file-medical mr-2 text-emerald-600"></i>{{ mrDetail.member_no ? mrDetail.member_no + ' · ' : '' }}{{ mrDetail.customer_name }} 嘅病歷</h3>
                   <p class="text-xs text-slate-500 mt-1">
                     會員ID：{{ mrDetail.customer_username || '—' }}
                     ｜就診：{{ mrDetail.appointment_date || mrDetail.record_date }} {{ (mrDetail.appointment_time || '').slice(0,5) }}
@@ -1029,7 +1038,7 @@
                   </thead>
                   <tbody>
                     <tr v-for="r in hfResults" :key="r.id" class="border-b border-slate-100 hover:bg-slate-50">
-                      <td class="py-2.5 pr-3 font-medium text-slate-800">{{ r.name }}</td>
+                      <td class="py-2.5 pr-3 font-medium text-slate-800">{{ r.member_no ? r.member_no + ' · ' : '' }}{{ r.name }}</td>
                       <td class="py-2.5 pr-3 text-slate-600">{{ r.phone || '—' }}</td>
                       <td class="py-2.5 pr-3 text-slate-600">{{ r.member_no || '—' }}</td>
                       <td class="py-2.5 pr-3 text-slate-600">{{ r.membership_tier }}</td>
@@ -1837,10 +1846,31 @@
                           </li>
                         </ul>
                         <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
-                      </li>
-                    </ul>
                   </li>
                 </ul>
+              </li>
+            </ul>
+
+                <!-- 🆕 第五代 · 戶主嘅其他連結（親戚／朋友／同事）— 非同輩，另置底部，唔喺戶主同一層 -->
+                <div v-if="familyTreeData.relativeLinks && familyTreeData.relativeLinks.length" class="ftree-relatives-block" v-show="ftreeGenWrapVisible(5)">
+                  <div class="ftree-relatives-label"><i class="fas fa-link mr-1"></i>{{ t('其他連結（親戚／朋友）') }}</div>
+                  <ul class="ftree-gen ftree-gen-relatives">
+                    <li v-for="rl in familyTreeData.relativeLinks" :key="'rel-'+rl.id">
+                      <div class="ftree-node" data-role="relative" v-show="ftreeGenVisible(5)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(rl.other.avatar_url)" :src="rl.other.avatar_url" :alt="rl.other.name">
+                            <i v-else class="fas fa-user"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ rl.other.name || rl.other.username }}</div>
+                        <div class="ftree-meta">{{ rl.other.username }}</div>
+                        <span class="ftree-tag sage">{{ t(rl.customRelation || rl.relation) }}</span>
+                        <button @click="removeHeadLink(rl)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
 
                 <div class="ftree-actions">
                   <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>{{ t('加子女') }}</button>
@@ -2107,6 +2137,33 @@
               <div v-if="voiceMsg" class="text-sm px-3 py-2 rounded-lg bg-amber-50 text-amber-700">{{ voiceMsg }}</div>
               <button @click="submitVoice()" :disabled="voiceBusy" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50">
                 <i class="fas fa-paper-plane mr-1"></i>{{ voiceBusy ? t('處理中...') : t('提交意見') }}</button>
+            </div>
+
+            <!-- 🆕 客人心聲審核（員工） -->
+            <div class="bg-white rounded-xl shadow p-5 space-y-3 mt-4">
+              <h3 class="font-semibold text-slate-800"><i class="fas fa-gavel mr-2 text-emerald-600"></i>{{ t('客人心聲審核') }}</h3>
+              <div v-if="!customerVoices.length" class="text-slate-400 text-sm py-4 text-center">{{ t('暫時未有客人心聲') }}</div>
+              <div v-for="v in customerVoices" :key="v.id" class="border rounded-lg p-3">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <b class="text-slate-800">{{ v.user_name || t('匿名客人') }}</b>
+                    <div class="text-xs text-slate-400 mt-0.5">
+                      <span class="text-amber-500">{{ '★'.repeat(v.rating || 0) }}<span class="text-slate-300">{{ '★'.repeat(5 - (v.rating || 0)) }}</span></span>
+                      · {{ v.visit_type || t('一般到診') }} · {{ v.created_at }}
+                    </div>
+                  </div>
+                  <span class="px-2 py-1 text-xs rounded-full whitespace-nowrap"
+                    :class="v.status === 'approved' ? 'bg-green-100 text-green-700' : v.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'">
+                    {{ v.status === 'approved' ? t('已公開') : v.status === 'rejected' ? t('未獲批') : t('待審核') }}
+                  </span>
+                </div>
+                <p class="text-sm text-slate-600 mt-1">{{ v.content }}</p>
+                <div class="mt-2 flex gap-2">
+                  <button v-if="v.status !== 'approved'" @click="setVoiceStatus(v.id, 'approved')" class="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">{{ t('通過') }}</button>
+                  <button v-if="v.status !== 'rejected'" @click="setVoiceStatus(v.id, 'rejected')" class="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">{{ t('駁回') }}</button>
+                  <button @click="deleteVoice(v.id)" class="px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300">{{ t('刪除') }}</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2498,7 +2555,7 @@
                 <tbody>
                   <tr v-for="b in filteredBookings" :key="'p'+b.id">
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.appointment_time }}</td>
-                    <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
+                    <td style="border:1px solid #ccc;padding:5px;">{{ b.member_no ? b.member_no + ' · ' : '' }}{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_phone }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.service_name }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.doctor_name }}</td>
@@ -2548,7 +2605,7 @@
                     <!-- 客戶資料 -->
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-semibold text-slate-800">{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></span>
+                        <span class="font-semibold text-slate-800">{{ booking.member_no ? booking.member_no + ' · ' : '' }}{{ booking.customer_name }} <i v-if="booking.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></span>
                         <span
                           :class="statusClass(booking.status)"
                           class="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -2677,7 +2734,7 @@
             </div>
             <div class="flex justify-between">
               <span class="text-sm text-slate-500">{{ t('客戶姓名') }}</span>
-              <span class="text-sm font-medium">{{ selectedBooking.customer_name }}</span>
+              <span class="text-sm font-medium">{{ selectedBooking.member_no ? selectedBooking.member_no + ' · ' : '' }}{{ selectedBooking.customer_name }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-sm text-slate-500">{{ t('電話') }}</span>
@@ -3031,6 +3088,8 @@
             voiceContent: '',
             voiceBusy: false,
             voiceMsg: '',
+            // 🆕 客人心聲審核（員工）
+            customerVoices: [],
             // 🌳 功能13：家庭帳戶管理（與管理員一致）
             familyTree: {
               loading: false,
@@ -3172,13 +3231,22 @@
             const isSpouse = (lk) => either(lk, spouseKeys);
             const isChild = (lk) => either(lk, childKeys);
             const isParent = (lk) => either(lk, parentKeys);
+            // 🆕 兄弟姊妹 = 同輩（留喺戶主同一層）；其他連結（親戚／朋友／同事）＝非同輩（另置第 5 代）
+            const siblingKeys = ['兄弟', '姊妹', '兄弟姐妹', '兄弟姊妹', '家姐', '細佬', '哥哥', '姐姐', '妹妹', '弟弟', '兄長', 'sibling', 'brother', 'sister'];
+            const isSibling = (lk) => either(lk, siblingKeys);
 
             // 經由戶主嘅連結
             const spouseLink = links.find(lk => isSpouse(lk) && lk.linkSourceName === head.name);
             const parentLinks = links.filter(lk => isParent(lk) && lk.linkSourceName === head.name);
             const siblingLinks = links.filter(lk => {
               if (lk === spouseLink) return false;
-              if (isChild(lk) || isParent(lk)) return false;
+              if (isChild(lk) || isParent(lk) || isSpouse(lk)) return false;
+              return isSibling(lk) && lk.linkSourceName === head.name;
+            });
+            // 🆕 戶主嘅「其他連結」（親戚／朋友／同事等）— 唔係同輩，另置第 5 代
+            const relativeLinks = links.filter(lk => {
+              if (lk === spouseLink) return false;
+              if (isChild(lk) || isParent(lk) || isSpouse(lk) || isSibling(lk)) return false;
               return lk.linkSourceName === head.name;
             });
 
@@ -3221,21 +3289,10 @@
               isHead: false
             }));
 
-            return { parentLevel, headGeneration };
-          },
-          // 🌳 家庭樹：頭像 URL 判斷（emoji / 相對路徑 / 絕對網址）
-          isAvatarUrl(u) {
-            return typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
-          },
-          // 🌳 家庭樹：世代篩選
-          ftreeGenVisible(level) {
-            return !this.ftreeGenFilter || this.ftreeGenFilter === level;
-          },
-          ftreeGenWrapVisible(level) {
-            return !this.ftreeGenFilter || this.ftreeGenFilter >= level;
+            return { parentLevel, headGeneration, relativeLinks };
           },
           ftreeGens() {
-            const d = this.familyTreeData || { parentLevel: [], headGeneration: [] };
+            const d = this.familyTreeData || { parentLevel: [], headGeneration: [], relativeLinks: [] };
             const gens = [];
             if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('第一代 · 上一代') });
             gens.push({ level: 2, label: this.t('第二代 · 戶主') });
@@ -3243,6 +3300,7 @@
             let hasExt = false;
             (d.headGeneration || []).forEach(p => (p.children || []).forEach(c => { if ((c.extendedLinks || []).length) hasExt = true; }));
             if (hasExt) gens.push({ level: 4, label: this.t('第四代 · 延伸') });
+            if ((d.relativeLinks || []).length) gens.push({ level: 5, label: this.t('第五代 · 其他連結') });
             return gens;
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
@@ -3442,6 +3500,17 @@
         },
 
         methods: {
+          // 🌳 家庭樹：頭像 URL 判斷（emoji / 相對路徑 / 絕對網址）
+          isAvatarUrl(u) {
+            return typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
+          },
+          // 🌳 家庭樹：世代篩選
+          ftreeGenVisible(level) {
+            return !this.ftreeGenFilter || this.ftreeGenFilter === level;
+          },
+          ftreeGenWrapVisible(level) {
+            return !this.ftreeGenFilter || this.ftreeGenFilter >= level;
+          },
           async loadFamilyTree() {
             this.familyTree.loading = true;
             try {
@@ -3825,7 +3894,36 @@
               if (r.ok) { this.voiceContent = ''; this.voiceRating = 5; this.voiceVisitType = ''; this.voiceMsg = this.t('已提交，待審核'); }
               else this.voiceMsg = d.error || this.t('提交失敗');
             } catch (e) { this.voiceMsg = this.t('提交失敗：') + e.message; }
-            this.voiceBusy = false;
+              this.voiceBusy = false;
+          },
+          // ==================== 客人心聲審核（員工） ====================
+          async loadCustomerVoices() {
+            try {
+              const resp = await fetch('/api/admin/content/customer-voices', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') } });
+              if (resp.ok) this.customerVoices = await resp.json();
+              else { const d = await resp.json().catch(() => ({})); this.voiceMsg = d.error || this.t('載入客人心聲失敗'); }
+            } catch (e) { console.error('載入客人心聲失敗:', e); }
+          },
+
+          async setVoiceStatus(id, status) {
+            try {
+              const resp = await fetch(`/api/admin/content/customer-voices/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') },
+                body: JSON.stringify({ status })
+              });
+              if (resp.ok) await this.loadCustomerVoices();
+              else { const d = await resp.json().catch(() => ({})); alert(d.error || this.t('更新失敗')); }
+            } catch (e) { console.error('更新客人心聲狀態失敗:', e); }
+          },
+
+          async deleteVoice(id) {
+            if (!confirm(this.t('確定要刪除此客人心聲？'))) return;
+            try {
+              const resp = await fetch(`/api/admin/content/customer-voices/${id}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') } });
+              if (resp.ok) await this.loadCustomerVoices();
+              else { const d = await resp.json().catch(() => ({})); alert(d.error || this.t('刪除失敗')); }
+            } catch (e) { console.error('刪除客人心聲失敗:', e); }
           },
           // ==================== 更改密碼 ====================
           openChangePwd() {

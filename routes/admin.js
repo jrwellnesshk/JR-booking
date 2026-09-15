@@ -517,7 +517,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
       if (err) return serverError(res, err);
       if (!user) return res.status(403).json({ error: "無此權限" });
 
-      let query = "SELECT b.*, s.name as service_name, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id WHERE 1=1";
+      let query = "SELECT b.*, s.name as service_name, u.member_no as member_no, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b LEFT JOIN services s ON b.service_id = s.id LEFT JOIN users u ON b.user_id = u.id WHERE 1=1";
       let params = [];
 
       if (date) {

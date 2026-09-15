@@ -354,7 +354,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
       }
 
       db.get(
-        "SELECT id, username, name, name_en, phone, email, role, employment_type, profile_completed, must_change_password, is_active, password FROM users WHERE username=?",
+        "SELECT id, username, name, name_en, phone, email, member_no, role, employment_type, profile_completed, must_change_password, is_active, password FROM users WHERE username=?",
         [username],
         async (err, user) => {
           if (err) return res.status(500).json({ error: "系統錯誤，請稍後再試" });

@@ -189,7 +189,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
     try {
       const records = await new Promise((resolve, reject) => {
         db.all(
-          "SELECT mr.*, u.name as customer_name FROM medical_records mr JOIN users u ON mr.user_id = u.id WHERE mr.booking_id=? ORDER BY mr.record_date DESC",
+          "SELECT mr.*, u.name as customer_name, u.member_no as member_no FROM medical_records mr JOIN users u ON mr.user_id = u.id WHERE mr.booking_id=? ORDER BY mr.record_date DESC",
           [booking_id],
           (err, rows) => {
             if (err) reject(err);
@@ -686,7 +686,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
 
       const records = await new Promise((resolve, reject) => {
         db.all(
-          `SELECT mr.*, cu.name AS customer_name, cu.username AS customer_username,
+          `SELECT mr.*, cu.name AS customer_name, cu.username AS customer_username, cu.member_no AS member_no,
                   cu.hide_from_head, cu.birth_date,
                   du.name AS doctor_user_name, b.appointment_date, b.appointment_time,
                   b.doctor_name AS booking_doctor_name, s.name AS service_name
