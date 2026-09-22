@@ -223,9 +223,15 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     //     注意：空值／未設定 = 不限制（保持向後兼容，唔會影響現有預約）
     const openMonthsRaw = await qGet('open_months');
     if (openMonthsRaw != null && String(openMonthsRaw).trim() !== '') {
-      const monthList = String(openMonthsRaw).split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+      // #26：同時兼容 'YYYY-MM'（admin 現行寫法）與月份數字（'9,10,11'，不分年份）。
+      // 舊寫法對 'YYYY-MM' 做 parseInt 會得出年份（2026），令月份判斷必定失敗。
+      const tokens = String(openMonthsRaw).split(',').map(s => s.trim()).filter(Boolean);
       const m = parseInt(String(date).slice(5, 7), 10);
-      if (monthList.length && !monthList.includes(m)) {
+      const ym = String(date).slice(0, 7);
+      const monthOk = tokens.some((tok) => (
+        /^\d{4}-\d{2}$/.test(tok) ? tok === ym : parseInt(tok, 10) === m
+      ));
+      if (tokens.length && !monthOk) {
         const customOpenDates = (await qGet('custom_open_dates') || '').split(',').map(s => s.trim()).filter(Boolean);
         if (!customOpenDates.includes(date)) {
           return { ok: false, error: `${m} 月暫未開放預約，請選擇其他月份`, code: 'month_closed' };
@@ -648,7 +654,18 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     const userId = isStaff ? (req.query.userId || null) : req.userId;
     const queryUsername = isStaff ? (username || null) : (req.user.username || null);
     
-    let query = "SELECT b.*, u.member_no as member_no, CASE WHEN b.user_id IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM bookings x WHERE x.user_id = b.user_id AND x.status IN ('completed','visited')) = 0 END AS is_new FROM bookings b LEFT JOIN users u ON b.user_id = u.id";
+    // #1：星星只畀「参加完初體驗 + 開咗帳戶 + 第一次預約其他（非初體驗）服務」嗰筆完成／到訪預約。
+    //      初體驗本身永遠唔會有星；之後第二、三筆普通服務都唔會有星。
+    const IS_NEW_SQL =
+      "CASE WHEN b.user_id IS NULL THEN 0 " +
+      "WHEN IFNULL(s.name,'') LIKE '%初體驗%' THEN 0 " +
+      "WHEN b.status NOT IN ('completed','visited') THEN 0 " +
+      "ELSE NOT EXISTS (SELECT 1 FROM bookings x LEFT JOIN services sx ON sx.id = x.service_id " +
+      "  WHERE x.user_id = b.user_id AND x.status IN ('completed','visited') " +
+      "    AND IFNULL(sx.name,'') NOT LIKE '%初體驗%' " +
+      "    AND (x.appointment_date < b.appointment_date OR (x.appointment_date = b.appointment_date AND x.id < b.id)) " +
+      ") END AS is_new";
+    let query = "SELECT b.*, u.member_no as member_no, " + IS_NEW_SQL + " FROM bookings b LEFT JOIN users u ON b.user_id = u.id LEFT JOIN services s ON s.id = b.service_id";
     let params = [];
 
     // 支持同時用 userId (數據庫ID) 和 username 查詢，以兼容新舊數據
@@ -665,7 +682,9 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       }
     }
     
-    query += " ORDER BY appointment_date DESC, appointment_time ASC";
+    // #10 面診優先排序：活躍（未結束）預約排最前、按最近日期升序；
+    //     已結束（completed/no-show/cancelled）排後、按日期降序。
+    query += " ORDER BY CASE WHEN b.status IN ('completed','no-show','cancelled') THEN 1 ELSE 0 END, b.appointment_date ASC, b.appointment_time ASC";
     
     db.all(query, params, (err, rows) => {
       if (err) return serverError(res, err);
@@ -678,6 +697,117 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         data: rows,
         serverDate: serverDate,
         serverTime: currentTime
+      });
+    });
+  });
+
+  // ==================== #8 當日當值醫師 ====================
+  // ⚠️ 必須註冊喺 /:id 路由之前，避免被 :id 通配符捕獲
+  // 回傳當日有當值嘅醫師清單（只含當值者），每個含 id/name/user_id/work_start/work_end。
+  const defaultWeeklyWindow = (dow) => {
+    // dow: getDay() 0=日 1=一 ... 6=六；預設 一二三四五 10-19、六 10-13、日休
+    if (dow >= 1 && dow <= 5) return { start: '10:00', end: '19:00' };
+    if (dow === 6) return { start: '10:00', end: '13:00' };
+    return null; // 日休
+  };
+
+  const evaluateDoctorOnDuty = (doc, dow, date, cb) => {
+    const userId = doc.user_id;
+    // 1) 例外：hr_schedule_exceptions(user_id, exc_date=date)
+    db.get(
+      "SELECT is_off, work_start, work_end FROM hr_schedule_exceptions WHERE user_id = ? AND exc_date = ?",
+      [userId, date],
+      (eErr, exc) => {
+        if (eErr) { console.error('查 hr_schedule_exceptions 失敗:', eErr.message); return cb(null); }
+        if (exc) {
+          if (exc.is_off === 1) return cb(null); // 休
+          if (exc.work_start && exc.work_end) {
+            return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: exc.work_start, work_end: exc.work_end });
+          }
+          // 有例外但無時段 → 跌落下面一般邏輯
+        }
+        // 2) 兼職：employment_type='part' → 查已批報更細項
+        if (doc.employment_type === 'part') {
+          db.get(
+            `SELECT si.time_start, si.time_end
+             FROM hr_shift_items si
+             JOIN hr_shift_rosters sr ON sr.id = si.roster_id
+             WHERE si.user_id = ? AND si.shift_date = ? AND sr.status = 'approved'
+             LIMIT 1`,
+            [userId, date],
+            (sErr, shift) => {
+              if (sErr) { console.error('查 hr_shift_items 失敗:', sErr.message); return cb(null); }
+              if (shift && shift.time_start && shift.time_end) {
+                return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: shift.time_start, work_end: shift.time_end });
+              }
+              return cb(null); // 冇批更 → 休
+            }
+          );
+          return;
+        }
+        // 3) 全職：hr_user_schedules（冇記錄→預設每週時段）
+        db.get(
+          "SELECT work_start, work_end, is_weekly, hours FROM hr_user_schedules WHERE user_id = ?",
+          [userId],
+          (sErr, sch) => {
+            if (sErr) { console.error('查 hr_user_schedules 失敗:', sErr.message); return cb(null); }
+            if (!sch) {
+              const def = defaultWeeklyWindow(dow);
+              return cb(def ? { id: doc.doctor_id, name: doc.name, user_id: userId, work_start: def.start, work_end: def.end } : null);
+            }
+            if (sch.is_weekly === 1 && sch.hours) {
+              let hoursObj = {};
+              try { hoursObj = JSON.parse(sch.hours); } catch (_) { hoursObj = {}; }
+              const win = hoursObj[String(dow)];
+              if (win && win.indexOf('-') > -1) {
+                const [s, e] = win.split('-');
+                return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: s, work_end: e });
+              }
+              return cb(null); // 該 dow 無時段 → 休
+            }
+            // 單一 work_start/work_end
+            if (sch.work_start && sch.work_end) {
+              return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: sch.work_start, work_end: sch.work_end });
+            }
+            return cb(null);
+          }
+        );
+      }
+    );
+  };
+
+  router.get("/doctors-on-duty", requireAuth, (req, res) => {
+    const date = (req.query.date || getLocalTimeString().slice(0, 10)).slice(0, 10);
+    const d = new Date(date + 'T00:00:00');
+    const dow = d.getDay();
+
+    // 診所休診日（全日休，無醫師當值）
+    db.get("SELECT 1 FROM hr_clinic_offdays WHERE off_date = ?", [date], (offErr, offRow) => {
+      if (offErr) return serverError(res, offErr);
+      if (offRow) return res.json({ date, doctors: [] });
+
+      // 拉啟用醫師（同步 doctors 表 is_active=1）
+      const q = `SELECT u.id AS user_id, u.name, u.employment_type, d.id AS doctor_id
+                 FROM users u
+                 LEFT JOIN doctors d ON d.user_id = u.id
+                 WHERE u.role = 'doctor' AND u.is_active = 1 AND (d.is_active IS NULL OR d.is_active = 1)`;
+      db.all(q, [], (docErr, doctors) => {
+        if (docErr) return serverError(res, docErr);
+        if (!doctors || doctors.length === 0) return res.json({ date, doctors: [] });
+
+        const result = [];
+        let pending = doctors.length;
+        doctors.forEach((doc) => {
+          evaluateDoctorOnDuty(doc, dow, date, (info) => {
+            if (info) result.push(info);
+            pending--;
+            if (pending === 0) {
+              // 同一日多醫師按 user_id 排序，結果穩定
+              result.sort((a, b) => a.user_id - b.user_id);
+              res.json({ date, doctors: result });
+            }
+          });
+        });
       });
     });
   });

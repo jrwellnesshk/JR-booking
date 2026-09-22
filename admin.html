@@ -7,7 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title data-i18n="寶天JR - 管理員後台">寶天JR - 管理員後台</title>
+    <title data-i18n="JR - 管理員後台">JR - 管理員後台</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -17,6 +17,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
+    <!-- #20：防止瀏覽器倒退登出 session + 「返回官網」掣 -->
+    <script src="js/session-guard.js?v=20260917"></script>
     <link rel="stylesheet" href="css/i18n.css" />
     <script src="js/i18n.js?v=20260922"></script>
     <script src="js/i18n-runtime.js?v=20260919"></script>
@@ -442,6 +444,22 @@
         border-left:1.5px dashed rgba(192,136,117,.5); transform:translateX(-50%);
       }
 
+      /* 🆕 世代堆疊式家庭樹：顏色／節點風格唔變，只改層級排列（祖父母＋2 → 父母輩＋1 → 戶主·同輩0 → 子女輩−1 → 孫輩−2） */
+      .ftree-stacked{ list-style:none; margin:0; padding:0; position:relative; z-index:2; }
+      .ftree-row{ position:relative; padding:1.1rem 0; text-align:center; }
+      .ftree-row + .ftree-row{ border-top:1px dashed rgba(192,136,117,.22); }
+      /* 每層之間嘅連接線（「記得每個帳戶都要連住」：整張樹用中央虛線串起） */
+      .ftree-row:not(:first-child)::before{
+        content:""; position:absolute; top:-1.1rem; left:50%; width:0; height:1.1rem;
+        border-left:2px dashed rgba(126,148,118,.5); transform:translateX(-50%);
+      }
+      .ftree-row-label{
+        display:inline-block; font-size:12px; letter-spacing:.05em; color:#9a8c7d;
+        background:#fff; padding:.18rem .85rem; margin-bottom:.7rem;
+        border:1px solid rgba(192,136,117,.4); border-radius:999px;
+      }
+      .ftree-row-nodes{ display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:1.4rem; }
+
       .ftree-actions{
         position:relative; z-index:3; display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem;
         margin-top:1.6rem; padding-top:1.2rem; border-top:1px dashed rgba(192,136,117,.25);
@@ -542,13 +560,26 @@
       .gap-4 { gap: 1.4rem; }
       .gap-6 { gap: 2rem; }
     </style>
+    <style>
+    /* #20：管理員版左側欄 —— 桌面端固定滿屏高並 sticky，
+       確保底部「返回官網／登出／語言切換」恆常可見（唔會被長選單推落頁底）。
+       css/tailwind.css 係預建檔，冇 md:sticky / md:h-screen，故直接喺此落地（同 staff.html 做法）。 */
+    @media (min-width: 768px) {
+      aside {
+        position: sticky !important;
+        top: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+      }
+    }
+    </style>
   </head>
   <body>
     <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-logo" data-i18n="寶">寶</div>
-      <div class="boot-name" data-i18n="寶天JR">寶天JR</div>
+      <div class="boot-name" data-i18n="JR">JR</div>
       <div class="boot-sub" data-i18n="管理後台">管理後台</div>
       <div class="boot-ring"></div>
     </div>
@@ -607,7 +638,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
           <div class="text-center mb-8">
             <i class="fas fa-user-shield text-emerald-600 text-5xl mb-4"></i>
-            <h1 class="text-2xl font-bold text-emerald-700">{{ t('寶天JR') }}</h1>
+            <h1 class="text-2xl font-bold text-emerald-700">{{ t('JR') }}</h1>
             <p class="text-slate-500 mt-2">{{ t('管理員後台系統') }}</p>
           </div>
 
@@ -701,7 +732,7 @@
           >
             <i class="fas fa-bars text-lg"></i>
           </button>
-          <span class="font-bold text-[#5D4037] tracking-wide truncate">{{ t('寶天JR · 管理') }}</span>
+          <span class="font-bold text-[#5D4037] tracking-wide truncate">{{ t('JR · 管理') }}</span>
         </header>
         <div
           v-show="sidebarOpen"
@@ -718,7 +749,7 @@
           <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
             <i class="fas fa-user-shield text-emerald-400 text-3xl"></i>
             <div class="min-w-0">
-              <div class="text-sm font-bold truncate">{{ t('寶天JR後台') }}</div>
+              <div class="text-sm font-bold truncate">{{ t('JR後台') }}</div>
               <div class="text-xs opacity-70 truncate">{{ adminUser.name }}</div>
             </div>
           </div>
@@ -759,6 +790,18 @@
                 class="w-full text-left px-4 py-2 rounded-lg transition-colors"
               >
                 <i class="fas fa-file-invoice-dollar mr-2"></i>{{ t('會員付款管理') }}</button>
+              <button
+                @click="currentView = 'coupons'; loadCouponAdmin();"
+                :class="currentView === 'coupons' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+                class="w-full text-left px-4 py-2 rounded-lg transition-colors"
+              >
+                <i class="fas fa-ticket-alt mr-2"></i>{{ t('社福券管理') }}</button>
+              <button
+                @click="currentView = 'plans'; loadPlansAdmin();"
+                :class="currentView === 'plans' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'"
+                class="w-full text-left px-4 py-2 rounded-lg transition-colors"
+              >
+                <i class="fas fa-crown mr-2"></i>{{ t('會員計劃') }}</button>
               <a
                 href="hr.html"
                 class="w-full flex items-center px-4 py-2 rounded-lg transition-colors text-slate-300 hover:bg-slate-800 hover:text-white"
@@ -850,6 +893,8 @@
             <div class="flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-sm">
               <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">中文</button>
               <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">EN</button>
+              <!-- #8：加簡體 -->
+              <button type="button" @click="setLang('zh-CN')" :class="currentLang()==='zh-CN' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">简</button>
             </div>
             <button
               @click="handleLogout"
@@ -990,6 +1035,54 @@
                     @change="importIncomeExcel($event)"
                   />
                 </label>
+                <button
+                  @click="exportIncomeExcel"
+                  class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+                  :title="t('匯出指定日期範圍嘅收入明細 Excel')"
+                >
+                  <i class="fas fa-file-download mr-2"></i>{{ t('匯出 Excel') }}</button>
+              </div>
+            </div>
+
+            <!-- 🆕 報表日期範圍（網頁報表同匯出 Excel 共用） -->
+            <div class="bg-white rounded-xl shadow-lg p-5 flex flex-wrap items-end gap-4">
+              <div>
+                <label class="block text-xs text-slate-500 mb-1">{{ t('開始日期') }}</label>
+                <input type="date" v-model="incomeStart" @change="incomePeriod='day'; loadIncome()"
+                  class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-500 mb-1">{{ t('結束日期') }}</label>
+                <input type="date" v-model="incomeEnd" @change="incomePeriod='day'; loadIncome()"
+                  class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div class="flex gap-2">
+                <button @click="setIncomeRange('month')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 transition-colors">{{ t('本月') }}</button>
+                <button @click="setIncomeRange('year')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 transition-colors">{{ t('本年') }}</button>
+                <button @click="setIncomeRange('all')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-700 transition-colors">{{ t('全部資料') }}</button>
+              </div>
+              <div class="ml-auto text-sm font-medium" :class="(incomeStart && incomeEnd) ? 'text-emerald-700' : 'text-slate-400'">
+                <i class="fas fa-calendar-range mr-1"></i>
+                <template v-if="incomeStart && incomeEnd">{{ t('報表範圍') }}：{{ incomeStart }} ~ {{ incomeEnd }}</template>
+                <template v-else>{{ t('未指定範圍：匯出會自動涵蓋全部已匯入資料') }}</template>
+              </div>
+            </div>
+
+            <!-- 🆕 總收入 hero -->
+            <div class="rounded-2xl shadow-lg p-6 text-white flex flex-wrap items-center justify-between gap-4"
+                 style="background:linear-gradient(135deg,#2F855A,#38A169);">
+              <div>
+                <p class="text-emerald-50 text-sm"><i class="fas fa-sack-dollar mr-1"></i>{{ t('總收入（Excel 匯入 ＋ 訂閱）') }}</p>
+                <p class="text-4xl font-extrabold mt-1">HK${{ (incomeSummaryTotal || 0).toLocaleString() }}</p>
+                <p class="text-emerald-50 text-xs mt-2">
+                  {{ t('Excel 收入') }} HK${{ (incomeSummary.total || 0).toLocaleString() }}
+                  ｜{{ t('訂閱收入') }} HK${{ ((incomeSummary.subscription && incomeSummary.subscription.total_subscription_revenue) || 0).toLocaleString() }}
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-emerald-50 text-xs">{{ t('期間數') }}</p>
+                <p class="text-2xl font-bold">{{ incomeSummary.periods || 0 }}</p>
+                <p class="text-emerald-50 text-xs mt-1">{{ t('應診人數') }} {{ incomeSummary.visited_count || 0 }}</p>
               </div>
             </div>
 
@@ -1181,6 +1274,26 @@
               </table>
             </div>
 
+            <!-- 🆕 #18 按類別小計（含「其他款項」） -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+              <h3 class="text-lg font-semibold text-slate-800 mb-4"><i class="fas fa-tags text-emerald-600 mr-2"></i>{{ t('按類別小計') }}</h3>
+              <div v-if="!incomeSummary.byType || Object.keys(incomeSummary.byType).length===0" class="text-sm text-slate-500">{{ t('暫無分類收入紀錄') }}</div>
+              <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div
+                  v-for="(amt, type) in incomeSummary.byType"
+                  :key="type"
+                  class="rounded-xl border p-4"
+                  :class="type==='other' ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'"
+                >
+                  <p class="text-sm text-slate-600"><i :class="type==='other' ? 'fas fa-ellipsis-h text-amber-600 mr-1' : 'fas fa-receipt text-emerald-600 mr-1'"></i>{{ incomeTypeLabel(type) }}</p>
+                  <p class="text-2xl font-bold mt-1" :class="type==='other' ? 'text-amber-700' : 'text-slate-800'">HK${{ Number(amt||0).toLocaleString() }}</p>
+                </div>
+              </div>
+              <div class="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800" v-if="incomeSummary.otherTotal">
+                <i class="fas fa-ellipsis-h mr-1"></i>{{ t('其他款項小計') }}：<b>HK${{ Number(incomeSummary.otherTotal||0).toLocaleString() }}</b>{{ t('（已計入總收入）') }}
+              </div>
+            </div>
+
             <!-- 💡 收入計法說明 -->
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
               <p>
@@ -1228,6 +1341,11 @@
                           <i class="fas fa-trash-alt mr-1"></i>{{ t('刪除') }}</button>
                       </td>
                     </tr>
+                    <tr v-if="incomeAdjustments.length" class="bg-emerald-50 font-semibold border-t-2 border-emerald-300">
+                      <td class="px-4 py-3 text-sm text-slate-700" colspan="2">{{ t('合計') }}（{{ incomeAdjustments.length }} 筆）</td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-emerald-700">HK${{ incomeAdjustmentsTotal.toLocaleString() }}</td>
+                      <td class="px-4 py-3" colspan="5"></td>
+                    </tr>
                     <tr v-if="incomeAdjustments.length === 0">
                       <td colspan="8" class="px-6 py-8 text-center text-sm text-slate-500">{{ t('仲未有匯入紀錄——用右上角「Excel 資料匯入」上載每日／每月報表') }}</td>
                     </tr>
@@ -1264,6 +1382,63 @@
                   class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all active:scale-95"
                 >
                   <i class="fas fa-sync mr-2"></i>{{ t('重新整理') }}</button>
+              </div>
+            </div>
+
+            <!-- #22：管理員都要有「即場落單（Walk-in）」 -->
+            <div class="bg-white rounded-xl shadow mb-6 overflow-hidden">
+              <button @click="walkInOpen = !walkInOpen; if(walkInOpen) ensureWalkInCatalog()" class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50">
+                <span class="font-semibold text-slate-800"><i class="fas fa-walking mr-2 text-emerald-600"></i>{{ t('即場落單（Walk-in）') }}</span>
+                <i :class="walkInOpen ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="text-slate-400"></i>
+              </button>
+              <div v-if="walkInOpen" class="px-6 pb-5 border-t border-slate-100 pt-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div class="md:col-span-3">
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('客戶') }}</label>
+                    <div class="flex gap-2">
+                      <input v-model="walkIn.query" @input="searchWalkInCustomer" :placeholder="t('姓名或電話搜尋')" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                    <select v-model.number="walkIn.userId" class="mt-2 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                      <option :value="''">{{ t('— 選擇客戶 —') }}</option>
+                      <option v-for="u in walkIn.results" :key="u.id" :value="u.id">{{ u.name }}（{{ u.phone || u.username }}）</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('服務') }}</label>
+                    <select v-model.number="walkIn.serviceId" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                      <option :value="''">{{ t('— 選擇服務 —') }}</option>
+                      <option v-for="s in walkIn.services" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('醫師') }}</label>
+                    <select v-model="walkIn.doctorName" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                      <option value="">{{ t('— 選擇醫師 —') }}</option>
+                      <option v-for="d in walkIn.doctors" :key="d.id || d.name" :value="d.name">{{ d.name }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('日期') }}</label>
+                    <input type="date" v-model="walkIn.date" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('時間') }}</label>
+                    <select v-model="walkIn.time" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                      <option value="">{{ t('— 選擇時間 —') }}</option>
+                      <option v-for="tm in walkInTimeOptions()" :key="tm" :value="tm">{{ tm }}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('備註') }}</label>
+                    <input v-model="walkIn.notes" :placeholder="t('選填')" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <div class="mt-3 flex items-center gap-3 flex-wrap">
+                  <button @click="submitWalkIn" :disabled="walkIn.busy" class="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                    <i class="fas fa-check mr-1"></i>{{ t('建立預約') }}</button>
+                  <span v-if="walkIn.msg" class="text-sm" :class="walkIn.ok ? 'text-emerald-600' : 'text-red-600'">{{ walkIn.msg }}</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-2"><i class="fas fa-info-circle mr-1"></i>{{ t('即場落單唔包括「初體驗」服務（初體驗只限新客網上首次預約）') }}</p>
               </div>
             </div>
 
@@ -2065,7 +2240,7 @@
                       <th
                         class="px-4 py-3 text-left text-sm font-semibold text-slate-700"
                       >
-                        ID
+                        {{ t('會員編號') }}
                       </th>
                       <th
                         class="px-4 py-3 text-left text-sm font-semibold text-slate-700"
@@ -2125,9 +2300,10 @@
                       class="border-b hover:bg-slate-50"
                       :class="{ 'bg-red-50': user.is_expired, 'bg-yellow-50': user.profile_completed === 0 && !user.is_expired }"
                     >
-                      <td class="px-4 py-3 text-sm">{{ user.id }}</td>
+                      <td class="px-4 py-3 text-sm">{{ user.member_no || '—' }}</td>
                       <td class="px-4 py-3 text-sm font-medium">
                         {{ user.username }}
+                        <span v-if="user.locked" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 align-middle" :title="'帳戶被鎖定，約 ' + (user.lock_minutes||0) + ' 分鐘後自動解鎖'"><i class="fas fa-lock mr-0.5"></i>鎖定{{ user.lock_minutes||0 }}分</span>
                       </td>
                       <td class="px-4 py-3 text-sm">
                         <button
@@ -2136,9 +2312,9 @@
                           class="text-emerald-600 hover:text-emerald-800 hover:underline font-medium"
                           :title="t('查看個人資料')"
                         >
-                          {{ user.member_no ? user.member_no + ' · ' : '' }}{{ user.name }}
+                          {{ user.name }}
                         </button>
-                        <span v-else>{{ user.member_no ? user.member_no + ' · ' : '' }}{{ user.name }}</span>
+                        <span v-else>{{ user.name }}</span>
                       </td>
                       <td class="px-4 py-3 text-sm">{{ user.phone }}</td>
                       <td class="px-4 py-3 text-sm">{{ user.email }}</td>
@@ -2207,6 +2383,13 @@
                         {{ formatDate(user.created_at) }}
                       </td>
                       <td class="px-4 py-3 text-sm">
+                        <button
+                          v-if="user.locked"
+                          @click="unlockUser(user)"
+                          class="text-amber-600 hover:text-amber-800 mr-2"
+                          :title="t('解鎖帳戶')"
+                        >
+                          <i class="fas fa-unlock"></i></button>
                         <button
                           v-if="user.role !== 'admin'"
                           @click="showEditName(user)"
@@ -2373,6 +2556,7 @@
                 <div class="bg-white rounded-xl shadow p-4 grid grid-cols-2 gap-3 text-sm">
                   <div><p class="text-slate-400 text-xs">{{ t('帳戶狀況') }}</p><span class="px-2 py-1 rounded-full text-xs font-medium" :class="mpStatusBadge(mpDetail.user.accountStatus)">{{ i18nServerLabel(mpDetail.user.accountStatusLabel) }}</span></div>
                   <div><p class="text-slate-400 text-xs">{{ t('會員級別') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.tierName }}</p></div>
+                  <div v-if="mpDetail.user.familyPlan"><p class="text-slate-400 text-xs">{{ t('家庭計劃') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.familyPlanLabel || mpDetail.user.familyPlan }}</p></div>
                   <div><p class="text-slate-400 text-xs">{{ t('付款方式') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.paymentMethodLabel }}</p></div>
                   <div><p class="text-slate-400 text-xs">{{ t('上次付款') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.lastPaidAt ? mpDetail.user.lastPaidAt.slice(0,10) : '—' }}</p></div>
                   <div><p class="text-slate-400 text-xs">{{ t('下次／到期日') }}</p><p class="font-medium text-slate-700">{{ mpDetail.user.subscriptionEnd || '—' }}</p></div>
@@ -2383,12 +2567,25 @@
                 <div class="bg-white rounded-xl shadow p-4">
                   <h4 class="font-semibold text-slate-800 mb-3"><i class="fas fa-cash-register text-emerald-600 mr-2"></i>{{ t('記錄付款（離線收款）') }}</h4>
                   <div class="space-y-3 text-sm">
+                    <!-- #3：開通／續費級別自動固定為該帳戶嘅計劃（A-D） -->
                     <div>
-                      <label class="block text-slate-500 mb-1">{{ t('開通／續費級別') }}</label>
-                      <select v-model="mpRecordForm.tier" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                        <option value="family">{{ t('家庭計劃（A $8,800／B $12,800／C $16,800／D $20,800 每月）') }}</option>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="text-slate-500">{{ t('開通／續費級別') }}</label>
+                        <button type="button" v-if="mpPlanLocked" @click="mpPlanLocked = false"
+                          class="text-xs text-emerald-600 hover:text-emerald-800">{{ t('🔓 更改') }}</button>
+                        <span v-else class="text-xs text-amber-600"><i class="fas fa-unlock mr-1"></i>{{ t('已解鎖') }}</span>
+                      </div>
+                      <select v-model="mpRecordForm.tier" :disabled="mpPlanLocked"
+                        class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-slate-100 disabled:text-slate-500">
+                        <option value="family">{{ t('家庭計劃') }}</option>
                         <option value="general">{{ t('一般帳戶（免費）') }}</option>
                       </select>
+                      <select v-if="mpRecordForm.tier === 'family'" v-model="mpRecordForm.familyPlan" :disabled="mpPlanLocked"
+                        class="mt-2 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:bg-slate-100 disabled:text-slate-500">
+                        <option v-for="o in mpPlanOptions" :key="o.value" :value="o.value">{{ t('計劃') }} {{ o.label }}</option>
+                      </select>
+                      <p v-if="mpPlanLocked" class="text-xs text-slate-400 mt-1">
+                        <i class="fas fa-lock mr-1"></i>{{ t('已按此帳戶現有計劃自動固定，續費唔使再揀') }}</p>
                     </div>
                     <div>
                       <label class="block text-slate-500 mb-1">{{ t('付款方式') }}</label>
@@ -2442,6 +2639,265 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- ============ #9：社福券管理 ============ -->
+          <!-- ================= 會員計劃管理（#93：價錢／簡介可設定，可新增與刪除；官網同步） ================= -->
+          <div v-if="currentView === 'plans'" class="space-y-6">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-crown text-emerald-600 mr-2"></i>{{ t('會員計劃管理') }}</h2>
+              <button @click="loadPlansAdmin" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
+                <i class="fas fa-sync mr-1"></i>{{ t('重新整理') }}</button>
+            </div>
+            <p class="text-sm text-slate-500">{{ t('計劃價錢與簡介會即時同步至官網「會員計劃」頁及客人會員中心。') }}</p>
+
+            <div v-if="plansAdmin.msg" class="rounded-lg px-4 py-2 text-sm" :class="plansAdmin.msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">{{ plansAdmin.msg.text }}</div>
+            <div v-if="plansAdmin.loading" class="text-slate-500 py-10 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入中...') }}</div>
+
+            <template v-else>
+              <!-- 新增計劃 -->
+              <div class="bg-white rounded-xl shadow-lg p-5">
+                <h3 class="font-bold text-slate-800 mb-3"><i class="fas fa-plus-circle text-emerald-600 mr-2"></i>{{ t('新增計劃') }}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('計劃代碼（1-4 位英數）') }}</label>
+                    <input v-model="planForm.plan_key" type="text" placeholder="例如 E"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('名稱') }}</label>
+                    <input v-model="planForm.name" type="text" placeholder="例如 家庭帳戶 E"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('月費 HK$') }}</label>
+                    <input v-model="planForm.price" type="number" min="0" step="0.01" placeholder="0.01"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('人數範圍') }}</label>
+                    <input v-model="planForm.range_label" type="text" placeholder="例如 10 人以上"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 gap-3 mt-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('簡介') }}</label>
+                    <input v-model="planForm.intro" type="text" :placeholder="t('例如 10 位以上成員的跨代大家族')"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('功能清單（每行一項）') }}</label>
+                    <textarea v-model="planForm.features" rows="3"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"></textarea>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4 mt-3">
+                  <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" v-model="planForm.popular" class="rounded" />{{ t('標示為「最受歡迎」') }}
+                  </label>
+                  <button @click="createPlan" :disabled="plansAdmin.busy"
+                    class="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm disabled:opacity-50">
+                    <i class="fas fa-plus mr-1"></i>{{ t('新增') }}</button>
+                </div>
+              </div>
+
+              <!-- 計劃列表 -->
+              <div v-for="p in plansAdmin.plans" :key="p.id" class="bg-white rounded-xl shadow-lg p-5">
+                <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
+                  <h3 class="font-bold text-slate-800">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="p.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'">{{ p.plan_key }}</span>
+                      {{ p.name }}
+                      <span v-if="p.popular" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">{{ t('最受歡迎') }}</span>
+                    </span>
+                  </h3>
+                  <div class="flex items-center gap-2">
+                    <label class="inline-flex items-center gap-1 text-xs text-slate-500">
+                      <input type="checkbox" :checked="p.is_active" @change="togglePlanActive(p)" class="rounded" />{{ t('生效中') }}
+                    </label>
+                    <button @click="savePlan(p)" :disabled="plansAdmin.busy"
+                      class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm disabled:opacity-50">
+                      <i class="fas fa-save mr-1"></i>{{ t('儲存') }}</button>
+                    <button @click="deletePlan(p)" :disabled="plansAdmin.busy"
+                      class="px-4 py-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm disabled:opacity-50">
+                      <i class="fas fa-trash mr-1"></i>{{ t('刪除') }}</button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('名稱') }}</label>
+                    <input v-model="planDrafts[p.id].name" type="text"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('月費 HK$') }}</label>
+                    <input v-model="planDrafts[p.id].price" type="number" min="0" step="0.01"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('人數範圍') }}</label>
+                    <input v-model="planDrafts[p.id].range_label" type="text"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('排序（細係先）') }}</label>
+                    <input v-model="planDrafts[p.id].sort" type="number"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 gap-3 mt-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('簡介') }}</label>
+                    <input v-model="planDrafts[p.id].intro" type="text"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('功能清單（每行一項）') }}</label>
+                    <textarea v-model="planDrafts[p.id].featuresText" rows="3"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"></textarea>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" v-model="planDrafts[p.id].popular" class="rounded" />{{ t('標示為「最受歡迎」') }}
+                  </label>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div v-if="currentView === 'coupons'" class="space-y-6">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-ticket-alt text-emerald-600 mr-2"></i>{{ t('社福券管理') }}</h2>
+              <button @click="loadCouponAdmin" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">
+                <i class="fas fa-sync mr-1"></i>{{ t('重新整理') }}</button>
+            </div>
+
+            <div v-if="couponAdmin.loading" class="text-slate-500 py-10 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>{{ t('載入中...') }}</div>
+
+            <template v-else>
+              <!-- 統計 -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-white rounded-xl shadow p-4">
+                  <p class="text-xs text-slate-400">{{ t('券種數') }}</p>
+                  <p class="text-2xl font-bold text-slate-700 mt-1">{{ (couponAdmin.coupons || []).length }}</p>
+                </div>
+                <div class="bg-white rounded-xl shadow p-4">
+                  <p class="text-xs text-slate-400">{{ t('持有人數') }}</p>
+                  <p class="text-2xl font-bold text-emerald-600 mt-1">{{ couponAdmin.summary.holders || 0 }}</p>
+                </div>
+                <div class="bg-white rounded-xl shadow p-4">
+                  <p class="text-xs text-slate-400">{{ t('已發放免費次數') }}</p>
+                  <p class="text-2xl font-bold text-blue-600 mt-1">{{ couponAdmin.summary.totalGranted || 0 }}</p>
+                </div>
+                <div class="bg-white rounded-xl shadow p-4">
+                  <p class="text-xs text-slate-400">{{ t('剩餘免費次數') }}</p>
+                  <p class="text-2xl font-bold text-purple-600 mt-1">{{ couponAdmin.summary.totalRemaining || 0 }}</p>
+                </div>
+              </div>
+
+              <!-- 新增社福券 -->
+              <div class="bg-white rounded-xl shadow-lg p-5">
+                <h3 class="font-bold text-slate-800 mb-3"><i class="fas fa-plus-circle text-emerald-600 mr-2"></i>{{ t('新增社福券') }}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('券密碼（3-40 位英文數字）') }}</label>
+                    <input v-model="couponForm.code" type="text" placeholder="例如 CARE2026"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('名稱') }}</label>
+                    <input v-model="couponForm.title" type="text" placeholder="例如 關愛基金券"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('免費診症次數') }}</label>
+                    <input v-model="couponForm.free_count" type="number" min="1" placeholder="例如 5"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ t('售價 HK$（0 = 宣傳碼，客人可直接輸入啟用）') }}</label>
+                    <input v-model="couponForm.price_hkd" type="number" min="0" placeholder="0"
+                      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                </div>
+                <div class="mt-3 flex items-center gap-3 flex-wrap">
+                  <button @click="createCoupon" :disabled="couponAdmin.busy"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm disabled:opacity-50">
+                    <i class="fas fa-check mr-1"></i>{{ t('建立社福券') }}</button>
+                  <span v-if="couponAdmin.msg" class="text-sm rounded px-2 py-1"
+                    :class="couponAdmin.msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'">
+                    {{ couponAdmin.msg.ok ? '✅ ' : '❌ ' }}{{ couponAdmin.msg.text }}</span>
+                </div>
+              </div>
+
+              <!-- 券列表 -->
+              <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="px-5 py-3 border-b"><h3 class="font-bold text-slate-800"><i class="fas fa-list mr-2 text-slate-400"></i>{{ t('社福券列表') }}</h3></div>
+                <div class="overflow-x-auto">
+                  <table class="w-full">
+                    <thead class="bg-slate-50 border-b">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('券密碼') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('名稱') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('免費次數') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('售價') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('狀態') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('操作') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-if="!(couponAdmin.coupons||[]).length"><td colspan="6" class="px-4 py-8 text-center text-slate-400">{{ t('暫無社福券') }}</td></tr>
+                      <tr v-for="c in couponAdmin.coupons" :key="c.id" class="border-b hover:bg-slate-50">
+                        <td class="px-4 py-3 text-sm font-mono font-medium">{{ c.code }}</td>
+                        <td class="px-4 py-3 text-sm">{{ c.title || '—' }}</td>
+                        <td class="px-4 py-3 text-sm">{{ c.free_count }}</td>
+                        <td class="px-4 py-3 text-sm">HK${{ (c.price_hkd || 0).toLocaleString() }}</td>
+                        <td class="px-4 py-3 text-sm">
+                          <span class="px-2 py-1 rounded-full text-xs font-medium" :class="c.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'">
+                            {{ c.active ? t('啟用中') : t('已停用') }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                          <button @click="toggleCoupon(c)" class="text-emerald-600 hover:text-emerald-800 font-medium">
+                            {{ c.active ? t('停用') : t('啟用') }}</button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 使用紀錄 -->
+              <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="px-5 py-3 border-b"><h3 class="font-bold text-slate-800"><i class="fas fa-receipt mr-2 text-slate-400"></i>{{ t('使用紀錄') }}（{{ (couponAdmin.usage||[]).length }}）</h3></div>
+                <div class="overflow-x-auto">
+                  <table class="w-full">
+                    <thead class="bg-slate-50 border-b">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('客人') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('會員編號') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('券') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('已用／總次數') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('剩餘') }}</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-slate-700">{{ t('啟用日期') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-if="!(couponAdmin.usage||[]).length"><td colspan="6" class="px-4 py-8 text-center text-slate-400">{{ t('暫無使用紀錄') }}</td></tr>
+                      <tr v-for="u in couponAdmin.usage" :key="u.id" class="border-b hover:bg-slate-50">
+                        <td class="px-4 py-3 text-sm">{{ u.user_name || '—' }}<span v-if="u.user_phone" class="block text-xs text-slate-400">{{ u.user_phone }}</span></td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ u.member_no || '—' }}</td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ u.coupon_code }}<span v-if="u.coupon_title" class="block text-xs text-slate-400">{{ u.coupon_title }}</span></td>
+                        <td class="px-4 py-3 text-sm">{{ u.free_used || 0 }} / {{ u.free_total || 0 }}</td>
+                        <td class="px-4 py-3 text-sm font-semibold" :class="(u.remaining||0) > 0 ? 'text-emerald-600' : 'text-slate-400'">{{ u.remaining || 0 }}</td>
+                        <td class="px-4 py-3 text-sm">{{ (u.redeemed_at || u.purchased_at || '—').toString().slice(0,10) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- 家庭帳戶樹狀視圖 -->
@@ -2506,233 +2962,133 @@
                   <button v-for="g in ftreeGens" :key="g.level" @click="ftreeGenFilter = g.level" :class="ftreeGenFilter === g.level ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors">{{ g.label }}</button>
                 </div>
 
-                <ul class="ftree-gen ftree-gen-root">
-                  <li>
-                    <!-- 祖父母層（預留） -->
-                    <div class="ftree-couple" v-show="ftreeGenVisible(1)">
-                      <div class="ftree-node" data-role="placeholder">
-                        <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
-                        <div class="ftree-name">{{ t('上一代') }}<br><span class="text-[10px] opacity-70">{{ t('（預留）') }}</span></div>
-                        <span class="ftree-tag sage">{{ t('祖父') }}</span>
-                      </div>
-                      <div class="ftree-node" data-role="placeholder">
-                        <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
-                        <div class="ftree-name">{{ t('上一代') }}<br><span class="text-[10px] opacity-70">{{ t('（預留）') }}</span></div>
-                        <span class="ftree-tag sage">{{ t('祖母') }}</span>
-                      </div>
-                    </div>
-
-                    <!-- 父母層：經由戶主連入嘅「父母」關係 -->
-                    <ul v-if="familyTreeData.parentLevel.length" class="ftree-gen" v-show="ftreeGenWrapVisible(1)">
-                      <li v-for="gp in familyTreeData.parentLevel" :key="gp.id">
-                        <div class="ftree-node" data-role="relative" v-show="ftreeGenVisible(1)">
-                          <div class="ftree-avatar-wrap">
-                            <div class="ftree-avatar">
-                              <img v-if="isAvatarUrl(gp.primary.avatar_url)" :src="gp.primary.avatar_url" :alt="gp.primary.name">
-                              <i v-else class="fas fa-user"></i>
-                            </div>
-                          </div>
-                          <div class="ftree-name">{{ gp.primary.name || gp.primary.username }}</div>
-                          <div class="ftree-meta">{{ gp.primary.username }}</div>
-                          <span class="ftree-tag sage">{{ gp.relation }}</span>
-                        </div>
-
-                        <!-- 戶主層 -->
-                        <ul class="ftree-gen" v-show="ftreeGenWrapVisible(2)">
-                          <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
-                            <div class="ftree-node-wrapper" v-show="ftreeGenVisible(2)">
-                              <div v-if="parent.type === 'couple'" class="ftree-couple">
-                                <!-- 戶主 -->
-                                <div class="ftree-node" data-role="head">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                      <i v-else class="fas fa-crown"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ parent.primary.name }}</div>
-                                  <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} {{ t('位成員') }}</div>
-                                  <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
-                                    {{ parent.primary.membership_tier === 'family' ? t('家庭會員') : (t(parent.primary.membership_tier) || 'general') }}
-                                  </span>
-                                </div>
-                                <!-- 配偶 -->
-                                <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="parent.spouse && isAvatarUrl(parent.spouse.avatar_url)" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
-                                      <i v-else class="fas fa-user"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : t('配偶') }}</div>
-                                  <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : t('（待連結）') }}</div>
-                                  <span class="ftree-tag sage">{{ parent.spouse ? (t(parent.spouseRelation) || t('配偶')) : t('待連結') }}</span>
-                                </div>
-                              </div>
-                              <!-- 其他經由戶主連入嘅親屬 -->
-                              <div v-else class="ftree-node" data-role="relative">
-                                <div class="ftree-avatar-wrap">
-                                  <div class="ftree-avatar">
-                                    <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                    <i v-else class="fas fa-user"></i>
-                                  </div>
-                                </div>
-                                <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
-                                <div class="ftree-meta">{{ parent.primary.username }}</div>
-                                <span class="ftree-tag sage">{{ t(parent.relation) }}</span>
-                              </div>
-                            </div>
-
-                            <!-- 子女層 -->
-                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children" v-show="ftreeGenWrapVisible(3)">
-                              <li v-for="child in parent.children" :key="child.id">
-                                <div class="ftree-node" data-role="child" v-show="ftreeGenVisible(3)">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="isAvatarUrl(child.avatar_url)" :src="child.avatar_url" :alt="child.name">
-                                      <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ child.name }}</div>
-                                  <div class="ftree-meta">{{ child.age }} {{ t('歲') }} · {{ t('預約') }} {{ child.booking_count || 0 }} {{ t('次') }}</div>
-                                  <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
-                                    {{ child.isAdult ? t('已成年·跟進') : (child.turning18Soon ? `${t('快成年')}(${child.days_to_18}${t(' 日')})` : t('18歲以下')) }}
-                                  </span>
-                                  <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
-                                </div>
-                                <!-- 延伸連結（由子女連出） -->
-                                <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext" v-show="ftreeGenWrapVisible(4)">
-                                  <li v-for="lk in child.extendedLinks" :key="lk.id">
-                                    <div class="ftree-node" data-role="extended" v-show="ftreeGenVisible(4)">
-                                      <div class="ftree-avatar-wrap">
-                                        <div class="ftree-avatar">
-                                          <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
-                                          <i v-else class="fas fa-user"></i>
-                                        </div>
-                                      </div>
-                                      <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
-                                      <div class="ftree-meta">{{ lk.other.username }}</div>
-                                      <span class="ftree-tag sage">{{ t(lk.customRelation || lk.relation) }}</span>
-                                      <button @click="removeHeadLink(lk)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
-                                    </div>
-                                  </li>
-                                </ul>
-                              </li>
-                            </ul>
-                            <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
-                          </li>
-                        </ul>
-                      </li>
-                    </ul>
-
-                    <!-- 無父母連結：戶主層直接喺祖父母下面 -->
-                    <ul v-else class="ftree-gen" v-show="ftreeGenWrapVisible(2)">
-                      <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
-                        <div class="ftree-node-wrapper">
-                          <div v-if="parent.type === 'couple'" class="ftree-couple">
-                            <!-- 戶主 -->
-                            <div class="ftree-node" data-role="head">
-                              <div class="ftree-avatar-wrap">
-                                <div class="ftree-avatar">
-                                  <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                  <i v-else class="fas fa-crown"></i>
-                                </div>
-                              </div>
-                              <div class="ftree-name">{{ parent.primary.name }}</div>
-                              <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} {{ t('位成員') }}</div>
-                              <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
-                                {{ parent.primary.membership_tier === 'family' ? '家庭會員' : (parent.primary.membership_tier || 'general') }}
-                              </span>
-                            </div>
-                            <!-- 配偶 -->
-                            <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
-                              <div class="ftree-avatar-wrap">
-                                <div class="ftree-avatar">
-                                  <img v-if="parent.spouse && isAvatarUrl(parent.spouse.avatar_url)" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
-                                  <i v-else class="fas fa-user"></i>
-                                </div>
-                              </div>
-                              <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : '配偶' }}</div>
-                              <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : '（待連結）' }}</div>
-                              <span class="ftree-tag sage">{{ parent.spouse ? (parent.spouseRelation || '配偶') : '待連結' }}</span>
-                            </div>
-                          </div>
-                          <!-- 其他經由戶主連入嘅親屬 -->
-                          <div v-else class="ftree-node" data-role="relative">
-                            <div class="ftree-avatar-wrap">
-                              <div class="ftree-avatar">
-                                <img v-if="isAvatarUrl(parent.primary.avatar_url)" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                <i v-else class="fas fa-user"></i>
-                              </div>
-                            </div>
-                            <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
-                            <div class="ftree-meta">{{ parent.primary.username }}</div>
-                            <span class="ftree-tag sage">{{ parent.relation }}</span>
-                          </div>
-                        </div>
-
-                        <!-- 子女層 -->
-                        <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
-                          <li v-for="child in parent.children" :key="child.id">
-                            <div class="ftree-node" data-role="child" v-show="ftreeGenVisible(3)">
-                              <div class="ftree-avatar-wrap">
-                                <div class="ftree-avatar">
-                                  <img v-if="isAvatarUrl(child.avatar_url)" :src="child.avatar_url" :alt="child.name">
-                                  <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
-                                </div>
-                              </div>
-                              <div class="ftree-name">{{ child.name }}</div>
-                              <div class="ftree-meta">{{ child.age }} 歲 · 預約 {{ child.booking_count || 0 }} 次</div>
-                              <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
-                                {{ child.isAdult ? '已成年·跟進' : (child.turning18Soon ? `快成年(${child.days_to_18}日)` : '18歲以下') }}
-                              </span>
-                              <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
-                            </div>
-                            <!-- 延伸連結（由子女連出） -->
-                            <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext" v-show="ftreeGenWrapVisible(4)">
-                              <li v-for="lk in child.extendedLinks" :key="lk.id">
-                                <div class="ftree-node" data-role="extended" v-show="ftreeGenVisible(4)">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
-                                      <i v-else class="fas fa-user"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
-                                  <div class="ftree-meta">{{ lk.other.username }}</div>
-                                  <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
-                                  <button @click="removeHeadLink(lk)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
-                                </div>
-                              </li>
-                            </ul>
-                          </li>
-                        </ul>
-                        <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
-                  </li>
-                </ul>
-              </li>
-            </ul>
-
-                <!-- 🆕 第五代 · 戶主嘅其他連結（親戚／朋友／同事）— 非同輩，另置底部，唔喺戶主同一層 -->
-                <div v-if="familyTreeData.relativeLinks && familyTreeData.relativeLinks.length" class="ftree-relatives-block" v-show="ftreeGenWrapVisible(5)">
-                  <div class="ftree-relatives-label"><i class="fas fa-link mr-1"></i>{{ t('其他連結（親戚／朋友）') }}</div>
-                  <ul class="ftree-gen ftree-gen-relatives">
-                    <li v-for="rl in familyTreeData.relativeLinks" :key="'rel-'+rl.id">
-                      <div class="ftree-node" data-role="relative" v-show="ftreeGenVisible(5)">
+                <ul class="ftree-stacked">
+                  <!-- 祖父母層（＋2，最上） -->
+                  <li v-if="familyTreeData.grandparents.length" class="ftree-row" v-show="ftreeGenWrapVisible(2)">
+                    <div class="ftree-row-label"><i class="fas fa-user-graduate mr-1"></i>{{ t('祖父母層') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="gp in familyTreeData.grandparents" :key="gp.id" class="ftree-node" data-role="relative" v-show="ftreeGenVisible(2)">
                         <div class="ftree-avatar-wrap">
                           <div class="ftree-avatar">
-                            <img v-if="isAvatarUrl(rl.other.avatar_url)" :src="rl.other.avatar_url" :alt="rl.other.name">
+                            <img v-if="isAvatarUrl(gp.primary.avatar_url)" :src="gp.primary.avatar_url" :alt="gp.primary.name">
                             <i v-else class="fas fa-user"></i>
                           </div>
                         </div>
-                        <div class="ftree-name">{{ rl.other.name || rl.other.username }}</div>
-                        <div class="ftree-meta">{{ rl.other.username }}</div>
-                        <span class="ftree-tag sage">{{ t(rl.customRelation || rl.relation) }}</span>
-                        <button @click="removeHeadLink(rl)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                        <div class="ftree-name">{{ gp.primary.name || gp.primary.username }}</div>
+                        <div class="ftree-meta">{{ gp.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(gp.relation) }}</span>
+                        <button @click="removeHeadLink(gp.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
                       </div>
-                    </li>
-                  </ul>
-                </div>
+                    </div>
+                  </li>
+
+                  <!-- 父母輩（＋1，家豪上面：父母／伯叔姑舅姨） -->
+                  <li v-if="familyTreeData.parentLevel.length" class="ftree-row" v-show="ftreeGenWrapVisible(1)">
+                    <div class="ftree-row-label"><i class="fas fa-user-friends mr-1"></i>{{ t('父母輩（父母／伯叔姑舅姨）') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="pl in familyTreeData.parentLevel" :key="pl.id" class="ftree-node" data-role="relative" v-show="ftreeGenVisible(1)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(pl.primary.avatar_url)" :src="pl.primary.avatar_url" :alt="pl.primary.name">
+                            <i v-else class="fas fa-user"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ pl.primary.name || pl.primary.username }}</div>
+                        <div class="ftree-meta">{{ pl.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(pl.relation) }}</span>
+                        <button @click="removeHeadLink(pl.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+
+                  <!-- 戶主 · 同輩（0）：戶主夫婦 ＋ 兄弟姊妹／朋友／表堂（隔籬） -->
+                  <li class="ftree-row" v-show="ftreeGenWrapVisible(0)">
+                    <div class="ftree-row-label"><i class="fas fa-crown mr-1"></i>{{ t('戶主 · 同輩（配偶／兄弟姊妹／朋友）') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div class="ftree-couple" v-show="ftreeGenVisible(0)">
+                        <div class="ftree-node" data-role="head">
+                          <div class="ftree-avatar-wrap">
+                            <div class="ftree-avatar">
+                              <img v-if="isAvatarUrl(familyTreeData.headCouple.primary.avatar_url)" :src="familyTreeData.headCouple.primary.avatar_url" :alt="familyTreeData.headCouple.primary.name">
+                              <i v-else class="fas fa-crown"></i>
+                            </div>
+                          </div>
+                          <div class="ftree-name">{{ familyTreeData.headCouple.primary.name }}</div>
+                          <div class="ftree-meta">{{ familyTreeData.headCouple.primary.username }} · {{ familyTreeData.headCouple.primary.members.length }} {{ t('位成員') }}</div>
+                          <span class="ftree-tag" :class="familyTreeData.headCouple.primary.membership_tier === 'family' ? '' : 'adult'">
+                            {{ familyTreeData.headCouple.primary.membership_tier === 'family' ? t('家庭會員') : (t(familyTreeData.headCouple.primary.membership_tier) || 'general') }}
+                          </span>
+                        </div>
+                        <div class="ftree-node" :data-role="familyTreeData.headCouple.spouse ? 'head' : 'placeholder'">
+                          <div class="ftree-avatar-wrap">
+                            <div class="ftree-avatar">
+                              <img v-if="familyTreeData.headCouple.spouse && isAvatarUrl(familyTreeData.headCouple.spouse.avatar_url)" :src="familyTreeData.headCouple.spouse.avatar_url" :alt="familyTreeData.headCouple.spouse.name">
+                              <i v-else class="fas fa-user"></i>
+                            </div>
+                          </div>
+                          <div class="ftree-name">{{ familyTreeData.headCouple.spouse ? familyTreeData.headCouple.spouse.name : t('配偶') }}</div>
+                          <div class="ftree-meta">{{ familyTreeData.headCouple.spouse ? familyTreeData.headCouple.spouse.username : t('（待連結）') }}</div>
+                          <span class="ftree-tag sage">{{ familyTreeData.headCouple.spouse ? (t(familyTreeData.headCouple.spouseRelation) || t('配偶')) : t('待連結') }}</span>
+                        </div>
+                      </div>
+                      <div v-for="sg in familyTreeData.sameGen" :key="sg.id" class="ftree-node" data-role="relative" v-show="ftreeGenVisible(0)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(sg.primary.avatar_url)" :src="sg.primary.avatar_url" :alt="sg.primary.name">
+                            <i v-else class="fas fa-user"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ sg.primary.name || sg.primary.username }}</div>
+                        <div class="ftree-meta">{{ sg.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(sg.relation) }}</span>
+                        <button @click="removeHeadLink(sg.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+
+                  <!-- 子女輩（−1，家豪下面：子女／侄甥） -->
+                  <li v-if="familyTreeData.children.length" class="ftree-row" v-show="ftreeGenWrapVisible(-1)">
+                    <div class="ftree-row-label"><i class="fas fa-child mr-1"></i>{{ t('子女輩（子女／侄甥）') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="ch in familyTreeData.children" :key="ch.id" class="ftree-node" data-role="child" v-show="ftreeGenVisible(-1)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(ch.avatar_url)" :src="ch.avatar_url" :alt="ch.name">
+                            <i v-else :class="ch.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ ch.name }}</div>
+                        <div class="ftree-meta">{{ ch.age !== '' ? (ch.age + ' ' + t('歲') + ' · ' + t('預約') + ' ' + (ch.booking_count || 0) + ' ' + t('次')) : (ch.username + ' · ' + t('預約') + ' ' + (ch.booking_count || 0)) }}</div>
+                        <span class="ftree-tag" :class="ch.isAdult ? 'adult' : (ch.turning18Soon ? '' : 'sage')">
+                          {{ ch.isFamilyChild ? (ch.isAdult ? t('已成年·跟進') : (ch.turning18Soon ? (t('快成年') + '(' + ch.days_to_18 + t(' 日') + ')') : t('18歲以下'))) : (t(ch.relation) || t('連結')) }}
+                        </span>
+                        <button v-if="ch.isFamilyChild" @click="removeFamilyMember(selectedFamilyHead, ch.primary)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
+                        <button v-else @click="removeHeadLink(ch.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+
+                  <!-- 孫輩（−2，最底） -->
+                  <li v-if="familyTreeData.grandchildren.length" class="ftree-row" v-show="ftreeGenWrapVisible(-2)">
+                    <div class="ftree-row-label"><i class="fas fa-baby mr-1"></i>{{ t('孫輩') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="gc in familyTreeData.grandchildren" :key="gc.id" class="ftree-node" data-role="child" v-show="ftreeGenVisible(-2)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(gc.primary.avatar_url)" :src="gc.primary.avatar_url" :alt="gc.primary.name">
+                            <i v-else class="fas fa-child"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ gc.primary.name || gc.primary.username }}</div>
+                        <div class="ftree-meta">{{ gc.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(gc.relation) }}</span>
+                        <button @click="removeHeadLink(gc.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+
+                <!-- 🆕 所有連結（親戚／朋友／同輩／父母輩／子女輩）已按輩分歸入上方堆疊世代層，唔再另有「其他連結」區 -->
 
                 <div class="ftree-actions">
                   <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>{{ t('加子女') }}</button>
@@ -2741,7 +3097,7 @@
                 </div>
 
                 <div class="ftree-note">
-                  <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 頂部「上一代」為預留入口，未來可擴展祖父母層
+                  <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 按輩分排列：祖父母層（最上）→ 父母輩（家豪上面）→ 戶主·同輩（隔籬）→ 子女輩 → 孫輩（最底）
                 </div>
               </div>
 
@@ -2852,7 +3208,9 @@
                       <div>
                         <label class="block text-xs text-slate-500 mb-1.5"><i class="fas fa-people-roof mr-1"></i>{{ t('關係（親戚）') }}</label>
                         <select v-model="adminLinkRelation" class="w-full rounded border border-gray-300 p-2 text-sm bg-white">
-                          <option v-for="r in adminLinkRelationOptions" :key="r.key" :value="r.key">{{ r.label }}</option>
+                          <optgroup v-for="g in adminLinkRelationOptions" :key="g.group" :label="g.group">
+                            <option v-for="r in g.items" :key="r.key" :value="r.key">{{ r.label }}</option>
+                          </optgroup>
                         </select>
                       </div>
                       <input v-if="adminLinkRelation === '其他'" v-model="adminLinkCustomRelation" :placeholder="t('請輸入關係說明')" class="w-full rounded border border-gray-300 p-2 text-sm">
@@ -3168,6 +3526,31 @@
                     <div v-if="rec.diagnosis" class="text-slate-700"><b>{{ t('診斷') }}：</b>{{ rec.diagnosis }}</div>
                     <div v-if="rec.treatment_plan" class="text-slate-600"><b>{{ t('治療計劃') }}：</b>{{ rec.treatment_plan }}</div>
                     <div v-if="rec.notes" class="text-slate-500 text-xs mt-1 whitespace-pre-wrap">{{ rec.notes }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- #6：預約及就診記錄（所有預約，含就診狀態） -->
+              <div>
+                <h4 class="font-bold text-slate-800 mb-2 flex items-center"><i class="fas fa-calendar-check text-emerald-500 mr-2"></i>{{ t('預約及就診記錄') }}（{{ (hfDetail.bookings || []).length }}）</h4>
+                <div v-if="!(hfDetail.bookings || []).length" class="text-sm text-slate-400 py-3">{{ t('尚無預約記錄') }}</div>
+                <div v-else class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  <div v-for="bk in hfDetail.bookings" :key="bk.id" class="border border-slate-200 rounded-lg p-3 text-sm">
+                    <div class="flex items-center justify-between flex-wrap gap-1 mb-1">
+                      <span class="font-medium text-slate-800">
+                        <i class="fas fa-calendar mr-1 text-slate-400"></i>{{ bk.appointment_date }}
+                        <i class="fas fa-clock ml-2 mr-1 text-slate-400"></i>{{ bk.appointment_time }}
+                      </span>
+                      <span class="text-xs px-2 py-0.5 rounded-full" :class="hfStatusClass(bk.status)">{{ hfStatusLabel(bk.status) }}</span>
+                    </div>
+                    <div class="text-slate-700">
+                      <b>{{ t('服務') }}：</b>{{ bk.service_name || '—' }}
+                    </div>
+                    <div class="text-slate-600 text-xs mt-1">
+                      <i class="fas fa-user-doctor mr-1"></i>{{ bk.doctor_user_name || bk.doctor_name || t('未指定醫師') }}
+                      <span v-if="bk.lateness_minutes" class="ml-2 text-rose-600"><i class="fas fa-clock mr-1"></i>{{ t('遲到') }} {{ bk.lateness_minutes }} {{ t('分鐘') }}</span>
+                    </div>
+                    <div v-if="bk.notes" class="text-slate-500 text-xs mt-1 whitespace-pre-wrap">{{ bk.notes }}</div>
                   </div>
                 </div>
               </div>
@@ -3579,6 +3962,24 @@
                   <p class="mt-2 text-xs text-slate-500">
                     <i class="fas fa-info-circle mr-1"></i>
                     {{ t('點擊選擇休息日，紅色表示該日休息。客戶將無法預約休息日的時段。') }}</p>
+                </div>
+
+                <!-- #26：開放預約月份（原本 isMonthOpen 只係死代碼，管理員根本冇開關可以設定） -->
+                <div class="mt-6 pt-6 border-t border-slate-200">
+                  <label class="block text-sm font-medium text-slate-700 mb-2">
+                    <i class="fas fa-calendar-check text-emerald-600 mr-2"></i>{{ t('開放預約月份') }}</label>
+                  <p class="text-xs text-slate-500 mb-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    {{ t('選取的月份先開放畀客人預約；全部不選 = 不限制（任何月份都可以約）。當前月份永遠開放。') }}
+                  </p>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button type="button" v-for="m in openMonthOptions" :key="m"
+                      @click="toggleMonth(m)"
+                      :class="isMonthOpen(m) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'"
+                      class="px-3 py-2 rounded-lg border text-sm font-medium transition-colors">
+                      {{ getMonthLabel(m) }}
+                    </button>
+                  </div>
                 </div>
 
                 <!-- 自訂特別日期設定 -->
@@ -4824,6 +5225,12 @@
                     class="px-6 py-4 border-b-2 font-medium"
                   >
                     <i class="fas fa-vial mr-2"></i>{{ t('測試發送') }}</button>
+                  <button
+                    @click="notificationTab = 'doctor-leave'; loadDoctorLeaveTemplates();"
+                    :class="notificationTab === 'doctor-leave' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                    class="px-6 py-4 border-b-2 font-medium"
+                  >
+                    <i class="fas fa-user-md mr-2"></i>{{ t('醫師請假通知') }}</button>
                 </div>
               </div>
 
@@ -5116,6 +5523,33 @@
                       <i class="fas fa-arrow-right mr-1"></i>
                       {{ t('下次測試將發送：') }}<strong>{{ testNotificationResult.testInfo.nextItem }}</strong>
                     </p>
+                  </div>
+                </div>
+                <!-- 醫師請假通知模板 -->
+                <div v-if="notificationTab === 'doctor-leave'" class="space-y-6">
+                  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p class="text-sm text-blue-800"><i class="fas fa-info-circle mr-2"></i>{{ t('管理員可自定義醫師請假（病假 / 事假）時發送畀客人的 WhatsApp 訊息。可用變數：{doctorName}（醫師姓名）、{date}（日期）、{clinicPhone}（診所電話）、{waUrl}（診所 WhatsApp 連結）。') }}</p>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white border border-slate-200 rounded-xl p-5">
+                      <h3 class="font-semibold text-slate-800 mb-3"><i class="fas fa-procedures text-rose-500 mr-2"></i>{{ t('病假通知訊息') }}</h3>
+                      <textarea v-model="doctorLeaveTemplates.sick" rows="8" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-5">
+                      <h3 class="font-semibold text-slate-800 mb-3"><i class="fas fa-briefcase text-amber-500 mr-2"></i>{{ t('事假通知訊息') }}</h3>
+                      <textarea v-model="doctorLeaveTemplates.personal" rows="8" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono"></textarea>
+                    </div>
+                  </div>
+                  <div class="flex gap-3">
+                    <button @click="saveDoctorLeaveTemplates" :disabled="doctorLeaveTemplatesSaving" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                      <i class="fas fa-save mr-2"></i>{{ doctorLeaveTemplatesSaving ? t('儲存中…') : t('儲存模板') }}
+                    </button>
+                    <button @click="loadDoctorLeaveTemplates" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
+                      <i class="fas fa-undo mr-2"></i>{{ t('重新載入') }}
+                    </button>
+                  </div>
+                  <div v-if="doctorLeaveTemplatesMsg" class="p-3 rounded-lg text-sm" :class="doctorLeaveTemplatesMsg.ok ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'">
+                    {{ doctorLeaveTemplatesMsg.text }}
                   </div>
                 </div>
               </div>
@@ -5973,7 +6407,7 @@
               <p class="text-sm font-medium text-green-800 mb-2">
                 <i class="fas fa-eye mr-2"></i>{{ t('訊息預覽') }}</p>
               <p class="text-sm text-green-700">
-                {{ t('【寶天JR提醒您】') }}<br>
+                {{ t('【JR提醒您】') }}<br>
                 {{ solarTermForm.emoji }}{{ solarTermForm.custom_message || editingSolarTerm?.default_message }}
               </p>
             </div>
@@ -6303,6 +6737,20 @@
                   <span class="text-sm"><i class="fas fa-shield-alt mr-1 text-red-600"></i>{{ t('管理員') }}</span>
                 </label>
               </div>
+            </div>
+            <!-- 雇傭類型（醫師 / 員工可選兼職） -->
+            <div v-if="addUserForm.role === 'doctor' || addUserForm.role === 'staff'">
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                <i class="fas fa-clock mr-1 text-cyan-600"></i>{{ t('雇傭類型') }}
+              </label>
+              <select
+                v-model="addUserForm.employment_type"
+                class="w-full border border-slate-300 rounded-lg px-4 py-2 bg-white"
+              >
+                <option value="full">{{ t('全職') }}</option>
+                <option value="part">{{ t('兼職') }}</option>
+              </select>
+              <p class="text-xs text-slate-400 mt-1">{{ t('選擇「醫師」配「兼職」即可建立兼職醫師帳號') }}</p>
             </div>
             <!-- 用戶名 -->
             <div>
@@ -6644,7 +7092,57 @@
         </div>
       </div>
 
-      <!-- 修改用戶姓名彈窗 -->
+      <!-- 🔓 解鎖帳戶彈窗（需二次驗證）-->
+      <div
+        v-if="showUnlockModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      >
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+          <h3 class="text-xl font-semibold text-amber-600 mb-4">
+            <i class="fas fa-unlock mr-2"></i>{{ t('解鎖帳戶') }}</h3>
+          <div class="space-y-4">
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p class="text-amber-800">
+                {{ t('您即將解鎖用戶：') }}<strong>{{ unlockTargetUser?.name }}</strong> ({{ unlockTargetUser?.username }})
+              </p>
+              <p class="text-amber-700 text-sm mt-2">
+                <i class="fas fa-info-circle mr-1"></i>{{ t('解鎖後對方即可重新登入，失敗登入記錄會被清除，並留存解鎖紀錄。') }}</p>
+            </div>
+            <!-- 管理員密碼驗證 -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2">
+                <i class="fas fa-shield-alt mr-1"></i>{{ t('請輸入您的管理員密碼以確認操作') }}</label>
+              <div class="relative">
+                <input
+                  :type="showAdminVerifyPassword ? 'text' : 'password'"
+                  v-model="adminVerifyPassword"
+                  :placeholder="t('輸入您的管理員密碼')"
+                  class="w-full border border-slate-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-amber-500"
+                />
+                <button
+                  type="button"
+                  @click="showAdminVerifyPassword = !showAdminVerifyPassword"
+                  class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 focus:outline-none"
+                >
+                  <i :class="showAdminVerifyPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button
+                @click="confirmUnlock"
+                class="flex-1 bg-amber-600 text-white py-2 rounded-lg hover:bg-amber-700"
+              >
+                <i class="fas fa-unlock mr-2"></i>{{ t('確認解鎖') }}</button>
+              <button
+                @click="showUnlockModal = false; adminVerifyPassword = ''; unlockTargetUser = null"
+                class="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg hover:bg-slate-300"
+              >
+                {{ t('取消') }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div
         v-if="showEditNameModal"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -6927,6 +7425,18 @@
                 <option value="">{{ t('請選擇醫師') }}</option>
                 <option v-for="d in leaveDoctors" :key="d.id" :value="d.id">{{ d.name }}（{{ d.username }}）</option>
               </select>
+            </div>
+
+            <div v-if="doctorLeaveForm.type === 'doctor_leave'">
+              <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('請假類別') }}</label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="radio" value="sick" v-model="doctorLeaveForm.leaveType" class="rounded" /> {{ t('病假') }}
+                </label>
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="radio" value="personal" v-model="doctorLeaveForm.leaveType" class="rounded" /> {{ t('事假') }}
+                </label>
+              </div>
             </div>
 
             <div>
@@ -7281,6 +7791,9 @@
     <script>
       const { createApp } = Vue;
 
+      // #27 同源修復：本地日期格式化（唔好 toISOString 嘅 UTC，否則 GMT+8 深夜 off-by-one）
+      const ld = (d) => { const x = d || new Date(); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
+
       // 管理員頁面不需要跳轉保護，管理員僅能在此頁面登入
 
       createApp({
@@ -7330,6 +7843,8 @@
             incomeAdjustments: [],
             incomeQueryDate: "",
             incomeQueryRows: [],
+            incomeStart: "",
+            incomeEnd: "",
 
             // 💳 會員付款管理
             memberPayments: [],
@@ -7339,7 +7854,25 @@
             mpTierFilter: "",
             mpLoading: false,
             mpDetail: null,
-            mpRecordForm: { tier: 'family', method: 'cash', amount: '', note: '' },
+            mpRecordForm: { tier: 'family', familyPlan: 'A', method: 'cash', amount: '', note: '' },
+            mpPlanLocked: true,
+            // #22：管理員「即場落單（Walk-in）」
+            walkInOpen: false,
+            walkIn: {
+              query: '', results: [], userId: '',
+              services: [], serviceId: '',
+              doctors: [], doctorName: '',
+              date: '', time: '', notes: '',
+              busy: false, msg: '', ok: false,
+            },
+            // #9：社福券管理
+            couponAdmin: { loading: false, busy: false, coupons: [], usage: [], summary: {}, msg: null },
+            couponForm: { code: '', title: '', free_count: 5, price_hkd: 0 },
+            // #93：會員計劃管理
+            plansAdmin: { loading: false, busy: false, plans: [], msg: null },
+            planForm: { plan_key: '', name: '', price: 0, range_label: '', intro: '', features: '', popular: false },
+            planDrafts: {},
+            // #93：mpPlanOptions 改由 computed 從 membership_plans 動態生成（管理員改價後同步）
             mpRecordMsg: null,
             mpRecordBusy: false,
             mpStatusFilters: [
@@ -7438,6 +7971,7 @@
               doctor_user_id: '',
               exception_date: '',
               reason: '',
+              leaveType: 'personal',
               notifyWhatsapp: true,
               notifyEmail: false,
               cancelBookings: false,
@@ -7450,10 +7984,10 @@
             timeSlots: [],
             selectedDoctors: [], // 空白＝全部醫師
             slotCalendar: {}, // { 'YYYY-MM-DD': { doctorId: { availableSlots, totalSlots, working, leave } } }
-            calendarMonth: new Date().toISOString().slice(0, 7), // 'YYYY-MM'
+            calendarMonth: ld().slice(0, 7), // 'YYYY-MM'
             doctorColors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'],
             timeSlotMatrix: {}, // 時段-醫師矩陣
-            selectedSlotDate: new Date().toISOString().split("T")[0],
+            selectedSlotDate: ld(),
             // 🗓️ 拖掃網格狀態
             slotDoctorId: "",
             leaveApprovals: [],
@@ -7463,8 +7997,8 @@
             clinicBusy: false,
             clinicResult: null,
             slotView: 'week',
-            slotRangeStart: new Date().toISOString().slice(0, 10),
-            slotRangeEnd: new Date().toISOString().slice(0, 10),
+            slotRangeStart: ld(),
+            slotRangeEnd: ld(),
             slotDays: [],
             slotTimeList: [],
             slotBusy: false,
@@ -7607,6 +8141,9 @@
 
             // 通知管理（節氣、節日、天氣提醒）
             notificationTab: 'settings',
+            doctorLeaveTemplates: { sick: '', personal: '' },
+            doctorLeaveTemplatesSaving: false,
+            doctorLeaveTemplatesMsg: null,
 
             // 官網內容管理
             siteContentTab: 'announcements',
@@ -7706,6 +8243,10 @@ showPasswordModal: false,
             showDeleteConfirmModal: false,
             userToDelete: null,
 
+            // 🔓 解鎖帳戶 Modal
+            showUnlockModal: false,
+            unlockTargetUser: null,
+
             // 新增帳號 Modal
             showAddUserModal: false,
             addUserLoading: false,
@@ -7752,6 +8293,22 @@ addUserForm: {
         },
 
         computed: {
+          // #93：會員付款記錄用嘅計劃下拉選項（由 membership_plans 動態生成，fallback 預設 A-D）
+          mpPlanOptions() {
+            const fallback = [
+              { plan_key: 'A', price: 8800, range_label: '1-2 人' },
+              { plan_key: 'B', price: 12800, range_label: '3-5 人' },
+              { plan_key: 'C', price: 16800, range_label: '6-9 人' },
+              { plan_key: 'D', price: 20800, range_label: '10 人以上' },
+            ];
+            const plans = (this.plansAdmin && this.plansAdmin.plans.length) ? this.plansAdmin.plans : fallback;
+            return plans
+              .filter((p) => p.is_active !== false)
+              .map((p) => ({
+                value: p.plan_key,
+                label: `${p.plan_key}（${p.range_label || ''}）· $${Number(p.price).toLocaleString()}/月`,
+              }));
+          },
           // 🌳 家庭帳戶：搜尋過濾主帳戶
           filteredHeads() {
             const q = (this.familySearch || '').trim().toLowerCase();
@@ -7763,93 +8320,82 @@ addUserForm: {
             );
           },
           // 🌳 家庭帳戶：分層樹狀結構（自動按關係分層：配偶並排、子女向下、父母向上、兄弟姊妹橫向）
+          // 🌳 家庭帳戶：按親屬輩分分層（祖父母＋2 → 父母輩＋1 → 戶主同輩0 → 子女輩−1 → 孫輩−2）
+          //   參考華文親屬輩分九族：祖父/祖母(+2)、父母+伯叔姑舅姨(+1)、戶主+配偶+兄弟姊妹+朋友+表堂(0)、子女+侄甥(−1)、孫(−2)
           familyTreeData() {
             const head = this.selectedFamilyHead;
-            if (!head) return { parentLevel: [], headGeneration: [] };
+            if (!head) return { grandparents: [], parentLevel: [], headCouple: null, sameGen: [], children: [], grandchildren: [] };
             const links = this.headLinks || [];
+            const genOf = (lk) => this.genOfLink(lk);
 
-            // 分類關鍵字：同時睇 relation（系統枚舉）同 customRelation（用家自訂）
-            // 避免「父母」被 custom「阿爸／阿媽」遮蓋，導致父母落到戶主同一層
             const relOf = (lk) => String(lk.relation || '').toLowerCase();
             const custOf = (lk) => String(lk.customRelation || '').toLowerCase();
             const either = (lk, keys) => keys.some(k => relOf(lk).includes(k) || custOf(lk).includes(k));
             const spouseKeys = ['配偶', 'spouse', 'partner', '丈夫', '妻子', '老公', '太太', '老婆', '伴侶', 'husband', 'wife'];
-            const childKeys = ['子女', 'child', 'children', '兒子', '女兒', '仔', '囝', '囡', 'son', 'daughter'];
-            const parentKeys = ['父母', 'parent', '爸爸', '媽媽', '父親', '母親', '阿爸', '阿媽', '老豆', '老母', '祖父', '祖母', '爺', '嫲', 'father', 'mother', 'dad', 'mom'];
-
             const isSpouse = (lk) => either(lk, spouseKeys);
-            const isChild = (lk) => either(lk, childKeys);
-            const isParent = (lk) => either(lk, parentKeys);
-            // 🆕 兄弟姊妹 = 同輩（留喺戶主同一層）；其他連結（親戚／朋友／同事）＝非同輩（另置第 5 代）
-            const siblingKeys = ['兄弟', '姊妹', '兄弟姐妹', '兄弟姊妹', '家姐', '細佬', '哥哥', '姐姐', '妹妹', '弟弟', '兄長', 'sibling', 'brother', 'sister'];
-            const isSibling = (lk) => either(lk, siblingKeys);
 
-            // 經由戶主嘅連結
-            const spouseLink = links.find(lk => isSpouse(lk) && lk.linkSourceName === head.name);
-            const parentLinks = links.filter(lk => isParent(lk) && lk.linkSourceName === head.name);
-            const siblingLinks = links.filter(lk => {
-              if (lk === spouseLink) return false;
-              if (isChild(lk) || isParent(lk) || isSpouse(lk)) return false;
-              return isSibling(lk) && lk.linkSourceName === head.name;
-            });
-            // 🆕 戶主嘅「其他連結」（親戚／朋友／同事等）— 唔係同輩，另置第 5 代
-            const relativeLinks = links.filter(lk => {
-              if (lk === spouseLink) return false;
-              if (isChild(lk) || isParent(lk) || isSpouse(lk) || isSibling(lk)) return false;
-              return lk.linkSourceName === head.name;
-            });
-
-            // 經由子女嘅延伸連結
-            const childLinkMap = {};
-            (head.members || []).forEach(m => { childLinkMap[m.id] = []; });
-            links.forEach(lk => {
-              const member = (head.members || []).find(m => lk.linkSourceName === m.name);
-              if (member) childLinkMap[member.id].push(lk);
-            });
-
+            // 配偶（戶主同輩並排顯示）
+            const spouseLink = links.find(lk => isSpouse(lk) && (lk.linkSourceId === head.id || lk.linkSourceName === head.name));
             const headCouple = {
-              id: 'head-couple',
-              type: 'couple',
-              primary: head,
+              id: 'head-couple', type: 'couple', primary: head,
               spouse: spouseLink ? spouseLink.other : null,
               spouseRelation: spouseLink ? (spouseLink.customRelation || spouseLink.relation) : null,
-              children: (head.members || []).map(m => ({ ...m, extendedLinks: childLinkMap[m.id] || [] })),
               isHead: true
             };
 
-            const headGeneration = [headCouple];
-            siblingLinks.forEach(lk => {
-              headGeneration.push({
-                id: 'link-' + lk.id,
-                type: 'single',
-                primary: lk.other,
-                relation: lk.customRelation || lk.relation,
-                children: [],
-                isHead: false
-              });
+            // 家庭子女由佢哋連出嘅延伸連結（extendedLinks）
+            const memberExt = {};
+            (head.members || []).forEach(m => { memberExt[m.id] = []; });
+            links.forEach(lk => {
+              const member = (head.members || []).find(m => (lk.linkSourceId === m.id) || (lk.linkSourceName === m.name));
+              if (member) memberExt[member.id].push(lk);
             });
 
-            const parentLevel = parentLinks.map(lk => ({
-              id: 'parent-link-' + lk.id,
-              type: 'single',
-              primary: lk.other,
-              relation: lk.customRelation || lk.relation,
-              children: [],
-              isHead: false
-            }));
+            // 按輩分分類其餘連結（排除配偶）：＋2 祖父母 ／ ＋1 父母輩 ／ 0 同輩 ／ −1 子女輩 ／ −2 孫輩
+            const buckets = { 2: [], 1: [], '0': [], '-1': [], '-2': [] };
+            links.forEach(lk => {
+              if (lk === spouseLink) return;
+              const g = genOf(lk);
+              buckets[g].push({ id: 'link-' + lk.id, link: lk, primary: lk.other, relation: lk.customRelation || lk.relation });
+            });
 
-            return { parentLevel, headGeneration, relativeLinks };
+            // 同輩（0）：兄弟姊妹／朋友／表堂（戶主隔籬）
+            const sameGen = buckets['0'].map(b => ({ id: b.id, type: 'single', primary: b.primary, relation: b.relation, link: b.link }));
+
+            // 子女輩（−1）：家庭子女 ＋ 經戶主直接連入嘅子女/侄甥
+            const children = [
+              ...(head.members || []).map(m => ({
+                id: 'member-' + m.id, type: 'family', primary: m,
+                name: m.name, username: m.username, avatar_url: m.avatar_url,
+                age: m.age, booking_count: m.booking_count || 0,
+                isAdult: m.isAdult, turning18Soon: m.turning18Soon, days_to_18: m.days_to_18,
+                isFamilyChild: true, extendedLinks: memberExt[m.id] || []
+              })),
+              ...buckets['-1'].map(b => ({
+                id: b.id, type: 'linked', primary: b.primary,
+                name: b.primary.name, username: b.primary.username, avatar_url: b.primary.avatar_url,
+                age: '', booking_count: 0, isAdult: true, isFamilyChild: false,
+                relation: b.relation, extendedLinks: []
+              }))
+            ];
+
+            return {
+              grandparents: buckets[2],
+              parentLevel: buckets[1],
+              headCouple,
+              sameGen,
+              children,
+              grandchildren: buckets['-2']
+            };
           },
           ftreeGens() {
-            const d = this.familyTreeData || { parentLevel: [], headGeneration: [], relativeLinks: [] };
+            const d = this.familyTreeData || {};
             const gens = [];
-            if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('第一代 · 上一代') });
-            gens.push({ level: 2, label: this.t('第二代 · 戶主') });
-            if ((d.headGeneration || []).some(p => (p.children || []).length)) gens.push({ level: 3, label: this.t('第三代 · 子女') });
-            let hasExt = false;
-            (d.headGeneration || []).forEach(p => (p.children || []).forEach(c => { if ((c.extendedLinks || []).length) hasExt = true; }));
-            if (hasExt) gens.push({ level: 4, label: this.t('第四代 · 延伸') });
-            if ((d.relativeLinks || []).length) gens.push({ level: 5, label: this.t('第五代 · 其他連結') });
+            if ((d.grandparents || []).length) gens.push({ level: 2, label: this.t('祖父母層') });
+            if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('父母輩') });
+            gens.push({ level: 0, label: this.t('戶主 · 同輩') });
+            if ((d.children || []).length) gens.push({ level: -1, label: this.t('子女輩') });
+            if ((d.grandchildren || []).length) gens.push({ level: -2, label: this.t('孫輩') });
             return gens;
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
@@ -7893,45 +8439,66 @@ addUserForm: {
             });
             return out;
           },
-          // 🔗 親戚關係下拉選項（淨係親戚／家庭關係；選『其他』再自行填寫）
+          // 🔗 親戚關係下拉選項（按輩分分組；選『其他』再自行填寫）
+          //    具體稱謂會直接送後端 relation，由分類器按輩分自動歸層。
           adminLinkRelationOptions() {
             return [
-              { key: '父母', label: '父母' },
-              { key: '子女', label: '子女' },
-              { key: '配偶', label: '配偶' },
-              { key: '兄弟', label: '兄弟' },
-              { key: '姐妹', label: '姐妹' },
-              { key: '表弟', label: '表弟' },
-              { key: '表妹', label: '表妹' },
-              { key: '表哥', label: '表哥' },
-              { key: '表姐', label: '表姐' },
-              { key: '堂弟', label: '堂弟' },
-              { key: '堂妹', label: '堂妹' },
-              { key: '堂哥', label: '堂哥' },
-              { key: '堂姐', label: '堂姐' },
-              { key: '姨媽', label: '姨媽（母姨）' },
-              { key: '姑姐', label: '姑姐（父姊）' },
-              { key: '姑母', label: '姑母（父妹）' },
-              { key: '舅父', label: '舅父（母兄／弟）' },
-              { key: '伯父', label: '伯父（父兄）' },
-              { key: '叔父', label: '叔父（父弟）' },
-              { key: '嬸母', label: '嬸母（叔之妻）' },
-              { key: '其他', label: '其他（自行填寫）' }
+              { group: '祖父母輩（+2）', items: [
+                { key: '祖父', label: '祖父' }, { key: '祖母', label: '祖母' },
+                { key: '外祖父', label: '外祖父' }, { key: '外祖母', label: '外祖母' }
+              ] },
+              { group: '父母輩（+1）', items: [
+                { key: '父親', label: '父親' }, { key: '母親', label: '母親' },
+                { key: '伯父', label: '伯父（父兄）' }, { key: '叔父', label: '叔父（父弟）' },
+                { key: '姑媽', label: '姑媽（父姊）' }, { key: '姑姐', label: '姑姐（父妹）' },
+                { key: '舅父', label: '舅父（母兄／弟）' }, { key: '姨媽', label: '姨媽（母妹）' }
+              ] },
+              { group: '同輩（0）', items: [
+                { key: '配偶', label: '配偶' }, { key: '丈夫', label: '丈夫' }, { key: '妻子', label: '妻子' },
+                { key: '哥哥', label: '哥哥' }, { key: '弟弟', label: '弟弟' },
+                { key: '姐姐', label: '姐姐' }, { key: '妹妹', label: '妹妹' },
+                { key: '朋友', label: '朋友' },
+                { key: '表哥', label: '表哥' }, { key: '表姐', label: '表姐' },
+                { key: '表弟', label: '表弟' }, { key: '表妹', label: '表妹' },
+                { key: '堂哥', label: '堂哥' }, { key: '堂姐', label: '堂姐' },
+                { key: '堂弟', label: '堂弟' }, { key: '堂妹', label: '堂妹' }
+              ] },
+              { group: '子女輩（-1）', items: [
+                { key: '兒子', label: '兒子' }, { key: '女兒', label: '女兒' },
+                { key: '姪子', label: '姪子' }, { key: '姪女', label: '姪女' },
+                { key: '外甥', label: '外甥' }, { key: '外甥女', label: '外甥女' }
+              ] },
+              { group: '孫輩（-2）', items: [
+                { key: '孫子', label: '孫子' }, { key: '孫女', label: '孫女' },
+                { key: '外孫', label: '外孫' }, { key: '外孫女', label: '外孫女' }
+              ] },
+              { group: '其他', items: [
+                { key: '其他', label: '其他（自行填寫）' }
+              ] }
             ];
           },
-          // 🔗 依所選 key 決定送出嘅 relation + custom
+          // 🔗 依所選 key 決定送出嘅 relation（具體稱謂直接送；『其他』送 custom）
           adminLinkSelectedRel() {
-            const presets = ['父母', '子女', '配偶', '兄弟', '姐妹'];
             const key = this.adminLinkRelation;
-            if (key === '其他') return { relation: '其他', custom: '' };
-            if (presets.includes(key)) return { relation: key, custom: '' };
-            return { relation: '親戚', custom: key };
+            if (key === '其他') return { relation: '其他', custom: this.adminLinkCustomRelation || '' };
+            return { relation: key, custom: '' };
           },
           passwordRuleHint() {
             const r = this.addUserForm.role;
             return (r === 'staff' || r === 'doctor' || r === 'admin')
               ? "職員/醫師/管理員：至少 10 個字元，須同時包含大寫、小寫字母及數字，不可使用常見密碼"
               : "客戶：至少 8 個字元，須包含英文字母及數字";
+          },
+          // 🆕 總收入（Excel 匯入 ＋ 訂閱），用於 hero 卡
+          incomeSummaryTotal() {
+            const s = this.incomeSummary || {};
+            const excel = Number(s.total || 0);
+            const sub = Number((s.subscription && s.subscription.total_subscription_revenue) || 0);
+            return excel + sub;
+          },
+          // 🆕 Excel 收入紀錄總金額（用於「收入明細」總計行）
+          incomeAdjustmentsTotal() {
+            return (this.incomeAdjustments || []).reduce((sum, a) => sum + Number(a.amount || 0), 0);
           },
           // 🔍 日期查詢：嗰日收入
           incomeQueryDay() {
@@ -8068,7 +8635,7 @@ addUserForm: {
           },
           // 🛏️ 今日床位佔用：活躍狀態、需要床位嘅預約，計同時段峰值
           bedOccupancyToday() {
-            const todayStr = new Date().toISOString().slice(0, 10);
+            const todayStr = ld();
             const active = "('pending','confirmed','in-progress','in-treatment','visited','dispensing')";
             const toMin = (t) => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
             const durOf = (b) => Number((this.services.find(s => s.id === b.service_id) || {}).duration) || 45;
@@ -8155,6 +8722,11 @@ addUserForm: {
           },
 
         methods: {
+          // #20：明確「返回官網」——去 index.html 並保留 session（見 js/session-guard.js）
+          goToSite() {
+            if (typeof window.goToSite === 'function') window.goToSite();
+            else window.location.href = 'index.html';
+          },
           // 🌳 家庭樹：頭像 URL 判斷（emoji / 相對路徑 / 絕對網址）
           isAvatarUrl(u) {
             return typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
@@ -8164,8 +8736,30 @@ addUserForm: {
             return !this.ftreeGenFilter || this.ftreeGenFilter === level;
           },
           ftreeGenWrapVisible(level) {
-            // 容器 <ul> 喺篩選更深世代時必須保留（深層節點嵌喺入面），所以 filter>=level 都顯示
-            return !this.ftreeGenFilter || this.ftreeGenFilter >= level;
+            // 堆疊式層：揀咗某層就只顯示該層（「全部世代」filter=null 時全顯）
+            return !this.ftreeGenFilter || this.ftreeGenFilter === level;
+          },
+          // 🌳 家庭樹：按親屬稱謂判定輩分（相對戶主「本人」）
+          //   +2 祖父母輩 ／ +1 父母輩（父母＋伯叔姑舅姨）／ 0 同輩（戶主＋配偶＋兄弟姊妹＋朋友＋表堂）／ -1 子女輩（子女＋侄甥）／ -2 孫輩
+          genOfLink(lk) {
+            const r = String(lk.relation || '').trim();
+            const c = String(lk.customRelation || '').trim();
+            const text = c || r;
+            const has = (arr) => arr.some(t => text.includes(t));
+            if (has(['祖父', '祖母', '外祖父', '外祖母', '爺爺', '嫲嫲', '阿公', '阿嬤', '公公', '婆婆', '太公', '太婆', '曾祖父', '曾祖母', '外曾祖父', '外曾祖母', '祖'])) return 2;
+            if (has(['孫', '孫子', '孫女', '孫兒', '外孫', '外孫女'])) return -2;
+            if (has(['父母', '父親', '母親', '爸爸', '媽媽', '阿爸', '阿媽', '老豆', '老母', '父', '母',
+              '伯父', '伯母', '叔父', '嬸母', '姑媽', '姑姐', '姑母', '舅父', '舅母', '姨媽', '姨母', '阿姨',
+              '丈人', '岳父', '岳母', '家公', '家婆', '世伯', '世叔', '公', '婆'])) return 1;
+            if (has(['子女', '兒子', '女兒', '仔', '囡', '子', '息', '姪', '姪子', '姪女', '外甥', '外甥女'])) return -1;
+            if (has(['配偶', '丈夫', '妻子', '老公', '老婆', '太太', '伴侶', '夫', '妻',
+              '兄弟', '姊妹', '哥哥', '姐姐', '細佬', '家姐', '兄', '弟', '姐', '妹', '嫂', '姐夫', '妹夫',
+              '朋友', '表弟', '表妹', '表哥', '表姐', '堂弟', '堂妹', '堂哥', '堂姐'])) return 0;
+            switch (r) {
+              case '父母': return 1; case '子女': return -1;
+              case '配偶': case '兄弟': case '姐妹': case '朋友': return 0;
+              case '親戚': case '其他': return 0; default: return 0;
+            }
           },
           // ==================== 功能10：中醫討論區 ====================
           async loadForum() {
@@ -8217,6 +8811,8 @@ addUserForm: {
           // ==================== 會員付款管理 ====================
           async loadMemberPayments() {
             this.mpLoading = true;
+            // #93：確保計劃清單已載入（mpPlanOptions 顯示最新價錢）
+            if (!this.plansAdmin.plans.length) this.loadPlansAdmin();
             try {
               const r = await fetch('/api/admin/member-payments', { headers: this.adminAuthHeaders() });
               const data = await r.json();
@@ -8252,8 +8848,17 @@ addUserForm: {
               const data = await r.json();
               if (data.ok) {
                 this.mpDetail = data;
-                const t = (data.user.tier === 'general') ? 'premium' : data.user.tier;
-                this.mpRecordForm = { tier: t, method: data.user.paymentMethod || 'cash', amount: '', note: '' };
+                // #3：開通／續費級別自動固定為該帳戶嘅現有計劃（家庭 → 具體 A-D，一般 → 一般帳戶）
+                const u = data.user || {};
+                const plan = (u.familyPlan || (u.tierName && u.tierName.match(/家庭計劃\s*([A-D])/) ? u.tierName.match(/家庭計劃\s*([A-D])/)[1] : '') || '').toString().toUpperCase();
+                const t = (u.tier === 'family') ? 'family' : 'general';
+                this.mpRecordForm = {
+                  tier: t,
+                  familyPlan: /^[A-D]$/.test(plan) ? plan : ((t === 'family') ? 'A' : ''),
+                  method: u.paymentMethod || 'cash',
+                  amount: '', note: ''
+                };
+                this.mpPlanLocked = true; // 預設鎖定（自動固定）；撳「更改」先解鎖
                 this.mpRecordMsg = null;
               } else {
                 console.error('載入會員詳情失敗:', data.error);
@@ -8328,7 +8933,7 @@ addUserForm: {
             this.announcementForm = a ? {
               title: a.title, category: a.category, content: a.content,
               publish_date: a.publish_date || '', is_active: !!a.is_active
-            } : { title: '', category: '診所資訊', content: '', publish_date: new Date().toISOString().slice(0, 10), is_active: true };
+            } : { title: '', category: '診所資訊', content: '', publish_date: ld(), is_active: true };
             this.showAnnouncementModal = true;
           },
 
@@ -8842,6 +9447,8 @@ async handleLogin() {
           },
 
           handleLogout() {
+            // #20：標記「已登出」，防止倒退還原已登入畫面（見 js/session-guard.js）
+            try { if (typeof window.markLoggedOut === 'function') window.markLoggedOut(); } catch (e) {}
             // 通知後端登出（清除 httpOnly cookie）
             try {
               fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -8901,9 +9508,12 @@ async handleLogin() {
 
           async loadIncome() {
             try {
-              const response = await fetch(
-                `/api/admin/income?period=${this.incomePeriod}`
-              );
+              let url = `/api/admin/income?period=${this.incomePeriod}`;
+              // 🆕 當「按日」且有揀日期範圍，過濾成該範圍（同匯出一致）
+              if (this.incomePeriod === 'day' && this.incomeStart && this.incomeEnd) {
+                url += `&start=${this.incomeStart}&end=${this.incomeEnd}`;
+              }
+              const response = await fetch(url);
               const data = await response.json();
               this.incomeData = data.data || [];
               this.incomeSummary = data.summary || { total: 0, count: 0, periods: 0 };
@@ -8912,6 +9522,85 @@ async handleLogin() {
             } catch (error) {
               console.error("載入收入報表失敗:", error);
             }
+          },
+
+          // 🆕 快速設定日期範圍（本月／本年／全部資料）
+          setIncomeRange(kind) {
+            const now = new Date();
+            const y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0');
+            if (kind === 'month') {
+              const last = String(new Date(y, now.getMonth() + 1, 0).getDate()).padStart(2, '0');
+              this.incomeStart = `${y}-${m}-01`;
+              this.incomeEnd = `${y}-${m}-${last}`;
+            } else if (kind === 'year') {
+              this.incomeStart = `${y}-01-01`;
+              this.incomeEnd = `${y}-12-31`;
+            } else {
+              // 全部資料：清空範圍，匯出會自動推算全範圍；網頁報表退回全歷史
+              this.incomeStart = '';
+              this.incomeEnd = '';
+            }
+            this.incomePeriod = 'day';
+            this.loadIncome();
+          },
+
+          // #11 收入報表匯出 Excel
+          async exportIncomeExcel() {
+            let start, end;
+            if (this.incomeQueryDate) {
+              // 日期查詢：單日鑽取
+              start = end = this.incomeQueryDate;
+            } else if (this.incomeStart && this.incomeEnd) {
+              // 報表範圍：管理員指定
+              start = this.incomeStart;
+              end = this.incomeEnd;
+            }
+            // 兩者都冇 → 唔傳 start/end，後端會自動推算「全部資料」範圍，
+            // 確保匯入嘅過往月份資料一定會被納入報表（唔會再變空白）
+
+            try {
+              // 唔手動加 Authorization —— 交畀 js/auth-fetch.js 全域自動補
+              //（同其他 admin API 一致；避免 token 為 null 時送出 "Bearer null" 呢種偽 token）
+              const qs = (start && end) ? `start=${start}&end=${end}` : '';
+              const r = await fetch(`/api/admin/income/export${qs ? '?' + qs : ''}`);
+              if (!r.ok) {
+                const j = await r.json().catch(() => ({}));
+                if (r.status === 401) {
+                  // 登入失效（token 過期／舊 server 發出）：清走死 token 導向登入
+                  localStorage.removeItem("jwtToken");
+                  alert("登入已失效，請重新登入");
+                  window.location.reload();
+                  return;
+                }
+                throw new Error(j.error || "匯出失敗");
+              }
+              const blob = await r.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `income-${start || 'all'}-${end || 'data'}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            } catch (error) {
+              alert("匯出收入報表失敗：" + (error.message || error));
+            }
+          },
+
+          // #18 收入類別中文標籤
+          incomeTypeLabel(t) {
+            return (
+              {
+                service: this.t("服務"),
+                other: this.t("其他款項"),
+                subscription: this.t("訂閱"),
+                deposit: this.t("按金"),
+                consultation: this.t("診金"),
+                medicine: this.t("藥費"),
+                product: this.t("產品"),
+              }[t] || t
+            );
           },
 
           async loadIncomeAdjustments() {
@@ -9051,6 +9740,7 @@ async handleLogin() {
               doctor_user_id: '',
               exception_date: '',
               reason: '',
+              leaveType: 'personal',
               notifyWhatsapp: true,
               notifyEmail: false,
               cancelBookings: false,
@@ -9100,6 +9790,7 @@ async handleLogin() {
                   doctor_user_id: form.type === 'doctor_leave' ? form.doctor_user_id : undefined,
                   exception_date: form.exception_date,
                   reason: form.reason,
+                  leaveType: form.leaveType,
                   notifyWhatsapp: form.notifyWhatsapp,
                   notifyEmail: form.notifyEmail,
                   cancelBookings: form.cancelBookings,
@@ -9193,6 +9884,308 @@ async handleLogin() {
               this.hfBusy = false;
             }
           },
+          // ================= #22：管理員「即場落單（Walk-in）」=================
+          walkInTimeOptions() {
+            const opts = [];
+            for (let total = 10 * 60; total <= 19 * 60; total += 15) {
+              const h = Math.floor(total / 60);
+              const m = total % 60;
+              opts.push(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+            }
+            return opts;
+          },
+          async ensureWalkInCatalog() {
+            try {
+              if (!this.walkIn.services.length) {
+                const r = await fetch('/api/settings/services', { headers: this.adminAuthHeaders() });
+                if (r.ok) {
+                  const j = await r.json();
+                  const list = Array.isArray(j) ? j : (j.services || j.data || []);
+                  // #22：即場落單唔應有「初體驗」
+                  this.walkIn.services = list.filter(s => !/初體驗/.test((s && (s.name || s.short_name)) || ''));
+                }
+              }
+              if (!this.walkIn.doctors.length) {
+                const r = await fetch('/api/doctors');
+                if (r.ok) this.walkIn.doctors = await r.json().catch(() => []);
+              }
+            } catch (e) { console.error('walk-in catalog', e); }
+          },
+          async searchWalkInCustomer() {
+            this.walkIn.msg = '';
+            try {
+              const res = await fetch('/api/users', { headers: this.adminAuthHeaders() });
+              if (!res.ok) throw new Error('搜尋失敗');
+              const j = await res.json();
+              const list = Array.isArray(j) ? j : (j.users || j.data || []);
+              const q = (this.walkIn.query || '').trim().toLowerCase();
+              this.walkIn.results = q
+                ? list.filter(u => (u.role === 'customer' || !u.role) &&
+                    ((u.name || '').toLowerCase().includes(q) || (u.phone || '').includes(q) || (u.username || '').toLowerCase().includes(q))).slice(0, 30)
+                : [];
+            } catch (e) { console.error('search customer', e); }
+          },
+          async submitWalkIn() {
+            const w = this.walkIn;
+            w.msg = ''; w.busy = true;
+            if (!w.userId || !w.serviceId || !w.date || !w.time || !w.doctorName) {
+              w.msg = t('請填妥客戶、服務、醫師、日期同時間'); w.ok = false; w.busy = false; return;
+            }
+            const client = w.results.find((u) => u.id === w.userId) || {};
+            try {
+              const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, this.adminAuthHeaders()),
+                body: JSON.stringify({
+                  forUserId: w.userId,
+                  serviceId: w.serviceId,
+                  doctorName: w.doctorName,
+                  appointmentDate: w.date,
+                  appointmentTime: w.time,
+                  customerName: client.name || '客人',
+                  customerPhone: client.phone || '',
+                  customerEmail: client.email || '',
+                  notes: (w.notes ? w.notes + ' ' : '') + '[Walk-in by admin]',
+                }),
+              });
+              const j = await res.json().catch(() => ({}));
+              if (res.ok && j.ok !== false) {
+                w.msg = t('已建立預約'); w.ok = true;
+                await this.loadBookings();
+              } else {
+                w.msg = j.error || t('建立失敗'); w.ok = false;
+              }
+            } catch (e) {
+              w.msg = e.message || t('建立失敗'); w.ok = false;
+            }
+            w.busy = false;
+          },
+
+          // ================= #9：社福券管理 =================
+          async loadCouponAdmin() {
+            this.couponAdmin.loading = true;
+            this.couponAdmin.msg = null;
+            try {
+              const [r1, r2] = await Promise.all([
+                fetch('/api/coupons', { headers: this.adminAuthHeaders() }),
+                fetch('/api/admin/coupon-usage', { headers: this.adminAuthHeaders() }),
+              ]);
+              const d1 = await r1.json().catch(() => ({}));
+              const d2 = await r2.json().catch(() => ({}));
+              this.couponAdmin.coupons = (d1 && d1.ok && d1.coupons) ? d1.coupons : [];
+              this.couponAdmin.usage = (d2 && d2.ok && d2.usage) ? d2.usage : [];
+              this.couponAdmin.summary = (d2 && d2.ok && d2.summary) ? d2.summary : {};
+            } catch (e) {
+              console.error('載入社福券失敗:', e);
+              this.couponAdmin.msg = { ok: false, text: '載入失敗：' + e.message };
+            } finally {
+              this.couponAdmin.loading = false;
+            }
+          },
+          async createCoupon() {
+            const f = this.couponForm;
+            if (!f.code || !/^[A-Za-z0-9_-]{3,40}$/.test(f.code)) {
+              this.couponAdmin.msg = { ok: false, text: '券密碼要 3-40 位英文／數字（可含 - _）' }; return;
+            }
+            if (!(parseInt(f.free_count, 10) >= 1)) {
+              this.couponAdmin.msg = { ok: false, text: '免費診症次數必須 ≥ 1' }; return;
+            }
+            this.couponAdmin.busy = true;
+            this.couponAdmin.msg = null;
+            try {
+              const r = await fetch('/api/coupons', {
+                method: 'POST',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({ code: f.code, title: f.title, free_count: f.free_count, price_hkd: f.price_hkd })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (d && d.ok) {
+                this.couponAdmin.msg = { ok: true, text: '已建立社福券 ' + d.code };
+                this.couponForm = { code: '', title: '', free_count: 5, price_hkd: 0 };
+                await this.loadCouponAdmin();
+              } else {
+                this.couponAdmin.msg = { ok: false, text: (d && d.error) || '建立失敗' };
+              }
+            } catch (e) {
+              this.couponAdmin.msg = { ok: false, text: '建立失敗：' + e.message };
+            } finally {
+              this.couponAdmin.busy = false;
+            }
+          },
+          async toggleCoupon(c) {
+            this.couponAdmin.busy = true;
+            this.couponAdmin.msg = null;
+            try {
+              const r = await fetch('/api/admin/coupons/' + c.id + '/toggle', {
+                method: 'POST', headers: this.adminAuthHeaders()
+              });
+              const d = await r.json().catch(() => ({}));
+              this.couponAdmin.msg = (d && d.ok)
+                ? { ok: true, text: (d.code || '') + (d.active ? ' 已啟用' : ' 已停用') }
+                : { ok: false, text: (d && d.error) || '操作失敗' };
+              await this.loadCouponAdmin();
+            } catch (e) {
+              this.couponAdmin.msg = { ok: false, text: '操作失敗：' + e.message };
+            } finally {
+              this.couponAdmin.busy = false;
+            }
+          },
+
+          // ================= #93：會員計劃管理 =================
+          async loadPlansAdmin() {
+            this.plansAdmin.loading = true;
+            this.plansAdmin.msg = null;
+            try {
+              const r = await fetch('/api/admin/plans', { headers: this.adminAuthHeaders() });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok && d.ok) {
+                this.plansAdmin.plans = d.plans || [];
+                // 建立每個計劃嘅編輯草稿（features 由陣列轉每行一項嘅文字）
+                const drafts = {};
+                (d.plans || []).forEach((p) => {
+                  drafts[p.id] = {
+                    name: p.name, price: p.price, range_label: p.range_label || '',
+                    intro: p.intro || '', popular: !!p.popular,
+                    featuresText: (p.features || []).join('\n'),
+                    sort: p.sort,
+                  };
+                });
+                this.planDrafts = drafts;
+              } else {
+                this.plansAdmin.msg = { ok: false, text: (d && d.error) || '載入失敗' };
+              }
+            } catch (e) {
+              console.error('載入會員計劃失敗:', e);
+              this.plansAdmin.msg = { ok: false, text: '載入失敗：' + e.message };
+            } finally {
+              this.plansAdmin.loading = false;
+            }
+          },
+          async createPlan() {
+            const f = this.planForm;
+            if (!/^[A-Za-z0-9]{1,4}$/.test(String(f.plan_key || '').trim())) {
+              this.plansAdmin.msg = { ok: false, text: '計劃代碼須為 1-4 位英文／數字' }; return;
+            }
+            if (!String(f.name || '').trim()) {
+              this.plansAdmin.msg = { ok: false, text: '請填寫計劃名稱' }; return;
+            }
+            if (!(parseFloat(f.price) >= 0)) {
+              this.plansAdmin.msg = { ok: false, text: '月費必須係 0 或以上' }; return;
+            }
+            this.plansAdmin.busy = true;
+            this.plansAdmin.msg = null;
+            try {
+              const r = await fetch('/api/admin/plans', {
+                method: 'POST',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({
+                  plan_key: f.plan_key, name: f.name, price: parseFloat(f.price),
+                  range_label: f.range_label, intro: f.intro,
+                  features: String(f.features || '').split('\n').map((s) => s.trim()).filter(Boolean),
+                  popular: f.popular, is_active: true,
+                }),
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok && d.ok) {
+                this.plansAdmin.msg = { ok: true, text: '已新增計劃 ' + (d.plan && d.plan.name ? d.plan.name : f.name) };
+                this.planForm = { plan_key: '', name: '', price: 0, range_label: '', intro: '', features: '', popular: false };
+                await this.loadPlansAdmin();
+              } else {
+                this.plansAdmin.msg = { ok: false, text: (d && d.error) || '新增失敗' };
+              }
+            } catch (e) {
+              this.plansAdmin.msg = { ok: false, text: '新增失敗：' + e.message };
+            } finally {
+              this.plansAdmin.busy = false;
+            }
+          },
+          async savePlan(p) {
+            const dft = this.planDrafts[p.id];
+            if (!dft) return;
+            this.plansAdmin.busy = true;
+            this.plansAdmin.msg = null;
+            try {
+              const r = await fetch('/api/admin/plans/' + p.id, {
+                method: 'PUT',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({
+                  name: dft.name, price: parseFloat(dft.price), range_label: dft.range_label,
+                  intro: dft.intro, popular: dft.popular, sort: parseInt(dft.sort, 10) || 0,
+                  features: String(dft.featuresText || '').split('\n').map((s) => s.trim()).filter(Boolean),
+                }),
+              });
+              const d = await r.json().catch(() => ({}));
+              this.plansAdmin.msg = (r.ok && d.ok)
+                ? { ok: true, text: '已儲存「' + p.name + '」，官網同步更新' }
+                : { ok: false, text: (d && d.error) || '儲存失敗' };
+              if (r.ok && d.ok) await this.loadPlansAdmin();
+            } catch (e) {
+              this.plansAdmin.msg = { ok: false, text: '儲存失敗：' + e.message };
+            } finally {
+              this.plansAdmin.busy = false;
+            }
+          },
+          async deletePlan(p) {
+            if (!confirm(`確定要刪除計劃「${p.name}」？此操作無法復原。`)) return;
+            this.plansAdmin.busy = true;
+            this.plansAdmin.msg = null;
+            try {
+              const r = await fetch('/api/admin/plans/' + p.id, { method: 'DELETE', headers: this.adminAuthHeaders() });
+              const d = await r.json().catch(() => ({}));
+              this.plansAdmin.msg = (r.ok && d.ok)
+                ? { ok: true, text: '已刪除「' + p.name + '」' }
+                : { ok: false, text: (d && d.error) || '刪除失敗' };
+              if (r.ok && d.ok) await this.loadPlansAdmin();
+            } catch (e) {
+              this.plansAdmin.msg = { ok: false, text: '刪除失敗：' + e.message };
+            } finally {
+              this.plansAdmin.busy = false;
+            }
+          },
+          async togglePlanActive(p) {
+            this.plansAdmin.busy = true;
+            this.plansAdmin.msg = null;
+            try {
+              const r = await fetch('/api/admin/plans/' + p.id, {
+                method: 'PUT',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({ is_active: !p.is_active }),
+              });
+              const d = await r.json().catch(() => ({}));
+              this.plansAdmin.msg = (r.ok && d.ok)
+                ? { ok: true, text: '「' + p.name + '」已' + (!p.is_active ? '啟用' : '停用') }
+                : { ok: false, text: (d && d.error) || '操作失敗' };
+              if (r.ok && d.ok) await this.loadPlansAdmin();
+            } catch (e) {
+              this.plansAdmin.msg = { ok: false, text: '操作失敗：' + e.message };
+            } finally {
+              this.plansAdmin.busy = false;
+            }
+          },
+
+          // #6：預約記錄狀態標籤（客人檔案用）
+          hfStatusLabel(status) {
+            const map = {
+              pending: '待確認', confirmed: '已確認', completed: '已完成', 'no-show': '缺席',
+              cancelled: '已取消', visited: '已到訪', 'in-treatment': '治療中',
+              dispensing: '配藥中', 'in-progress': '處理中'
+            };
+            return t(map[status] || status || '—');
+          },
+          hfStatusClass(status) {
+            const map = {
+              pending: 'bg-slate-100 text-slate-800',
+              confirmed: 'bg-blue-100 text-blue-800',
+              completed: 'bg-green-100 text-green-800',
+              'no-show': 'bg-orange-100 text-orange-800',
+              cancelled: 'bg-red-100 text-red-800',
+              visited: 'bg-teal-100 text-teal-800',
+              'in-treatment': 'bg-indigo-100 text-indigo-800',
+              dispensing: 'bg-amber-100 text-amber-800',
+              'in-progress': 'bg-purple-100 text-purple-800',
+            };
+            return map[status] || 'bg-slate-100 text-slate-800';
+          },
           async hfView(userId) {
             this.hfDetailLoading = true;
             this.hfDetail = null;
@@ -9200,7 +10193,8 @@ async handleLogin() {
               const res = await fetch('/api/health-profile/user/' + userId);
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.success) {
-                this.hfDetail = { user: data.user, profile: data.profile, records: data.records || [] };
+                // #6：客人檔案 —— 病歷記錄下面加埋「所有預約及就診記錄」
+                this.hfDetail = { user: data.user, profile: data.profile, records: data.records || [], bookings: data.bookings || [] };
                 const p = data.profile || {};
                 this.hfEdit = {
                   chronic_conditions: p.chronic_conditions || '',
@@ -9302,9 +10296,9 @@ async handleLogin() {
 
           // 🔧 更改家庭戶主會員級別（升／降級，下月月結差額）
           async changeFamilyTier(head) {
-            const tier = prompt(`更改 ${head.name} 嘅會員級別\n輸入：general / premium / family\n（目前：${head.membership_tier || 'general'}）`);
+            const tier = prompt(`更改 ${head.name} 嘅會員級別\n輸入：general / family\n（目前：${head.membership_tier || 'general'}）`);
             if (!tier) return;
-            if (!['general', 'premium', 'family'].includes(tier)) { alert('無效級別'); return; }
+            if (!['general', 'family'].includes(tier)) { alert('無效級別'); return; }
             try {
               const res = await fetch('/api/membership/change', {
                 method: 'POST',
@@ -9801,6 +10795,7 @@ this.addUserForm = {
               phone: "",
               email: "",
               insurance_covered: 1,
+              employment_type: "full",
               adminPassword: "",
             };
             this.addUserError = "";
@@ -9848,6 +10843,7 @@ if (this.addUserForm.role === 'staff' || this.addUserForm.role === 'doctor' || t
 phone: this.addUserForm.phone,
                   email: this.addUserForm.email,
                   role: this.addUserForm.role,
+                  employment_type: this.addUserForm.employment_type,
                   insurance_covered: this.addUserForm.insurance_covered,
                   adminPassword: this.addUserForm.adminPassword,
                   adminId: this.adminUser.id,
@@ -10078,6 +11074,46 @@ phone: this.addUserForm.phone,
               }
             } catch (error) {
               alert("更改密碼失敗");
+            }
+          },
+
+          // 🔓 解鎖被鎖定帳戶（需二次驗證）
+          unlockUser(user) {
+            this.unlockTargetUser = user;
+            this.adminVerifyPassword = "";
+            this.showUnlockModal = true;
+          },
+
+          async confirmUnlock() {
+            if (!this.adminVerifyPassword) {
+              alert("請輸入您的管理員密碼以確認操作");
+              return;
+            }
+            if (!this.unlockTargetUser) return;
+            try {
+              const response = await fetch(
+                `/api/admin/users/${this.unlockTargetUser.id}/unlock`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    adminPassword: this.adminVerifyPassword,
+                    adminId: this.adminUser.id
+                  }),
+                }
+              );
+              const data = await response.json();
+              if (response.ok) {
+                alert("✅ 已解鎖 " + (this.unlockTargetUser.username || ""));
+                this.showUnlockModal = false;
+                this.adminVerifyPassword = "";
+                this.unlockTargetUser = null;
+                this.loadUsers();
+              } else {
+                alert(data.error || "解鎖失敗");
+              }
+            } catch (error) {
+              alert("解鎖失敗，請稍後再試");
             }
           },
 
@@ -10435,8 +11471,8 @@ phone: this.addUserForm.phone,
           async loadAdminLeaveQueue() {
             this.leaveApprovalsLoading = true;
             try {
-              const start = new Date().toISOString().slice(0, 10);
-              const end = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+              const start = ld();
+              const end = ld(new Date(Date.now() + 60 * 24 * 3600 * 1000));
               const res = await fetch(`/api/admin/doctor/leaves-range?start=${start}&end=${end}`, {
                 headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
               });
@@ -10542,12 +11578,12 @@ phone: this.addUserForm.phone,
               const dow = (start.getDay() + 6) % 7;
               const mon = new Date(start); mon.setDate(start.getDate() - dow);
               const arr = [];
-              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(dd.toISOString().slice(0, 10)); }
+              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(ld(dd)); }
               return arr;
             }
             const end = new Date(this.slotRangeEnd + 'T00:00:00');
             const arr = []; let cur = new Date(start);
-            while (cur <= end && arr.length < 31) { arr.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+            while (cur <= end && arr.length < 31) { arr.push(ld(cur)); cur.setDate(cur.getDate() + 1); }
             return arr;
           },
           async loadSlotGrid() {
@@ -11065,6 +12101,28 @@ phone: this.addUserForm.phone,
           
           isMonthOpen(monthStr) {
             return this.openMonths.includes(monthStr);
+          },
+
+          // #26：可設定嘅月份清單（當前月份 + 未來 8 個月）
+          openMonthOptions() {
+            const now = new Date();
+            const list = [];
+            for (let i = 0; i < 9; i++) {
+              const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+              list.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+            }
+            // 已儲存但未喺清單內（例如外年份）嘅月份都要顯示，避免設定被靜默丟失
+            (this.openMonths || []).forEach((m) => {
+              if (m && !list.includes(m)) list.push(m);
+            });
+            return list.sort();
+          },
+
+          // #26：切換月份開放狀態
+          toggleMonth(monthStr) {
+            const idx = this.openMonths.indexOf(monthStr);
+            if (idx >= 0) this.openMonths.splice(idx, 1);
+            else this.openMonths.push(monthStr);
           },
 
           // 自訂特別日期相關方法
@@ -12302,6 +13360,49 @@ phone: this.addUserForm.phone,
             }
           },
           
+          async loadDoctorLeaveTemplates() {
+            try {
+              const res = await fetch('/api/admin/notification/doctor-leave-templates', {
+                headers: this.adminAuthHeaders()
+              });
+              if (res.ok) {
+                const t = await res.json();
+                this.doctorLeaveTemplates = {
+                  sick: t.sick || '',
+                  personal: t.personal || ''
+                };
+              }
+            } catch (error) {
+              console.error('載入醫師請假通知模板失敗:', error);
+            }
+          },
+
+          async saveDoctorLeaveTemplates() {
+            this.doctorLeaveTemplatesSaving = true;
+            this.doctorLeaveTemplatesMsg = null;
+            try {
+              const res = await fetch('/api/admin/notification/doctor-leave-templates', {
+                method: 'PUT',
+                headers: this.adminAuthHeaders('application/json'),
+                body: JSON.stringify({
+                  sick: this.doctorLeaveTemplates.sick,
+                  personal: this.doctorLeaveTemplates.personal
+                })
+              });
+              const data = await res.json();
+              if (res.ok && data.success) {
+                this.doctorLeaveTemplatesMsg = { ok: true, text: '醫師請假通知模板已儲存。' };
+              } else {
+                this.doctorLeaveTemplatesMsg = { ok: false, text: data.error || '儲存失敗，請重試。' };
+              }
+            } catch (error) {
+              console.error('儲存醫師請假通知模板失敗:', error);
+              this.doctorLeaveTemplatesMsg = { ok: false, text: '儲存失敗，請重試。' };
+            } finally {
+              this.doctorLeaveTemplatesSaving = false;
+            }
+          },
+
           async loadHolidays() {
             try {
               const res = await fetch('/api/notifications/holidays');
@@ -12735,5 +13836,6 @@ phone: this.addUserForm.phone,
   run();
 })();
 </script>
+</div>
 </body>
 </html>

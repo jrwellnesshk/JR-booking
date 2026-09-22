@@ -13,6 +13,9 @@ const captchaService = require('../services/captcha');
 const jwt = require('../services/jwt');
 const { validatePassword } = require('../services/passwordPolicy');
 
+// 🔗 診所設定（電話）— 集中讀取，唔好硬碼
+const clinicSettings = require('../services/clinicSettings');
+
 // ℹ️ SMS 已全面取消；密碼重設驗證碼經 WhatsApp／電郵發送
 
 // WhatsApp 服務 - 根據環境變數選擇（密碼重設驗證碼改經 WhatsApp 發送）
@@ -203,7 +206,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
     });
     if (String(allowPublic) !== 'true') {
       return res.status(403).json({
-        error: "本診所暫不接受網上自行註冊，請聯絡診所職員為您開戶（電話 2555-1136）。",
+        error: `本診所暫不接受網上自行註冊，請聯絡診所職員為您開戶（電話 ${clinicSettings.getClinicPhone()}）。`,
         code: "registration_closed"
       });
     }

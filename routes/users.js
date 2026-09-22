@@ -17,6 +17,60 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     return Number(req.user.id) === Number(targetId);
   };
 
+  // ==================== 醫師/用戶頭像上傳 ====================
+  const multer = require('multer');
+  const path = require('path');
+  const fs = require('fs');
+  const crypto = require('crypto');
+  const AVATAR_MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
+  const avatarDest = path.join(__dirname, '..', 'uploads', 'avatars');
+  const sanitizeAvatarName = (original) => {
+    const ext = path.extname(original || '').toLowerCase();
+    if (!AVATAR_MIME[ext]) return null;
+    const base = path.basename(original, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
+    return (base || 'avatar') + '_' + crypto.randomBytes(6).toString('hex') + ext;
+  };
+  const avatarUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        if (!fs.existsSync(avatarDest)) fs.mkdirSync(avatarDest, { recursive: true });
+        cb(null, avatarDest);
+      },
+      filename: (req, file, cb) => {
+        const n = sanitizeAvatarName(file.originalname);
+        if (!n) return cb(new Error('不支援的檔案格式'));
+        cb(null, n);
+      }
+    }),
+    limits: { fileSize: 2 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => cb(null, !!AVATAR_MIME[path.extname(file.originalname).toLowerCase()])
+  });
+
+  // 🆕 上傳自己頭像（醫師/用戶），更新 users.avatar
+  router.post("/avatar", requireAuth, avatarUpload.single('avatar'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: '請上傳圖片檔案（jpg/png/webp，≤2MB）' });
+    const rel = '/uploads/avatars/' + req.file.filename;
+    db.run("UPDATE users SET avatar=? WHERE id=?", [rel, req.user.id], function (err) {
+      if (err) return serverError(res, err);
+      res.json({ avatar: rel });
+    });
+  });
+
+  // 🆕 公開醫師名單（官網醫師介紹，含頭像）；供 index.html 醫師團隊同步顯示
+  router.get("/public-doctors", (req, res) => {
+    db.all(
+      `SELECT d.id AS doctor_id, d.name, d.specialty, u.id AS user_id, u.avatar
+         FROM doctors d
+         LEFT JOIN users u ON u.id = d.user_id
+        WHERE d.is_active = 1
+        ORDER BY d.id`,
+      [], (err, rows) => {
+        if (err) return serverError(res, err);
+        res.json(rows || []);
+      }
+    );
+  });
+
   // 取得所有用戶（管理員：全部；職員：只限客戶 role=customer）
   router.get("/", requireAuth, requireRole('admin', 'staff'), (req, res) => {
     const staffOnlyCustomers = req.user && req.user.role === 'staff';
@@ -31,7 +85,9 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           (SELECT COUNT(*) FROM bookings b WHERE b.user_id = u.id AND b.lateness_minutes > 0) AS late_count,
           (SELECT COALESCE(SUM(b.lateness_minutes), 0) FROM bookings b WHERE b.user_id = u.id AND b.lateness_minutes > 0) AS late_total_minutes,
           (SELECT MAX(b.appointment_date || ' ' || b.appointment_time)
-             FROM bookings b WHERE b.user_id = u.id AND b.lateness_minutes > 0) AS last_late_record
+             FROM bookings b WHERE b.user_id = u.id AND b.lateness_minutes > 0) AS last_late_record,
+          (SELECT COUNT(*) FROM login_attempts la WHERE la.username = u.username AND la.success = 0 AND la.attempt_time > datetime('now','-15 minutes')) AS failed_recent,
+          (SELECT CAST(CEIL((julianday(MIN(la.attempt_time), '+15 minutes') - julianday('now')) * 24 * 60) AS INTEGER) FROM login_attempts la WHERE la.username = u.username AND la.success = 0 AND la.attempt_time > datetime('now','-15 minutes')) AS lock_minutes
         FROM users u
         ${staffOnlyCustomers ? "WHERE u.role='customer'" : ''}
         ORDER BY u.created_at DESC`,
@@ -42,13 +98,16 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
         // 計算每個用戶的剩餘天數（未完成資料的用戶）
         const now = new Date();
         const usersWithStatus = rows.map(user => {
+          const failedRecent = Number(user.failed_recent) || 0;
+          const locked = failedRecent >= 5;
+          const lockMinutes = locked ? Math.max(1, Number(user.lock_minutes) || 15) : 0;
           if (user.profile_completed === 0 && user.created_at) {
             const createdAt = new Date(user.created_at);
             const daysPassed = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
             const daysRemaining = Math.max(0, 3 - daysPassed);
-            return { ...user, days_remaining: daysRemaining, is_expired: daysRemaining === 0 };
+            return { ...user, days_remaining: daysRemaining, is_expired: daysRemaining === 0, locked, lock_minutes: lockMinutes };
           }
-          return { ...user, days_remaining: null, is_expired: false };
+          return { ...user, days_remaining: null, is_expired: false, locked, lock_minutes: lockMinutes };
         });
 
         res.json(usersWithStatus);
@@ -76,7 +135,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     }
     
     db.get(
-      "SELECT id, username, name, name_en, phone, email, id_card, address, birth_date, emergency_contact, emergency_phone, username_last_changed, name_last_changed, membership_tier, insurance_covered, family_head_id, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?",
+      "SELECT id, username, name, name_en, phone, email, id_card, address, birth_date, emergency_contact, emergency_phone, username_last_changed, name_last_changed, membership_tier, insurance_covered, family_head_id, whatsapp_weather, whatsapp_confirm, whatsapp_health, whatsapp_enabled FROM users WHERE id=?",
       [id],
       (err, row) => {
         if (err) return serverError(res, err);
@@ -92,14 +151,48 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     if (!isSelfOrAdmin(req, id)) {
       return res.status(403).json({ error: "無權限修改此用戶資料" });
     }
-    const { whatsapp_weather, whatsapp_confirm, whatsapp_health } = req.body || {};
+    const { whatsapp_weather, whatsapp_confirm, whatsapp_health, whatsapp_enabled } = req.body || {};
     const toInt = (v) => (v === undefined ? null : v ? 1 : 0);
-    const values = [toInt(whatsapp_weather), toInt(whatsapp_confirm), toInt(whatsapp_health)];
-    const sql = "UPDATE users SET whatsapp_weather=COALESCE(?,whatsapp_weather), whatsapp_confirm=COALESCE(?,whatsapp_confirm), whatsapp_health=COALESCE(?,whatsapp_health) WHERE id=?";
+    const values = [toInt(whatsapp_weather), toInt(whatsapp_confirm), toInt(whatsapp_health), toInt(whatsapp_enabled)];
+    const sql = "UPDATE users SET whatsapp_weather=COALESCE(?,whatsapp_weather), whatsapp_confirm=COALESCE(?,whatsapp_confirm), whatsapp_health=COALESCE(?,whatsapp_health), whatsapp_enabled=COALESCE(?,whatsapp_enabled) WHERE id=?";
     db.run(sql, [...values, id], (err) => {
       if (err) return serverError(res, err);
       res.json({ ok: true });
     });
+  });
+
+  // 客人站内通知：取得本人通知（含未讀數）
+  router.get("/notifications", requireAuth, (req, res) => {
+    const uid = req.user.id;
+    const phone = req.user.phone || '';
+    db.all(
+      `SELECT id, title, message, type, ref_date, is_read, created_at
+       FROM customer_notifications
+       WHERE user_id = ? OR (user_id IS NULL AND phone = ?)
+       ORDER BY created_at DESC LIMIT 100`,
+      [uid, phone],
+      (e, rows) => {
+        if (e) return serverError(res, e);
+        const items = (rows || []).map(r => ({ ...r, is_read: r.is_read === 1 }));
+        const unreadCount = items.filter(i => !i.is_read).length;
+        res.json({ ok: true, notifications: items, unreadCount });
+      }
+    );
+  });
+
+  // 標記通知為已讀（限本人）
+  router.post("/notifications/:id/read", requireAuth, (req, res) => {
+    const id = Number(req.params.id);
+    const uid = req.user.id;
+    const phone = req.user.phone || '';
+    db.run(
+      `UPDATE customer_notifications SET is_read = 1 WHERE id = ? AND (user_id = ? OR (user_id IS NULL AND phone = ?))`,
+      [id, uid, phone],
+      (e) => {
+        if (e) return serverError(res, e);
+        res.json({ ok: true });
+      }
+    );
   });
 
   // 更新用戶個人資料

@@ -5,6 +5,9 @@
 
 const nodemailer = require('nodemailer');
 
+// 🔗 診所設定（電話）— 集中讀取，唔好硬碼
+const clinicSettings = require('./clinicSettings');
+
 // 郵件傳輸配置
 // 建議使用環境變數儲存敏感資料
 const transporter = nodemailer.createTransport({
@@ -20,10 +23,10 @@ const transporter = nodemailer.createTransport({
 
 // 診所資訊（可從資料庫讀取）
 const CLINIC_INFO = {
-  name: '寶天JR',
+  name: 'JR',
   phone: '2555-1136',
   address: '香港九龍新蒲崗大有街3號萬迪廣場9樓E鋪',
-  email: 'info@potinhk.com'
+  email: 'admin@jrwellnesshk.com'
 };
 
 // 寄件人電郵：以 EMAIL_USER 為準；未設定時退回診所官方電郵（唔好再用個人 Gmail）
@@ -84,7 +87,7 @@ async function sendVerificationCode(to, code, username) {
           <div class="footer">
             <p>${CLINIC_INFO.name}</p>
             <p>📍 ${CLINIC_INFO.address}</p>
-            <p>📞 ${CLINIC_INFO.phone}</p>
+            <p>📞 ${clinicSettings.getClinicPhone()}</p>
           </div>
         </div>
       </body>
@@ -179,7 +182,7 @@ async function sendBookingConfirmation(to, booking) {
           <div class="footer">
             <p>${CLINIC_INFO.name}</p>
             <p>📍 ${CLINIC_INFO.address}</p>
-            <p>📞 ${CLINIC_INFO.phone}</p>
+            <p>📞 ${clinicSettings.getClinicPhone()}</p>
           </div>
         </div>
       </body>
@@ -263,7 +266,7 @@ async function sendBookingUpdate(to, oldBooking, newBooking) {
           <div class="footer">
             <p>${CLINIC_INFO.name}</p>
             <p>📍 ${CLINIC_INFO.address}</p>
-            <p>📞 ${CLINIC_INFO.phone}</p>
+            <p>📞 ${clinicSettings.getClinicPhone()}</p>
           </div>
         </div>
       </body>
@@ -336,7 +339,7 @@ async function sendBookingCancellation(to, booking) {
             
             <div class="rebook">
               <strong>📅 需要重新預約嗎？</strong><br>
-              歡迎隨時透過我們的網站重新預約，或致電 ${CLINIC_INFO.phone} 查詢。
+              歡迎隨時透過我們的網站重新預約，或致電 ${clinicSettings.getClinicPhone()} 查詢。
             </div>
             
             <p>如有任何問題，歡迎聯繫我們。</p>
@@ -344,7 +347,7 @@ async function sendBookingCancellation(to, booking) {
           <div class="footer">
             <p>${CLINIC_INFO.name}</p>
             <p>📍 ${CLINIC_INFO.address}</p>
-            <p>📞 ${CLINIC_INFO.phone}</p>
+            <p>📞 ${clinicSettings.getClinicPhone()}</p>
           </div>
         </div>
       </body>
@@ -412,7 +415,7 @@ async function sendWelcomeEmail(to, username, name) {
           <div class="footer">
             <p>${CLINIC_INFO.name}</p>
             <p>📍 ${CLINIC_INFO.address}</p>
-            <p>📞 ${CLINIC_INFO.phone}</p>
+            <p>📞 ${clinicSettings.getClinicPhone()}</p>
           </div>
         </div>
       </body>

@@ -157,6 +157,20 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
       // 儲存相片
       await savePhotos(medicalRecordId, photoFiles);
 
+      // #14 狀態機：醫師建立並儲存病歷後，預約轉為「配藥中(dispensing)」
+      try {
+        await new Promise((resolve, reject) => {
+          db.run(
+            "UPDATE bookings SET status='dispensing', updated_at=? WHERE id=?",
+            [getLocalTimeString(), booking_id],
+            (updErr) => (updErr ? reject(updErr) : resolve())
+          );
+        });
+      } catch (statusErr) {
+        // 失敗只記錄，唔阻礙主回應（病歷已成功儲存）
+        console.error('更新預約狀態為配藥中失敗（唔影響病歷）:', statusErr.message);
+      }
+
       // 如果有進度數據，插入 treatment_progress
       if (metric_name && current_value) {
         await new Promise((resolve, reject) => {

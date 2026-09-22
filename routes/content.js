@@ -108,7 +108,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   });
 
   // 社交媒體連結（存喺 clinic_settings）
-  const SOCIAL_KEYS = ['social_facebook', 'social_instagram', 'social_youtube', 'social_whatsapp', 'social_wechat', 'clinic_phone', 'clinic_address', 'clinic_hours'];
+  const SOCIAL_KEYS = ['social_facebook', 'social_instagram', 'social_youtube', 'social_whatsapp', 'social_wechat', 'clinic_phone', 'clinic_email', 'clinic_address', 'clinic_hours'];
 
   router.get('/social', (req, res) => {
     db.all('SELECT setting_key, setting_value FROM clinic_settings', [], (err, rows) => {

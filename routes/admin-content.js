@@ -52,7 +52,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     fileFilter: (req, file, cb) => cb(null, !!MIME_ALLOWED[path.extname(file.originalname).toLowerCase()])
   });
 
-  const SOCIAL_KEYS = ['social_facebook', 'social_instagram', 'social_youtube', 'social_whatsapp', 'social_wechat', 'clinic_phone', 'clinic_address', 'clinic_hours'];
+  const SOCIAL_KEYS = ['social_facebook', 'social_instagram', 'social_youtube', 'social_whatsapp', 'social_wechat', 'clinic_phone', 'clinic_email', 'clinic_address', 'clinic_hours'];
 
   // ==================== 公告管理 ====================
 
@@ -191,9 +191,16 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         `INSERT INTO clinic_settings (setting_key, setting_value) VALUES (?, ?)
          ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value, updated_at=CURRENT_TIMESTAMP`
       );
-      pending.forEach(k => stmt.run(k, String(body[k]).slice(0, 300)));
+      pending.forEach(k => {
+        let v = String(body[k]).slice(0, 300);
+        // WhatsApp 統一存純數字（剝走 wa.me / +852 / 空格等），前端再動態組 wa.me 連結
+        if (k === 'social_whatsapp') v = v.replace(/[^0-9]/g, '');
+        stmt.run(k, v);
+      });
       stmt.finalize((err) => {
         if (err) return serverError(res, err);
+        // 清除診所設定快取，令官網/電郵/通知即時讀到新值
+        try { require('../services/clinicSettings').invalidate(); } catch (e) {}
         res.json({ ok: true });
       });
     });

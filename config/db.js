@@ -3,6 +3,14 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { runMigrations } = require('./migrations');
 
+// 引擎切換：當 DATABASE_URL 係 postgres:// 開頭，成個 db 模組改用 Amazon RDS
+// PostgreSQL（config/db-pg.js），所有 route / service 代碼唔使改。
+// 冇設 DATABASE_URL → 繼續用 SQLite（本地開發唔受影響）。
+if (process.env.DATABASE_URL && /^postgres/i.test(process.env.DATABASE_URL)) {
+  module.exports = require('./db-pg');
+  return;
+}
+
 // 密碼加密函數 - 使用 bcrypt
 function hashPassword(password) {
   const saltRounds = 10;
@@ -190,6 +198,21 @@ CREATE TABLE IF NOT EXISTS bookings (
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (doctor_user_id) REFERENCES users(id)
+      )
+    `);
+
+    // 客人站内通知（醫師請假 / 天氣停診等，確保客人於門戶可見管理員輸入嘅內容）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS customer_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        phone TEXT,
+        title TEXT,
+        message TEXT,
+        type TEXT,
+        ref_date TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -737,7 +760,7 @@ CREATE TABLE IF NOT EXISTS bookings (
         const adminPassword = hashPassword(adminInitPw);
         db.run(
           "INSERT INTO users (username, password, name, name_en, phone, email, role, profile_completed, must_change_password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
-          ["admin", adminPassword, "管理員", "Admin", "0900-000-000", "admin@clinic.com", "admin", 1],
+          ["admin", adminPassword, "管理員", "Admin", "0900-000-000", "admin@jrwellnesshk.com", "admin", 1],
           (err) => {
             if (!err) {
               if (process.env.ADMIN_PASSWORD) {
@@ -1177,11 +1200,9 @@ function initializeTriageQuestions(db) {
         question_en: "Please select the category that best describes your main symptoms:",
         sort_order: 1,
         options: [
-          { option_zh: "肌肉骨骼問題（肩頸痛、腰背痛、肌肉緊繃）", option_en: "Musculoskeletal issues (neck/shoulder pain, back pain, muscle tension)", scores: { d1: 10, d2: 2, d3: 3, d4: 5 } },
-          { option_zh: "神經系統問題（頭痛、失眠、手腳麻痺）", option_en: "Nervous system issues (headache, insomnia, numbness in hands/feet)", scores: { d1: 2, d2: 10, d3: 3, d4: 4 } },
-          { option_zh: "運動傷害（扭傷、拉傷、關節痛）", option_en: "Sports injuries (sprains, strains, joint pain)", scores: { d1: 4, d2: 4, d3: 2, d4: 10 } },
-          { option_zh: "內科調理（消化不良、月經不調、體質調理）", option_en: "Internal medicine (digestive issues, menstrual disorders, body conditioning)", scores: { d1: 1, d2: 3, d3: 10, d4: 2 } },
-          { option_zh: "不確定 / 多種症狀", option_en: "Unsure / Multiple symptoms", scores: { d1: 3, d2: 3, d3: 10, d4: 3 } }
+          { option_zh: "痛症", option_en: "Pain", scores: { d1: 10, d2: 2, d3: 2, d4: 8 } },
+          { option_zh: "與調理", option_en: "Conditioning & Regulation", scores: { d1: 2, d2: 4, d3: 10, d4: 2 } },
+          { option_zh: "感冒", option_en: "Cold / Flu", scores: { d1: 3, d2: 10, d3: 6, d4: 2 } }
         ]
       },
       {

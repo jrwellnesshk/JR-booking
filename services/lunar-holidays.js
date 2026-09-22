@@ -284,9 +284,9 @@ function getHolidayMessage(holiday) {
   const name = holiday.name || '節日';
   
   if (message) {
-    return `【寶天JR祝您】\n${emoji}${name}快樂！\n${message}`;
+    return `【JR祝您】\n${emoji}${name}快樂！\n${message}`;
   } else {
-    return `【寶天JR祝您】\n${emoji}${name}快樂！`;
+    return `【JR祝您】\n${emoji}${name}快樂！`;
   }
 }
 

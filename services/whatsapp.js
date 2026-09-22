@@ -23,6 +23,9 @@ const TWILIO_CONFIG = {
 // 初始化 Twilio 客戶端
 let twilioClient = null;
 
+// 🔗 診所設定（電話 / WhatsApp）— 集中讀取，唔好硬碼
+const clinicSettings = require('./clinicSettings');
+
 const initTwilioClient = () => {
   if (!twilioClient && TWILIO_CONFIG.accountSid !== 'YOUR_ACCOUNT_SID') {
     try {
@@ -118,11 +121,26 @@ const sendWhatsApp = async (to, message, verifyDelivery = true) => {
 
     console.log(`📱 正在發送 WhatsApp 到 ${formattedPhone}...`);
 
-    const result = await client.messages.create({
-      body: message,
-      from: TWILIO_CONFIG.whatsappNumber,
-      to: formattedPhone
-    });
+    // 🔧 Sandbox / 模板模式：Twilio WhatsApp Sandbox 經 API 發起嘅訊息要求用 ContentSid，
+    // 唔接受純 body（會報 "ContentSid Required"）。設咗 TWILIO_CONTENT_SID_DEFAULT 就用 Content Template 發送；
+    // 正式號碼（生產）唔設呢個 env，會自動用返免費 body（24h 內可自由文字）。
+    const defaultContentSid = process.env.TWILIO_CONTENT_SID_DEFAULT;
+    let result;
+    if (defaultContentSid) {
+      result = await client.messages.create({
+        contentSid: defaultContentSid,
+        contentVariables: JSON.stringify({ 1: message }),
+        from: TWILIO_CONFIG.whatsappNumber,
+        to: formattedPhone
+      });
+      console.log(`📤 經 Content Template (${defaultContentSid}) 發送`);
+    } else {
+      result = await client.messages.create({
+        body: message,
+        from: TWILIO_CONFIG.whatsappNumber,
+        to: formattedPhone
+      });
+    }
 
     console.log(`📤 WhatsApp 已提交，SID: ${result.sid}，初始狀態: ${result.status}`);
     
@@ -221,7 +239,7 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
     ? `HK$${servicePrice}\n💳 *已付訂金：* HK$${depositPaid}\n💵 *到診需付：* HK$${remainingAmount}`
     : '請到診所查詢';
   
-  const message = `🏥 *寶天JR - 預約確認*
+  const message = `🏥 *JR - 預約確認*
 
 您好！您的預約已確認 ✅
 
@@ -232,11 +250,11 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
 💰 *服務費用：* ${priceDisplay}
 
 📍 *地址：* 香港島中環德輔道中61-65號華人銀行大廈10樓1002室
-📞 *聯絡電話：* 2555-1136
+📞 *聯絡電話：* ${clinicSettings.getClinicPhone()}
 
 如需更改或取消預約，請登入系統或致電診所。
 
-感謝您選擇寶天JR！🙏`;
+感謝您選擇JR！🙏`;
 
   return await sendWhatsApp(phone, message);
 };
@@ -247,7 +265,7 @@ const sendBookingConfirmationWhatsApp = async (phone, booking) => {
  * @param {object} booking - 預約資訊
  */
 const sendBookingReminderWhatsApp = async (phone, booking) => {
-  const message = `🔔 *寶天JR - 預約提醒*
+  const message = `🔔 *JR - 預約提醒*
 
 您好！提醒您明天有預約：
 
@@ -268,7 +286,7 @@ const sendBookingReminderWhatsApp = async (phone, booking) => {
  * @param {object} booking - 預約資訊
  */
 const sendBookingCancellationWhatsApp = async (phone, booking) => {
-  const message = `📋 *寶天JR - 預約已取消*
+  const message = `📋 *JR - 預約已取消*
 
 您的預約已成功取消：
 
@@ -290,7 +308,7 @@ const sendBookingCancellationWhatsApp = async (phone, booking) => {
  * @param {object} newBooking - 新預約資訊
  */
 const sendBookingUpdateWhatsApp = async (phone, oldBooking, newBooking) => {
-  const message = `📝 *寶天JR - 預約已更改*
+  const message = `📝 *JR - 預約已更改*
 
 您的預約已成功更改：
 

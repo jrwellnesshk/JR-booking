@@ -12,6 +12,8 @@
     "qa:cross": "node scripts/qa-all.js --only=cross",
     "qa:ui": "node scripts/qa-all.js --only=ui",
     "qa:smoke": "node scripts/qa-all.js --only=smoke",
+    "gate:templates": "node scripts/template-balance-gate.cjs",
+    "prepublishOnly": "node scripts/template-balance-gate.cjs",
     "security:audit": "npm audit --omit=dev"
   },
   "keywords": [],

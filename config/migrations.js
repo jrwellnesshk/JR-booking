@@ -429,6 +429,52 @@ function runMigrations(db) {
       else console.log("✅ family_links 表已準備就緒");
     });
 
+    // 會員計劃表（#93）：管理員可設定計劃價錢／簡介，可新增與刪除；官網及會員中心同步讀取
+    // 注意：種子價錢暫設 $0.01 以利測試，正式收費由相關人員喺管理後台自行調整
+    db.run(`
+      CREATE TABLE IF NOT EXISTS membership_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_key TEXT NOT NULL UNIQUE,          -- A / B / C / D（或日後新增）
+        name TEXT NOT NULL,
+        price REAL NOT NULL DEFAULT 0,
+        range_label TEXT DEFAULT '',            -- 人數範圍（如 1-2 人）
+        intro TEXT DEFAULT '',                  -- 計劃簡介
+        features TEXT DEFAULT '[]',             -- 功能清單（JSON 陣列）
+        popular INTEGER NOT NULL DEFAULT 0,
+        sort INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) { console.error("創建 membership_plans 表失敗:", err.message); return; }
+      console.log("✅ membership_plans 表已準備就緒");
+      db.get("SELECT COUNT(*) AS c FROM membership_plans", (e, row) => {
+        if (e || (row && row.c > 0)) return; // 已有資料：唔覆蓋（管理員可能已調整）
+        const seed = [
+          ['A', '家庭帳戶 A', 0.01, '1-2 人', '1–2 位成員的小家庭',
+            JSON.stringify(['一般帳戶全部功能', '家庭帳戶：集中管理家人預約', '子女病歷查看', '家庭單號 JRA 帳單']), 0, 1],
+          ['B', '家庭帳戶 B', 0.01, '3-5 人', '3–5 位成員的三代同堂',
+            JSON.stringify(['A 計劃全部功能', '全家預約／病歷／療程追蹤', '每成員獨立登入管理', '家庭單號 JRB 帳單']), 1, 2],
+          ['C', '家庭帳戶 C', 0.01, '6-9 人', '6–9 位成員的大家庭',
+            JSON.stringify(['B 計劃全部功能', '全家預約／病歷／療程追蹤', '專人協助安排家庭會籍', '家庭單號 JRC 帳單']), 0, 3],
+          ['D', '家庭帳戶 D', 0.01, '10 人以上', '10 位以上成員的跨代大家族',
+            JSON.stringify(['C 計劃全部功能', '不設成員人數上限', '最齊全家庭管理功能', '家庭單號 JRD 帳單']), 0, 4],
+        ];
+        let pending = seed.length;
+        seed.forEach(([key, name, price, range, intro, features, popular, sort]) => {
+          db.run(
+            "INSERT OR IGNORE INTO membership_plans (plan_key, name, price, range_label, intro, features, popular, sort, is_active) VALUES (?,?,?,?,?,?,?,?,'1')",
+            [key, name, price, range, intro, features, popular, sort],
+            (e2) => {
+              if (e2) console.error("種子會員計劃寫入失敗:", e2.message);
+              if (--pending === 0) console.log("✅ 會員計劃種子資料已寫入（測試價 $0.01）");
+            }
+          );
+        });
+      });
+    });
+
     // 通用帳戶連結表（親戚／同輩／朋友，客人自助連結，與 family_links 家庭訂閱分開）
     // user_a / user_b 為無序 pair（細 id 存 user_a），relation 為關係標籤，custom_relation 為「其他」自填
     db.run(`
@@ -489,10 +535,33 @@ function runMigrations(db) {
         invoice_no TEXT UNIQUE NOT NULL,
         family_head_id INTEGER NOT NULL,
         plan TEXT,
+        owner_user_id INTEGER,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(family_head_id) REFERENCES users(id)
       )
-    `, (err) => { if (err) console.error("創建 family_invoices 表失敗:", err.message); else console.log("✅ family_invoices 表已準備就緒"); });
+    `, (err) => {
+      if (err) console.error("創建 family_invoices 表失敗:", err.message);
+      else {
+        console.log("✅ family_invoices 表已準備就緒");
+        // 🏠 輕量版 B：補 owner_user_id（最初付款人，與 family_head_id 拆開，防家庭重組對唔到單）
+        db.all("PRAGMA table_info(family_invoices)", (e2, fcols) => {
+          if (e2 || !fcols) return;
+          if (!fcols.some(c => c.name === 'owner_user_id')) {
+            db.run("ALTER TABLE family_invoices ADD COLUMN owner_user_id INTEGER", (e3) => {
+              if (e3) console.error("family_invoices 加 owner_user_id 失敗:", e3.message);
+              else {
+                console.log("✅ 已添加 family_invoices.owner_user_id 欄位");
+                // 回填：現有張單 owner = 當時 head（即最初付款人）
+                db.run("UPDATE family_invoices SET owner_user_id = family_head_id WHERE owner_user_id IS NULL", (e4) => {
+                  if (e4) console.error("family_invoices 回填 owner_user_id 失敗:", e4.message);
+                  else console.log("✅ family_invoices.owner_user_id 回填完成");
+                });
+              }
+            });
+          }
+        });
+      }
+    });
 
     // users 欄位：會員編號 / 家庭私隱開關 / 家庭計劃
     db.all("PRAGMA table_info(users)", (err, cols) => {
@@ -700,11 +769,29 @@ function runMigrations(db) {
       if (!names.includes('approved_by')) adds.push("ALTER TABLE exceptions ADD COLUMN approved_by INTEGER");
       if (!names.includes('approved_at')) adds.push("ALTER TABLE exceptions ADD COLUMN approved_at TEXT");
       if (!names.includes('notify_customer')) adds.push("ALTER TABLE exceptions ADD COLUMN notify_customer INTEGER DEFAULT 1");
+      if (!names.includes('leave_type')) adds.push("ALTER TABLE exceptions ADD COLUMN leave_type TEXT DEFAULT 'sick'");
       if (!adds.length) return;
       db.serialize(() => {
         adds.forEach(sql => db.run(sql, (e) => { if (e) console.error("exceptions 加欄失敗:", e.message); }));
-        console.log("✅ exceptions 表已加 notified / notified_at / reassigned_to / status / approved_by / approved_at / notify_customer 欄位");
+        console.log("✅ exceptions 表已加 notified / notified_at / reassigned_to / status / approved_by / approved_at / notify_customer / leave_type 欄位");
       });
+    });
+
+    // 🔓 帳戶解鎖紀錄（員工／管理員手動解鎖被鎖定帳戶，留存操作人、時間、對象）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS account_unlock_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor_id INTEGER,
+        actor_name TEXT,
+        actor_role TEXT,
+        target_user_id INTEGER,
+        target_username TEXT,
+        target_role TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) console.error("創建 account_unlock_logs 表失敗:", err.message);
+      else console.log("✅ account_unlock_logs 解鎖紀錄表已準備就緒");
     });
 
     // 診所預設設定（冇先建立）：營業時間 10:00-19:00 / 通知開關 / 公眾註冊閘門
@@ -717,9 +804,12 @@ function runMigrations(db) {
       ['sms_notification_enabled', 'false'],
       ['email_notification_enabled', 'false'],
       ['whatsapp_notification_enabled', 'true'],
+      ['clinic_email', 'admin@jrwellnesshk.com'],
       ['allow_public_registration', 'false'],
       ['vip_rooms', '5'],
-      ['vip_bed_names', '[]']
+      ['vip_bed_names', '[]'],
+      ['clinic_phone', '2555-1136'],
+      ['social_whatsapp', '85291350162']
     ];
     defaultSettings.forEach(([key, value]) => {
       db.get("SELECT id FROM clinic_settings WHERE setting_key=?", [key], (e, row) => {
@@ -729,6 +819,23 @@ function runMigrations(db) {
           else console.log(`✅ 已初始化 clinic_settings.${key} = ${value}`);
         });
       });
+    });
+
+    // 🔧 電話 / WhatsApp 同步修復（BUG-1）：只修正已知舊值，唔會覆蓋管理員刻意改嘅值
+    // 舊值：clinic_phone='00000000'（佔位）、social_whatsapp='91350162'（舊 WhatsApp 數字）
+    db.get("SELECT setting_value FROM clinic_settings WHERE setting_key='clinic_phone'", (e, row) => {
+      if (!e && (!row || !row.setting_value || row.setting_value === '00000000')) {
+        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES ('clinic_phone','2555-1136') ON CONFLICT(setting_key) DO UPDATE SET setting_value='2555-1136', updated_at=CURRENT_TIMESTAMP", (e2) => {
+          if (!e2) console.log('✅ 已修正 clinic_settings.clinic_phone → 2555-1136');
+        });
+      }
+    });
+    db.get("SELECT setting_value FROM clinic_settings WHERE setting_key='social_whatsapp'", (e, row) => {
+      if (!e && (!row || !row.setting_value || row.setting_value === '91350162')) {
+        db.run("INSERT INTO clinic_settings (setting_key, setting_value) VALUES ('social_whatsapp','85291350162') ON CONFLICT(setting_key) DO UPDATE SET setting_value='85291350162', updated_at=CURRENT_TIMESTAMP", (e2) => {
+          if (!e2) console.log('✅ 已修正 clinic_settings.social_whatsapp → 85291350162');
+        });
+      }
     });
 
     // 成功案例庫 (Case Library, 匿名化)
@@ -820,6 +927,7 @@ function runMigrations(db) {
       { name: 'whatsapp_weather', ddl: "ALTER TABLE users ADD COLUMN whatsapp_weather INTEGER DEFAULT 1" },
       { name: 'whatsapp_confirm', ddl: "ALTER TABLE users ADD COLUMN whatsapp_confirm INTEGER DEFAULT 1" },
       { name: 'whatsapp_health', ddl: "ALTER TABLE users ADD COLUMN whatsapp_health INTEGER DEFAULT 1" },
+      { name: 'whatsapp_enabled', ddl: "ALTER TABLE users ADD COLUMN whatsapp_enabled INTEGER DEFAULT 1" },
       { name: 'member_invoice_no', ddl: "ALTER TABLE users ADD COLUMN member_invoice_no TEXT" },
       { name: 'payment_method', ddl: "ALTER TABLE users ADD COLUMN payment_method TEXT" }
     ];

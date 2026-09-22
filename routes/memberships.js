@@ -4,6 +4,9 @@ const rateLimit = require('express-rate-limit');
 // 🔒 分層密碼政策：暫時密碼改用強隨機生成器（混合大小寫 + 數字，符合新政策）
 const { generateTempPassword } = require('../services/passwordPolicy');
 
+// 🔗 診所設定（電話）— 集中讀取，唔好硬碼
+const clinicSettings = require('../services/clinicSettings');
+
 // WhatsApp 服務 - 根據環境變數選擇（子帳戶帳號/暫時密碼經 WhatsApp 發送給家長）
 const whatsappProvider = process.env.WHATSAPP_PROVIDER || 'twilio';
 let whatsappService;
@@ -13,6 +16,101 @@ if (whatsappProvider === 'android') {
   whatsappService = require('../services/whatsapp-360dialog');
 } else {
   whatsappService = require('../services/whatsapp');
+}
+
+// ==================== 關係世代分類器（模塊級，routes 與單元測試共用）====================
+// ⚠️ 關鍵需求：親戚（relation = '親戚' 或含 'relative'）必須獨立於「同輩」(兄弟姊妹/朋友)，
+//    唔可以同層渲染；兄弟姊妹等真正同輩維持原樣。前端關係圖代理 (#19) 應依此分類。
+//   parent   = 上一代（父母）
+//   child    = 下一代（子女）
+//   spouse   = 同層配偶（配偶）
+//   sibling  = 同輩（兄弟 / 姐妹 / 朋友）—— 留喺戶主同一層
+//   relative = 親戚 / 其他連結 —— 非同輩，另置「其他連結 / 第五代」層，唔喺戶主同輩
+// #5：表／堂兄弟姊妹 = 同輩（同戶主一層，連喺戶主左／右邊）；長輩稱謂 = 親戚層（另置）
+const COUSIN_RE = /(表|堂)(兄|弟|姐|妹|哥|姊)/;
+const ELDER_RE = /(姨|姑|舅|伯|叔|嬸|爺|嫲|公|婆|丈|母|父)/;
+// 🆕 配偶字眼（唔係長輩／同輩通用詞，優先判定配偶群組）
+const SPOUSE_RE = /(配偶|丈夫|妻子|老公|老婆|太太|伴侶|夫|妻)/;
+// 🆕 親戚（generic）字眼
+const RELATIVE_RE = /(親戚|親人|relative)/;
+// 🆕 依「具體稱謂」自動判定群組：優先配偶 → 再按世代（GENERATION_OF）歸層。
+//    咁樣哥哥／弟弟／姐姐／妹妹 等具體同輩稱謂會正確落入 sibling（戶主層），
+//    唔會因為冇喺 switch 枚舉而跌落 relative（第五代層）。
+function RELATION_GROUP_OF(relation, customRelation) {
+  const r = String(relation || '').trim();
+  const c = String(customRelation || '').trim();
+  // 配偶優先判定
+  if (SPOUSE_RE.test(r) || SPOUSE_RE.test(c)) return 'spouse';
+  // 系統枚舉「親戚／其他」：實際關係喺 customRelation
+  if (r === '親戚' || r === '其他') {
+    if (COUSIN_RE.test(c)) return 'sibling';
+    if (ELDER_RE.test(c)) return 'relative';
+    // 🆕 自訂具體稱謂：依世代判定（契姐／世姪等未匹配者預設同輩）
+    const cgen = GENERATION_OF(r, c);
+    if (cgen === 1 || cgen === 2) return 'parent';
+    if (cgen === -1 || cgen === -2) return 'child';
+    if (RELATIVE_RE.test(c)) return 'relative';
+    return 'sibling';
+  }
+  // 具體稱謂：依世代（GENERATION_OF）判定群組
+  const gen = GENERATION_OF(r, c);
+  if (gen === 1 || gen === 2) return 'parent';    // 父母輩／祖父母輩 → 上層
+  if (gen === -1 || gen === -2) return 'child';   // 子女輩／孫輩 → 下層
+  if (RELATIVE_RE.test(r) || RELATIVE_RE.test(c)) return 'relative';
+  return 'sibling';                                // 同輩（戶主層）
+}
+// 關係分組 → 家庭樹層級（供前端分層渲染；第 5 層為「其他連結（親戚／朋友）」非同輩）
+const GROUP_TREE_TIER = {
+  parent: 1,    // 第一代 · 上一代
+  spouse: 2,    // 第二代 · 戶主層
+  sibling: 2,   // 同輩 · 戶主層
+  child: 3,     // 第三代 · 子女
+  relative: 5   // 第五代 · 其他連結（非同輩）
+};
+
+// 🆕 世代偏移（相對戶主「本人」，參考華文親屬輩分九族：高祖→玄孫）：
+//   +2 祖父母輩（祖父/祖母/外祖父母/爺嫲/公婆）— 最上層
+//   +1 父母輩（父母 ＋ 伯叔姑舅姨 等父毋兄弟姐妹）— 家豪上面一層
+//    0 同輩（戶主 ＋ 配偶 ＋ 兄弟姊妹 ＋ 朋友 ＋ 表堂）— 家豪同一層
+//   -1 子女輩（子女 ＋ 侄甥）— 家豪下面一層
+//   -2 孫輩（孫/外孫）— 最下層
+//   自訂稱謂（customRelation）優先於系統枚舉（relation）判定世代。
+const GEN_TERMS = {
+  '+2': ['祖父', '祖母', '外祖父', '外祖母', '爺爺', '嫲嫲', '阿公', '阿嬤', '公公', '婆婆', '太公', '太婆', '曾祖父', '曾祖母', '外曾祖父', '外曾祖母', '祖'],
+  '+1': ['父母', '父親', '母親', '爸爸', '媽媽', '阿爸', '阿媽', '老豆', '老母', '父', '母',
+    '伯父', '伯母', '叔父', '嬸母', '姑媽', '姑姐', '姑母', '舅父', '舅母', '姨媽', '姨母', '阿姨',
+    '丈人', '岳父', '岳母', '家公', '家婆', '世伯', '世叔', '公', '婆'],
+  '0': ['配偶', '丈夫', '妻子', '老公', '老婆', '太太', '伴侶', '夫', '妻',
+    '兄弟', '姊妹', '哥哥', '姐姐', '細佬', '家姐', '兄', '弟', '姐', '妹', '嫂', '姐夫', '妹夫',
+    '朋友', '表弟', '表妹', '表哥', '表姐', '堂弟', '堂妹', '堂哥', '堂姐'],
+  '-1': ['子女', '兒子', '女兒', '仔', '囡', '子', '息', '姪', '姪子', '姪女', '外甥', '外甥女'],
+  '-2': ['孫', '孫子', '孫女', '孫兒', '外孫', '外孫女'],
+};
+function GENERATION_OF(relation, customRelation) {
+  const r = String(relation || '').trim();
+  const c = String(customRelation || '').trim();
+  const text = c || r; // 自訂稱謂優先
+  // 先查具體詞表：上層（＋2）→ 下下層（−2）→ 父母輩（＋1）→ 子女輩（−1）→ 同輩（0）
+  if (GEN_TERMS['+2'].some(t => text.includes(t))) return 2;
+  if (GEN_TERMS['-2'].some(t => text.includes(t))) return -2;
+  if (GEN_TERMS['+1'].some(t => text.includes(t))) return 1;
+  if (GEN_TERMS['-1'].some(t => text.includes(t))) return -1;
+  if (GEN_TERMS['0'].some(t => text.includes(t))) return 0;
+  // 系統枚舉兜底
+  switch (r) {
+    case '父母': return 1;
+    case '子女': return -1;
+    case '配偶': case '兄弟': case '姐妹': case '朋友': return 0;
+    case '親戚': case '其他': return 0; // 無自訂稱謂：預設同輩（家豪隔籬）
+    default: return 0;
+  }
+}
+
+// 統一對外：輸出 relationGroup / treeTier / generation，前端 (#19) 唔使再自己估關係
+function classifyLink(relation, customRelation) {
+  const relationGroup = RELATION_GROUP_OF(relation, customRelation);
+  const generation = GENERATION_OF(relation, customRelation);
+  return { relationGroup, treeTier: GROUP_TREE_TIER[relationGroup], generation };
 }
 
 // ==================== 會員訂閱 / 家庭帳戶 / Stripe 支付 ====================
@@ -77,9 +175,47 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   const PLAN_MAX = { A: 2, B: 5, C: 9, D: Infinity };
   const nextPlanOf = (p) => (p === 'A' ? 'B' : p === 'B' ? 'C' : p === 'C' ? 'D' : null);
 
-  // 💰 各家庭計劃月費（用家 2026-09-15 提供：A 8,800 / B 12,800 / C 16,800 / D 20,800）
+  // 💰 各家庭計劃月費（#93 起以 membership_plans 表為真源，fallback 返原硬編碼價）
+  //    用家 2026-09-15 提供：A 8,800 / B 12,800 / C 16,800 / D 20,800；種子暫設 $0.01 以利測試
   const PLAN_PRICE = { A: 8800, B: 12800, C: 16800, D: 20800 };
-  const familyPlanPrice = (plan) => PLAN_PRICE[plan] != null ? PLAN_PRICE[plan] : PLAN_PRICE.A;
+  // 計劃價錢快取（30 秒 TTL；管理員改價後最遲 30 秒生效）
+  let _planPriceMap = null, _planPriceMapAt = 0;
+  async function planPriceMap() {
+    if (_planPriceMap && Date.now() - _planPriceMapAt < 30000) return _planPriceMap;
+    try {
+      const rows = await q("SELECT plan_key, price FROM membership_plans WHERE is_active=1");
+      const m = {};
+      (rows || []).forEach((r) => { m[String(r.plan_key).toUpperCase()] = Number(r.price); });
+      if (Object.keys(m).length) { _planPriceMap = m; _planPriceMapAt = Date.now(); return m; }
+    } catch (e) { /* 表未建立：用 fallback */ }
+    return PLAN_PRICE;
+  }
+  const familyPlanPrice = async (plan) => {
+    const m = await planPriceMap();
+    const p = String(plan || 'A').toUpperCase();
+    if (m[p] != null) return m[p];
+    return PLAN_PRICE[p] != null ? PLAN_PRICE[p] : PLAN_PRICE.A;
+  };
+
+  // ==================== 會員計劃（#93：管理員設定價錢／簡介，官網同步）====================
+  const parsePlanRow = (r) => ({
+    ...r,
+    price: Number(r.price),
+    features: (() => { try { return JSON.parse(r.features || '[]'); } catch (e) { return []; } })(),
+    popular: !!Number(r.popular),
+    is_active: !!Number(r.is_active),
+  });
+
+  // 公開：官網價錢頁／會員中心讀取生效中計劃（按 sort 排序）
+  router.get('/plans', async (req, res) => {
+    try {
+      const rows = await q("SELECT * FROM membership_plans WHERE is_active=1 ORDER BY sort, id");
+      res.json({ ok: true, plans: rows.map(parsePlanRow) });
+    } catch (e) {
+      console.error('載入會員計劃失敗:', e.message);
+      res.status(500).json({ error: '無法載入會員計劃' });
+    }
+  });
 
   // 📋 各計劃人數描述（前後端共用，避免 UI 硬編碼走樣）
   const PLAN_RANGE_LABEL = { A: '1-2 人', B: '3-5 人', C: '6-9 人', D: '10 人以上' };
@@ -129,6 +265,24 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     return prefix + '-' + (maxRow.m + 1);
   }
 
+  // 🧾 輕量版 B：將收款單號同步去 Stripe subscription metadata（付款人 = owner），方便後台對數。
+  //   owner 可能 ≠ 現時 head（家庭重組後），所以用張單嘅 owner_user_id 拎付款人嘅 stripe_subscription_id。
+  async function syncStripeInvoiceMeta(headId, invoiceNo) {
+    try {
+      const inv = await q1("SELECT owner_user_id FROM family_invoices WHERE family_head_id=? ORDER BY id DESC LIMIT 1", [headId]);
+      const ownerId = (inv && inv.owner_user_id) || headId;
+      const u = await q1("SELECT stripe_subscription_id FROM users WHERE id=?", [ownerId]);
+      const subId = u && u.stripe_subscription_id;
+      if (!subId) return;
+      const stripe = getStripe();
+      if (!stripe) return;
+      await stripe.subscriptions.update(subId, { metadata: { invoice_no: invoiceNo } });
+    } catch (e) {
+      // 對數 metadata 失敗唔影響主流程（付款 / 升級照常）
+      console.error('syncStripeInvoiceMeta 失敗:', e && e.message);
+    }
+  }
+
   async function syncFamilyPlan(headId) {
     const { total, plan: derived } = await computeFamilyPlan(headId);
     const cur = await q1("SELECT family_plan FROM users WHERE id=?", [headId]);
@@ -136,11 +290,15 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     // 計劃只會升唔會降：取「按人數推」同「已升級 plan」嘅較高者（用家升級後唔會因加人少而變返低）
     const plan = PLAN_ORDER[derived] >= PLAN_ORDER[curPlan] ? derived : curPlan;
     await run("UPDATE users SET family_plan=? WHERE id=?", [plan, headId]);
-    const exist = await q1("SELECT id, invoice_no FROM family_invoices WHERE family_head_id=?", [headId]);
+    const exist = await q1("SELECT id, invoice_no, owner_user_id FROM family_invoices WHERE family_head_id=?", [headId]);
     const desiredPrefix = familyInvoicePrefix(plan);
+    let finalNo = exist && exist.invoice_no;
+    let touched = false; // 張單號有冇新建 / 改 prefix（A→B）→ 決定要唔要同步去 Stripe metadata
     if (!exist) {
       const nextNo = await nextFamilyInvoiceNo(plan);
-      await run("INSERT INTO family_invoices (invoice_no, family_head_id, plan) VALUES (?,?,?)", [nextNo, headId, plan]);
+      // 🏠 輕量版 B：owner_user_id = 最初付款人（= 建立時嘅 head），與 family_head_id 拆開
+      await run("INSERT INTO family_invoices (invoice_no, family_head_id, plan, owner_user_id) VALUES (?,?,?,?)", [nextNo, headId, plan, headId]);
+      finalNo = nextNo; touched = true;
     } else if (!exist.invoice_no || !String(exist.invoice_no).startsWith(desiredPrefix + '-')) {
       // 計劃改變（A→B→C）→ 換返對應 prefix，維持同一張單（同一順序段，避免撞號）
       const numStart = String(exist.invoice_no).indexOf('-') + 1;
@@ -149,10 +307,13 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const dup = await q1("SELECT id FROM family_invoices WHERE invoice_no=? AND family_head_id<>?", [nextNo, headId]);
       if (dup) nextNo = await nextFamilyInvoiceNo(plan);
       await run("UPDATE family_invoices SET plan=?, invoice_no=? WHERE family_head_id=?", [plan, nextNo, headId]);
+      finalNo = nextNo; touched = true;
     } else {
       await run("UPDATE family_invoices SET plan=? WHERE family_head_id=?", [plan, headId]);
     }
-    return { plan, total };
+    // 🧾 輕量版 B：張單號新建 / 改 prefix（A→B）時，同步去 Stripe subscription metadata（對數用）
+    if (touched && finalNo) await syncStripeInvoiceMeta(headId, finalNo);
+    return { plan, total, invoiceNo: finalNo };
   }
 
   // 🔒 家庭計劃加人上限檢查：返回是否封鎖 + 當前計劃 + 下一個計劃
@@ -176,6 +337,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   //   子帳戶   = M  + 方案字母 + 電話末 4 碼（如 MA1234）
   //   一般帳戶 = JR + 電話末 4 碼（如 JR1234）
   // 前綴按 family_head_id 決定：=自己→主帳戶；=其他人→子帳戶（用該戶主嘅方案字母）；null/非家庭→一般
+  // 💡 此為「會員編號」(member_no)，與 admin.js 嘅 resolveInvoiceNo()「收款單號」(JRA-/MEM-) 係兩套完全不同嘅編號，命名相近易淆。
   const planLetter = (p) => (PLAN_ORDER[p] != null ? p : 'A');
   async function recomputeMemberNo(userId) {
     const u = await q1("SELECT id, phone, family_head_id, family_plan, member_no FROM users WHERE id=?", [userId]);
@@ -210,25 +372,51 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     await run("INSERT INTO subscriptions (user_id, tier, status, start_date, end_date, payment_id) VALUES (?,?,?,?,?,?)",
       [userId, tier, 'active', start, end, paymentId || null]);
     await run("UPDATE users SET membership_tier=? WHERE id=?", [tier, userId]);
+    // 🏠 舊式一次性付款升級家庭會員：同樣自動成為主帳戶（保持與月費路徑一致）
+    if (tier === 'family') {
+      await run("UPDATE users SET family_head_id=? WHERE id=? AND family_head_id IS NULL", [userId, userId]);
+      await recomputeMemberNo(userId);
+    }
   };
 
   // 🔁 取得/建立 Stripe 月費 Price（lookup_key 冪等；或讀取 .env 指定 price id）
-  const getOrCreatePrice = async (stripe, tier) => {
+  //    #93 修復：收錢價錢 = membership_plans 表真源（Admin 改價即生效），唔再用 TIER_INFO.family.price hardcode
+  //    家庭計劃按 A/B/C/D 各自獨立 lookup_key + 各自獨立 Stripe Price（唔可以共用一條）
+  const getOrCreatePrice = async (stripe, tier, plan) => {
     const info = TIER_INFO[tier];
     if (!info) throw new Error('無效會員級別');
     const envKey = process.env['STRIPE_PRICE_' + tier.toUpperCase()];
-    if (envKey) return envKey;
-    const lookupKey = `bw_membership_${tier}_monthly`;
-    const list = await stripe.prices.list({ lookup_key: lookupKey, active: true, limit: 1 });
-    if (list.data && list.data.length) return list.data[0].id;
-    const product = await stripe.products.create({ name: `寶天JR ${info.name}`, metadata: { tier } });
+    if (envKey) return envKey; // 手動指定 price id 優先（部署後可固定）
+    // 家庭計劃：按所選 A/B/C/D 各自計價（價錢嚟自 membership_plans 表）
+    let lookupKey, targetPriceHkd;
+    if (tier === 'family' && plan) {
+      lookupKey = `bw_membership_family_${plan}_monthly`;
+      targetPriceHkd = await familyPlanPrice(plan); // 來自 membership_plans 表（Admin 可改）
+    } else {
+      lookupKey = `bw_membership_${tier}_monthly`;
+      targetPriceHkd = info.price;
+    }
+    const unitAmount = Math.round(Number(targetPriceHkd) * 100);
+    if (!unitAmount || unitAmount <= 0) throw new Error('計劃價錢無效（必須大於 0）');
+    const list = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 10 });
+    // 搵金額啱嘅（Admin 改價後會建新版，舊版停用）→ 確保收嘅錢 == 表入面嘅價
+    const match = (list.data || []).find((p) => p.unit_amount === unitAmount);
+    if (match) return match.id;
+    // 金額唔啱（Admin 改咗價）：停用舊 price，建新 price 反映新價
+    for (const old of (list.data || [])) {
+      try { await stripe.prices.update(old.id, { active: false }); } catch (e) { /* 已停用就當搞掂 */ }
+    }
+    const product = await stripe.products.create({
+      name: `JR ${info.name}${tier === 'family' ? ` 計劃 ${plan}` : ''}`,
+      metadata: { tier, plan: plan || '' }
+    });
     const price = await stripe.prices.create({
       currency: 'hkd',
-      unit_amount: info.price * 100,
+      unit_amount: unitAmount,
       recurring: { interval: 'month' },
       product: product.id,
       lookup_key: lookupKey,
-      nickname: info.name
+      nickname: info.name + (tier === 'family' ? ` ${plan}` : '')
     });
     return price.id;
   };
@@ -258,6 +446,16 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     await run(
       "UPDATE users SET membership_tier=?, stripe_subscription_id=?, stripe_customer_id=COALESCE(?, stripe_customer_id), subscription_status='active' WHERE id=?",
       [tier, stripeSubId || null, stripeCustomerId || null, userId]);
+    // 🏠 升級家庭會員：若仍未綁任何家庭角色，自動成為主帳戶（戶主）
+    //    （已係人哋子帳戶者 family_head_id 指向其他人 → 唔會被搶走現有家庭關係）
+    if (tier === 'family') {
+      await run("UPDATE users SET family_head_id=? WHERE id=? AND family_head_id IS NULL", [userId, userId]);
+      // 會員編號即時計返 S 前綴（主帳戶），對齊 apply-family / migrations 規則
+      await recomputeMemberNo(userId);
+      // 🧾 升級家庭會員即同步生成家庭單號（JRA/B/C/D）— 付款跟張單號，唔係跟帳戶：
+      //   頭嘅 Stripe 訂閱經 family_invoices.family_head_id 對返呢張單，成個家庭一張單一個付款人
+      await syncFamilyPlan(userId);
+    }
     await run("UPDATE subscriptions SET status='replaced' WHERE user_id=? AND status='active'", [userId]);
     await run("INSERT INTO subscriptions (user_id, tier, status, start_date, end_date, payment_id) VALUES (?,?,?,?,?,?)",
       [userId, tier, 'active', start, end, stripeSubId || null]);
@@ -278,6 +476,9 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
     await run("UPDATE subscriptions SET status='cancelled' WHERE user_id=? AND status='active'", [user.id]);
     await run("UPDATE users SET membership_tier='general', stripe_subscription_id=NULL, subscription_status='canceled' WHERE id=?", [user.id]);
+    // 🔢 取消後：家庭連結已解除（family_head_id 清返 NULL）→ 會員編號計返 JR 前綴，
+    //    避免殘留 S 前綴扮仲係主帳戶（子女由 detachAllChildren 同樣會喺下次開機 migration 重算）
+    await recomputeMemberNo(user.id);
     return detached;
   };
 
@@ -289,9 +490,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     try {
       const user = req.user;
       const tier = user.membership_tier || 'general';
-      const subStatusRow = await q1("SELECT subscription_status, member_no, family_plan FROM users WHERE id=?", [user.id]);
+      const subStatusRow = await q1("SELECT subscription_status, member_no, family_plan, member_invoice_no FROM users WHERE id=?", [user.id]);
       const subStatus = (subStatusRow && subStatusRow.subscription_status) || 'none';
       const memberNo = (subStatusRow && subStatusRow.member_no) || '';
+      // #14：賬單編號（MEM-xxxx），會員中心會員編號旁邊顯示
+      const invoiceNo = (subStatusRow && subStatusRow.member_invoice_no) || '';
       // 🔢 顯示計劃以「存儲 vs 實際人數」較高者為準（計劃只升唔降，避免 legacy/seed 未同步數據顯示偏低）
       const storedPlan = (subStatusRow && subStatusRow.family_plan) || 'A';
       const { plan: derivedPlan } = await computeFamilyPlan(user.id);
@@ -334,6 +537,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         insurance: Number(user.insurance_covered) === 1,
         profile_completed: user.profile_completed,
         memberNo,
+        invoiceNo,
         familyPlan
       });
     } catch (e) {
@@ -350,7 +554,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // POST /api/membership/checkout — 建立 Stripe Checkout Session（Subscription 模式，每月自動扣款）
   router.post('/checkout', requireAuth, async (req, res) => {
     const { tier, plan } = req.body || {};
-    if (!['premium', 'family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
+    if (!['family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
     const user = req.user;
     const stripe = getStripe();
     if (!stripe) {
@@ -387,7 +591,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         }
       }
       const customerId = await getOrCreateCustomer(stripe, fullUser);
-      const priceId = await getOrCreatePrice(stripe, tier);
+      const priceId = await getOrCreatePrice(stripe, tier, chosenPlan); // #93 修復：家庭按 A/B/C/D 各自價錢（來自 membership_plans 表）
       const baseUrl = process.env.SITE_URL || `http://localhost:${process.env.PORT || 4000}`;
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
@@ -606,13 +810,13 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         // 非 8 位（國際號碼）保持原樣，交由 WhatsApp 服務處理
       }
       const message = [
-        `【寶天JR】${title}`,
+        `【JR】${title}`,
         '',
         `成員姓名：${childName}`,
         `登入帳戶：${username}`,
         `暫時密碼：${tempPassword}`,
         '',
-        '首次登入後請立即修改密碼。如對此訊息有疑問，請致電 2555-1136 與職員聯絡。'
+        `首次登入後請立即修改密碼。如對此訊息有疑問，請致電 ${clinicSettings.getClinicPhone()} 與職員聯絡。`
       ].join('\n');
       const r = await whatsappService.sendWhatsApp(formatted, message);
       result.whatsapp = !!(r && r.success);
@@ -1152,12 +1356,12 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   router.get('/admin/tree', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     try {
       const heads = await q(
-        `SELECT u.id, u.name, u.username, u.membership_tier FROM users u
+        `SELECT u.id, u.name, u.username, u.membership_tier, u.avatar AS avatar_url FROM users u
          WHERE u.family_head_id IS NOT NULL AND u.family_head_id = u.id`);
       const tree = [];
       for (const h of heads) {
         const members = await q(
-          `SELECT u.id, u.name, u.username, u.phone, u.birth_date, u.membership_tier,
+          `SELECT u.id, u.name, u.username, u.phone, u.birth_date, u.membership_tier, u.avatar AS avatar_url,
              (SELECT COUNT(*) FROM bookings b WHERE b.user_id = u.id) AS booking_count
            FROM family_links fl JOIN users u ON u.id = fl.child_user_id
            WHERE fl.parent_user_id=?`, [h.id]);
@@ -1214,9 +1418,14 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         const other = await q1(
           `SELECT id, name, username, avatar, membership_tier FROM users WHERE id=?`, [otherId]);
         if (!other) continue;
+        // 🆕 統一世代分類：親戚(relative) 與 同輩(sibling) 分開 group，唔可以同層
+        const cls = classifyLink(lr.relation, lr.custom_relation);
         links.push({
           link_id: lr.id, from_user_id: fromId,
           relation: lr.custom_relation || lr.relation,
+          relationGroup: cls.relationGroup,
+          treeTier: cls.treeTier,
+          generation: cls.generation,
           other,
         });
       }
@@ -1252,7 +1461,19 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 與 family_links（家庭訂閱父→子）分開：account_links 係通用關係圖（親戚／同輩／朋友）。
   // 注意：連結後會按用戶第 5 項需求將雙方升 family 會籍（見下方 POST /account-links 實作 :923-936），
   // 故 account_links 實際會影響會員級別（一般帳戶本身已可使用全部服務，升 family 主要係家庭計劃／帳單語義）。
-  const RELATION_PRESETS = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
+  // 🆕 擴充：涵蓋所有具體稱謂（哥哥／弟弟／姐姐／妹妹、父親／母親、祖父／祖母、兒子／女兒、伯父／叔父／姑媽／舅父／姨媽、孫子／孫女…），
+  //    前端下拉按輩分分組提供；後端驗證同錯誤訊息一併放寬。
+  const RELATION_PRESETS = [
+    '父母', '父親', '母親', '子女', '兒子', '女兒',
+    '配偶', '丈夫', '妻子',
+    '兄弟', '哥哥', '弟弟', '姐姐', '妹妹', '姐妹', '朋友',
+    '祖父', '祖母', '外祖父', '外祖母',
+    '伯父', '叔父', '姑媽', '姑姐', '姑母', '舅父', '姨媽', '嬸母', '舅母', '姨母', '阿姨',
+    '表哥', '表姐', '表弟', '表妹', '堂哥', '堂姐', '堂弟', '堂妹',
+    '姪子', '姪女', '外甥', '外甥女',
+    '孫子', '孫女', '外孫', '外孫女',
+    '親戚', '其他'
+  ];
   // 無序 pair：細 id → user_a，大 id → user_b，保證 (A,B) 唯一
   const normalizePair = (x, y) => (Number(x) < Number(y) ? [Number(x), Number(y)] : [Number(y), Number(x)]);
   // 判斷 caller 能否以 fromUserId 身份連結（admin/staff 任意；家庭戶主可代自己或子女）
@@ -1404,7 +1625,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       await syncFamilyPlan(user.id);
       // 🔢 編號內含方案字母（SA→SB…），升級後要重算全家會員編號
       await recomputeFamilyMemberNos(user.id);
-      res.json({ ok: true, plan: nxt, price: familyPlanPrice(nxt), message: `已升級至家庭計劃 ${nxt}` });
+      res.json({ ok: true, plan: nxt, price: await familyPlanPrice(nxt), message: `已升級至家庭計劃 ${nxt}` });
     } catch (e) {
       console.error('升級家庭計劃失敗:', e);
       res.status(500).json({ error: '升級失敗' });
@@ -1422,21 +1643,30 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
         viewId = Number(req.query.userId);
       }
       const rows = await q(
-        `        SELECT l.id, l.relation, l.custom_relation, l.initiated_by,
+        // #5：原本只揀 l.custom_relation（snake_case），下面 map 卻讀 r.customRelation →
+        //      永遠 undefined，導致關係圖一律 fallback 顯示「親戚」。補 alias。
+        // #17b：順便帶埋頭像 url，等關係圖同客人頭像同步。
+        `SELECT l.id, l.relation, l.custom_relation AS customRelation, l.initiated_by,
                 CASE WHEN l.user_a=? THEN l.user_b ELSE l.user_a END AS other_id,
-                u.name, u.username, u.membership_tier, u.role
+                u.name, u.username, u.avatar AS avatar_url, u.membership_tier, u.role
          FROM account_links l
          JOIN users u ON u.id = (CASE WHEN l.user_a=? THEN l.user_b ELSE l.user_a END)
          WHERE l.user_a=? OR l.user_b=?
          ORDER BY l.created_at DESC`,
         [viewId, viewId, viewId, viewId]);
-      const links = rows.map(r => ({
-        id: r.id,
-        relation: r.relation,
-        customRelation: r.customRelation,
-        other: { id: r.other_id, name: r.name, username: r.username, avatar_url: r.avatar_url, membership_tier: r.membership_tier, role: r.role },
-        isSelfInitiated: Number(r.initiated_by) === Number(viewId)
-      }));
+      const links = rows.map(r => {
+        // 🆕 統一世代分類：親戚(relative) 與 同輩(sibling) 分開 group，供前端關係圖 (#19) 渲染
+        const cls = classifyLink(r.relation, r.customRelation);
+        return {
+          id: r.id,
+          relation: r.relation,
+          customRelation: r.customRelation,
+          relationGroup: cls.relationGroup,
+          treeTier: cls.treeTier,
+          other: { id: r.other_id, name: r.name, username: r.username, avatar_url: r.avatar_url, membership_tier: r.membership_tier, role: r.role },
+          isSelfInitiated: Number(r.initiated_by) === Number(viewId)
+        };
+      });
       res.json({ links });
     } catch (e) {
       console.error('讀取連結失敗:', e);
@@ -1474,12 +1704,13 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       if (!allowed) return res.status(403).json({ error: '沒有權限移除該連結' });
       await run("DELETE FROM account_links WHERE id=?", [linkId]);
       // 保守還原：若雙方已無任何連結（account_links + family_links 皆空），將 membership_tier 退回 general
+      // 🔧 同步清走 family_head_id（「一連即轉」曾將對方綁入家庭，唔清會「已解除仍顯示家庭帳戶」）
       for (const pid of [link.user_a, link.user_b]) {
         const remain = await q1(
           "SELECT 1 FROM account_links WHERE user_a=? OR user_b=? UNION SELECT 1 FROM family_links WHERE parent_user_id=? OR child_user_id=?",
           [pid, pid, pid, pid]);
         if (!remain) {
-          await run("UPDATE users SET membership_tier='general' WHERE id=? AND membership_tier='family'", [pid]);
+          await run("UPDATE users SET membership_tier='general', family_head_id=NULL WHERE id=? AND membership_tier='family'", [pid]);
         } else {
           // 仲有連結 → 重算計劃（人數可能縮減到另一個計劃）
           const row = await q1("SELECT id, family_head_id, membership_tier FROM users WHERE id=?", [pid]);
@@ -1574,7 +1805,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 客戶自助升級一律經 Stripe；呢個端點只係補返離線收款嘅通道
   router.post('/confirm', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     const { tier, userId } = req.body || {};
-    if (!['premium', 'family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
+    if (!['family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
     const targetId = userId ? Number(userId) : req.user.id;
     try {
       const target = await q1("SELECT id FROM users WHERE id=?", [targetId]);
@@ -1592,7 +1823,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 🔒 職員操作必須附自己登入密碼二次驗證；管理員免
   router.post('/change', requireAuth, requireRole('staff', 'admin'), async (req, res) => {
     const { userId, username, tier, adminPassword } = req.body || {};
-    if (!['general', 'premium', 'family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
+    if (!['general', 'family'].includes(tier)) return res.status(400).json({ error: '無效的會員級別' });
     if (req.user.role === 'staff') {
       if (!adminPassword) return res.status(400).json({ error: '此操作需要輸入你嘅職員登入密碼確認', requiresVerification: true });
       const me = await q1("SELECT password FROM users WHERE id=?", [req.user.id]);
@@ -1707,5 +1938,11 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     }
   });
 
-  return router;
+  return { router, recomputeMemberNo, recomputeFamilyMemberNos };
 };
+
+// 🆕 匯出關係世代分類器：供單元測試及前端關係圖代理 (#19) 共用，統一「親戚非同輩」分類
+module.exports.RELATION_GROUP_OF = RELATION_GROUP_OF;
+module.exports.GENERATION_OF = GENERATION_OF;
+module.exports.GROUP_TREE_TIER = GROUP_TREE_TIER;
+module.exports.classifyLink = classifyLink;

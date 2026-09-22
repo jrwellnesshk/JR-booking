@@ -1,4 +1,4 @@
-const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextTick } = Vue;
 
       // API 基礎 URL
       const API_URL = "/api";
@@ -15,11 +15,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           // ===== 🌐 多語言 i18n 基建（繁中 + 英文）=====
           // 字典 key = 中文原文，繁中直接 fallback 顯示 key；英文查 window.I18N_EN
           const I18N_EN = (typeof window !== 'undefined' && window.I18N_EN) || {};
-          const SUPPORTED_LANGS = ['zh-TW', 'en'];
-          const lang = ref(
-            (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) ||
-            'zh-TW'
-          );
+          // #8：加簡體（zh-CN）
+          const SUPPORTED_LANGS = ['zh-TW', 'en', 'zh-CN'];
+          // 同 js/i18n-runtime.js 共用同一個 reactive ref，確保兩個 runtime 嘅語言狀態一致
+          const lang = (typeof window !== 'undefined' && window.__i18nLang)
+            ? window.__i18nLang
+            : ref(
+              (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) ||
+              'zh-TW'
+            );
           if (!SUPPORTED_LANGS.includes(lang.value)) lang.value = 'zh-TW';
           try {
             document.body.classList.toggle('lang-en', lang.value === 'en');
@@ -31,12 +35,27 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const menuOpen = ref(false);
           const toggleMenu = () => { menuOpen.value = !menuOpen.value; };
           const closeMenu = () => { menuOpen.value = false; };
+          // BUG-1 修復：診所電話動態同步（管理員改 clinic_settings 後全站即時反映）。
+          // 用 let 頂層變數，避開 siteSocial 嘅 TDZ（t() 喺 setup 早期 syncHeadI18n 已被調用）。
+          let _clinicPhone = '2555-1136';
           function t(key) {
             if (key == null) return key;
-            if (lang.value === 'en' && I18N_EN[key] != null) return I18N_EN[key];
+            // #8：讀 convTick 建立響應式依賴 —— 繁→簡轉換器載入完會自動重渲
+            if (typeof window !== 'undefined' && window.__i18nConvTick) void window.__i18nConvTick.value;
+            if (lang.value === 'en' && I18N_EN[key] != null) return syncPhone(I18N_EN[key]);
+            // #8：簡體 → 中文經 opencc 轉簡（nav-only key 去 namespace，與 i18n-runtime.js 一致）
+            if (lang.value === 'zh-CN' && typeof window !== 'undefined' && typeof window.toSimplified === 'function') {
+              const cleanKey = (typeof key === 'string' && key.startsWith('nav.')) ? key.slice(4) : key;
+              return syncPhone(window.toSimplified(cleanKey));
+            }
             // 繁中 fallback：key 本身即中文；nav-only key 去 namespace 返中文基底（如 nav.服務 → 服務）
             if (typeof key === 'string' && key.startsWith('nav.')) return key.slice(4);
-            return key;
+            return syncPhone(key);
+          }
+          // 將硬碼電話（主號 2555-1136 / 舊號 2577 0001）替換成後台設定嘅 clinic_phone
+          function syncPhone(s) {
+            if (typeof s !== 'string') return s;
+            return s.replace(/2555-1136/g, _clinicPhone).replace(/2577 0001/g, _clinicPhone);
           }
           // 星期短標籤（日曆表頭用）
           const weekdayShort = (i) => (lang.value === 'en'
@@ -48,44 +67,47 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const monthTitle = (year, month) => (lang.value === 'en'
             ? ((MONTHS_EN[Number(month) - 1] || month) + ' ' + year)
             : (year + ' 年 ' + String(month).padStart(2, '0') + ' 月'));
-          function setLang(l) {
-            if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
-            lang.value = l;
-            try { localStorage.setItem('lang', l); } catch (e) {}
+          // 同步 <title>／meta（佢哋喺 <head>，Vue 唔會編譯，要手動更新）
+          function syncHeadI18n() {
+            if (typeof document === 'undefined') return;
             try {
-              document.body.classList.toggle('lang-en', l === 'en');
-              document.body.classList.toggle('lang-zh', l !== 'en');
-            } catch (e) {}
-            if (typeof document !== 'undefined') {
-              document.documentElement.lang = l === 'en' ? 'en' : 'zh-TW';
-              // 同步 <title> 同 meta 標籤（佢哋喺 <head>，Vue 唔會編譯）
-              try {
-                document.title = t('寶天JR');
-                const metaDesc = document.querySelector('meta[name="description"]');
-                if (metaDesc) metaDesc.content = t('寶天JR網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
-                const ogTitle = document.querySelector('meta[property="og:title"]');
-                if (ogTitle) ogTitle.content = t('寶天JR');
-                const ogDesc = document.querySelector('meta[property="og:description"]');
-                if (ogDesc) ogDesc.content = t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認');
-                const ogLocale = document.querySelector('meta[property="og:locale"]');
-                if (ogLocale) ogLocale.content = l === 'en' ? 'en_HK' : 'zh_HK';
-              } catch (e) {}
-            }
-          }
-          // 啟動時同步 <html lang> 同 <title>/meta
-          if (typeof document !== 'undefined') {
-            document.documentElement.lang = lang.value === 'en' ? 'en' : 'zh-TW';
-            try {
-              document.title = t('寶天JR');
+              document.title = t('JR');
               const metaDesc = document.querySelector('meta[name="description"]');
-              if (metaDesc) metaDesc.content = t('寶天JR網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
+              if (metaDesc) metaDesc.content = t('JR網上預約平台。資深中醫師駐診，提供針灸、推拿、內科調理及體質分析；會員可管理家庭成員預約與病歷，WhatsApp 實時通知。');
               const ogTitle = document.querySelector('meta[property="og:title"]');
-              if (ogTitle) ogTitle.content = t('寶天JR');
+              if (ogTitle) ogTitle.content = t('JR');
               const ogDesc = document.querySelector('meta[property="og:description"]');
               if (ogDesc) ogDesc.content = t('資深中醫師駐診 · 網上即時預約 · 家庭成員健康管理 · WhatsApp 預約確認');
               const ogLocale = document.querySelector('meta[property="og:locale"]');
               if (ogLocale) ogLocale.content = lang.value === 'en' ? 'en_HK' : 'zh_HK';
             } catch (e) {}
+          }
+          function setLang(l) {
+            if (!SUPPORTED_LANGS.includes(l)) l = 'zh-TW';
+            // #8：交畀共享 runtime 處理（佢識得喺簡體模式先 lazily load 轉換器）
+            if (typeof window !== 'undefined' && typeof window.setLang === 'function') {
+              window.setLang(l);
+            } else {
+              lang.value = l;
+              try { localStorage.setItem('lang', l); } catch (e) {}
+            }
+            try {
+              document.documentElement.lang = l === 'en' ? 'en' : (l === 'zh-CN' ? 'zh-CN' : 'zh-TW');
+            } catch (e) {}
+            syncHeadI18n();
+            // 簡體轉換器可能仲喺載入中，載完再補一次 title/meta
+            if (l === 'zh-CN' && typeof window !== 'undefined' && typeof window.loadT2S === 'function') {
+              window.loadT2S().then(syncHeadI18n).catch(function () {});
+            }
+          }
+          // 啟動時同步 <html lang> 同 <title>/meta
+          if (typeof document !== 'undefined') {
+            document.documentElement.lang = lang.value === 'en' ? 'en' : (lang.value === 'zh-CN' ? 'zh-CN' : 'zh-TW');
+            syncHeadI18n();
+            // #8：記住咗簡體要預先載入轉換器，載完刷新 title/meta
+            if (lang.value === 'zh-CN' && typeof window !== 'undefined' && typeof window.loadT2S === 'function') {
+              window.loadT2S().then(syncHeadI18n).catch(function () {});
+            }
           }
           // 資料定義（預設資料）
           const DOCTORS = ref([
@@ -130,7 +152,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
           // 服務可約清單（功能3，2026-09-14）：
           // - 訪客：只見「初體驗」（後端亦只准訪客約初體驗）
-          // - 會員（一般／高級／家庭）：全部治療服務；「初體驗」僅限訪客
+          // - 會員（一般／家庭）：全部治療服務；「初體驗」僅限訪客
           const bookableServices = computed(() => {
             if (!currentMember.value) return SERVICES.value.filter(s => /初體驗/.test(s.name || ""));
             return SERVICES.value.filter(s => !/初體驗/.test(s.name || ""));
@@ -145,6 +167,23 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const openMonths = ref([]); // 開放預約的月份列表 (格式: ['2025-02', '2025-03'])
           const customClosedDates = ref([]); // 自訂額外休息日列表 (格式: ['2025-02-01', '2025-03-15'])
           const customOpenDates = ref([]); // 自訂額外營業日列表 (格式: ['2025-02-05'])
+
+          // #26：判斷某月份是否開放預約。
+          // 語義必須與後端 routes/bookings.js 一致 —— open_months 未設定／空值 = 不限制（全部月份開放）。
+          // 舊寫法把空陣列當成「全部關閉」，導致管理員未設定時 10 月顯示「診所未開放」。
+          // 同時兼容兩種儲存格式：'YYYY-MM'（admin 現行寫法）與月份數字（'9,10,11'，不分年份）。
+          const monthIsOpen = (monthStr) => {
+            const raw = openMonths.value;
+            if (!raw || !raw.length) return true; // 未設定 = 不限制
+            const ym = String(monthStr || '').trim();
+            const mNum = parseInt(ym.slice(5, 7), 10);
+            return raw.some((v) => {
+              const s = String(v).trim();
+              if (!s) return false;
+              if (/^\d{4}-\d{2}$/.test(s)) return s === ym;
+              return parseInt(s, 10) === mNum;
+            });
+          };
           
           // 營業時間設定（診所開放時間 10:00–19:00）
           const businessHours = ref({
@@ -161,6 +200,43 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const step = ref(0); // 0: 登入, 1: 選服務, 2: 選時間, 3: 聯絡資料, 4: 完成
           const selectedService = ref(SERVICES.value[0]?.id || "S1");
           const selectedDoctor = ref("any");
+          // 🆕 當日當值醫師（#8）
+          const doctorsOnDuty = ref([]);
+          const onDutyLoading = ref(false);
+          const selectedOnDutyDoctor = ref(null);
+          // 右側即時預約狀態面板：今日當值醫師（獨立，唔受揀日期影響）
+          const todayOnDutyDoctors = ref([]);
+          const loadTodayOnDuty = async () => {
+            const today = new Date().toISOString().split('T')[0];
+            // 🛡️ guest guard：訪客無 JWT，唔使打呢個 auth 端點（避免 401 噪音）
+            if (!localStorage.getItem('jwtToken')) { todayOnDutyDoctors.value = []; return; }
+            try {
+              const resp = await fetch(`${API_URL}/bookings/doctors-on-duty?date=${today}`, {
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              if (resp.ok) { const d = await resp.json(); todayOnDutyDoctors.value = (d.doctors || []).filter(Boolean); }
+            } catch (e) { todayOnDutyDoctors.value = []; }
+          };
+          const loadDoctorsOnDuty = async (date) => {
+            if (!date) { doctorsOnDuty.value = []; return; }
+            // 🛡️ guest guard：訪客無 JWT，唔使打 auth 端點
+            if (!localStorage.getItem('jwtToken')) { doctorsOnDuty.value = []; onDutyLoading.value = false; return; }
+            onDutyLoading.value = true;
+            try {
+              const resp = await fetch(`${API_URL}/bookings/doctors-on-duty?date=${encodeURIComponent(date)}`, {
+                headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
+              });
+              if (resp.ok) {
+                const d = await resp.json();
+                doctorsOnDuty.value = (d.doctors || []).filter(Boolean);
+              } else { doctorsOnDuty.value = []; }
+            } catch (e) { doctorsOnDuty.value = []; }
+            finally { onDutyLoading.value = false; }
+          };
+          const selectOnDutyDoctor = (doc) => {
+            selectedOnDutyDoctor.value = doc;
+            selectedDoctor.value = 'd' + doc.doctor_id; // 同步原有醫師選擇，使 doctorName 正確
+          };
           const selectedDate = ref("2025-10-20");
           const selectedTime = ref(null);
       // 🛏️ 床位揀選狀態
@@ -192,13 +268,38 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (realTier.value === 'premium') return '高級會員';
             return '一般會員';
           });
-          // 🏠 家庭計劃 A/B/C/D 資訊（前後端共用價格／人數，避免 UI 硬編碼走樣）
-          const PLAN_INFO = {
-            A: { name: '家庭帳戶 A', price: 8800, range: '1-2 人', popular: false },
-            B: { name: '家庭帳戶 B', price: 12800, range: '3-5 人', popular: true },
-            C: { name: '家庭帳戶 C', price: 16800, range: '6-9 人', popular: false },
-            D: { name: '家庭帳戶 D', price: 20800, range: '10 人以上', popular: false }
-          };
+          // 🏠 家庭計劃 A/B/C/D 資訊（#93：以 membership_plans 表為真源，開機由 API 同步；下面係 fallback 預設）
+          const PLAN_INFO = reactive({
+            A: { name: '家庭帳戶 A', price: 8800, range: '1-2 人', popular: false, intro: '', features: [] },
+            B: { name: '家庭帳戶 B', price: 12800, range: '3-5 人', popular: true, intro: '', features: [] },
+            C: { name: '家庭帳戶 C', price: 16800, range: '6-9 人', popular: false, intro: '', features: [] },
+            D: { name: '家庭帳戶 D', price: 20800, range: '10 人以上', popular: false, intro: '', features: [] }
+          });
+          const planKeys = computed(() => Object.keys(PLAN_INFO));
+          // 官網價錢頁計劃卡（#93：loadSitePlans() 由 GET /api/membership/plans 同步）
+          const sitePlans = ref(['A', 'B', 'C', 'D'].map((k) => ({ plan_key: k, ...PLAN_INFO[k] })));
+          async function loadSitePlans() {
+            try {
+              const r = await fetch('/api/membership/plans');
+              const j = await r.json();
+              if (!r.ok || !j.ok || !Array.isArray(j.plans) || !j.plans.length) return;
+              sitePlans.value = j.plans.map((p) => ({
+                plan_key: p.plan_key, name: p.name, price: Number(p.price),
+                range: p.range_label || '', popular: !!p.popular,
+                intro: p.intro || '', features: Array.isArray(p.features) ? p.features : [],
+              }));
+              // 會員中心 PLAN_INFO 同步（既有 key 更新、新 key 補上）
+              j.plans.forEach((p) => {
+                const k = String(p.plan_key || '').toUpperCase();
+                if (!k) return;
+                PLAN_INFO[k] = {
+                  name: p.name, price: Number(p.price), range: p.range_label || '',
+                  popular: !!p.popular, intro: p.intro || '',
+                  features: Array.isArray(p.features) ? p.features : [],
+                };
+              });
+            } catch (e) { /* 靜默：用 fallback 預設價 */ }
+          }
           const planName = (p) => (PLAN_INFO[p] ? PLAN_INFO[p].name : '');
           const planPrice = (p) => (PLAN_INFO[p] ? PLAN_INFO[p].price : 0);
           const planRange = (p) => (PLAN_INFO[p] ? PLAN_INFO[p].range : '');
@@ -223,7 +324,15 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const linkError = ref('');
           const linkPlanLimit = ref(null); // { currentPlan, nextPlan } 加人上限提示
           const linkForm = ref({ targetUsername: '', relation: '朋友', customRelation: '', fromUserId: null });
-          const linkRelationOptions = ['父母', '子女', '配偶', '兄弟', '姐妹', '親戚', '朋友', '其他'];
+          // 🔗 親戚關係下拉選項（按輩分分組；具體稱謂直接送後端 relation，由分類器按輩分自動歸層）
+          const linkRelationOptions = [
+            { group: '祖父母輩（+2）', items: ['祖父', '祖母', '外祖父', '外祖母'] },
+            { group: '父母輩（+1）', items: ['父親', '母親', '伯父', '叔父', '姑媽', '姑姐', '舅父', '姨媽'] },
+            { group: '同輩（0）', items: ['配偶', '丈夫', '妻子', '哥哥', '弟弟', '姐姐', '妹妹', '朋友', '表哥', '表姐', '表弟', '表妹', '堂哥', '堂姐', '堂弟', '堂妹'] },
+            { group: '子女輩（-1）', items: ['兒子', '女兒', '姪子', '姪女', '外甥', '外甥女'] },
+            { group: '孫輩（-2）', items: ['孫子', '孫女', '外孫', '外孫女'] },
+            { group: '其他', items: ['其他'] }
+          ];
           // 🔍 搜尋要連結嘅帳戶（支援 姓名/用戶名/電話）
           const linkSearchQ = ref('');
           const linkSearchResults = ref([]);
@@ -274,7 +383,16 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const siteVideos = ref([]);
           const siteSocial = ref({});
           const siteCases = ref([]);
+          const siteDoctors = ref([]);
           const siteTexts = ref({});
+          // BUG-1：動態電話 / WhatsApp 連結（讀 siteSocial，後台改咗即反映）
+          const sitePhone = computed(() => (siteSocial.value && siteSocial.value.clinic_phone) || '2555-1136');
+          const waLink = computed(() => {
+            let w = (siteSocial.value && siteSocial.value.social_whatsapp) || '85291350162';
+            w = String(w).replace(/[^0-9]/g, '');
+            if (!w.startsWith('852')) w = '852' + w;
+            return 'https://wa.me/' + w;
+          });
           const forumPosts = ref([]);
           const activeForumPost = ref(null);
           const forumReplyContent = ref("");
@@ -340,22 +458,44 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             };
             const headNode = {
               id: d.head.id, name: d.head.name, username: d.head.username,
-              avatar: d.head.avatar, tier: d.head.membership_tier, is_me: !!d.is_head,
+              avatar: d.head.avatar, tier: d.head.membership_tier, is_me: !!d.is_head, isHead: true,
             };
-            const children = (d.children || []).map(c => {
+            // 家庭子女（戶主名下 family_links 子女）
+            const familyChildren = (d.children || []).map(c => {
               const age = ageOf(c.birth_date);
               return {
                 id: c.id, name: c.name, username: c.username, avatar: c.avatar,
                 tier: c.membership_tier, age,
                 isAdult: age !== null && age >= 18, is_me: !!c.is_me,
-                extendedLinks: (d.links || []).filter(lk => Number(lk.from_user_id) === Number(c.id))
-                  .map(lk => ({ id: lk.link_id, other: lk.other, relation: lk.relation })),
+                isFamilyChild: true, primary: c,
               };
             });
-            const links = (d.links || [])
-              .filter(lk => Number(lk.from_user_id) === Number(d.head.id))
-              .map(lk => ({ id: lk.link_id, relation: lk.relation, other: lk.other }));
-            return { headNode, children, links };
+            // 戶主嘅對外連結，按後端 generation 歸層（＋2 祖父母／＋1 父母輩／0 同輩／−1 子女輩／−2 孫輩）
+            const headLinks = (d.links || []).filter(lk => Number(lk.from_user_id) === Number(d.head.id));
+            const buckets = { 2: [], 1: [], 0: [], '-1': [], '-2': [] };
+            headLinks.forEach(lk => {
+              const g = Number(lk.generation);
+              const key = buckets[g] !== undefined ? g : 0;
+              buckets[key].push({ id: lk.link_id, primary: lk.other, relation: lk.relation, link: lk });
+            });
+            // 同輩（0）：兄弟姊妹／朋友／表堂（戶主隔籬）
+            const sameGen = buckets[0];
+            // 子女輩（−1）：家庭子女 ＋ 經戶主直接連入嘅子女/侄甥
+            const linkedChildren = buckets['-1'].map(b => ({
+              id: b.id, primary: b.primary,
+              name: b.primary.name, username: b.primary.username, avatar: b.primary.avatar,
+              age: '', isAdult: true, is_me: false, isFamilyChild: false,
+              relation: b.relation, link: b.link,
+            }));
+            const children = [...familyChildren, ...linkedChildren];
+            return {
+              headNode,
+              grandparents: buckets[2],
+              parentLevel: buckets[1],
+              sameGen,
+              children,
+              grandchildren: buckets['-2'],
+            };
           });
 
           // 網站文字 helper：管理員修改後即時反映
@@ -363,18 +503,21 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
           const loadSiteContent = async () => {
             try {
-              const [a, v, s, cs, tx] = await Promise.all([
+              const [a, v, s, cs, tx, ds] = await Promise.all([
                 fetch(`${API_URL}/content/announcements`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/videos`).then(r => r.ok ? r.json() : []),
                 fetch(`${API_URL}/content/social`).then(r => r.ok ? r.json() : {}),
                 fetch(`${API_URL}/content/cases`).then(r => r.ok ? r.json() : []),
-                fetch(`${API_URL}/content/texts`).then(r => r.ok ? r.json() : {})
+                fetch(`${API_URL}/content/texts`).then(r => r.ok ? r.json() : {}),
+                fetch(`${API_URL}/users/public-doctors`).then(r => r.ok ? r.json() : [])
               ]);
               siteAnnouncements.value = (a || []).filter(Boolean);
               siteVideos.value = (v || []).filter(Boolean);
               siteSocial.value = s || {};
+              if (s && s.clinic_phone) _clinicPhone = s.clinic_phone;
               siteCases.value = (cs || []).filter(Boolean);
               siteTexts.value = tx || {};
+              siteDoctors.value = (ds || []).filter(Boolean);
             } catch (e) { console.error("載入官網內容失敗:", e); }
           };
 
@@ -817,6 +960,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const myFeedbacks = ref([]);
           const unreadReplyCount = ref(0);
           const showReplyNotification = ref(false);
+
+          // 客人站内通知
+          const myNotifications = ref([]);
+          const unreadNotificationCount = ref(0);
+          const notificationsLoading = ref(false);
           
           // 預約成功彈窗
           const showBookingSuccess = ref(false);
@@ -1312,7 +1460,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               const isWorkingHoliday = workingHolidays.value.includes(dateStr); // 檢查是否為營業假期
               const isHoliday = !!holidayInfo && !isWorkingHoliday; // 只有非營業假期才標記為假期
               // 檢查月份是否開放（當前月份永遠開放，其他月份需在 openMonths 列表中）
-              const isMonthClosed = monthStr !== currentMonth && !openMonths.value.includes(monthStr);
+              // #26：改用 monthIsOpen（空值 = 不限制），修復未設定時 10 月被判定為未開放
+              const isMonthClosed = monthStr !== currentMonth && !monthIsOpen(monthStr);
               days.push({
                 date: dateStr,
                 day: i,
@@ -1843,6 +1992,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 // 載入該用戶的預約記錄
                 loadBookings();
 
+                // 🆕 載入客人站内通知
+                loadMyNotifications();
+
                 // 載入所有預約以更新即時狀況
                 loadAllBookings();
                 
@@ -1857,6 +2009,11 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
                 // 🛡️ 登入成功後返回頁頂（會員介面由頭開始）
                 window.scrollTo({ top: 0, behavior: "auto" });
+
+                // 🔒 登入後抹走官網 entry：撳瀏覽器「上一頁」唔會返官網（#20）
+                if (window.history && window.history.replaceState) {
+                  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                }
 
                 // 🆕 檢查是否需要完善個人資料（加入倒數天數提示）
                 if (data.user.profile_completed === 0) {
@@ -1891,6 +2048,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
 
           // 登出功能
           const handleLogout = () => {
+            // #20：標記「已登出」——之後 60 秒內若有頁面由 bfcache 還原會自動 reload，
+            //      防止撳「上一頁」見到已登出嘅舊畫面（見 js/session-guard.js）
+            try { if (typeof window.markLoggedOut === 'function') window.markLoggedOut(); } catch (e) {}
             // 🔒 通知伺服器將 token 加入黑名單（如仍在有效期間）
             try {
               fetch(`${API_URL}/auth/logout`, { method: "POST" }).catch(() => {});
@@ -3629,8 +3789,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           // 驗證並繼續
           const validateAndProceed = () => {
             // 檢查日期是否為休息日或未開放月份
+            // #27 同源修復：toISOString() 係 UTC，GMT+8 接近午夜會倒退一日
+            const ld = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             const today = new Date();
-            const todayStr = today.toISOString().slice(0, 10);
+            const todayStr = ld(today);
             const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
             const selectedDateStr = selectedDate.value;
             const selectedMonthStr = selectedDateStr.substring(0, 7);
@@ -3642,7 +3804,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             }
             
             // 檢查月份是否開放（當前月份永遠開放）
-            if (selectedMonthStr !== currentMonth && !openMonths.value.includes(selectedMonthStr)) {
+            // #26：改用 monthIsOpen（空值 = 不限制）
+            if (selectedMonthStr !== currentMonth && !monthIsOpen(selectedMonthStr)) {
               alert(`該月份 (${selectedMonthStr}) 尚未開放預約，請預約已開放的日子`);
               return;
             }
@@ -3712,7 +3875,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
               booking.start
             )} 的 ${service.name}，由 ${
               doctor.name
-            } 為您服務。\n\n📍 寶天JR\n📞 服務專線：2345-6789`;
+            } 為您服務。\n\n📍 JR\n📞 服務專線：2345-6789`;
 
             console.log("電子郵件通知已發送:", message);
             alert(
@@ -3756,6 +3919,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
                 customerAge: customerAge.value || null,
                 serviceId: svc.id,
                 doctorName: doctorName,
+                doctor_user_id: selectedOnDutyDoctor.value ? selectedOnDutyDoctor.value.user_id : null,
                 appointmentDate: selectedDate.value,
                 appointmentTime: getTime24(selectedTime.value.startIso),
                 notes: customerNotes.value,
@@ -4324,6 +4488,43 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           const dismissReplyNotification = () => {
             showReplyNotification.value = false;
           };
+
+          // 客人站内通知：載入列表 + 未讀數
+          const loadMyNotifications = async () => {
+            try {
+              notificationsLoading.value = true;
+              const res = await fetch(`${API_URL}/users/notifications`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json();
+              if (data.ok) {
+                myNotifications.value = data.notifications || [];
+                unreadNotificationCount.value = data.unreadCount || 0;
+              }
+            } catch (e) {
+              console.error('載入客人通知失敗:', e);
+            } finally {
+              notificationsLoading.value = false;
+            }
+          };
+
+          // 客人站内通知：標記單條已讀
+          const markNotificationRead = async (id) => {
+            try {
+              const res = await fetch(`${API_URL}/users/notifications/${id}/read`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+              });
+              const data = await res.json();
+              if (data.ok) {
+                const n = myNotifications.value.find(x => x.id === id);
+                if (n) n.is_read = true;
+                unreadNotificationCount.value = Math.max(0, unreadNotificationCount.value - 1);
+              }
+            } catch (e) {
+              console.error('標記通知已讀失敗:', e);
+            }
+          };
           
           // 獲取反饋類別名稱
           const getFeedbackCategoryName = (category) => {
@@ -4377,15 +4578,25 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
           onMounted(async () => {
             console.log("🚀 頁面開始初始化");
 
+            // #93：同步會員計劃（官網價錢頁 + 會員中心 PLAN_INFO），唔阻其他初始化
+            loadSitePlans();
+
             // 🛡️ A: 客戶版面角色閘門 —— 非客戶角色（admin/doctor/staff）跳返對應後台
-            if (localStorage.getItem('adminToken') || localStorage.getItem('adminUser')) {
-              window.location.href = 'admin.html'; return;
-            }
-            if (localStorage.getItem('doctorUser')) {
-              window.location.href = 'doctor.html'; return;
-            }
-            if (localStorage.getItem('staffUser')) {
-              window.location.href = 'staff.html'; return;
+            // #20：若係由後台主動撳「返回官網」掣過嚟（sessionStorage __sgToSite=1），
+            //      就放行一次（清 flag），避免「撳完返回官網又彈返後台」。
+            let __sgBypass = false;
+            try { __sgBypass = sessionStorage.getItem('__sgToSite') === '1'; } catch (e) {}
+            if (__sgBypass) { try { sessionStorage.removeItem('__sgToSite'); } catch (e) {} }
+            if (!__sgBypass) {
+              if (localStorage.getItem('adminToken') || localStorage.getItem('adminUser')) {
+                window.location.href = 'admin.html'; return;
+              }
+              if (localStorage.getItem('doctorUser')) {
+                window.location.href = 'doctor.html'; return;
+              }
+              if (localStorage.getItem('staffUser')) {
+                window.location.href = 'staff.html'; return;
+              }
             }
 
             console.log("📋 初始 SERVICES 內容:", SERVICES.value);
@@ -4396,6 +4607,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             loadForumPosts();
             // 🆕 載入客人心聲
             loadCustomerVoices();
+            // 🆕 載入客人站内通知
+            loadMyNotifications();
 
             // 🔐 先同步恢復登入狀態，避免重整/登入/登出時「登入畫面閃一下」或彈出登入頁
             const savedUser = localStorage.getItem('userToken');
@@ -4476,6 +4689,8 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             loadFaqs();
             // 🆕 啟動即時預約狀況自動刷新
             startAutoRefresh();
+            // 🆕 載入今日當值醫師（右側即時預約狀態面板）
+            loadTodayOnDuty();
             // 🆕 啟動午夜日期自動更新
             scheduleMidnightUpdate();
           });
@@ -4486,9 +4701,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (midnightTimeout) clearTimeout(midnightTimeout);
           });
 
-          // 監聽日期變化，重新載入時段
+          // 監聽日期變化，重新載入時段 + 當日當值醫師
           watch(selectedDate, () => {
             loadTimeSlots();
+            loadDoctorsOnDuty(selectedDate.value);
           });
 
           // 客戶端查看病歷詳情
@@ -4542,7 +4758,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             if (!r) return;
             const progressArr = r.progress && r.progress.length > 0 ? r.progress : [];
             const lines = [
-              '=== 寶天JR 病歷摘要 ===',
+              '=== JR 病歷摘要 ===',
               `日期: ${r.appointment_date || r.record_date || r.progress_date || ''} ${r.appointment_time || ''}`,
               `醫師: ${r.doctor_name || '—'}`,
               '',
@@ -4593,6 +4809,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             holidays,
             workingHolidays,
             openMonths,
+            // #20：明確「返回官網」——去 index.html 並保留 session
+            goToSite: () => {
+              if (typeof window.goToSite === 'function') window.goToSite();
+              else window.location.href = 'index.html';
+            },
+            monthIsOpen,
             customClosedDates,
             customOpenDates,
             businessHours,
@@ -4600,6 +4822,14 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             step,
             selectedService,
             selectedDoctor,
+            // 🆕 當日當值醫師（#8）
+            doctorsOnDuty,
+            onDutyLoading,
+            selectedOnDutyDoctor,
+            loadDoctorsOnDuty,
+            selectOnDutyDoctor,
+            todayOnDutyDoctors,
+            loadTodayOnDuty,
             selectedDate,
             selectedTime,
             customerName,
@@ -4661,7 +4891,10 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             siteAnnouncements,
             siteVideos,
             siteCases,
+            siteDoctors,
             siteSocial,
+            sitePhone,
+            waLink,
             siteTexts,
             st,
             forumPosts,
@@ -4732,6 +4965,12 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             myFeedbacks,
             unreadReplyCount,
             showReplyNotification,
+            // 客人站内通知
+            myNotifications,
+            unreadNotificationCount,
+            notificationsLoading,
+            loadMyNotifications,
+            markNotificationRead,
             submitFeedback,
             loadMyFeedbacks,
             checkUnreadReplies,
@@ -4891,6 +5130,9 @@ const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vu
             upgradeTier,
             upgradePlan,
             PLAN_INFO,
+            planKeys,
+            sitePlans,
+            loadSitePlans,
             planName,
             planPrice,
             planRange,

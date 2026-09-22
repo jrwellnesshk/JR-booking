@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title data-i18n="醫師版面 - 寶天JR">醫師版面 - 寶天JR</title>
+    <title data-i18n="醫師版面 - JR">醫師版面 - JR</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <link rel="stylesheet" href="css/tailwind.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -14,6 +14,8 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <link rel="stylesheet" href="css/style.css" />
     <script src="js/auth-fetch.js"></script>
+    <!-- #20：防止瀏覽器倒退登出 session + 「返回官網」掣 -->
+    <script src="js/session-guard.js?v=20260917"></script>
     <link rel="stylesheet" href="css/i18n.css" />
     <script src="js/i18n.js?v=20260922"></script>
     <script src="js/i18n-runtime.js?v=20260919"></script>
@@ -302,7 +304,7 @@
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-logo" data-i18n="寶">寶</div>
-      <div class="boot-name" data-i18n="寶天JR">寶天JR</div>
+      <div class="boot-name" data-i18n="JR">JR</div>
       <div class="boot-sub" data-i18n="醫師版">醫師版</div>
       <div class="boot-ring"></div>
     </div>
@@ -336,7 +338,7 @@
               <i class="fas fa-user-md text-4xl text-purple-600"></i>
             </div>
             <h1 class="text-2xl font-bold text-slate-800">{{ t('醫師登入') }}</h1>
-            <p class="text-slate-500 text-sm mt-1">{{ t('寶天JR · 醫師管理系統') }}</p>
+            <p class="text-slate-500 text-sm mt-1">{{ t('JR · 醫師管理系統') }}</p>
           </div>
 
           <div class="space-y-4">
@@ -417,7 +419,7 @@
         <!-- 手機版頂部列 + 抽屜遮罩 -->
         <header class="m-topbar">
           <button @click="sidebarOpen = !sidebarOpen" :aria-label="t('開啟/關閉選單')"><i class="fas fa-bars"></i></button>
-          <span>{{ t('寶天JR · 醫師') }}</span>
+          <span>{{ t('JR · 醫師') }}</span>
         </header>
         <div v-show="sidebarOpen" @click="sidebarOpen = false" class="m-overlay"></div>
 
@@ -430,7 +432,7 @@
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
               <i class="fas fa-user-md text-emerald-400 text-3xl"></i>
               <div class="min-w-0">
-                <div class="text-sm font-bold truncate">{{ t('寶天JR · 醫師版') }}</div>
+                <div class="text-sm font-bold truncate">{{ t('JR · 醫師版') }}</div>
                 <div class="text-xs opacity-70 truncate">{{ doctorInfo ? doctorInfo.name : doctorUser.name }}</div>
               </div>
             </div>
@@ -447,24 +449,26 @@
               <button @click="docTab='healthfiles'; hfReset()" :class="docTab==='healthfiles' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors">
                 <i class="fas fa-heart-pulse mr-2"></i>{{ t('客人檔案') }}</button>
               <button @click="docTab='forum'; loadForum()" :class="docTab==='forum' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comments mr-2"></i>{{ t('中醫討論區') }}</button>
-              <button @click="docTab='voices'" :class="docTab==='voices' ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'" class="w-full text-left px-4 py-2 rounded-lg transition-colors"><i class="fas fa-comment-medical mr-2"></i>{{ t('客人心聲') }}</button>
+              <!-- #13：醫師帳戶移除「客人心聲」（只客人有；admin/staff 有審核） -->
             </nav>
             <!-- 功能9：左欄底部功能選項（風格與客人端一致） -->
             <div class="border-t border-slate-700 p-3 space-y-2 flex-shrink-0">
               <div class="flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-sm">
                 <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">中文</button>
                 <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">EN</button>
+                <!-- #8：加簡體 -->
+                <button type="button" @click="setLang('zh-CN')" :class="currentLang()==='zh-CN' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">简</button>
               </div>
               <button
                 @click="showChangePwd=true; sidebarOpen=false"
                 class="w-full text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 <i class="fas fa-key mr-2"></i>{{ t('更改密碼') }}</button>
-              <button
-                @click="handleLogout"
-                class="w-full text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm font-medium"
-              >
-                <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
+            <button
+              @click="handleLogout"
+              class="w-full text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
             </div>
             <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
               {{ currentDateStr }}
@@ -639,61 +643,14 @@
                     </div>
                   </div>
 
-                  <!-- 右側：操作按鈕 -->
+                  <!-- 右側：操作按鈕（#10：醫師只可「建立檔案」→ 確認後變「配藥中」交姑娘） -->
                   <div class="flex flex-col gap-2 min-w-[100px]">
                     <button
-                      v-if="booking.status === 'confirmed'"
-                      @click="updateStatus(booking.id, 'visited')"
-                      class="px-3 py-1.5 text-xs bg-teal-500 text-white rounded-lg hover:bg-teal-600 whitespace-nowrap"
-                    >
-                      <i class="fas fa-user-check mr-1"></i>{{ t('已到訪') }}</button>
-                    <button
-                      v-if="booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-progress'"
-                      @click="updateStatus(booking.id, 'in-treatment')"
-                      class="px-3 py-1.5 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 whitespace-nowrap"
-                    >
-                      <i class="fas fa-hand-holding-medical mr-1"></i>{{ t('治療中') }}</button>
-                    <button
-                      v-if="booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'in-progress'"
+                      v-if="['confirmed','visited'].includes(booking.status)"
                       @click="updateStatus(booking.id, 'dispensing')"
-                      class="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 whitespace-nowrap"
+                      class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 whitespace-nowrap"
                     >
-                      <i class="fas fa-pills mr-1"></i>{{ t('配藥中') }}</button>
-                    <button
-                      v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
-                      @click="updateStatus(booking.id, 'completed')"
-                      class="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap"
-                    >
-                      <i class="fas fa-check mr-1"></i>{{ t('標記完成') }}</button>
-                    <button
-                      v-if="booking.status === 'confirmed'"
-                      @click="updateStatus(booking.id, 'no-show')"
-                      class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 whitespace-nowrap"
-                    >
-                      <i class="fas fa-user-times mr-1"></i>{{ t('未到場') }}</button>
-                    <button
-                      v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
-                      @click="recordLateness(booking)"
-                      class="px-3 py-1.5 text-xs bg-rose-400 text-white rounded-lg hover:bg-rose-500 whitespace-nowrap"
-                    >
-                      <i class="fas fa-clock mr-1"></i>{{ t('記錄遲到') }}</button>
-                    <button
-                      v-if="booking.status === 'completed' || booking.status === 'no-show' || booking.status === 'in-treatment' || booking.status === 'dispensing' || booking.status === 'visited'"
-                      @click="updateStatus(booking.id, 'confirmed')"
-                      class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
-                    >
-                      <i class="fas fa-undo mr-1"></i>{{ t('還原確認') }}</button>
-                    <button
-                      v-if="booking.status === 'completed' || booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'dispensing'"
-                      @click="selectedBooking = { ...booking }; openMedicalRecordModal()"
-                      class="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 whitespace-nowrap"
-                    >
-                      <i class="fas fa-file-medical mr-1"></i>{{ t('病歴管理') }}</button>
-                    <button
-                      @click="viewBookingDetail(booking)"
-                      class="px-3 py-1.5 text-xs bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 whitespace-nowrap"
-                    >
-                      <i class="fas fa-info-circle mr-1"></i>{{ t('詳情') }}</button>
+                      <i class="fas fa-folder-plus mr-1"></i>{{ t('建立檔案') }}</button>
                   </div>
                 </div>
               </div>
@@ -721,6 +678,13 @@
                   <label class="block text-xs text-slate-500 mb-1">{{ t('請假日期 *') }}</label>
                   <input v-model="leaveForm.date" type="date" :min="todayStr"
                     class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-500 mb-1">{{ t('請假類別 *') }}</label>
+                  <select v-model="leaveForm.leave_type" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white min-w-[140px]">
+                    <option value="sick">{{ t('病假') }}</option>
+                    <option value="personal">{{ t('事假') }}</option>
+                  </select>
                 </div>
                 <div class="flex-1 min-w-[200px]">
                   <label class="block text-xs text-slate-500 mb-1">{{ t('原因（會顯示喺通知入面）') }}</label>
@@ -778,7 +742,7 @@
                       <span class="text-xs text-slate-400 ml-2">{{ weekdayLabel(lv.exception_date) }}</span>
                       <span class="text-xs px-2 py-0.5 rounded-full font-medium ml-2" :class="leaveBadge(lv).cls">{{ leaveBadge(lv).text }}</span>
                     </p>
-                    <p class="text-xs text-slate-500 mt-0.5" v-if="lv.reason">{{ t('原因：') }}{{ lv.reason }}{{ t('　·　時段：') }}{{ leaveTimeLabel(lv) }}<span v-if="lv.cover_doctor_name">{{ t('　·　補位：') }}{{ lv.cover_doctor_name }}</span></p>
+                    <p class="text-xs text-slate-500 mt-0.5"><span class="px-1.5 py-0.5 rounded-full font-medium mr-1" :class="lv.leave_type==='personal' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'">{{ lv.leave_type==='personal' ? t('事假') : t('病假') }}</span><span v-if="lv.reason">{{ t('原因：') }}{{ lv.reason }}　·　</span>{{ t('時段：') }}{{ leaveTimeLabel(lv) }}<span v-if="lv.cover_doctor_name">{{ t('　·　補位：') }}{{ lv.cover_doctor_name }}</span></p>
                   </div>
                   <button @click="cancelLeave(lv)" class="text-sm text-red-500 hover:text-red-700 whitespace-nowrap">
                     <i class="fas fa-rotate-left mr-1"></i>{{ t('取消請假') }}</button>
@@ -1033,41 +997,7 @@
             </div>
           </div>
 
-          <!-- ==== 客人心聲（到診意見）==== -->
-          <div v-if="docTab==='voices'" class="space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <h2 class="text-2xl font-bold text-slate-800"><i class="fas fa-comment-medical mr-2 text-emerald-600"></i>{{ t('客人心聲') }}</h2>
-            </div>
-            <div class="bg-white rounded-xl shadow p-5 space-y-4 max-w-2xl">
-              <h3 class="font-semibold text-slate-800"><i class="fas fa-pen mr-2 text-emerald-600"></i>{{ t('記錄到診意見') }}</h3>
-              <div>
-                <label class="block text-sm text-slate-600 mb-1">{{ t('評分') }}</label>
-                <div class="flex gap-1 text-2xl">
-                  <button v-for="n in 5" :key="n" @click="voiceRating = n" :class="n <= voiceRating ? 'text-amber-400' : 'text-slate-300'" class="focus:outline-none">★</button>
-                  <span class="text-sm text-slate-500 ml-2 self-center">{{ voiceRating }} / 5</span>
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm text-slate-600 mb-1">{{ t('到診類型') }}</label>
-                <select v-model="voiceVisitType" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                  <option value="">{{ t('請選擇') }}</option>
-                  <option value="初診">{{ t('初診') }}</option>
-                  <option value="覆診">{{ t('覆診') }}</option>
-                  <option value="針灸">{{ t('針灸') }}</option>
-                  <option value="推拿">{{ t('推拿') }}</option>
-                  <option value="代煎/藥療">{{ t('代煎/藥療') }}</option>
-                  <option value="一般諮詢">{{ t('一般諮詢') }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm text-slate-600 mb-1">{{ t('意見內容') }}</label>
-                <textarea v-model="voiceContent" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" :placeholder="t('請分享今次到診嘅感受或建議...')"></textarea>
-              </div>
-              <div v-if="voiceMsg" class="text-sm px-3 py-2 rounded-lg bg-amber-50 text-amber-700">{{ voiceMsg }}</div>
-              <button @click="submitVoice()" :disabled="voiceBusy" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50">
-                <i class="fas fa-paper-plane mr-1"></i>{{ voiceBusy ? t('處理中...') : t('提交意見') }}</button>
-            </div>
-          </div>
+          <!-- #13：醫師客人心聲區段已移除（只客人有提交；admin/staff 有審核功能） -->
 
           <div v-if="docTab==='timeslots'" class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1383,7 +1313,15 @@
                 <h3 class="font-bold text-lg text-slate-800 flex items-center">
                   <i class="fas fa-user text-emerald-600 mr-2"></i>{{ hfDetail.user.name }}
                 </h3>
-                <button @click="hfDetail = null" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="['confirmed','visited'].includes((hfDetail.booking && hfDetail.booking.status) || (selectedBooking && selectedBooking.status) || '')"
+                    @click="doctorCreateRecordFromProfile()"
+                    class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 whitespace-nowrap"
+                  >
+                    <i class="fas fa-folder-plus mr-1"></i>{{ t('建立檔案') }}</button>
+                  <button @click="hfDetail = null" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                </div>
               </div>
 
               <!-- 基本資料卡 -->
@@ -1522,6 +1460,21 @@
               <div v-if="essTab==='profile'" class="pt-5">
                 <div v-if="!essProfile" class="text-sm text-slate-400">{{ t('載入中...') }}</div>
                 <div v-else>
+                  <!-- 🆕 醫師頭像上傳 -->
+                  <div class="flex items-center gap-4 mb-5 p-4 rounded-xl bg-emerald-50/60 border border-emerald-100">
+                    <div class="w-20 h-20 rounded-full overflow-hidden border-2 border-emerald-200 bg-white flex items-center justify-center text-emerald-500 text-2xl shrink-0">
+                      <img v-if="myAvatar" :src="myAvatar" class="w-full h-full object-cover" :alt="t('我的頭像')" />
+                      <i v-else class="fas fa-user-md"></i>
+                    </div>
+                    <div>
+                      <p class="text-sm font-semibold text-slate-700 mb-1">{{ t('我的頭像') }}</p>
+                      <p class="text-xs text-slate-500 mb-2">{{ t('上傳你嘅個人頭像，將顯示於官網醫師介紹。') }}</p>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" ref="avatarInput" class="text-xs text-slate-600" />
+                      <button @click="uploadMyAvatar()" :disabled="avatarUploading" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                        <i class="fas fa-upload mr-1" v-if="!avatarUploading"></i><i class="fas fa-spinner fa-spin mr-1" v-else></i>{{ t('上傳頭像') }}
+                      </button>
+                    </div>
+                  </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label class="text-xs text-slate-500">{{ t('姓名') }}</label>
@@ -1586,6 +1539,24 @@
                   </div>
                   <div class="mt-5 text-right">
                     <button @click="saveMyProfile()" :disabled="essBusy" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-50">
+                      <i class="fas fa-save mr-2"></i>{{ t('儲存') }}</button>
+                  </div>
+                </div>
+
+                <!-- 🔔 WhatsApp 通知總開關 -->
+                <div class="h-px bg-slate-200 my-5"></div>
+                <div class="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-semibold text-slate-800"><i class="fab fa-whatsapp text-emerald-600 mr-2"></i>{{ t('WhatsApp 通知') }}</p>
+                      <p class="text-xs text-slate-500 mt-1">{{ t('開啟後，診所會經 WhatsApp 向您發送相關通知（如請假審批、補位安排等）。關閉後將不再發送。') }}</p>
+                    </div>
+                    <button @click="docNotifyEnabled = !docNotifyEnabled" type="button" class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors" :class="docNotifyEnabled ? 'bg-emerald-600' : 'bg-slate-300'" :title="t('WhatsApp 通知總開關')">
+                      <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="docNotifyEnabled ? 'translate-x-6' : 'translate-x-1'"></span>
+                    </button>
+                  </div>
+                  <div class="mt-3 text-right">
+                    <button @click="saveDocNotify()" :disabled="docNotifySaving" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-lg text-sm disabled:opacity-50">
                       <i class="fas fa-save mr-2"></i>{{ t('儲存') }}</button>
                   </div>
                 </div>
@@ -2032,6 +2003,10 @@
             doctorUser: null,
             doctorInfo: null,
 
+            // 🆕 頭像上傳（醫師自己帳戶）
+            myAvatar: "",
+            avatarUploading: false,
+
             // 分頁：bookings=預約列表 / schedule=排程請假
             docTab: "bookings",
             // 💬 功能10：中醫討論區
@@ -2058,6 +2033,8 @@
             hfBusy: false,
             hfDetail: null,
             hfDetailLoading: false,
+            // 🆕 建立檔案時記錄所屬預約（#14）
+            hfBookingId: null,
             // Phase 2：編輯中嘅健康檔案內容 + 儲存狀態
             hfEdit: { chronic_conditions: "", long_term_medications: "", medical_history: "" },
             hfSaving: false,
@@ -2118,6 +2095,8 @@
             essBusy: false,
             essProfile: null,
             essEdit: { phone: "", email: "", address: "", emergency_contact: "", emergency_phone: "" },
+            docNotifyEnabled: true,
+            docNotifySaving: false,
             essSchFrom: "",
             essSchTo: "",
             essSchedule: null,
@@ -2131,7 +2110,8 @@
             // 預約列表
             bookings: [],
             isLoading: false,
-            selectedDate: new Date().toISOString().split("T")[0],
+            // #27 同源修復：selectedDate 用本地日期（唔好 toISOString 嘅 UTC）
+            selectedDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
             statusFilter: "",
 
             // 詳情 Modal
@@ -2203,8 +2183,10 @@
           },          currentDateStr() {
             return new Date().toLocaleDateString(i18nLocale(), { year: "numeric", month: "long", day: "numeric", weekday: "long" });
           },
+          // #27 同源修復：todayStr 用本地日期（唔好 toISOString 嘅 UTC）
           todayStr() {
-            return new Date().toISOString().split("T")[0];
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
           },
           todayBookings() {
             return this.bookings.filter(b => b.appointment_date === this.todayStr);
@@ -2245,6 +2227,11 @@
         },
 
         methods: {
+          // #20：明確「返回官網」——去 index.html 並保留 session（見 js/session-guard.js）
+          goToSite() {
+            if (typeof window.goToSite === 'function') window.goToSite();
+            else window.location.href = 'index.html';
+          },
           // ==================== 功能10：中醫討論區 ====================
           async loadForum() {
             this.forumLoading = true;
@@ -2292,22 +2279,7 @@
             } catch (e) { alert('回覆失敗：' + e.message); }
             this.forumBusy = false;
           },
-          // 🗣️ 客人心聲（到診意見）提交
-          async submitVoice() {
-            if (!this.voiceContent.trim()) { this.voiceMsg = this.t('請填寫意見內容'); return; }
-            this.voiceBusy = true; this.voiceMsg = '';
-            try {
-              const r = await fetch('/api/content/customer-voices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (localStorage.getItem('jwtToken') || '') },
-                body: JSON.stringify({ rating: this.voiceRating, visit_type: this.voiceVisitType || '一般到診', content: this.voiceContent.trim() })
-              });
-              const d = await r.json().catch(() => ({}));
-              if (r.ok) { this.voiceContent = ''; this.voiceRating = 5; this.voiceVisitType = ''; this.voiceMsg = this.t('已提交，待審核'); }
-              else this.voiceMsg = d.error || this.t('提交失敗');
-            } catch (e) { this.voiceMsg = this.t('提交失敗：') + e.message; }
-            this.voiceBusy = false;
-          },
+          // #13：醫師帳戶客人心聲功能已移除（submitVoice 方法一併刪除）
           // 🫀 客人健康檔案：搜尋 + 唯讀查看
           hfReset() {
             this.hfResults = [];
@@ -2476,6 +2448,8 @@
           },
 
           handleLogout() {
+            // #20：標記「已登出」，防止倒退還原已登入畫面（見 js/session-guard.js）
+            try { if (typeof window.markLoggedOut === 'function') window.markLoggedOut(); } catch (e) {}
             if (!confirm("確定要登出嗎？")) return;
             // 🔒 通知伺服器將 token 加入黑名單
             try {
@@ -3290,6 +3264,22 @@
             this.showDetailModal = true;
           },
 
+          // 🆕 建立檔案（#14）：由預約卡進入，標記治療中並開啟病歷填寫
+          async doctorCreateRecord(booking) {
+            this.selectedBooking = { ...booking };
+            this.hfBookingId = booking.id;
+            await this.updateStatus(booking.id, 'in-treatment');
+            this.openMedicalRecordModal();
+          },
+          // 🆕 客人檔案右上角「建立檔案」：若由預約開啟則標記治療中並開啟病歷
+          async doctorCreateRecordFromProfile() {
+            if (this.hfBookingId && this.selectedBooking && this.selectedBooking.id === this.hfBookingId) {
+              await this.updateStatus(this.hfBookingId, 'in-treatment');
+            }
+            if (this.selectedBooking) this.openMedicalRecordModal();
+            else alert(this.t('請先於預約列表選擇該客人嘅預約，再建立檔案。'));
+          },
+
           openMedicalRecordModal() {
             this.showDetailModal = false;
             this.resetRecordForm();
@@ -3350,10 +3340,14 @@
           setToday() {
             this.selectedDate = this.todayStr;
           },
+          // #27 同源修復：setTomorrow 用本地日期
           setTomorrow() {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            this.selectedDate = tomorrow.toISOString().split("T")[0];
+            const y = tomorrow.getFullYear();
+            const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
+            const d = String(tomorrow.getDate()).padStart(2, "0");
+            this.selectedDate = `${y}-${m}-${d}`;
           },
           clearDateFilter() {
             this.selectedDate = "";
@@ -3654,8 +3648,53 @@
             const data = await r.json();
             if (r.ok) {
               this.essProfile = data;
+              this.myAvatar = data.avatar || "";
               this.essEdit = { phone: data.phone || "", email: data.email || "", address: data.address || "", emergency_contact: data.emergency_contact || "", emergency_phone: data.emergency_phone || "" };
             }
+            this.loadDocNotify();
+          },
+          // 🔔 讀取／儲存醫師個人 WhatsApp 總開關
+          async loadDocNotify() {
+            try {
+              const r = await fetch(`/api/users/${this.doctorInfo.id}/profile`, { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+              const data = await r.json();
+              if (r.ok) this.docNotifyEnabled = (data.whatsapp_enabled ?? 1) === 1;
+            } catch (e) { /* ignore */ }
+          },
+          async saveDocNotify() {
+            this.docNotifySaving = true;
+            try {
+              const r = await fetch(`/api/users/${this.doctorInfo.id}/notifications`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: JSON.stringify({ whatsapp_enabled: this.docNotifyEnabled ? 1 : 0 }),
+              });
+              const data = await r.json();
+              if (r.ok) alert("✅ WhatsApp 通知設定已儲存");
+              else alert(data.error || "儲存失敗");
+            } catch (e) { alert("儲存失敗"); }
+            finally { this.docNotifySaving = false; }
+          },
+          async uploadMyAvatar() {
+            const input = this.$refs.avatarInput;
+            if (!input || !input.files || !input.files[0]) { alert(this.t('請先選擇圖片')); return; }
+            const fd = new FormData();
+            fd.append("avatar", input.files[0]);
+            this.avatarUploading = true;
+            try {
+              const r = await fetch("/api/users/avatar", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: fd,
+              });
+              const data = await r.json();
+              if (r.ok && data.avatar) {
+                this.myAvatar = data.avatar;
+                if (this.essProfile) this.essProfile.avatar = data.avatar;
+                alert(this.t('頭像已更新'));
+              } else { alert(data.error || this.t('上傳失敗')); }
+            } catch (e) { alert(this.t('上傳失敗，請稍後再試')); }
+            finally { this.avatarUploading = false; input.value = ""; }
           },
           async saveMyProfile() {
             if (!this.essProfile) return;

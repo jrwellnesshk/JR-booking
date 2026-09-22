@@ -1,10 +1,12 @@
-﻿const express = require("express");
+const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
+const XLSX = require("xlsx");
 const { serverError } = require("../services/httpResp");
 const { isHoliday, getHolidaysInRange } = require("../services/holidays");
+const { validatePassword } = require("../services/passwordPolicy");
 
 // ==================================================================
 // 📄 員工文件上傳（階段三）：允許 PDF / 圖片 / Office 文檔
@@ -86,6 +88,16 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
     const wd = d.getDay();
     return wd === 0 || wd === 6; // 星期日/六
   };
+  // #91 匯入用 Promise 包裝（原 handler 用 callback，新 handler 用 async/await）
+  const q1 = (sql, params) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+  const qAll = (sql, params) => new Promise((resolve, reject) => {
+    db.all(sql, params || [], (err, rows) => (err ? reject(err) : resolve(rows || [])));
+  });
+  const run = (sql, params) => new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) { err ? reject(err) : resolve(this); });
+  });
   const dateRange = (start, end) => {
     const out = [];
     const s = new Date(start + "T00:00:00");
@@ -278,6 +290,7 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
     personal: "事假",
     statutory: "勞工假期補假",
     personal_other: "個人原因",
+    other: "其他",
   };
   const attTypeLabel = {
     full: "全日",
@@ -560,7 +573,7 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
     const user = req.user;
     db.get(
       `SELECT id, username, name, name_en, phone, email, role, hire_date, address,
-              emergency_contact, emergency_phone, id_card, bank_account, hourly_rate, basic_salary
+              emergency_contact, emergency_phone, id_card, bank_account, hourly_rate, basic_salary, avatar
        FROM users WHERE id=?`,
       [user.id],
       (err, row) => {
@@ -894,8 +907,8 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
     const { username, name, name_en, phone, email, role } = req.body;
     if (!username || !name || !phone) return res.status(400).json({ error: "請提供用戶名、姓名、電話" });
     const finalRole = role === 'doctor' ? 'doctor' : 'staff';
-    // 全職 / 兼職：only staff 可以兼職；醫生一律全職
-    const employmentType = (finalRole === 'doctor') ? 'full' : (req.body.employment_type === 'part' ? 'part' : 'full');
+    // 全職 / 兼職：staff 與 doctor 均可兼職（醫師兼職與兼職員工功能一致，含報更）
+    const employmentType = req.body.employment_type === 'part' ? 'part' : 'full';
     db.get("SELECT id FROM users WHERE username=?", [username], (eU, exists) => {
       if (eU) return serverError(res, eU);
       if (exists) return res.status(400).json({ error: "用戶名已被使用" });
@@ -929,8 +942,8 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
         // 建立 users 帳戶
         db.run(
           `INSERT INTO users (username, password, name, name_en, phone, email, role, employment_type, must_change_password, leave_balance)
-           VALUES (?, ?, ?, ?, ?, ?, 'doctor', 'full', 1, ?)`,
-          [username, hashed, name, name_en, phone, email || "", balanceJson],
+           VALUES (?, ?, ?, ?, ?, ?, 'doctor', ?, 1, ?)`,
+          [username, hashed, name, name_en, phone, email || "", employmentType, balanceJson],
           function (uErr) {
             if (uErr) return serverError(res, uErr);
             const newUserId = this.lastID;
@@ -972,7 +985,8 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
         balance = { ...balance, ...leave_balance };
       }
       const newRole = role === 'doctor' ? 'doctor' : (role === 'staff' ? 'staff' : emp.role);
-      const newEmpType = (newRole === 'doctor') ? 'full' : (employmentType || emp.employment_type || 'full');
+      // 醫師亦可設為兼職（doctor + part），與兼職員工共用報更邏輯
+      const newEmpType = (employmentType !== null) ? employmentType : (emp.employment_type || 'full');
       const afterUpdate = (uErr) => {
         if (uErr) return serverError(res, uErr);
         // 兼職：移除固定每週更表（用報更）；全職：確保有每週更表
@@ -1013,23 +1027,31 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
     });
   });
 
-  // 重設員工密碼
+  // 重設員工密碼（🔒 與 admin.js 一致：走分層密碼政策，唔可繞過）
   router.put("/employees/:id/password", requireAuth, requireRole('admin'), (req, res) => {
     const { id } = req.params;
     const newPassword = req.body.password;
-    if (!newPassword || String(newPassword).length < 6) {
-      return res.status(400).json({ error: "密碼至少 6 位" });
+    if (!newPassword) {
+      return res.status(400).json({ error: "請提供新密碼" });
     }
-    const hashed = hashPassword(newPassword);
-    db.run(
-      "UPDATE users SET password=?, must_change_password=1 WHERE id=? AND role IN ('staff','doctor')",
-      [hashed, id],
-      function (updErr) {
-        if (updErr) return serverError(res, updErr);
-        if (this.changes === 0) return res.status(404).json({ error: "員工不存在" });
-        res.json({ success: true, message: "員工密碼已重設" });
+    db.get("SELECT role FROM users WHERE id=? AND role IN ('staff','doctor')", [id], (gErr, target) => {
+      if (gErr) return serverError(res, gErr);
+      if (!target) return res.status(404).json({ error: "員工不存在" });
+      const pwResult = validatePassword(newPassword, target.role || 'staff');
+      if (!pwResult.ok) {
+        return res.status(400).json({ error: pwResult.error, field: "password" });
       }
-    );
+      const hashed = hashPassword(newPassword);
+      db.run(
+        "UPDATE users SET password=?, must_change_password=1 WHERE id=? AND role IN ('staff','doctor')",
+        [hashed, id],
+        function (updErr) {
+          if (updErr) return serverError(res, updErr);
+          if (this.changes === 0) return res.status(404).json({ error: "員工不存在" });
+          res.json({ success: true, message: "員工密碼已重設" });
+        }
+      );
+    });
   });
 
   // ==================================================================
@@ -1168,7 +1190,12 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
                           const empDates = {};
                           empAtts.forEach((a) => { empDates[a.attendance_date] = a; });
                           const leaveDates = {};
+                          // #12 年假 / 事假總數（按已批准請假類別逐日計）
+                          let annualLeaveTotal = 0, personalLeaveTotal = 0;
                           empLeaves.forEach((l) => {
+                            const ld = dateRange(l.start_date, l.end_date).length;
+                            if (l.leave_type === 'annual') annualLeaveTotal += ld;
+                            else if (l.leave_type === 'personal') personalLeaveTotal += ld;
                             dateRange(l.start_date, l.end_date).forEach((d) => { leaveDates[d] = l.leave_type; });
                           });
                           const myOff = userOffMap[emp.id] || new Set();
@@ -1191,12 +1218,23 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
                             ...emp,
                             work_days: worked,
                             late, early, absent, on_leave: onLeave, off,
+                            // #12 年假總數 / 事假總數（供前端喺「請假」與「缺席」之間展示）
+                            annualLeaveTotal, personalLeaveTotal,
                             total_minutes: totalMin,
                             total_label: fmtMin(totalMin),
                             avg_label: worked ? fmtMin(Math.round(totalMin / worked)) : "",
                           };
                         });
-                        res.json({ from, to, workdays: baseWorkdays.length, report });
+                        // #12 合計（全員年假 / 事假總日數 + 請假 / 缺席 / 遲到 / 早退）
+                        const totals = {
+                          annualLeaveTotal: report.reduce((s, r) => s + (r.annualLeaveTotal || 0), 0),
+                          personalLeaveTotal: report.reduce((s, r) => s + (r.personalLeaveTotal || 0), 0),
+                          onLeaveTotal: report.reduce((s, r) => s + (r.on_leave || 0), 0),
+                          absentTotal: report.reduce((s, r) => s + (r.absent || 0), 0),
+                          lateTotal: report.reduce((s, r) => s + (r.late || 0), 0),
+                          earlyTotal: report.reduce((s, r) => s + (r.early || 0), 0),
+                        };
+                        res.json({ from, to, workdays: baseWorkdays.length, report, totals });
                       }
                     );
                   }
@@ -1207,6 +1245,174 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
         );
       }
     );
+  });
+
+  // #16 打卡紀錄匯出（Excel / xlsx）
+  // 支援 start/end 或 month（YYYY-MM）參數；按現有 attendance 表欄位輸出
+  router.get("/attendance/export", requireAuth, requireRole('admin'), (req, res) => {
+    const { start, end, month } = req.query;
+    let from = start || "";
+    let to = end || "";
+    if (month) {
+      const [y, m] = String(month).split("-").map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      from = `${month}-01`;
+      to = `${month}-${String(lastDay).padStart(2, "0")}`;
+    }
+    if (!from || !to) return res.status(400).json({ error: "請提供 start/end 或 month 參數" });
+    db.all(
+      `SELECT a.id, a.user_id, u.name AS employee_name, u.username AS employee_no, a.attendance_date,
+              a.clock_in, a.clock_out, a.work_minutes, a.is_late, a.is_early_leave, a.is_absent, a.note
+       FROM attendance a LEFT JOIN users u ON u.id=a.user_id
+       WHERE a.attendance_date>=? AND a.attendance_date<=? ORDER BY a.attendance_date, a.user_id`,
+      [from, to],
+      (err, rows) => {
+        if (err) return serverError(res, err);
+        const data = (rows || []).map((r) => ({
+          員工姓名: r.employee_name || "",
+          員工編號: r.employee_no || r.user_id,
+          日期: r.attendance_date,
+          上班時間: r.clock_in || "",
+          下班時間: r.clock_out || "",
+          時數: r.work_minutes ? (r.work_minutes / 60).toFixed(2) : 0,
+          遲到: r.is_late ? "是" : "否",
+          早退: r.is_early_leave ? "是" : "否",
+          缺席: r.is_absent ? "是" : "否",
+          備註: r.note || "",
+        }));
+        const sheetData = data.length ? data : [{ 員工姓名: "", 員工編號: "", 日期: "", 上班時間: "", 下班時間: "", 時數: 0, 遲到: "", 早退: "", 缺席: "", 備註: "" }];
+        const ws = XLSX.utils.json_to_sheet(sheetData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "打卡紀錄");
+        const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename=attendance-${from}-${to}.xlsx`);
+        res.send(buf);
+      }
+    );
+  });
+
+  // #16 / #91 打卡紀錄匯入（Excel / xlsx）→ upsert 入 attendance（按 user_id + attendance_date）
+  // #91 增強：① 員工可經「編號 / 姓名 / 用戶名 / 工號(打卡機卡號)」解析；② 預留打卡機來源 source 參數；
+  //       ③ 時間格式嚴格校驗；④ 支援直接填「時數 / 工時」；⑤ 無打卡記錄視為缺席(is_absent)。
+  // 欄位對應規則（入檔可揀任何一組 header，系統自動辨認；預留打卡機匯出格式）：
+  //   員工識別：員工編號 / 用戶ID / user_id / userId / 員工ID ＝ 內部 id
+  //            用戶名 / 帳號 / username / 工號 / 員工代號 / 卡號 / EMP_ID / ID ＝ 以 username 匹配（打卡機卡號預留）
+  //            員工姓名 / 姓名 / name / 員工名 ＝ 以姓名匹配
+  //   日期    ：日期 / attendance_date / date / 打卡日期 / DATE
+  //   上班    ：上班時間 / clock_in / clockIn / 上班 / 簽到 / 入時間
+  //   下班    ：下班時間 / clock_out / clockOut / 下班 / 簽退 / 出時間
+  //   時數    ：時數 / 工時 / hours / work_hours / work_minutes（有就直接用，否則由上下班計）
+  router.post("/attendance/import", requireAuth, requireRole('admin'), hrDocUpload.single("file"), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "請上傳 xlsx / xls 檔案" });
+    // #91 預留接口：來源標記（手動匯入 import ／ 日後實體打卡機 punch_clock）
+    const source = (req.body && req.body.source) || req.query.source || "import";
+    try {
+      const fileBuf = fs.readFileSync(req.file.path); // diskStorage：內容喺檔案而非 buffer
+      const wb = XLSX.read(fileBuf, { type: "buffer" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      if (!rows.length) return res.status(400).json({ error: "試算表冇資料列" });
+      const results = { inserted: 0, updated: 0, errors: [] };
+
+      // 解析員工識別 → 內部 user_id（id / username / name）
+      const resolveUser = async (r) => {
+        const idRaw = r["員工編號"] || r["用戶ID"] || r["user_id"] || r["userId"] || r["員工ID"];
+        if (idRaw !== "" && idRaw != null && !isNaN(Number(idRaw))) {
+          const u = await q1("SELECT id, name, role FROM users WHERE id=?", [Number(idRaw)]);
+          return u || { missing: Number(idRaw) };
+        }
+        const unRaw = r["用戶名"] || r["帳號"] || r["username"] || r["工號"] || r["員工代號"] || r["卡號"] || r["EMP_ID"] || r["ID"];
+        if (unRaw) {
+          const u = await q1("SELECT id, name, role FROM users WHERE username=? COLLATE NOCASE", [String(unRaw).trim()]);
+          if (u) return u;
+          // 預留：打卡機工號可能等同電話後段／會員編號，退而求其次按 member_no 匹配
+          const m = await q1("SELECT id, name, role FROM users WHERE member_no=?", [String(unRaw).trim()]);
+          return m || { missingUsername: String(unRaw).trim() };
+        }
+        const nameRaw = r["員工姓名"] || r["姓名"] || r["name"] || r["員工名"];
+        if (nameRaw) {
+          const u = await q1("SELECT id, name, role FROM users WHERE name=? AND role IN ('staff','doctor','admin')", [String(nameRaw).trim()]);
+          if (u) return u;
+          const like = await qAll("SELECT id, name, role FROM users WHERE name LIKE ? AND role IN ('staff','doctor','admin')", [`%${String(nameRaw).trim()}%`]);
+          if (like.length === 1) return like[0];
+          return { missingName: String(nameRaw).trim(), ambiguous: like.length > 1 };
+        }
+        return null;
+      };
+      // 時間校驗：空 → null；格式錯 → undefined；否則分鐘數
+      const parseTime = (t) => {
+        if (t === "" || t == null) return null;
+        const s = String(t).trim();
+        const m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (!m) return undefined;
+        const h = Number(m[1]), mi = Number(m[2]);
+        if (h > 23 || mi > 59) return undefined;
+        return h * 60 + mi;
+      };
+      // 日期校驗：格式 + 曆法（月份 1-12、日數符合該月）都正確先收；否則列 error
+      const parseDate = (d) => {
+        const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return { ok: false };
+        const y = Number(m[1]), mo = Number(m[2]), da = Number(m[3]);
+        if (mo < 1 || mo > 12) return { ok: false };
+        const dim = new Date(y, mo, 0).getDate();
+        if (da < 1 || da > dim) return { ok: false };
+        return { ok: true, value: `${y}-${String(mo).padStart(2, "0")}-${String(da).padStart(2, "0")}` };
+      };
+
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const dateRaw = (r["日期"] || r["attendance_date"] || r["date"] || r["打卡日期"] || r["DATE"] || "").toString().trim();
+        const clockInRaw = (r["上班時間"] || r["clock_in"] || r["clockIn"] || r["上班"] || r["簽到"] || r["入時間"] || "").toString().trim();
+        const clockOutRaw = (r["下班時間"] || r["clock_out"] || r["clockOut"] || r["下班"] || r["簽退"] || r["出時間"] || "").toString().trim();
+        const hoursRaw = r["時數"] || r["工時"] || r["hours"] || r["work_hours"] || r["work_minutes"];
+
+        if (!dateRaw) { results.errors.push({ row: i + 2, reason: "缺少日期" }); continue; }
+        const dp = parseDate(dateRaw);
+        if (!dp.ok) { results.errors.push({ row: i + 2, reason: `日期格式／曆法錯誤：${dateRaw}（須為真實 YYYY-MM-DD）` }); continue; }
+        const date = dp.value;
+
+        const u = await resolveUser(r);
+        if (!u) { results.errors.push({ row: i + 2, reason: "缺少員工識別（編號／姓名／用戶名／工號）" }); continue; }
+        if (u.missing != null) { results.errors.push({ row: i + 2, reason: `員工 ID ${u.missing} 不存在` }); continue; }
+        if (u.missingUsername) { results.errors.push({ row: i + 2, reason: `用戶名／工號「${u.missingUsername}」找不到對應員工` }); continue; }
+        if (u.missingName) { results.errors.push({ row: i + 2, reason: `員工「${u.missingName}」找不到對應員工${u.ambiguous ? '（姓名撞名，請用編號）' : ''}` }); continue; }
+
+        const ci = parseTime(clockInRaw), co = parseTime(clockOutRaw);
+        if (ci === undefined) { results.errors.push({ row: i + 2, reason: `上班時間格式錯誤：${clockInRaw}` }); continue; }
+        if (co === undefined) { results.errors.push({ row: i + 2, reason: `下班時間格式錯誤：${clockOutRaw}` }); continue; }
+        // 時數：有就直接用，否則由上下班相減
+        let workMinutes = 0;
+        if (hoursRaw !== "" && hoursRaw != null && !isNaN(Number(hoursRaw))) {
+          workMinutes = Math.max(0, Math.round(Number(hoursRaw) * 60));
+        } else if (ci != null && co != null) {
+          workMinutes = Math.max(0, co - ci);
+        }
+        const isAbsent = (workMinutes === 0 && ci == null && co == null) ? 1 : 0;
+
+        const existing = await q1("SELECT id FROM attendance WHERE user_id=? AND attendance_date=?", [u.id, date]);
+        if (existing) {
+          await run(
+            "UPDATE attendance SET clock_in=?, clock_out=?, work_minutes=?, is_absent=?, source=?, updated_at=datetime('now','localtime') WHERE id=?",
+            [ci == null ? null : clockInRaw, co == null ? null : clockOutRaw, workMinutes, isAbsent, source, existing.id]
+          );
+          results.updated++;
+        } else {
+          await run(
+            "INSERT INTO attendance (user_id, name, role, attendance_date, clock_in, clock_out, work_minutes, is_absent, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), datetime('now','localtime'))",
+            [u.id, u.name, u.role, date, ci == null ? null : clockInRaw, co == null ? null : clockOutRaw, workMinutes, isAbsent, source]
+          );
+          results.inserted++;
+        }
+      }
+      // 清走暫存上傳檔
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.json({ success: true, ...results, message: `匯入完成：新增 ${results.inserted} 筆、更新 ${results.updated} 筆、失敗 ${results.errors.length} 筆` });
+    } catch (e) {
+      try { if (req.file && req.file.path) fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({ error: "讀取試算表失敗：" + e.message });
+    }
   });
 
   // 即日 / 某日出席異常（遲到/早退/缺席/請假/休息）
@@ -1540,7 +1746,7 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
   // 計算月結：出勤日數、總工時、OT、薪金
   const calcPayroll = (from, to, cb) => {
     db.all(
-      `SELECT id, name, name_en, hourly_rate, basic_salary FROM users WHERE role IN ('staff','doctor') AND is_active=1 ORDER BY role, id`,
+      `SELECT id, name, name_en, role, hourly_rate, basic_salary FROM users WHERE role IN ('staff','doctor') AND is_active=1 ORDER BY role, id`,
       [],
       (e2, employees) => {
         if (e2) return cb(e2);
@@ -1576,12 +1782,14 @@ module.exports = (db, hashPassword, { requireAuth, requireRole } = {}) => {
                 const otHours = otMin / 60;
                 let gross = 0;
                 if (emp.hourly_rate && emp.hourly_rate > 0) {
-                  gross = (totalMin / 60) * emp.hourly_rate + otHours * emp.hourly_rate * 0.5;
+                  // 🔧 OT 冇任何倍數：OT 時數直接按正常時薪計（人工 ÷ 每個鐘頭價錢）
+                  gross = (totalMin / 60) * emp.hourly_rate + otHours * emp.hourly_rate;
                 } else if (emp.basic_salary && emp.basic_salary > 0) {
                   const baseDays = workdayDates.length;
                   const perDayRate = baseDays > 0 ? emp.basic_salary / baseDays : 0;
                   const perHourRate = expectedHours > 0 ? perDayRate / expectedHours : 0;
-                  gross = baseDays > 0 ? perDayRate * workedDays + otHours * perHourRate * 1.5 : 0;
+                  // 🔧 OT 冇任何倍數：OT 時數直接按正常每小時價錢計
+                  gross = baseDays > 0 ? perDayRate * workedDays + otHours * perHourRate : 0;
                 }
                 return {
                   ...emp,

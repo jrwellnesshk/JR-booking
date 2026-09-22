@@ -160,15 +160,33 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
               [userId],
               (err3, records) => {
                 if (err3) return serverError(res, err3);
-                res.json({
-                  success: true,
-                  user,
-                  profile: profile || emptyProfile(),
-                  records: records || [],
-                  can_edit: true,
-                  can_verify: !!(req.user && ['doctor', 'staff', 'admin'].includes(req.user.role)),
-                  viewer_role: (req.user && req.user.role) || null,
-                });
+
+                // #6：客人檔案 —— 病歷記錄下面要睇到「所有預約及就診記錄」
+                db.all(
+                  `SELECT b.id, b.appointment_date, b.appointment_time, b.status,
+                          b.doctor_name, du.name AS doctor_user_name,
+                          s.name AS service_name, b.lateness_minutes, b.notes, b.created_at
+                   FROM bookings b
+                   LEFT JOIN users du ON du.id = b.doctor_user_id
+                   LEFT JOIN services s ON s.id = b.service_id
+                   WHERE b.user_id = ?
+                   ORDER BY b.appointment_date DESC, b.appointment_time DESC, b.id DESC
+                   LIMIT 100`,
+                  [userId],
+                  (err4, bookings) => {
+                    if (err4) return serverError(res, err4);
+                    res.json({
+                      success: true,
+                      user,
+                      profile: profile || emptyProfile(),
+                      records: records || [],
+                      bookings: bookings || [],
+                      can_edit: true,
+                      can_verify: !!(req.user && ['doctor', 'staff', 'admin'].includes(req.user.role)),
+                      viewer_role: (req.user && req.user.role) || null,
+                    });
+                  }
+                );
               }
             );
           }

@@ -1,5 +1,5 @@
 /**
- * 寶天JR預約系統 - 主伺服器
+ * JR 預約系統 - 主伺服器
  * 精簡版：所有 API 已模組化到 routes/ 資料夾
  */
 
@@ -234,6 +234,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// 🧹 防「改咗碼但客人瀏覽器食舊快取」：HTML/JS/CSS 一律要求重新驗證
+// 用 no-cache（唔係 no-store）—— 瀏覽器每次會問伺服器，未改就返 304，流量極細，
+// 但唔會再出現「彈出已移除嘅舊視窗」呢類快取鬼魅。
+app.use((req, res, next) => {
+  if (/\.(html?|js|css)$/i.test(req.path)) {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  }
+  next();
+});
+
 // 🔒 安全：只暴露必要嘅公共靜態資源，防止 .env / 資料庫 / 源碼 / node_modules 被下載
 const PUBLIC_STATIC_DIRS = ['css', 'js', 'picture'];
 PUBLIC_STATIC_DIRS.forEach((dir) => {
@@ -293,6 +303,11 @@ app.use('/api/', globalLimiter);
 let dbReady = false;
 
 const db = initializeDatabase();
+
+// 🔗 診所設定快取（電話 / WhatsApp）：集中讀取 clinic_settings，解決「後台改號唔同步」
+const clinicSettings = require('./services/clinicSettings');
+clinicSettings.setDb(db);
+clinicSettings.loadCache();
 
 // 🔒 JWT revocation 持久化：將登出黑名單落到 DB，重啟後仍然有效（M1 修正）
 jwt.init(db);
@@ -368,7 +383,8 @@ app.use('/api/bookings', bookingsRoutes(db, emailService, getLocalTimeString, { 
 // 會員訂閱 / 家庭帳戶 / Stripe 支付路由
 // 路徑前綴: /api/membership
 const membershipRoutes = require("./routes/memberships");
-app.use('/api/membership', membershipRoutes(db, { requireAuth, requireRole }));
+const membershipApi = membershipRoutes(db, { requireAuth, requireRole });
+app.use('/api/membership', membershipApi.router);
 
 // 優惠券路由（買券 → 免費診症）
 const couponRoutes = require("./routes/coupons");
@@ -376,7 +392,7 @@ app.use('/api/coupons', couponRoutes(db, { requireAuth, requireRole }));
 
 // 管理員路由（包含二次驗證）
 // 路徑前綴: /api/admin
-app.use('/api/admin', adminRoutes(db, hashPassword, verifyPassword, { requireAuth, requireRole }));
+app.use('/api/admin', adminRoutes(db, hashPassword, verifyPassword, { requireAuth, requireRole, recomputeMemberNo: membershipApi.recomputeMemberNo, recomputeFamilyMemberNos: membershipApi.recomputeFamilyMemberNos }));
 
 // 設定路由（診所、API、醫師、服務）
 // 路徑前綴: /api/settings
@@ -563,7 +579,7 @@ app.post('/api/notifications/test-whatsapp', requireAuth, requireRole('admin'), 
     }
     
     console.log(`💬 測試 WhatsApp 發送到: ${cleanPhone}`);
-    const result = await whatsappService.sendWhatsApp(cleanPhone, '🏥 *寶天JR*\n\n這是一條測試訊息，如果您收到此訊息，表示 WhatsApp 服務配置成功！✅');
+    const result = await whatsappService.sendWhatsApp(cleanPhone, '🏥 *JR*\n\n這是一條測試訊息，如果您收到此訊息，表示 WhatsApp 服務配置成功！✅');
     res.json(result);
   } catch (error) {
     console.error('測試 WhatsApp 錯誤:', error);
@@ -1061,7 +1077,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║                   🏥 寶天JR預約系統                      ║
+║                   🏥 JR 預約系統                      ║
 ╠════════════════════════════════════════════════════════════╣
 ║  伺服器已啟動：http://localhost:${PORT}                      ║
 ║  管理後台：http://localhost:${PORT}/admin.html               ║

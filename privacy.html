@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>私隱政策 — 寶天JR</title>
-    <meta name="description" content="寶天JR私隱政策：說明本診所如何收集、使用、儲存及保護閣下的個人資料（包括健康資料），以及閣下根據香港《個人資料（私隱）條例》所享有嘅權利。" />
+    <title>私隱政策 — JR</title>
+    <meta name="description" content="JR私隱政策：說明本診所如何收集、使用、儲存及保護閣下的個人資料（包括健康資料），以及閣下根據香港《個人資料（私隱）條例》所享有嘅權利。" />
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <link rel="stylesheet" href="css/tailwind.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -44,7 +44,7 @@
   <body class="min-h-screen">
     <main class="max-w-3xl mx-auto px-4 py-10">
       <a href="index.html" class="back-link inline-flex items-center gap-2 text-sm mb-6">
-        <i class="fas fa-arrow-left"></i>返回寶天JR主頁
+        <i class="fas fa-arrow-left"></i>返回JR主頁
       </a>
 
       <header class="text-center mb-8">
@@ -57,7 +57,7 @@
       <div class="space-y-6">
         <section class="policy-card p-[1.4rem]">
           <h2>一、引言</h2>
-          <p>寶天JR（「本診所」）承諾遵守香港《個人資料（私隱）條例》（第 486 章）（「條例」）。本政策說明本診所如何收集、使用、儲存、保護及處理閣下喺使用本預約系統時提供嘅個人資料。</p>
+          <p>JR（「本診所」）承諾遵守香港《個人資料（私隱）條例》（第 486 章）（「條例」）。本政策說明本診所如何收集、使用、儲存、保護及處理閣下喺使用本預約系統時提供嘅個人資料。</p>
         </section>
 
         <section class="policy-card p-[1.4rem]">
@@ -142,8 +142,8 @@
           <h2>十、聯絡我們</h2>
           <p>如對本私隱政策或閣下嘅個人資料有任何查詢、投訴或行使上述權利，請聯絡：</p>
           <ul class="mt-2">
-            <li><i class="fas fa-phone mr-2" style="color:var(--p500);"></i>電話：2555-1136</li>
-            <li><i class="fab fa-whatsapp mr-2" style="color:var(--p500);"></i>WhatsApp：852 2555 1136</li>
+            <li><i class="fas fa-phone mr-2" style="color:var(--p500);"></i>電話：<span id="pp-phone">2555-1136</span></li>
+            <li><i class="fab fa-whatsapp mr-2" style="color:var(--p500);"></i>WhatsApp：<span id="pp-wa">852 2555 1136</span></li>
             <li><i class="fas fa-location-dot mr-2" style="color:var(--p500);"></i>地址：香港島中環德輔道中61-65號華人銀行大廈10樓1002室</li>
           </ul>
         </section>
@@ -151,5 +151,22 @@
         <p class="text-xs text-slate-400 text-center pb-6">本政策可不时更新，更新後將喺本頁公布。繼續使用本系統即表示接受更新後嘅政策。</p>
       </div>
     </main>
+  <!-- BUG-1：動態同步診所電話 / WhatsApp（管理員改 clinic_settings 後反映） -->
+  <script>
+    (function () {
+      fetch('/api/content/social').then(function (r) { return r.ok ? r.json() : {}; }).then(function (s) {
+        if (s && s.clinic_phone) {
+          var p = document.getElementById('pp-phone');
+          if (p) p.textContent = s.clinic_phone;
+        }
+        if (s && s.social_whatsapp) {
+          var w = String(s.social_whatsapp).replace(/[^0-9]/g, '');
+          if (!w.startsWith('852')) w = '852' + w;
+          var e = document.getElementById('pp-wa');
+          if (e) e.textContent = w.replace(/^852(\d{4})(\d{4})$/, '852 $1 $2');
+        }
+      }).catch(function () {});
+    })();
+  </script>
   </body>
 </html>

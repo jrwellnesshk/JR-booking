@@ -8,6 +8,9 @@ const solarTermsService = require('./solar-terms');
 const lunarHolidaysService = require('./lunar-holidays');
 const weatherService = require('./weather');
 
+// 🔗 診所設定（電話 / WhatsApp）— 集中讀取，唔好硬碼
+const clinicSettings = require('./clinicSettings');
+
 // ℹ️ SMS 已全面取消，統一使用 WhatsApp
 
 // WhatsApp 服務 - 根據環境變數選擇
@@ -336,6 +339,43 @@ function updateSettings(settings) {
 }
 
 /**
+ * 醫師請假通知模板（病假 / 事假）預設內容
+ * 管理員可於後台「通知管理 → 醫師請假通知」自定義；支援 {doctorName} {date} {clinicPhone} {waUrl} 變數
+ */
+const DOCTOR_LEAVE_DEFAULT_TEMPLATES = {
+  sick:
+    '【JR】通知：非常抱歉，{doctorName}醫師於 {date} 因身體抱恙（病假）未能應診。您嘅預約唔使改期，我哋會為您安排第二位醫師跟進。如有疑問請致電診所 {clinicPhone} 或 WhatsApp {waUrl} 聯絡。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。',
+  personal:
+    '【JR】通知：非常抱歉，{doctorName}醫師於 {date} 因私人事務（事假）未能應診。您嘅預約唔使改期，我哋會為您安排第二位醫師跟進。如有疑問請致電診所 {clinicPhone} 或 WhatsApp {waUrl} 聯絡。麻煩回覆「OK」確認，我哋會盡快同您聯絡。不便之處，敬請原諒。'
+};
+
+/**
+ * 取得醫師請假通知模板（病假 / 事假）
+ * @returns {Promise<{sick:string, personal:string}>}
+ */
+async function getDoctorLeaveTemplates() {
+  const settings = await getSettings();
+  return {
+    sick: (settings.doctor_leave_sick_template || '').trim() || DOCTOR_LEAVE_DEFAULT_TEMPLATES.sick,
+    personal: (settings.doctor_leave_personal_template || '').trim() || DOCTOR_LEAVE_DEFAULT_TEMPLATES.personal
+  };
+}
+
+/**
+ * 將模板變數替換為實際內容
+ * @param {string} body 模板文字（含 {doctorName} {date} {clinicPhone} {waUrl}）
+ * @param {{doctorName?:string, date?:string, clinicPhone?:string, waUrl?:string}} vars
+ * @returns {string}
+ */
+function renderDoctorLeaveTemplate(body, vars = {}) {
+  return String(body || '')
+    .replace(/\{doctorName\}/g, vars.doctorName || '')
+    .replace(/\{date\}/g, vars.date || '')
+    .replace(/\{clinicPhone\}/g, vars.clinicPhone || '')
+    .replace(/\{waUrl\}/g, vars.waUrl || '');
+}
+
+/**
  * 獲取所有節日
  * @returns {Promise<Array>} - 節日列表
  */
@@ -505,7 +545,7 @@ async function sendSolarTermNotification() {
   
   // 使用自訂訊息（如果有）
   const termData = await getSolarTermMessage(todayTerm.name);
-  const message = `【寶天JR提醒您】\n${termData.emoji}${termData.message}`;
+  const message = `【JR提醒您】\n${termData.emoji}${termData.message}`;
   
   const users = await getEligibleUsers();
   const eligibleUsers = users.filter(u => u.receive_solar_terms);
@@ -628,7 +668,7 @@ async function sendWeatherNotification() {
     if (currentTemp !== null && currentTemp !== undefined && currentTemp <= coldThreshold) {
       shouldSend = true;
       triggerReason = `溫度 ${currentTemp}°C ≤ 閾值 ${coldThreshold}°C`;
-      weatherMessage = `【寶天JR提醒您】\n🌡️天氣轉涼提醒\n\n今日氣溫約 ${currentTemp}°C，天氣${weatherDescription}。\n\n請注意添衣保暖，預防感冒。老人、小孩及長期病患者應特別注意保暖。\n\n如有不適，請及早求醫。`;
+      weatherMessage = `【JR提醒您】\n🌡️天氣轉涼提醒\n\n今日氣溫約 ${currentTemp}°C，天氣${weatherDescription}。\n\n請注意添衣保暖，預防感冒。老人、小孩及長期病患者應特別注意保暖。\n\n如有不適，請及早求醫。`;
     }
     
     // 檢查天氣警告
@@ -636,7 +676,7 @@ async function sendWeatherNotification() {
       shouldSend = true;
       triggerReason = `天氣警告: ${warnings.map(w => w.name || w).join(', ')}`;
       const warningText = warnings.map(w => `⚠️ ${w.name || w}`).join('\n');
-      weatherMessage = `【寶天JR提醒您】\n🌡️天氣警告\n\n${warningText}\n\n請注意安全，如有不適請及早求醫。`;
+      weatherMessage = `【JR提醒您】\n🌡️天氣警告\n\n${warningText}\n\n請注意安全，如有不適請及早求醫。`;
     }
     
     if (!shouldSend) {
@@ -785,7 +825,7 @@ async function sendBookingReminders() {
       urgencyEmoji = '📅';
     }
     
-    const message = `【寶天JR】${urgencyEmoji} 預約提醒
+    const message = `【JR】${urgencyEmoji} 預約提醒
 
 您有一個預約在${daysText}：
 📅 日期：${booking.appointment_date}
@@ -794,7 +834,7 @@ async function sendBookingReminders() {
 💆 服務：${booking.service_name || '一般診症'}
 
 📍 地址：香港島中環德輔道中61-65號華人銀行大廈10樓1002室
-📞 電話：2555-1136
+📞 電話：${clinicSettings.getClinicPhone()}
 
 ${daysUntil === 0 ? '請準時到達！' : '請準時到達，如需更改請提前通知。'}`;
 
@@ -971,7 +1011,7 @@ async function sendTestNotification(type, phone, customMessage = null, channel =
       const selectedTerm = allTerms[termIndex];
       // 使用資料庫版本的 getSolarTermMessage（支援自訂訊息）
       const termData = await getSolarTermMessage(selectedTerm.name);
-      message = `【寶天JR提醒您】\n${termData.emoji}${termData.message}`;
+      message = `【JR提醒您】\n${termData.emoji}${termData.message}`;
       testInfo.currentItem = selectedTerm.name;
       testInfo.currentIndex = termIndex + 1;
       testInfo.totalCount = allTerms.length;
@@ -1003,15 +1043,15 @@ async function sendTestNotification(type, phone, customMessage = null, channel =
       break;
       
     case 'weather':
-      message = `【寶天JR提醒您】\n🌡️天氣轉涼提醒（測試）\n\n今日氣溫約 15°C，天氣清涼。\n\n請注意添衣保暖，預防感冒。`;
+      message = `【JR提醒您】\n🌡️天氣轉涼提醒（測試）\n\n今日氣溫約 15°C，天氣清涼。\n\n請注意添衣保暖，預防感冒。`;
       break;
       
     case 'custom':
-      message = customMessage || '【寶天JR】這是一條測試訊息';
+      message = customMessage || '【JR】這是一條測試訊息';
       break;
       
     default:
-      message = '【寶天JR】這是一條測試訊息';
+      message = '【JR】這是一條測試訊息';
   }
   
   // 根據指定渠道發送測試通知
@@ -1085,6 +1125,8 @@ module.exports = {
   startScheduler,
   getSettings,
   updateSettings,
+  getDoctorLeaveTemplates,
+  renderDoctorLeaveTemplate,
   getHolidays,
   updateHoliday,
   addHoliday,

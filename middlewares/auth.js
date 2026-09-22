@@ -29,7 +29,7 @@ const createAuthMiddleware = (db) => {
     }
 
     // 載入用戶最新資料（確保角色/帳戶狀態最新）
-    db.get("SELECT id, username, name, name_en, phone, email, role, employment_type, profile_completed, created_at, membership_tier, insurance_covered, family_head_id, is_active, whatsapp_weather, whatsapp_confirm, whatsapp_health FROM users WHERE id=?", [payload.userId], (err, user) => {
+    db.get("SELECT id, username, name, name_en, phone, email, role, employment_type, profile_completed, created_at, membership_tier, insurance_covered, family_head_id, is_active, whatsapp_weather, whatsapp_confirm, whatsapp_health, must_change_password FROM users WHERE id=?", [payload.userId], (err, user) => {
       if (err) return res.status(500).json({ error: '系統錯誤，請稍後再試' });
       if (!user) return res.status(401).json({ error: '帳戶不存在，請重新登入' });
       // 停用帳戶拒絕（is_active=0）
@@ -48,9 +48,19 @@ const createAuthMiddleware = (db) => {
       req.auth = { ...payload, user };
       req.userId = user.id;
       req.user = { ...user, days_remaining };
+
+      // 🔓 已按用戶要求取消「強制修改密碼」門檻：
+      //    must_change_password=1 不再封鎖任何 API，登入後可直接使用系統。
+      //    （欄位仍保留作記錄，改密入口仍在，但改為自願性質）
       next();
     });
   };
+
+  /**
+   * 🔓 已停用：原本作「must_change_password=1 時封鎖其他 API」之用。
+   * 按用戶要求取消強制改密後，此中間件改為直接放行（保留函式名以兼容既有路由引用）。
+   */
+  const requirePasswordUpToDate = (req, res, next) => next();
 
   /**
    * 可選登入：有 token 就驗證並載入 req.user / req.userId；無 token 都照樣通過（訪客模式）
@@ -104,7 +114,7 @@ const createAuthMiddleware = (db) => {
     next();
   };
 
-  return { requireAuth, requireRole, optionalAuth };
+  return { requireAuth, requireRole, optionalAuth, requirePasswordUpToDate };
 };
 
 module.exports = createAuthMiddleware;

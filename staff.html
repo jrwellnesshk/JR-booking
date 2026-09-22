@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title data-i18n="員工版面 - 寶天JR">員工版面 - 寶天JR</title>
+    <title data-i18n="員工版面 - JR">員工版面 - JR</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <link rel="stylesheet" href="css/tailwind.css?v=20260909" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -14,6 +14,8 @@
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <link rel="stylesheet" href="css/style.css?v=20260909" />
     <script src="js/auth-fetch.js?v=20260909"></script>
+    <!-- #20：防止瀏覽器倒退登出 session + 「返回官網」掣 -->
+    <script src="js/session-guard.js?v=20260917"></script>
     <link rel="stylesheet" href="css/i18n.css" />
     <script src="js/i18n.js?v=20260922"></script>
     <script src="js/i18n-runtime.js?v=20260919"></script>
@@ -466,6 +468,16 @@
         content:""; position:absolute; top:0; left:50%; width:2px; height:1.6rem;
         border-left:1.5px dashed rgba(192,136,117,.5); transform:translateX(-50%);
       }
+      /* 🌳 堆疊式世代層（祖父母層 → 父母輩 → 戶主·同輩 → 子女輩 → 孫輩） */
+      .ftree-stacked{ list-style:none; margin:0; padding:0; position:relative; z-index:2; }
+      .ftree-row{ position:relative; padding:1.1rem 0; text-align:center; }
+      .ftree-row + .ftree-row{ border-top:1px dashed rgba(192,136,117,.22); }
+      .ftree-row:not(:first-child)::before{
+        content:""; position:absolute; top:-1.1rem; left:50%; width:0; height:1.1rem;
+        border-left:2px dashed rgba(126,148,118,.5); transform:translateX(-50%);
+      }
+      .ftree-row-label{ display:inline-block; font-size:12px; letter-spacing:.05em; color:#9a8c7d; background:#fff; padding:.18rem .85rem; margin-bottom:.7rem; border:1px solid rgba(192,136,117,.4); border-radius:999px; }
+      .ftree-row-nodes{ display:flex; flex-wrap:wrap; justify-content:center; align-items:flex-start; gap:1.4rem; }
       .ftree-tag{
         display:inline-block; margin-top:.35rem; padding:.15rem .5rem; border-radius:999px;
         font-size:.65rem; font-weight:600; background:var(--pink-soft); color:var(--pink-700);
@@ -543,7 +555,7 @@
     <!-- 🛡️ 載入 splash：Vue 掛載前顯示，掛載後自動淡出 -->
     <div id="boot-splash" aria-hidden="true">
       <div class="boot-logo" data-i18n="寶">寶</div>
-      <div class="boot-name" data-i18n="寶天JR">寶天JR</div>
+      <div class="boot-name" data-i18n="JR">JR</div>
       <div class="boot-sub" data-i18n="員工版">員工版</div>
       <div class="boot-ring"></div>
     </div>
@@ -577,7 +589,7 @@
               <i class="fas fa-user-tie text-4xl text-cyan-600"></i>
             </div>
             <h1 class="text-2xl font-bold text-slate-800">{{ t('員工登入') }}</h1>
-            <p class="text-slate-500 text-sm mt-1">{{ t('寶天JR · 員工管理系統') }}</p>
+            <p class="text-slate-500 text-sm mt-1">{{ t('JR · 員工管理系統') }}</p>
           </div>
 
           <div class="space-y-4">
@@ -658,7 +670,7 @@
         <!-- 手機版頂部列 + 抽屜遮罩 -->
         <header class="m-topbar">
           <button @click="sidebarOpen = !sidebarOpen" :aria-label="t('開啟/關閉選單')"><i class="fas fa-bars"></i></button>
-          <span>{{ t('寶天JR · 員工') }}</span>
+          <span>{{ t('JR · 員工') }}</span>
         </header>
         <div v-show="sidebarOpen" @click="sidebarOpen = false" class="m-overlay"></div>
 
@@ -671,7 +683,7 @@
             <div class="p-4 border-b border-slate-700 flex items-center gap-2 flex-shrink-0">
               <i class="fas fa-user-tie text-emerald-400 text-3xl"></i>
               <div class="min-w-0">
-                <div class="text-sm font-bold truncate">{{ t('寶天JR · 員工版') }}</div>
+                <div class="text-sm font-bold truncate">{{ t('JR · 員工版') }}</div>
                 <div class="text-xs opacity-70 truncate">{{ staffUser.name }}</div>
               </div>
             </div>
@@ -714,17 +726,19 @@
               <div class="flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-sm">
                 <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">中文</button>
                 <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">EN</button>
+              <!-- #8：加簡體 -->
+              <button type="button" @click="setLang('zh-CN')" :class="currentLang()==='zh-CN' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors flex-1">简</button>
               </div>
               <button
                 @click="openChangePwd(); sidebarOpen=false"
                 class="w-full text-left px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 <i class="fas fa-key mr-2"></i>{{ t('更改密碼') }}</button>
-              <button
-                @click="handleLogout"
-                class="w-full text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm font-medium"
-              >
-                <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
+            <button
+              @click="handleLogout"
+              class="w-full text-left px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <i class="fas fa-sign-out-alt mr-2"></i>{{ t('登出') }}</button>
             </div>
             <div class="p-4 border-t border-slate-700 text-xs text-slate-300 flex-shrink-0">
               {{ currentDateStr }}
@@ -1141,6 +1155,31 @@
                   </div>
                 </div>
               </div>
+
+              <!-- #6：預約及就診記錄（所有預約，含就診狀態） -->
+              <div>
+                <h4 class="font-bold text-slate-800 mb-2 flex items-center"><i class="fas fa-calendar-check text-emerald-500 mr-2"></i>{{ t('預約及就診記錄') }}（{{ (hfDetail.bookings || []).length }}）</h4>
+                <div v-if="!(hfDetail.bookings || []).length" class="text-sm text-slate-400 py-3">{{ t('尚無預約記錄') }}</div>
+                <div v-else class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  <div v-for="bk in hfDetail.bookings" :key="bk.id" class="border border-slate-200 rounded-lg p-3 text-sm">
+                    <div class="flex items-center justify-between flex-wrap gap-1 mb-1">
+                      <span class="font-medium text-slate-800">
+                        <i class="fas fa-calendar mr-1 text-slate-400"></i>{{ bk.appointment_date }}
+                        <i class="fas fa-clock ml-2 mr-1 text-slate-400"></i>{{ bk.appointment_time }}
+                      </span>
+                      <span class="text-xs px-2 py-0.5 rounded-full" :class="statusClass(bk.status)">{{ statusLabel(bk.status) }}</span>
+                    </div>
+                    <div class="text-slate-700">
+                      <b>{{ t('服務') }}：</b>{{ bk.service_name || '—' }}
+                    </div>
+                    <div class="text-slate-600 text-xs mt-1">
+                      <i class="fas fa-user-doctor mr-1"></i>{{ bk.doctor_user_name || bk.doctor_name || t('未指定醫師') }}
+                      <span v-if="bk.lateness_minutes" class="ml-2 text-rose-600"><i class="fas fa-clock mr-1"></i>{{ t('遲到') }} {{ bk.lateness_minutes }} {{ t('分鐘') }}</span>
+                    </div>
+                    <div v-if="bk.notes" class="text-slate-500 text-xs mt-1 whitespace-pre-wrap">{{ bk.notes }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1472,6 +1511,24 @@
                       <i class="fas fa-save mr-2"></i>{{ t('儲存') }}</button>
                   </div>
                 </div>
+
+                <!-- 🔔 WhatsApp 通知總開關 -->
+                <div class="h-px bg-slate-200 my-5"></div>
+                <div class="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-semibold text-slate-800"><i class="fab fa-whatsapp text-emerald-600 mr-2"></i>{{ t('WhatsApp 通知') }}</p>
+                      <p class="text-xs text-slate-500 mt-1">{{ t('開啟後，診所會經 WhatsApp 向您發送相關通知（如請假審批、補位安排等）。關閉後將不再發送。') }}</p>
+                    </div>
+                    <button @click="essNotifyEnabled = !essNotifyEnabled" type="button" class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors" :class="essNotifyEnabled ? 'bg-emerald-600' : 'bg-slate-300'" :title="t('WhatsApp 通知總開關')">
+                      <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="essNotifyEnabled ? 'translate-x-6' : 'translate-x-1'"></span>
+                    </button>
+                  </div>
+                  <div class="mt-3 text-right">
+                    <button @click="saveEssNotify()" :disabled="essNotifySaving" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-lg text-sm disabled:opacity-50">
+                      <i class="fas fa-save mr-2"></i>{{ t('儲存') }}</button>
+                  </div>
+                </div>
               </div>
 
               <!-- 返工更表 -->
@@ -1644,233 +1701,131 @@
                   <button v-for="g in ftreeGens" :key="g.level" @click="ftreeGenFilter = g.level" :class="ftreeGenFilter === g.level ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors">{{ g.label }}</button>
                 </div>
 
-                <ul class="ftree-gen ftree-gen-root">
-                  <li>
-                    <!-- 祖父母層（預留） -->
-                    <div class="ftree-couple">
-                      <div class="ftree-node" data-role="placeholder">
-                        <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
-                        <div class="ftree-name">{{ t('上一代') }}<br><span class="text-[10px] opacity-70">{{ t('（預留）') }}</span></div>
-                        <span class="ftree-tag sage">{{ t('祖父') }}</span>
-                      </div>
-                      <div class="ftree-node" data-role="placeholder">
-                        <div class="ftree-avatar-wrap"><div class="ftree-avatar"><i class="fas fa-user"></i></div></div>
-                        <div class="ftree-name">{{ t('上一代') }}<br><span class="text-[10px] opacity-70">{{ t('（預留）') }}</span></div>
-                        <span class="ftree-tag sage">{{ t('祖母') }}</span>
-                      </div>
-                    </div>
-
-                    <!-- 父母層：經由戶主連入嘅「父母」關係 -->
-                    <ul v-if="familyTreeData.parentLevel.length" class="ftree-gen">
-                      <li v-for="gp in familyTreeData.parentLevel" :key="gp.id">
-                        <div class="ftree-node" data-role="relative">
-                          <div class="ftree-avatar-wrap">
-                            <div class="ftree-avatar">
-                              <img v-if="gp.primary.avatar_url" :src="gp.primary.avatar_url" :alt="gp.primary.name">
-                              <i v-else class="fas fa-user"></i>
-                            </div>
-                          </div>
-                          <div class="ftree-name">{{ gp.primary.name || gp.primary.username }}</div>
-                          <div class="ftree-meta">{{ gp.primary.username }}</div>
-                          <span class="ftree-tag sage">{{ gp.relation }}</span>
-                        </div>
-
-                        <!-- 戶主層 -->
-                        <ul class="ftree-gen">
-                          <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
-                            <div class="ftree-node-wrapper" v-show="ftreeGenVisible(2)">
-                              <div v-if="parent.type === 'couple'" class="ftree-couple">
-                                <!-- 戶主 -->
-                                <div class="ftree-node" data-role="head">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                      <i v-else class="fas fa-crown"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ parent.primary.name }}</div>
-                                  <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} {{ t('位成員') }}</div>
-                                  <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
-                                    {{ parent.primary.membership_tier === 'family' ? t('家庭會員') : (t(parent.primary.membership_tier) || 'general') }}
-                                  </span>
-                                </div>
-                                <!-- 配偶 -->
-                                <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="parent.spouse && parent.spouse.avatar_url" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
-                                      <i v-else class="fas fa-user"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : t('配偶') }}</div>
-                                  <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : t('（待連結）') }}</div>
-                                  <span class="ftree-tag sage">{{ parent.spouse ? (t(parent.spouseRelation) || t('配偶')) : t('待連結') }}</span>
-                                </div>
-                              </div>
-                              <!-- 其他經由戶主連入嘅親屬 -->
-                              <div v-else class="ftree-node" data-role="relative" v-show="ftreeGenVisible(2)">
-                                <div class="ftree-avatar-wrap">
-                                  <div class="ftree-avatar">
-                                    <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                    <i v-else class="fas fa-user"></i>
-                                  </div>
-                                </div>
-                                <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
-                                <div class="ftree-meta">{{ parent.primary.username }}</div>
-                                <span class="ftree-tag sage">{{ t(parent.relation) }}</span>
-                              </div>
-                            </div>
-
-                            <!-- 子女層 -->
-                            <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children" v-show="ftreeGenWrapVisible(3)">
-                              <li v-for="child in parent.children" :key="child.id">
-                                <div class="ftree-node" data-role="child">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="child.avatar_url" :src="child.avatar_url" :alt="child.name">
-                                      <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ child.name }}</div>
-                                  <div class="ftree-meta">{{ child.age }} {{ t('歲') }} · {{ t('預約') }} {{ child.booking_count || 0 }} {{ t('次') }}</div>
-                                  <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
-                                    {{ child.isAdult ? t('已成年·跟進') : (child.turning18Soon ? `${t('快成年')}(${child.days_to_18}${t(' 日')})` : t('18歲以下')) }}
-                                  </span>
-                                  <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
-                                </div>
-                                <!-- 延伸連結（由子女連出） -->
-                                <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
-                                  <li v-for="lk in child.extendedLinks" :key="lk.id">
-                                    <div class="ftree-node" data-role="extended">
-                                      <div class="ftree-avatar-wrap">
-                                        <div class="ftree-avatar">
-                                          <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
-                                          <i v-else class="fas fa-user"></i>
-                                        </div>
-                                      </div>
-                                      <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
-                                      <div class="ftree-meta">{{ lk.other.username }}</div>
-                                      <span class="ftree-tag sage">{{ t(lk.customRelation || lk.relation) }}</span>
-                                      <button @click="removeHeadLink(lk)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
-                                    </div>
-                                  </li>
-                                </ul>
-                              </li>
-                            </ul>
-                            <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
-                          </li>
-                        </ul>
-                      </li>
-                    </ul>
-
-                    <!-- 無父母連結：戶主層直接喺祖父母下面 -->
-                    <ul v-else class="ftree-gen" v-show="ftreeGenWrapVisible(2)">
-                      <li v-for="parent in familyTreeData.headGeneration" :key="parent.id">
-                        <div class="ftree-node-wrapper">
-                          <div v-if="parent.type === 'couple'" class="ftree-couple">
-                            <!-- 戶主 -->
-                            <div class="ftree-node" data-role="head">
-                              <div class="ftree-avatar-wrap">
-                                <div class="ftree-avatar">
-                                  <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                  <i v-else class="fas fa-crown"></i>
-                                </div>
-                              </div>
-                              <div class="ftree-name">{{ parent.primary.name }}</div>
-                              <div class="ftree-meta">{{ parent.primary.username }} · {{ parent.primary.members.length }} {{ t('位成員') }}</div>
-                              <span class="ftree-tag" :class="parent.primary.membership_tier === 'family' ? '' : 'adult'">
-                                {{ parent.primary.membership_tier === 'family' ? '家庭會員' : (parent.primary.membership_tier || 'general') }}
-                              </span>
-                            </div>
-                            <!-- 配偶 -->
-                            <div class="ftree-node" :data-role="parent.spouse ? 'head' : 'placeholder'">
-                              <div class="ftree-avatar-wrap">
-                                <div class="ftree-avatar">
-                                  <img v-if="parent.spouse && parent.spouse.avatar_url" :src="parent.spouse.avatar_url" :alt="parent.spouse.name">
-                                  <i v-else class="fas fa-user"></i>
-                                </div>
-                              </div>
-                              <div class="ftree-name">{{ parent.spouse ? parent.spouse.name : '配偶' }}</div>
-                              <div class="ftree-meta">{{ parent.spouse ? parent.spouse.username : '（待連結）' }}</div>
-                              <span class="ftree-tag sage">{{ parent.spouse ? (parent.spouseRelation || '配偶') : '待連結' }}</span>
-                            </div>
-                          </div>
-                          <!-- 其他經由戶主連入嘅親屬 -->
-                          <div v-else class="ftree-node" data-role="relative" v-show="ftreeGenVisible(2)">
-                            <div class="ftree-avatar-wrap">
-                              <div class="ftree-avatar">
-                                <img v-if="parent.primary.avatar_url" :src="parent.primary.avatar_url" :alt="parent.primary.name">
-                                <i v-else class="fas fa-user"></i>
-                              </div>
-                            </div>
-                            <div class="ftree-name">{{ parent.primary.name || parent.primary.username }}</div>
-                            <div class="ftree-meta">{{ parent.primary.username }}</div>
-                            <span class="ftree-tag sage">{{ parent.relation }}</span>
-                          </div>
-                        </div>
-
-                        <!-- 子女層 -->
-                        <ul v-if="parent.children.length" class="ftree-gen ftree-gen-children">
-                          <li v-for="child in parent.children" :key="child.id">
-                            <div class="ftree-node" data-role="child">
-                              <div class="ftree-avatar-wrap">
-                                <div class="ftree-avatar">
-                                  <img v-if="child.avatar_url" :src="child.avatar_url" :alt="child.name">
-                                  <i v-else :class="child.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
-                                </div>
-                              </div>
-                              <div class="ftree-name">{{ child.name }}</div>
-                              <div class="ftree-meta">{{ child.age }} 歲 · 預約 {{ child.booking_count || 0 }} 次</div>
-                              <span class="ftree-tag" :class="child.isAdult ? 'adult' : (child.turning18Soon ? '' : 'sage')">
-                                {{ child.isAdult ? '已成年·跟進' : (child.turning18Soon ? `快成年(${child.days_to_18}日)` : '18歲以下') }}
-                              </span>
-                              <button @click="removeFamilyMember(parent.primary, child)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
-                            </div>
-                            <!-- 延伸連結（由子女連出） -->
-                            <ul v-if="child.extendedLinks.length" class="ftree-gen ftree-gen-ext">
-                              <li v-for="lk in child.extendedLinks" :key="lk.id">
-                                <div class="ftree-node" data-role="extended">
-                                  <div class="ftree-avatar-wrap">
-                                    <div class="ftree-avatar">
-                                      <img v-if="isAvatarUrl(lk.other.avatar_url)" :src="lk.other.avatar_url" :alt="lk.other.name">
-                                      <i v-else class="fas fa-user"></i>
-                                    </div>
-                                  </div>
-                                  <div class="ftree-name">{{ lk.other.name || lk.other.username }}</div>
-                                  <div class="ftree-meta">{{ lk.other.username }}</div>
-                                  <span class="ftree-tag sage">{{ lk.customRelation || lk.relation }}</span>
-                                  <button @click="removeHeadLink(lk)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
-                                </div>
-                              </li>
-                            </ul>
-                          </li>
-                        </ul>
-                        <div v-else-if="parent.isHead" class="text-center text-sm text-slate-400 py-5">{{ t('沒有家庭成員') }}</div>
-                  </li>
-                </ul>
-              </li>
-            </ul>
-
-                <!-- 🆕 第五代 · 戶主嘅其他連結（親戚／朋友／同事）— 非同輩，另置底部，唔喺戶主同一層 -->
-                <div v-if="familyTreeData.relativeLinks && familyTreeData.relativeLinks.length" class="ftree-relatives-block" v-show="ftreeGenWrapVisible(5)">
-                  <div class="ftree-relatives-label"><i class="fas fa-link mr-1"></i>{{ t('其他連結（親戚／朋友）') }}</div>
-                  <ul class="ftree-gen ftree-gen-relatives">
-                    <li v-for="rl in familyTreeData.relativeLinks" :key="'rel-'+rl.id">
-                      <div class="ftree-node" data-role="relative" v-show="ftreeGenVisible(5)">
+<ul class="ftree-stacked">
+                  <!-- 祖父母層（＋2，最上） -->
+                  <li v-if="familyTreeData.grandparents.length" class="ftree-row" v-show="ftreeGenWrapVisible(2)">
+                    <div class="ftree-row-label"><i class="fas fa-user-graduate mr-1"></i>{{ t('祖父母層') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="gp in familyTreeData.grandparents" :key="gp.id" class="ftree-node" data-role="relative" v-show="ftreeGenVisible(2)">
                         <div class="ftree-avatar-wrap">
                           <div class="ftree-avatar">
-                            <img v-if="isAvatarUrl(rl.other.avatar_url)" :src="rl.other.avatar_url" :alt="rl.other.name">
+                            <img v-if="isAvatarUrl(gp.primary.avatar_url)" :src="gp.primary.avatar_url" :alt="gp.primary.name">
                             <i v-else class="fas fa-user"></i>
                           </div>
                         </div>
-                        <div class="ftree-name">{{ rl.other.name || rl.other.username }}</div>
-                        <div class="ftree-meta">{{ rl.other.username }}</div>
-                        <span class="ftree-tag sage">{{ t(rl.customRelation || rl.relation) }}</span>
-                        <button @click="removeHeadLink(rl)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                        <div class="ftree-name">{{ gp.primary.name || gp.primary.username }}</div>
+                        <div class="ftree-meta">{{ gp.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(gp.relation) }}</span>
+                        <button @click="removeHeadLink(gp.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
                       </div>
-                    </li>
-                  </ul>
-                </div>
+                    </div>
+                  </li>
+
+                  <!-- 父母輩（＋1，家豪上面：父母／伯叔姑舅姨） -->
+                  <li v-if="familyTreeData.parentLevel.length" class="ftree-row" v-show="ftreeGenWrapVisible(1)">
+                    <div class="ftree-row-label"><i class="fas fa-user-friends mr-1"></i>{{ t('父母輩（父母／伯叔姑舅姨）') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="pl in familyTreeData.parentLevel" :key="pl.id" class="ftree-node" data-role="relative" v-show="ftreeGenVisible(1)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(pl.primary.avatar_url)" :src="pl.primary.avatar_url" :alt="pl.primary.name">
+                            <i v-else class="fas fa-user"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ pl.primary.name || pl.primary.username }}</div>
+                        <div class="ftree-meta">{{ pl.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(pl.relation) }}</span>
+                        <button @click="removeHeadLink(pl.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+
+                  <!-- 戶主 · 同輩（0）：戶主夫婦 ＋ 兄弟姊妹／朋友／表堂（隔籬） -->
+                  <li class="ftree-row" v-show="ftreeGenWrapVisible(0)">
+                    <div class="ftree-row-label"><i class="fas fa-crown mr-1"></i>{{ t('戶主 · 同輩（配偶／兄弟姊妹／朋友）') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div class="ftree-couple" v-show="ftreeGenVisible(0)">
+                        <div class="ftree-node" data-role="head">
+                          <div class="ftree-avatar-wrap">
+                            <div class="ftree-avatar">
+                              <img v-if="isAvatarUrl(familyTreeData.headCouple.primary.avatar_url)" :src="familyTreeData.headCouple.primary.avatar_url" :alt="familyTreeData.headCouple.primary.name">
+                              <i v-else class="fas fa-crown"></i>
+                            </div>
+                          </div>
+                          <div class="ftree-name">{{ familyTreeData.headCouple.primary.name }}</div>
+                          <div class="ftree-meta">{{ familyTreeData.headCouple.primary.username }} · {{ familyTreeData.headCouple.primary.members.length }} {{ t('位成員') }}</div>
+                          <span class="ftree-tag" :class="familyTreeData.headCouple.primary.membership_tier === 'family' ? '' : 'adult'">
+                            {{ familyTreeData.headCouple.primary.membership_tier === 'family' ? t('家庭會員') : (t(familyTreeData.headCouple.primary.membership_tier) || 'general') }}
+                          </span>
+                        </div>
+                        <div class="ftree-node" :data-role="familyTreeData.headCouple.spouse ? 'head' : 'placeholder'">
+                          <div class="ftree-avatar-wrap">
+                            <div class="ftree-avatar">
+                              <img v-if="familyTreeData.headCouple.spouse && isAvatarUrl(familyTreeData.headCouple.spouse.avatar_url)" :src="familyTreeData.headCouple.spouse.avatar_url" :alt="familyTreeData.headCouple.spouse.name">
+                              <i v-else class="fas fa-user"></i>
+                            </div>
+                          </div>
+                          <div class="ftree-name">{{ familyTreeData.headCouple.spouse ? familyTreeData.headCouple.spouse.name : t('配偶') }}</div>
+                          <div class="ftree-meta">{{ familyTreeData.headCouple.spouse ? familyTreeData.headCouple.spouse.username : t('（待連結）') }}</div>
+                          <span class="ftree-tag sage">{{ familyTreeData.headCouple.spouse ? (t(familyTreeData.headCouple.spouseRelation) || t('配偶')) : t('待連結') }}</span>
+                        </div>
+                      </div>
+                      <div v-for="sg in familyTreeData.sameGen" :key="sg.id" class="ftree-node" data-role="relative" v-show="ftreeGenVisible(0)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(sg.primary.avatar_url)" :src="sg.primary.avatar_url" :alt="sg.primary.name">
+                            <i v-else class="fas fa-user"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ sg.primary.name || sg.primary.username }}</div>
+                        <div class="ftree-meta">{{ sg.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(sg.relation) }}</span>
+                        <button @click="removeHeadLink(sg.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+
+                  <!-- 子女輩（−1，家豪下面：子女／侄甥） -->
+                  <li v-if="familyTreeData.children.length" class="ftree-row" v-show="ftreeGenWrapVisible(-1)">
+                    <div class="ftree-row-label"><i class="fas fa-child mr-1"></i>{{ t('子女輩（子女／侄甥）') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="ch in familyTreeData.children" :key="ch.id" class="ftree-node" data-role="child" v-show="ftreeGenVisible(-1)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(ch.avatar_url)" :src="ch.avatar_url" :alt="ch.name">
+                            <i v-else :class="ch.isAdult ? 'fas fa-user' : 'fas fa-child'"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ ch.name }}</div>
+                        <div class="ftree-meta">{{ ch.age !== '' ? (ch.age + ' ' + t('歲') + ' · ' + t('預約') + ' ' + (ch.booking_count || 0) + ' ' + t('次')) : (ch.username + ' · ' + t('預約') + ' ' + (ch.booking_count || 0)) }}</div>
+                        <span class="ftree-tag" :class="ch.isAdult ? 'adult' : (ch.turning18Soon ? '' : 'sage')">
+                          {{ ch.isFamilyChild ? (ch.isAdult ? t('已成年·跟進') : (ch.turning18Soon ? (t('快成年') + '(' + ch.days_to_18 + t(' 日') + ')') : t('18歲以下'))) : (t(ch.relation) || t('連結')) }}
+                        </span>
+                        <button v-if="ch.isFamilyChild" @click="removeFamilyMember(selectedFamilyHead, ch.primary)" class="ftree-unlink" :title="t('移除家庭連結（帳戶保留）')"><i class="fas fa-unlink"></i></button>
+                        <button v-else @click="removeHeadLink(ch.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+
+                  <!-- 孫輩（−2，最底） -->
+                  <li v-if="familyTreeData.grandchildren.length" class="ftree-row" v-show="ftreeGenWrapVisible(-2)">
+                    <div class="ftree-row-label"><i class="fas fa-baby mr-1"></i>{{ t('孫輩') }}</div>
+                    <div class="ftree-row-nodes">
+                      <div v-for="gc in familyTreeData.grandchildren" :key="gc.id" class="ftree-node" data-role="child" v-show="ftreeGenVisible(-2)">
+                        <div class="ftree-avatar-wrap">
+                          <div class="ftree-avatar">
+                            <img v-if="isAvatarUrl(gc.primary.avatar_url)" :src="gc.primary.avatar_url" :alt="gc.primary.name">
+                            <i v-else class="fas fa-child"></i>
+                          </div>
+                        </div>
+                        <div class="ftree-name">{{ gc.primary.name || gc.primary.username }}</div>
+                        <div class="ftree-meta">{{ gc.primary.username }}</div>
+                        <span class="ftree-tag sage">{{ t(gc.relation) }}</span>
+                        <button @click="removeHeadLink(gc.link)" class="ftree-unlink" :title="t('解除連結')"><i class="fas fa-unlink"></i></button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
 
                 <div class="ftree-actions">
                   <button @click="addAdminFamilyChild(selectedFamilyHead)" class="px-4 py-2 rounded-full bg-emerald-600 text-white text-sm shadow hover:opacity-90"><i class="fas fa-user-plus mr-1"></i>{{ t('加子女') }}</button>
@@ -1879,7 +1834,7 @@
                 </div>
 
                 <div class="ftree-note">
-                  <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 頂部「上一代」為預留入口，未來可擴展祖父母層
+                  <i class="fas fa-info-circle mr-1"></i>共 {{ selectedFamilyHead.members.reduce((a, m) => a + (m.booking_count || 0), 0) }} 筆預約 · 按輩分排列：祖父母層（最上）→ 父母輩（家豪上面）→ 戶主·同輩（隔籬）→ 子女輩 → 孫輩（最底）
                 </div>
               </div>
 
@@ -1990,7 +1945,9 @@
                       <div>
                         <label class="block text-xs text-slate-500 mb-1.5"><i class="fas fa-people-roof mr-1"></i>{{ t('關係（親戚）') }}</label>
                         <select v-model="adminLinkRelation" class="w-full rounded border border-gray-300 p-2 text-sm bg-white">
-                          <option v-for="r in adminLinkRelationOptions" :key="r.key" :value="r.key">{{ r.label }}</option>
+                          <optgroup v-for="g in adminLinkRelationOptions" :key="g.group" :label="g.group">
+                            <option v-for="r in g.items" :key="r.key" :value="r.key">{{ r.label }}</option>
+                          </optgroup>
                         </select>
                       </div>
                       <input v-if="adminLinkRelation === '其他'" v-model="adminLinkCustomRelation" :placeholder="t('請輸入關係說明')" class="w-full rounded border border-gray-300 p-2 text-sm">
@@ -2343,7 +2300,6 @@
                 <input
                   type="date"
                   v-model="selectedDate"
-                  @change="loadBookings"
                   class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -2512,7 +2468,7 @@
                         :class="u.staff_note ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'">
                         <i class="fas fa-sticky-note mr-1"></i>{{ u.staff_note ? '📌' : '備註' }}
                       </button>
-                      <button @click="changeAccountTier(u)" class="bg-blue-50 border border-blue-300 text-blue-700 px-3 py-1.5 rounded-lg text-xs hover:bg-blue-100"><i class="fas fa-exchange-alt mr-1"></i>{{ t('改級別') }}</button>
+                      <!-- #23：員工客戶帳戶管理移除「改級別」（確認唔影響 Stripe 收錢） -->
                       <button @click="resetAccountPwd(u)" class="bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs hover:bg-amber-100"><i class="fas fa-key mr-1"></i>{{ t('重設密碼') }}</button>
                     </div>
                   </div>
@@ -2541,7 +2497,7 @@
               }
             </style>
             <div v-if="printPreparing && mainTab==='list'" class="print-area">
-              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px;">{{ t('寶天JR · 當日預約表') }}</h2>
+              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px;">{{ t('JR · 當日預約表') }}</h2>
               <p style="font-size:12px;color:#555;margin-bottom:12px;">{{ t('日期：') }}{{ selectedDate }}{{ t('｜列印時間：') }}{{ new Date().toLocaleString('zh-HK') }}{{ t('｜合共') }} {{ filteredBookings.length }} {{ t('筆') }}</p>
               <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
@@ -2553,7 +2509,7 @@
                   <th style="border:1px solid #999;padding:6px;text-align:left;">{{ t('狀態') }}</th>
                 </tr></thead>
                 <tbody>
-                  <tr v-for="b in filteredBookings" :key="'p'+b.id">
+                  <tr v-for="b in subTabBookings" :key="'p'+b.id">
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.appointment_time }}</td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.member_no ? b.member_no + ' · ' : '' }}{{ b.customer_name }} <i v-if="b.is_new" class="fas fa-star" style="color:#f59e0b" :title="t('新客戶')"></i></td>
                     <td style="border:1px solid #ccc;padding:5px;">{{ b.customer_phone }}</td>
@@ -2631,7 +2587,7 @@
                     </div>
                   </div>
 
-                  <!-- 右側：操作按鈕 -->
+                  <!-- 右側：操作按鈕（#11：到訪 / 缺席 / 已完成 + 取消 / 改期；遲到由系統自動記錄） -->
                   <div class="flex flex-col gap-2 min-w-[100px]">
                     <button
                       v-if="booking.status === 'confirmed'"
@@ -2640,47 +2596,31 @@
                     >
                       <i class="fas fa-user-check mr-1"></i>{{ t('已到訪') }}</button>
                     <button
-                      v-if="booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-progress'"
-                      @click="updateStatus(booking.id, 'in-treatment')"
-                      class="px-3 py-1.5 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 whitespace-nowrap"
+                      v-if="booking.status === 'confirmed'"
+                      @click="updateStatus(booking.id, 'no-show')"
+                      class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-hand-holding-medical mr-1"></i>{{ t('治療中') }}</button>
-                    <button
-                      v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
-                      @click="updateStatus(booking.id, 'dispensing')"
-                      class="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 whitespace-nowrap"
-                    >
-                      <i class="fas fa-pills mr-1"></i>{{ t('配藥中') }}</button>
+                      <i class="fas fa-user-times mr-1"></i>{{ t('缺席') }}</button>
                     <button
                       v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
                       @click="updateStatus(booking.id, 'completed')"
                       class="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap"
                     >
-                      <i class="fas fa-check mr-1"></i>{{ t('標記完成') }}</button>
-                    <button
-                      v-if="booking.status === 'confirmed'"
-                      @click="updateStatus(booking.id, 'no-show')"
-                      class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 whitespace-nowrap"
-                    >
-                      <i class="fas fa-user-times mr-1"></i>{{ t('未到場') }}</button>
+                      <i class="fas fa-check mr-1"></i>{{ t('已完成') }}</button>
+                    <!-- #11：改期（活躍狀態先可） -->
                     <button
                       v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
-                      @click="recordLateness(booking)"
-                      class="px-3 py-1.5 text-xs bg-rose-400 text-white rounded-lg hover:bg-rose-500 whitespace-nowrap"
+                      @click="openReschedule(booking)"
+                      class="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-lg hover:bg-amber-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-clock mr-1"></i>{{ t('記錄遲到') }}</button>
+                      <i class="fas fa-calendar-edit mr-1"></i>{{ t('改期') }}</button>
+                    <!-- #11：取消（活躍狀態先可；已取消／已完成／未到場唔顯示） -->
                     <button
-                      v-if="booking.status === 'completed' || booking.status === 'no-show' || booking.status === 'in-treatment' || booking.status === 'dispensing' || booking.status === 'visited'"
-                      @click="updateStatus(booking.id, 'confirmed')"
-                      class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap"
+                      v-if="['confirmed','visited','in-treatment','in-progress','dispensing'].includes(booking.status)"
+                      @click="updateStatus(booking.id, 'cancelled')"
+                      class="px-3 py-1.5 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 whitespace-nowrap"
                     >
-                      <i class="fas fa-undo mr-1"></i>{{ t('還原確認') }}</button>
-                    <button
-                      v-if="booking.status === 'completed' || booking.status === 'confirmed' || booking.status === 'visited' || booking.status === 'in-treatment' || booking.status === 'dispensing'"
-                      @click="selectedBooking = { ...booking }; openMedicalRecordModal()"
-                      class="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 whitespace-nowrap"
-                    >
-                      <i class="fas fa-file-medical mr-1"></i>{{ t('病歴管理') }}</button>
+                      <i class="fas fa-times-circle mr-1"></i>{{ t('取消') }}</button>
                     <button
                       @click="viewBookingDetail(booking)"
                       class="px-3 py-1.5 text-xs bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 whitespace-nowrap"
@@ -2702,6 +2642,47 @@
           <button @click="mainTab='hr'; loadMyHr(); sidebarOpen=false" :class="mainTab==='hr' ? 'on' : ''"><i class="fas fa-clock"></i><span>{{ t('考勤') }}</span></button>
           <button @click="mainTab='timeslots'; openSlotManager(); sidebarOpen=false" :class="mainTab==='timeslots' ? 'on' : ''"><i class="fas fa-calendar-check"></i><span>{{ t('時段') }}</span></button>
         </nav>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 改期 Modal（#11） ==================== -->
+      <div
+        v-if="showRescheduleModal && rescheduleTarget"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="closeReschedule"
+      >
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-800">
+              <i class="fas fa-calendar-edit mr-2 text-amber-500"></i>{{ t('改期') }}</h3>
+            <button @click="closeReschedule" class="text-slate-400 hover:text-slate-600">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <span class="text-sm text-slate-500">{{ t('客戶') }}</span>
+              <span class="text-sm font-medium ml-2">{{ rescheduleTarget.customer_name }}</span>
+            </div>
+            <div>
+              <span class="text-sm text-slate-500">{{ t('現時預約') }}</span>
+              <span class="text-sm font-medium ml-2">{{ rescheduleTarget.appointment_date }} {{ rescheduleTarget.appointment_time }}</span>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">{{ t('新日期') }}</label>
+              <input type="date" v-model="rescheduleDate" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">{{ t('新時間') }}</label>
+              <input type="time" v-model="rescheduleTime" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500" />
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-2">
+            <button @click="closeReschedule" class="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200">{{ t('取消') }}</button>
+            <button @click="confirmReschedule" :disabled="isRescheduling" class="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50">
+              <i v-if="isRescheduling" class="fas fa-spinner fa-spin mr-1"></i>{{ t('確認改期') }}
+            </button>
           </div>
         </div>
       </div>
@@ -2988,6 +2969,9 @@
     <script>
       const { createApp } = Vue;
 
+      // #27 同源修復：本地日期格式化（唔好 toISOString 嘅 UTC）
+      const ld = (d) => { const x = d || new Date(); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`; };
+
       createApp({
         data() {
           return {
@@ -3019,7 +3003,8 @@
             // 預約列表
             bookings: [],
             isLoading: false,
-            selectedDate: new Date().toISOString().split("T")[0],
+            // #27 修復：selectedDate 預設用本地日期（唔好用 toISOString 嘅 UTC 日期，否則 GMT+8 深夜會 off-by-one）
+            selectedDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
             statusFilter: "",
             // 功能12：預約列表拆分獨立畫面
             listSubTab: "all",
@@ -3029,6 +3014,12 @@
             // 詳情 Modal
             showDetailModal: false,
             selectedBooking: null,
+            // #11 改期 Modal
+            showRescheduleModal: false,
+            rescheduleTarget: null,
+            rescheduleDate: "",
+            rescheduleTime: "",
+            isRescheduling: false,
             showMedicalRecordModal: false,
             medicalRecordForm: {
               diagnosis: "",
@@ -3124,9 +3115,9 @@
             leaveApprovals: [],
             leaveApprovalsLoading: false,
             slotView: 'week',
-            slotRangeStart: new Date().toISOString().slice(0, 10),
-            slotRangeEnd: new Date().toISOString().slice(0, 10),
-            slotCalendarMonth: new Date().toISOString().slice(0, 7),
+            slotRangeStart: ld(),
+            slotRangeEnd: ld(),
+            slotCalendarMonth: ld().slice(0, 7),
             slotCalendar: {},
             slotDays: [],
             slotTimeList: [],
@@ -3140,7 +3131,7 @@
             slotSelCount: 0,
             slotDirtyCount: 0,
             slotSavedFlash: false,
-            calCursor: new Date().toISOString().slice(0, 7),
+            calCursor: ld().slice(0, 7),
             calSelected: "",
             calView: "month",
             calDoctor: "",
@@ -3181,6 +3172,8 @@
             essBusy: false,
             essProfile: null,
             essEdit: { phone: "", email: "", address: "", emergency_contact: "", emergency_phone: "" },
+            essNotifyEnabled: true,
+            essNotifySaving: false,
             essSchFrom: "",
             essSchTo: "",
             essSchedule: null,
@@ -3213,94 +3206,82 @@
               (h.username || '').toLowerCase().includes(q)
             );
           },
-          // 🌳 家庭帳戶：分層樹狀結構（自動按關係分層：配偶並排、子女向下、父母向上、兄弟姊妹橫向）
+          // 🌳 家庭帳戶：按親屬輩分分層（祖父母＋2 → 父母輩＋1 → 戶主同輩0 → 子女輩−1 → 孫輩−2）
+          //   參考華文親屬輩分九族：祖父/祖母(+2)、父母+伯叔姑舅姨(+1)、戶主+配偶+兄弟姊妹+朋友+表堂(0)、子女+侄甥(−1)、孫(−2)
           familyTreeData() {
             const head = this.selectedFamilyHead;
-            if (!head) return { parentLevel: [], headGeneration: [] };
+            if (!head) return { grandparents: [], parentLevel: [], headCouple: null, sameGen: [], children: [], grandchildren: [] };
             const links = this.headLinks || [];
+            const genOf = (lk) => this.genOfLink(lk);
 
-            // 分類關鍵字：同時睇 relation（系統枚舉）同 customRelation（用家自訂）
-            // 避免「父母」被 custom「阿爸／阿媽」遮蓋，導致父母落到戶主同一層
             const relOf = (lk) => String(lk.relation || '').toLowerCase();
             const custOf = (lk) => String(lk.customRelation || '').toLowerCase();
             const either = (lk, keys) => keys.some(k => relOf(lk).includes(k) || custOf(lk).includes(k));
             const spouseKeys = ['配偶', 'spouse', 'partner', '丈夫', '妻子', '老公', '太太', '老婆', '伴侶', 'husband', 'wife'];
-            const childKeys = ['子女', 'child', 'children', '兒子', '女兒', '仔', '囝', '囡', 'son', 'daughter'];
-            const parentKeys = ['父母', 'parent', '爸爸', '媽媽', '父親', '母親', '阿爸', '阿媽', '老豆', '老母', '祖父', '祖母', '爺', '嫲', 'father', 'mother', 'dad', 'mom'];
-
             const isSpouse = (lk) => either(lk, spouseKeys);
-            const isChild = (lk) => either(lk, childKeys);
-            const isParent = (lk) => either(lk, parentKeys);
-            // 🆕 兄弟姊妹 = 同輩（留喺戶主同一層）；其他連結（親戚／朋友／同事）＝非同輩（另置第 5 代）
-            const siblingKeys = ['兄弟', '姊妹', '兄弟姐妹', '兄弟姊妹', '家姐', '細佬', '哥哥', '姐姐', '妹妹', '弟弟', '兄長', 'sibling', 'brother', 'sister'];
-            const isSibling = (lk) => either(lk, siblingKeys);
 
-            // 經由戶主嘅連結
-            const spouseLink = links.find(lk => isSpouse(lk) && lk.linkSourceName === head.name);
-            const parentLinks = links.filter(lk => isParent(lk) && lk.linkSourceName === head.name);
-            const siblingLinks = links.filter(lk => {
-              if (lk === spouseLink) return false;
-              if (isChild(lk) || isParent(lk) || isSpouse(lk)) return false;
-              return isSibling(lk) && lk.linkSourceName === head.name;
-            });
-            // 🆕 戶主嘅「其他連結」（親戚／朋友／同事等）— 唔係同輩，另置第 5 代
-            const relativeLinks = links.filter(lk => {
-              if (lk === spouseLink) return false;
-              if (isChild(lk) || isParent(lk) || isSpouse(lk) || isSibling(lk)) return false;
-              return lk.linkSourceName === head.name;
-            });
-
-            // 經由子女嘅延伸連結
-            const childLinkMap = {};
-            (head.members || []).forEach(m => { childLinkMap[m.id] = []; });
-            links.forEach(lk => {
-              const member = (head.members || []).find(m => lk.linkSourceName === m.name);
-              if (member) childLinkMap[member.id].push(lk);
-            });
-
+            // 配偶（戶主同輩並排顯示）
+            const spouseLink = links.find(lk => isSpouse(lk) && (lk.linkSourceId === head.id || lk.linkSourceName === head.name));
             const headCouple = {
-              id: 'head-couple',
-              type: 'couple',
-              primary: head,
+              id: 'head-couple', type: 'couple', primary: head,
               spouse: spouseLink ? spouseLink.other : null,
               spouseRelation: spouseLink ? (spouseLink.customRelation || spouseLink.relation) : null,
-              children: (head.members || []).map(m => ({ ...m, extendedLinks: childLinkMap[m.id] || [] })),
               isHead: true
             };
 
-            const headGeneration = [headCouple];
-            siblingLinks.forEach(lk => {
-              headGeneration.push({
-                id: 'link-' + lk.id,
-                type: 'single',
-                primary: lk.other,
-                relation: lk.customRelation || lk.relation,
-                children: [],
-                isHead: false
-              });
+            // 家庭子女由佢哋連出嘅延伸連結（extendedLinks）
+            const memberExt = {};
+            (head.members || []).forEach(m => { memberExt[m.id] = []; });
+            links.forEach(lk => {
+              const member = (head.members || []).find(m => (lk.linkSourceId === m.id) || (lk.linkSourceName === m.name));
+              if (member) memberExt[member.id].push(lk);
             });
 
-            const parentLevel = parentLinks.map(lk => ({
-              id: 'parent-link-' + lk.id,
-              type: 'single',
-              primary: lk.other,
-              relation: lk.customRelation || lk.relation,
-              children: [],
-              isHead: false
-            }));
+            // 按輩分分類其餘連結（排除配偶）：＋2 祖父母 ／ ＋1 父母輩 ／ 0 同輩 ／ −1 子女輩 ／ −2 孫輩
+            const buckets = { 2: [], 1: [], '0': [], '-1': [], '-2': [] };
+            links.forEach(lk => {
+              if (lk === spouseLink) return;
+              const g = genOf(lk);
+              buckets[g].push({ id: 'link-' + lk.id, link: lk, primary: lk.other, relation: lk.customRelation || lk.relation });
+            });
 
-            return { parentLevel, headGeneration, relativeLinks };
+            // 同輩（0）：兄弟姊妹／朋友／表堂（戶主隔籬）
+            const sameGen = buckets['0'].map(b => ({ id: b.id, type: 'single', primary: b.primary, relation: b.relation, link: b.link }));
+
+            // 子女輩（−1）：家庭子女 ＋ 經戶主直接連入嘅子女/侄甥
+            const children = [
+              ...(head.members || []).map(m => ({
+                id: 'member-' + m.id, type: 'family', primary: m,
+                name: m.name, username: m.username, avatar_url: m.avatar_url,
+                age: m.age, booking_count: m.booking_count || 0,
+                isAdult: m.isAdult, turning18Soon: m.turning18Soon, days_to_18: m.days_to_18,
+                isFamilyChild: true, extendedLinks: memberExt[m.id] || []
+              })),
+              ...buckets['-1'].map(b => ({
+                id: b.id, type: 'linked', primary: b.primary, link: b.link,
+                name: b.primary.name, username: b.primary.username, avatar_url: b.primary.avatar_url,
+                age: '', booking_count: 0, isAdult: true, isFamilyChild: false,
+                relation: b.relation, extendedLinks: []
+              }))
+            ];
+
+            return {
+              grandparents: buckets[2],
+              parentLevel: buckets[1],
+              headCouple,
+              sameGen,
+              children,
+              grandchildren: buckets['-2']
+            };
           },
           ftreeGens() {
-            const d = this.familyTreeData || { parentLevel: [], headGeneration: [], relativeLinks: [] };
+            const d = this.familyTreeData || {};
             const gens = [];
-            if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('第一代 · 上一代') });
-            gens.push({ level: 2, label: this.t('第二代 · 戶主') });
-            if ((d.headGeneration || []).some(p => (p.children || []).length)) gens.push({ level: 3, label: this.t('第三代 · 子女') });
-            let hasExt = false;
-            (d.headGeneration || []).forEach(p => (p.children || []).forEach(c => { if ((c.extendedLinks || []).length) hasExt = true; }));
-            if (hasExt) gens.push({ level: 4, label: this.t('第四代 · 延伸') });
-            if ((d.relativeLinks || []).length) gens.push({ level: 5, label: this.t('第五代 · 其他連結') });
+            if ((d.grandparents || []).length) gens.push({ level: 2, label: this.t('祖父母層') });
+            if ((d.parentLevel || []).length) gens.push({ level: 1, label: this.t('父母輩') });
+            gens.push({ level: 0, label: this.t('戶主 · 同輩') });
+            if ((d.children || []).length) gens.push({ level: -1, label: this.t('子女輩') });
+            if ((d.grandchildren || []).length) gens.push({ level: -2, label: this.t('孫輩') });
             return gens;
           },
           // 🔗 已連結子帳戶（統一左框）：家庭成員 ＋ 通用連結
@@ -3347,36 +3328,45 @@
           // 🔗 親戚關係下拉選項（淨係親戚／家庭關係；選『其他』再自行填寫）
           adminLinkRelationOptions() {
             return [
-              { key: '父母', label: '父母' },
-              { key: '子女', label: '子女' },
-              { key: '配偶', label: '配偶' },
-              { key: '兄弟', label: '兄弟' },
-              { key: '姐妹', label: '姐妹' },
-              { key: '表弟', label: '表弟' },
-              { key: '表妹', label: '表妹' },
-              { key: '表哥', label: '表哥' },
-              { key: '表姐', label: '表姐' },
-              { key: '堂弟', label: '堂弟' },
-              { key: '堂妹', label: '堂妹' },
-              { key: '堂哥', label: '堂哥' },
-              { key: '堂姐', label: '堂姐' },
-              { key: '姨媽', label: '姨媽（母姨）' },
-              { key: '姑姐', label: '姑姐（父姊）' },
-              { key: '姑母', label: '姑母（父妹）' },
-              { key: '舅父', label: '舅父（母兄／弟）' },
-              { key: '伯父', label: '伯父（父兄）' },
-              { key: '叔父', label: '叔父（父弟）' },
-              { key: '嬸母', label: '嬸母（叔之妻）' },
-              { key: '其他', label: '其他（自行填寫）' }
+              { group: '祖父母輩（+2）', items: [
+                { key: '祖父', label: '祖父' }, { key: '祖母', label: '祖母' },
+                { key: '外祖父', label: '外祖父' }, { key: '外祖母', label: '外祖母' }
+              ] },
+              { group: '父母輩（+1）', items: [
+                { key: '父親', label: '父親' }, { key: '母親', label: '母親' },
+                { key: '伯父', label: '伯父（父兄）' }, { key: '叔父', label: '叔父（父弟）' },
+                { key: '姑媽', label: '姑媽（父姊）' }, { key: '姑姐', label: '姑姐（父妹）' },
+                { key: '舅父', label: '舅父（母兄／弟）' }, { key: '姨媽', label: '姨媽（母妹）' }
+              ] },
+              { group: '同輩（0）', items: [
+                { key: '配偶', label: '配偶' }, { key: '丈夫', label: '丈夫' }, { key: '妻子', label: '妻子' },
+                { key: '哥哥', label: '哥哥' }, { key: '弟弟', label: '弟弟' },
+                { key: '姐姐', label: '姐姐' }, { key: '妹妹', label: '妹妹' },
+                { key: '朋友', label: '朋友' },
+                { key: '表哥', label: '表哥' }, { key: '表姐', label: '表姐' },
+                { key: '表弟', label: '表弟' }, { key: '表妹', label: '表妹' },
+                { key: '堂哥', label: '堂哥' }, { key: '堂姐', label: '堂姐' },
+                { key: '堂弟', label: '堂弟' }, { key: '堂妹', label: '堂妹' }
+              ] },
+              { group: '子女輩（-1）', items: [
+                { key: '兒子', label: '兒子' }, { key: '女兒', label: '女兒' },
+                { key: '姪子', label: '姪子' }, { key: '姪女', label: '姪女' },
+                { key: '外甥', label: '外甥' }, { key: '外甥女', label: '外甥女' }
+              ] },
+              { group: '孫輩（-2）', items: [
+                { key: '孫子', label: '孫子' }, { key: '孫女', label: '孫女' },
+                { key: '外孫', label: '外孫' }, { key: '外孫女', label: '外孫女' }
+              ] },
+              { group: '其他', items: [
+                { key: '其他', label: '其他（自行填寫）' }
+              ] }
             ];
           },
-          // 🔗 依所選 key 決定送出嘅 relation + custom
+          // 🔗 依所選 key 決定送出嘅 relation（具體稱謂直接送；『其他』送 custom）
           adminLinkSelectedRel() {
-            const presets = ['父母', '子女', '配偶', '兄弟', '姐妹'];
             const key = this.adminLinkRelation;
-            if (key === '其他') return { relation: '其他', custom: '' };
-            if (presets.includes(key)) return { relation: key, custom: '' };
-            return { relation: '親戚', custom: key };
+            if (key === '其他') return { relation: '其他', custom: this.adminLinkCustomRelation || '' };
+            return { relation: key, custom: '' };
           },
           // ⏰ 兼職/全職：只用兼職先顯示報更與返工更表
           isPartTime() {
@@ -3439,7 +3429,8 @@
             return i18nMonthTitle(y, m);
           },
           todayStr() {
-            return new Date().toISOString().split("T")[0];
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
           },
           todayBookings() {
             return this.bookings.filter(b => b.appointment_date === this.todayStr);
@@ -3474,20 +3465,27 @@
               return a.appointment_time.localeCompare(b.appointment_time);
             });
           },
-          // 功能12：左欄獨立畫面篩選
+          // 功能12：左欄獨立畫面篩選（#27 修復：統一 client-side 日期＋狀態管線，消除雙重過濾／UTC 時區偏差）
           subTabBookings() {
-            const today = new Date().toLocaleDateString('sv-SE');
+            const today = this.todayStr;
+            const dateScoped = this.selectedDate !== '' && this.selectedDate != null;
+            const scope = this.selectedDate || today;
+            const statusMatch = (b) => !this.statusFilter || b.status === this.statusFilter;
+            const inScope = (b) => !dateScoped || b.appointment_date === scope;
             switch (this.listSubTab) {
               case 'today':
-                return this.filteredBookings.filter(b => b.appointment_date === today && !['completed','no-show','cancelled','dispensing'].includes(b.status));
+                return this.bookings.filter(b => b.appointment_date === today && statusMatch(b) && !['no-show','cancelled'].includes(b.status));
               case 'dispensing':
-                return this.filteredBookings.filter(b => b.status === 'dispensing');
+                return this.bookings.filter(b => inScope(b) && b.status === 'dispensing' && statusMatch(b));
               case 'completed':
-                return this.filteredBookings.filter(b => b.status === 'completed' && b.appointment_date === today);
+                return this.bookings.filter(b => inScope(b) && b.status === 'completed' && statusMatch(b));
               case 'departed':
-                return this.filteredBookings.filter(b => b.status === 'completed' && b.appointment_date !== today);
+                return this.bookings.filter(b => b.appointment_date !== scope && b.status === 'completed' && statusMatch(b));
               default:
-                return this.filteredBookings;
+                return this.bookings.filter(b => inScope(b) && statusMatch(b))
+                  .sort((a, b) => a.appointment_date === b.appointment_date
+                    ? a.appointment_time.localeCompare(b.appointment_time)
+                    : a.appointment_date.localeCompare(b.appointment_date));
             }
           },
           subTabLabel() {
@@ -3500,6 +3498,11 @@
         },
 
         methods: {
+          // #20：明確「返回官網」——去 index.html 並保留 session（見 js/session-guard.js）
+          goToSite() {
+            if (typeof window.goToSite === 'function') window.goToSite();
+            else window.location.href = 'index.html';
+          },
           // 🌳 家庭樹：頭像 URL 判斷（emoji / 相對路徑 / 絕對網址）
           isAvatarUrl(u) {
             return typeof u === 'string' && (u.startsWith('/') || u.startsWith('http'));
@@ -3509,7 +3512,30 @@
             return !this.ftreeGenFilter || this.ftreeGenFilter === level;
           },
           ftreeGenWrapVisible(level) {
-            return !this.ftreeGenFilter || this.ftreeGenFilter >= level;
+            // 堆疊式層：揀咗某層就只顯示該層（「全部世代」filter=null 時全顯）
+            return !this.ftreeGenFilter || this.ftreeGenFilter === level;
+          },
+          // 🌳 家庭樹：按親屬稱謂判定輩分（相對戶主「本人」）
+          //   +2 祖父母輩 ／ +1 父母輩（父母＋伯叔姑舅姨）／ 0 同輩（戶主＋配偶＋兄弟姊妹＋朋友＋表堂）／ -1 子女輩（子女＋侄甥）／ -2 孫輩
+          genOfLink(lk) {
+            const r = String(lk.relation || '').trim();
+            const c = String(lk.customRelation || '').trim();
+            const text = c || r;
+            const has = (arr) => arr.some(t => text.includes(t));
+            if (has(['祖父', '祖母', '外祖父', '外祖母', '爺爺', '嫲嫲', '阿公', '阿嬤', '公公', '婆婆', '太公', '太婆', '曾祖父', '曾祖母', '外曾祖父', '外曾祖母', '祖'])) return 2;
+            if (has(['孫', '孫子', '孫女', '孫兒', '外孫', '外孫女'])) return -2;
+            if (has(['父母', '父親', '母親', '爸爸', '媽媽', '阿爸', '阿媽', '老豆', '老母', '父', '母',
+              '伯父', '伯母', '叔父', '嬸母', '姑媽', '姑姐', '姑母', '舅父', '舅母', '姨媽', '姨母', '阿姨',
+              '丈人', '岳父', '岳母', '家公', '家婆', '世伯', '世叔', '公', '婆'])) return 1;
+            if (has(['子女', '兒子', '女兒', '仔', '囡', '子', '息', '姪', '姪子', '姪女', '外甥', '外甥女'])) return -1;
+            if (has(['配偶', '丈夫', '妻子', '老公', '老婆', '太太', '伴侶', '夫', '妻',
+              '兄弟', '姊妹', '哥哥', '姐姐', '細佬', '家姐', '兄', '弟', '姐', '妹', '嫂', '姐夫', '妹夫',
+              '朋友', '表弟', '表妹', '表哥', '表姐', '堂弟', '堂妹', '堂哥', '堂姐'])) return 0;
+            switch (r) {
+              case '父母': return 1; case '子女': return -1;
+              case '配偶': case '兄弟': case '姐妹': case '朋友': return 0;
+              case '親戚': case '其他': return 0; default: return 0;
+            }
           },
           async loadFamilyTree() {
             this.familyTree.loading = true;
@@ -3526,9 +3552,9 @@
             }
           },
           async changeFamilyTier(head) {
-            const tier = prompt(`更改 ${head.name} 嘅會員級別\n輸入：general / premium / family\n（目前：${head.membership_tier || 'general'}）`);
+            const tier = prompt(`更改 ${head.name} 嘅會員級別\n輸入：general / family\n（目前：${head.membership_tier || 'general'}）`);
             if (!tier) return;
-            if (!['general', 'premium', 'family'].includes(tier)) { alert('無效級別'); return; }
+            if (!['general', 'family'].includes(tier)) { alert('無效級別'); return; }
             try {
               const res = await fetch('/api/membership/change', {
                 method: 'POST',
@@ -3978,7 +4004,9 @@
                 const r = await fetch('/api/settings/services');
                 if (r.ok) {
                   const j = await r.json();
-                  this.walkIn.services = Array.isArray(j) ? j : (j.services || j.data || []);
+                  const list = Array.isArray(j) ? j : (j.services || j.data || []);
+                  // #22：即場落單唔應有「初體驗」（初體驗只限新客網上首次預約）
+                  this.walkIn.services = list.filter(s => !/初體驗/.test((s && (s.name || s.short_name)) || ''));
                 }
               }
               if (!this.walkIn.doctors.length) {
@@ -4064,8 +4092,8 @@
           async loadStaffLeaveQueue() {
             this.leaveApprovalsLoading = true;
             try {
-              const start = new Date().toISOString().slice(0, 10);
-              const end = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+              const start = ld();
+              const end = ld(new Date(Date.now() + 60 * 24 * 3600 * 1000));
               const res = await fetch(`/api/admin/doctor/leaves-range?start=${start}&end=${end}`, {
                 headers: { "Authorization": "Bearer " + (localStorage.getItem("jwtToken") || "") }
               });
@@ -4171,12 +4199,12 @@
               const dow = (start.getDay() + 6) % 7;
               const mon = new Date(start); mon.setDate(start.getDate() - dow);
               const arr = [];
-              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(dd.toISOString().slice(0, 10)); }
+              for (let i = 0; i < 7; i++) { const dd = new Date(mon); dd.setDate(mon.getDate() + i); arr.push(ld(dd)); }
               return arr;
             }
             const end = new Date(this.slotRangeEnd + 'T00:00:00');
             const arr = []; let cur = new Date(start);
-            while (cur <= end && arr.length < 31) { arr.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+            while (cur <= end && arr.length < 31) { arr.push(ld(cur)); cur.setDate(cur.getDate() + 1); }
             return arr;
           },
           async loadSlotGrid() {
@@ -4337,6 +4365,8 @@
           },
 
           handleLogout() {
+            // #20：標記「已登出」，防止倒退還原已登入畫面（見 js/session-guard.js）
+            try { if (typeof window.markLoggedOut === 'function') window.markLoggedOut(); } catch (e) {}
             if (!confirm("確定要登出嗎？")) return;
             // 🔒 通知伺服器將 token 加入黑名單
             try {
@@ -4380,9 +4410,9 @@
             if (!this.staffUser) return;
             this.isLoading = true;
             try {
-              let url = `/api/admin/staff/bookings?userId=${this.staffUser.id}`;
-              if (this.selectedDate) url += `&date=${this.selectedDate}`;
-              if (this.statusFilter) url += `&status=${this.statusFilter}`;
+              // #27 修復：一次過攞晒全部預約，日期／狀態過濾全部留喺 client-side（subTabBookings），
+              // 唔好再傳 server-side date/status 參數——否則 UTC/local 時區偏差會令清單 off-by-one、時有時無。
+              const url = `/api/admin/staff/bookings?userId=${this.staffUser.id}`;
               const response = await fetch(url);
               if (response.ok) {
                 const data = await response.json();
@@ -4463,6 +4493,72 @@
             this.showDetailModal = true;
           },
 
+          // #11 改期：開 Modal（預填現有日期／時間）
+          openReschedule(booking) {
+            this.rescheduleTarget = booking;
+            this.rescheduleDate = booking.appointment_date || "";
+            this.rescheduleTime = booking.appointment_time || "";
+            this.showRescheduleModal = true;
+          },
+          closeReschedule() {
+            this.showRescheduleModal = false;
+            this.rescheduleTarget = null;
+            this.rescheduleDate = "";
+            this.rescheduleTime = "";
+            this.isRescheduling = false;
+          },
+          // #11 改期：PUT /api/bookings/:id，帶齊全部欄位（後端唔會 fallback 舊值，唔帶會清走資料）
+          async confirmReschedule() {
+            if (!this.rescheduleTarget) return;
+            if (!this.rescheduleDate || !this.rescheduleTime) {
+              alert(this.t('請選擇新日期同時間'));
+              return;
+            }
+            if (!confirm(this.t('確定將此預約改期至') + ` ${this.rescheduleDate} ${this.rescheduleTime}？`)) return;
+            this.isRescheduling = true;
+            try {
+              const b = this.rescheduleTarget;
+              const body = {
+                customerName: b.customer_name,
+                customerNameEn: b.customer_name_en,
+                customerPhone: b.customer_phone,
+                customerEmail: b.customer_email,
+                customerAge: b.customer_age,
+                serviceId: b.service_id,
+                doctorName: b.doctor_name,
+                appointmentDate: this.rescheduleDate,
+                appointmentTime: this.rescheduleTime,
+                notes: b.notes,
+              };
+              const response = await fetch(`/api/bookings/${b.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: JSON.stringify(body),
+              });
+              const data = await response.json().catch(() => ({}));
+              if (response.ok) {
+                // 本地同步
+                const idx = this.bookings.findIndex(x => x.id === b.id);
+                if (idx !== -1) {
+                  this.bookings[idx].appointment_date = this.rescheduleDate;
+                  this.bookings[idx].appointment_time = this.rescheduleTime;
+                }
+                if (this.selectedBooking && this.selectedBooking.id === b.id) {
+                  this.selectedBooking.appointment_date = this.rescheduleDate;
+                  this.selectedBooking.appointment_time = this.rescheduleTime;
+                }
+                this.closeReschedule();
+                alert(this.t('改期成功'));
+              } else {
+                alert(data.error || this.t('改期失敗'));
+              }
+            } catch (e) {
+              alert(this.t('系統錯誤，請稍後再試'));
+            } finally {
+              this.isRescheduling = false;
+            }
+          },
+
           openMedicalRecordModal() {
             this.showDetailModal = false;
             this.resetRecordForm();
@@ -4522,14 +4618,21 @@
           // ==================== 日期快捷 ====================
           setToday() {
             this.selectedDate = this.todayStr;
+            this.listSubTab = "all";
           },
+          // #27 修復：setTomorrow 用本地日期（唔好 toISOString 嘅 UTC）
           setTomorrow() {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            this.selectedDate = tomorrow.toISOString().split("T")[0];
+            const y = tomorrow.getFullYear();
+            const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
+            const d = String(tomorrow.getDate()).padStart(2, "0");
+            this.selectedDate = `${y}-${m}-${d}`;
+            this.listSubTab = "all";
           },
           clearDateFilter() {
             this.selectedDate = "";
+            this.listSubTab = "all";
           },
 
           // ==================== 輔助函數 ====================
@@ -4598,9 +4701,9 @@
 
           // 🔧 代客更改會員級別（升級／降級；離線收款後手動開通都用得）
           async changeAccountTier(u) {
-            const tier = prompt(`更改 ${u.name} 嘅會員級別\n輸入：general / premium / family\n（目前：${u.membership_tier || 'general'}）`);
+            const tier = prompt(`更改 ${u.name} 嘅會員級別\n輸入：general / family\n（目前：${u.membership_tier || 'general'}）`);
             if (!tier) return;
-            if (!['general', 'premium', 'family'].includes(tier)) { alert('無效級別'); return; }
+            if (!['general', 'family'].includes(tier)) { alert('無效級別'); return; }
             const adminPassword = prompt('請輸入你嘅職員登入密碼確認：') || '';
             try {
               const res = await fetch('/api/membership/change', {
@@ -4789,7 +4892,8 @@
               });
               const data = await res.json().catch(() => ({}));
               if (res.ok && data.success) {
-                this.hfDetail = { user: data.user, profile: data.profile, records: data.records || [] };
+                // #6：客人檔案 —— 病歷記錄下面加埋「所有預約及就診記錄」
+                this.hfDetail = { user: data.user, profile: data.profile, records: data.records || [], bookings: data.bookings || [] };
                 const p = data.profile || {};
                 this.hfEdit = {
                   chronic_conditions: p.chronic_conditions || "",
@@ -5133,6 +5237,29 @@
               this.essProfile = data;
               this.essEdit = { phone: data.phone || "", email: data.email || "", address: data.address || "", emergency_contact: data.emergency_contact || "", emergency_phone: data.emergency_phone || "" };
             }
+            this.loadEssNotify();
+          },
+          // 🔔 讀取／儲存員工個人 WhatsApp 總開關
+          async loadEssNotify() {
+            try {
+              const r = await fetch(`/api/users/${this.staffUser.id}/profile`, { headers: { Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` } });
+              const data = await r.json();
+              if (r.ok) this.essNotifyEnabled = (data.whatsapp_enabled ?? 1) === 1;
+            } catch (e) { /* ignore */ }
+          },
+          async saveEssNotify() {
+            this.essNotifySaving = true;
+            try {
+              const r = await fetch(`/api/users/${this.staffUser.id}/notifications`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("jwtToken") || ""}` },
+                body: JSON.stringify({ whatsapp_enabled: this.essNotifyEnabled ? 1 : 0 }),
+              });
+              const data = await r.json();
+              if (r.ok) alert("✅ WhatsApp 通知設定已儲存");
+              else alert(data.error || "儲存失敗");
+            } catch (e) { alert("儲存失敗"); }
+            finally { this.essNotifySaving = false; }
           },
           async saveMyProfile() {
             if (!this.essProfile) return;

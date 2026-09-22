@@ -6,13 +6,15 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title data-i18n="寶天醫館 · 人力資源管理">寶天醫館 · 人力資源管理</title>
+    <title data-i18n="JR · 人力資源管理">JR · 人力資源管理</title>
     <link rel="icon" type="image/jpeg" href="picture/logo.jpg" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
     <script>window.Vue || document.write('<script src="js/vendor/vue.global.prod.js"><\/script>')</script>
     <script src="js/auth-fetch.js?v=20260909"></script>
+    <!-- #20：防止瀏覽器倒退登出 session + 「返回官網」掣 -->
+    <script src="js/session-guard.js?v=20260917"></script>
     <link rel="stylesheet" href="css/i18n.css" />
     <script src="js/i18n.js?v=20260922"></script>
     <script src="js/i18n-runtime.js?v=20260919"></script>
@@ -90,6 +92,19 @@
       .bg-slate-900 .brand-title{ font-family:"Noto Serif TC",serif; }
       .bg-slate-900 .muted{ color:#8B7D6B; }
     </style>
+      <!-- 🆕 11) 版面間距優化：卡片/盒之間留多啲位（覆寫預建 tailwind 間距類） -->
+    <style id="spacing-bump-11">
+      .space-y-2 > * + * { margin-top: .8rem; }
+      .space-y-3 > * + * { margin-top: 1.1rem; }
+      .space-y-4 > * + * { margin-top: 1.4rem; }
+      .space-y-5 > * + * { margin-top: 1.7rem; }
+      .space-y-6 > * + * { margin-top: 2rem; }
+      .space-y-8 > * + * { margin-top: 2.5rem; }
+      .gap-2 { gap: .8rem; }
+      .gap-3 { gap: 1.1rem; }
+      .gap-4 { gap: 1.4rem; }
+      .gap-6 { gap: 2rem; }
+    </style>
   </head>
   <body class="h-screen overflow-hidden">
     <div id="app" v-cloak class="h-screen flex">
@@ -97,6 +112,8 @@
       <div class="fixed bottom-3 right-3 z-[80] flex items-center gap-1 rounded-full border border-black/10 bg-white/90 px-1 py-1 text-xs font-medium shadow-md backdrop-blur max-md:bottom-20">
         <button type="button" @click="setLang('zh-TW')" :class="currentLang()==='zh-TW' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">中文</button>
         <button type="button" @click="setLang('en')" :class="currentLang()==='en' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">EN</button>
+        <!-- #8：加簡體 -->
+        <button type="button" @click="setLang('zh-CN')" :class="currentLang()==='zh-CN' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-emerald-700'" class="rounded-full px-2.5 py-1 transition-colors">简</button>
       </div>
 
       <!-- ================= 左側欄 ================= -->
@@ -108,7 +125,7 @@
           </div>
           <div class="min-w-0">
             <div class="brand-title font-bold text-[#3E3328] tracking-wide leading-tight">{{ t('人力資源系統') }}</div>
-            <div class="muted text-xs mt-0.5 truncate">{{ t('寶天醫館 · JR') }}</div>
+            <div class="muted text-xs mt-0.5 truncate">{{ t('JR') }}</div>
           </div>
         </div>
         <!-- 使用者 + 登出 -->
@@ -219,7 +236,7 @@
           <div class="card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('角色') }}</th><th class="th">{{ t('出勤日') }}</th><th class="th">{{ t('遲到') }}</th><th class="th">{{ t('早退') }}</th><th class="th">{{ t('請假') }}</th><th class="th">{{ t('缺席') }}</th><th class="th">{{ t('總工時') }}</th><th class="th">{{ t('平均/日') }}</th></tr></thead>
+                <thead><tr class="bg-[rgba(199,180,166,.15)]"><th class="th">{{ t('員工') }}</th><th class="th">{{ t('角色') }}</th><th class="th">{{ t('出勤日') }}</th><th class="th">{{ t('遲到') }}</th><th class="th">{{ t('早退') }}</th><th class="th">{{ t('請假') }}</th><th class="th">{{ t('年假') }}</th><th class="th">{{ t('事假') }}</th><th class="th">{{ t('缺席') }}</th><th class="th">{{ t('總工時') }}</th><th class="th">{{ t('平均/日') }}</th></tr></thead>
                 <tbody>
                   <tr v-for="r in reportRows" :key="r.id">
                     <td class="td font-semibold text-ink">{{ r.name }}</td>
@@ -228,15 +245,23 @@
                     <td class="td text-center"><span class="pill" :class="r.late>0?'bg-amber-100 text-amber-700':'bg-gray-100 text-gray-400'">{{ r.late }}</span></td>
                     <td class="td text-center"><span class="pill" :class="r.early>0?'bg-orange-100 text-orange-700':'bg-gray-100 text-gray-400'">{{ r.early }}</span></td>
                     <td class="td text-center"><span class="pill" :class="r.on_leave>0?'bg-sky-100 text-sky-700':'bg-gray-100 text-gray-400'">{{ r.on_leave }}</span></td>
+                    <td class="td text-center"><span class="pill" :class="r.annualLeaveTotal>0?'bg-emerald-100 text-emerald-700':'bg-gray-100 text-gray-400'">{{ r.annualLeaveTotal }}</span></td>
+                    <td class="td text-center"><span class="pill" :class="r.personalLeaveTotal>0?'bg-indigo-100 text-indigo-700':'bg-gray-100 text-gray-400'">{{ r.personalLeaveTotal }}</span></td>
                     <td class="td text-center"><span class="pill" :class="r.absent>0?'bg-rose-100 text-rose-700':'bg-gray-100 text-gray-400'">{{ r.absent }}</span></td>
                     <td class="td text-center font-semibold text-ink">{{ r.total_label }}</td>
                     <td class="td text-center text-taupe">{{ r.avg_label || '—' }}</td>
                   </tr>
-                  <tr v-if="reportRows.length===0"><td class="td text-center text-taupe" colspan="9">{{ t('請選擇日期範圍查詢') }}</td></tr>
+                  <tr v-if="reportRows.length===0"><td class="td text-center text-taupe" colspan="11">{{ t('請選擇日期範圍查詢') }}</td></tr>
                 </tbody>
               </table>
             </div>
-            <div class="px-5 py-3 text-xs text-taupe border-t border-[rgba(199,180,166,.3)]">共 {{ reportWorkdays }} 個工作日（不計星期六/日）</div>
+            <div class="px-5 py-3 text-xs text-taupe border-t border-[rgba(199,180,166,.3)] flex flex-wrap gap-x-5 gap-y-1 items-center">
+              <span>共 {{ reportWorkdays }} 個工作日（不計星期六/日）</span>
+              <template v-if="reportTotals">
+                <span class="inline-flex items-center gap-1"><i class="fas fa-sun text-emerald-500"></i>{{ t('年假總數') }}：<b class="text-ink">{{ reportTotals.annualLeaveTotal }}</b></span>
+                <span class="inline-flex items-center gap-1"><i class="fas fa-file-alt text-indigo-500"></i>{{ t('事假總數') }}：<b class="text-ink">{{ reportTotals.personalLeaveTotal }}</b></span>
+              </template>
+            </div>
           </div>
         </section>
 
@@ -252,6 +277,18 @@
               <div><label class="lbl">{{ t('開始') }}</label><input type="date" class="input" v-model="histFrom" /></div>
               <div><label class="lbl">{{ t('結束') }}</label><input type="date" class="input" v-model="histTo" /></div>
               <button class="btn btn-solid" @click="loadHistory"><i class="fas fa-search"></i>{{ t('查詢') }}</button>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button class="btn btn-sage" @click="exportAttendance"><i class="fas fa-file-excel"></i>{{ t('匯出 Excel') }}</button>
+              <select class="input w-auto" v-model="attImportSource" :title="t('資料來源')">
+                <option value="import">{{ t('來源：自助匯入') }}</option>
+                <option value="punch_clock">{{ t('來源：打卡機') }}</option>
+              </select>
+              <button class="btn btn-solid" @click="$refs.attFileInput.click()"><i class="fas fa-upload"></i>{{ t('匯入 Excel') }}</button>
+              <input ref="attFileInput" type="file" accept=".xlsx,.xls" class="hidden" @change="onAttFile" />
+              <span v-if="attFile" class="text-xs text-taupe">{{ attFile.name }}</span>
+              <button v-if="attFile" class="btn btn-solid" @click="importAttendance"><i class="fas fa-check"></i>{{ t('確認匯入') }}</button>
+              <span v-if="attImportMsg" class="text-xs" :class="attImportOk ? 'text-emerald-600' : 'text-rose-600'">{{ attImportMsg }}</span>
             </div>
           </div>
           <div class="card overflow-hidden">
@@ -777,9 +814,10 @@
             // overview
             todayEmployees: [], stats: { total:0, working:0, completed:0, onLeave:0, absent:0 },
             // report
-            repFrom: '', repTo: '', reportRows: [], reportWorkdays: 0,
+            repFrom: '', repTo: '', reportRows: [], reportWorkdays: 0, reportTotals: null,
             // history
             histUserId: '', histFrom: '', histTo: '', historyRows: [],
+            attFile: null, attImportSource: 'import', attImportMsg: '', attImportOk: false,
             // exceptions
             excDate: '', exceptions: [], excCount: { late:0, early:0, absent:0, onLeave:0 },
             // leaves
@@ -842,6 +880,8 @@
             return cells;
           },
           calTotalLeaves(){ return Object.values(this.calDays).reduce((n,a)=>n+(a?a.length:0),0); },
+          // ⚠️ 必須只保留一個 computed 區塊：重複的 computed key 會令前者整個被覆蓋（曾導致 roleLabel/statusLabel 等全部失效）
+          isAdmin() { return !!(this.adminUser && this.adminUser.role === 'admin'); },
         },
         methods: {
           today(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; },
@@ -858,10 +898,48 @@
             try { const j = await this.api('/api/hr/today'); this.todayEmployees = j.employees; const s={total:0,working:0,completed:0,onLeave:0,absent:0}; j.employees.forEach(e=>{ s.total++; s[e.status]=(s[e.status]||0)+1; }); this.stats=s; } catch(e){ this.toastErr(e); }
           },
           async loadReport(){
-            try { const j = await this.api(`/api/hr/report?from=${this.repFrom}&to=${this.repTo}`); this.reportRows=j.report; this.reportWorkdays=j.workdays; } catch(e){ this.toastErr(e); }
+            try { const j = await this.api(`/api/hr/report?from=${this.repFrom}&to=${this.repTo}`); this.reportRows=j.report; this.reportWorkdays=j.workdays; this.reportTotals=j.totals||null; } catch(e){ this.toastErr(e); }
           },
           async loadHistory(){
             try { const q = `/api/hr/history?from=${this.histFrom||''}&to=${this.histTo||''}`+(this.histUserId?`&userId=${this.histUserId}`:''); const j = await this.api(q); this.historyRows=j.records; } catch(e){ this.toastErr(e); }
+          },
+          // #16 打卡 Excel 匯出（用當前篩選範圍；無範圍就用本月）
+          attRange(){
+            let start = this.histFrom, end = this.histTo;
+            if(!start || !end){ const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); start=`${y}-${m}-01`; end=`${y}-${m}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`; }
+            return { start, end };
+          },
+          async exportAttendance(){
+            try {
+              const { start, end } = this.attRange();
+              const token = localStorage.getItem('jwtToken');
+              const r = await fetch(`/api/hr/attendance/export?start=${start}&end=${end}`, { headers:{ Authorization:'Bearer '+token } });
+              if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.error||'匯出失敗'); }
+              const blob = await r.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href=url; a.download=`attendance-${start}-${end}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            } catch(e){ this.toastErr(e); }
+          },
+          onAttFile(e){ this.attFile = e.target.files && e.target.files[0] ? e.target.files[0] : null; this.attImportMsg=''; this.attImportOk=false; },
+          async importAttendance(){
+            if(!this.attFile){ this.attImportMsg=this.t('請先選擇 xlsx 檔案'); this.attImportOk=false; return; }
+            const fd = new FormData(); fd.append('file', this.attFile);
+            this.attImportMsg=this.t('上傳中…'); this.attImportOk=false;
+            try {
+              const token = localStorage.getItem('jwtToken');
+              const src = this.attImportSource || 'import';
+              const r = await fetch(`/api/hr/attendance/import?source=${encodeURIComponent(src)}`, { method:'POST', headers:{ Authorization:'Bearer '+token }, body: fd });
+              const j = await r.json().catch(()=>({}));
+              if(!r.ok) throw new Error(j.error||'匯入失敗');
+              const inserted = j.inserted ?? j.imported ?? 0;
+              const updated = j.updated ?? 0;
+              const errN = (j.errors&&j.errors.length)||0;
+              this.attImportMsg=`${this.t('匯入完成')}：+${inserted} / ~${updated}` + (errN?`，${this.t('失敗')} ${errN}`:'');
+              this.attImportOk=true;
+              if(this.$refs.attFileInput) this.$refs.attFileInput.value='';
+              this.attFile=null;
+              this.loadHistory();
+            } catch(e){ this.attImportMsg=e.message; this.attImportOk=false; }
           },
           async loadExceptions(){
             try { const j = await this.api(`/api/hr/exceptions?date=${this.excDate||this.today()}`); this.exceptions=j.anomalies; const c={late:0,early:0,absent:0,onLeave:0}; j.anomalies.forEach(a=>{ if(a.type==='late')c.late++; if(a.type==='early_leave')c.early++; if(a.type==='absent')c.absent++; if(a.type==='on_leave')c.onLeave++; }); this.excCount=c; } catch(e){ this.toastErr(e); }
@@ -1073,6 +1151,8 @@
           leaveTypeDot(t){ return ({annual:'bg-moss-600',sick:'bg-sky-500',personal:'bg-amber-500',statutory:'bg-purple-500',personal_other:'bg-gray-400'})[t]||'bg-gray-400'; },
           toastErr(e){ console.error(e); alert(e.message); },
           handleLogout(){
+            // #20：標記「已登出」，防止倒退還原已登入畫面（見 js/session-guard.js）
+            try { if (typeof window.markLoggedOut === 'function') window.markLoggedOut(); } catch (e) {}
             try { fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}); } catch (e) {}
             localStorage.removeItem('jwtToken');
             localStorage.removeItem('adminUser');
@@ -1112,14 +1192,12 @@
             finally { this.myPwdBusy = false; }
           },
         },
-        computed: {
-          isAdmin() { return !!(this.adminUser && this.adminUser.role === 'admin'); },
-        },
         mounted(){
           const u = localStorage.getItem('adminUser');
           const tok = localStorage.getItem('jwtToken');
           try { if(u) this.adminUser = JSON.parse(u); } catch(e){}
           if(!u || !tok){ window.location.href = 'admin.html'; return; }
+          // 🔓 已取消強制改密：不再因 must_change_password 轉走
           this.todayStr = this.today();
           this.excDate = this.today();
           this.mDate = this.today();
