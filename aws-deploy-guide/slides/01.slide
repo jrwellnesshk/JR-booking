@@ -1,9 +1,0 @@
-<Slide style={{ background: 'linear-gradient(135deg,#7E9476 0%,#5D4037 100%)' }}>
-  <Box style={{ height: '100%', padding: '0 80px', flexDirection: 'column', justifyContent: 'center' }}>
-    <Text style={{ fontSize: 64, fontWeight: 'bold', color: '#FFFFFF' }}>寶天醫館預約系統</Text>
-    <Text style={{ fontSize: 40, fontWeight: 'bold', color: '#F0E4D2', marginTop: 10 }}>AWS 雲端上線 · 手把手教學</Text>
-    <Box style={{ width: 120, height: 6, background: '#F0E4D2', borderRadius: 3, marginTop: 24 }} />
-    <Text style={{ fontSize: 22, color: '#F0E4D2', marginTop: 28, lineHeight: 1.6 }}>由零開始 · 新手適用 · 100% 完整步驟 · 安全與預警齊備</Text>
-    <Text style={{ fontSize: 18, color: '#F0E4D2', marginTop: 36, opacity: 0.9 }}>跟住呢份教學，你自己都可以將個網站安全放上雲端，唔使搵人幫手。</Text>
-  </Box>
-</Slide>
