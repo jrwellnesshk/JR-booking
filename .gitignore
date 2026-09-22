@@ -44,3 +44,19 @@ test-ui/results.json
 
 # щ紇ㄣе
 aws-deploy-guide/.cache/
+
+# ===== 私隱 / 安全（絕對唔上 git）=====
+# uploads/: 用戶上傳（醫療記錄/員工文件/頭像），真實個人資料 PII
+# backups/: 本地備份，含 admin 密碼雜湊
+# _cleanup_trash/: 另一隻 AI 搬走嘅雜物（187 個檔）
+uploads/
+backups/
+_cleanup_trash/
+
+# ===== 臨時測試 / 診斷 / 模擬雜物（唔係網站核心碼）=====
+_*.cjs
+_*.html
+_*.ref/
+sim/
+test/
+test-pg-conn.js
