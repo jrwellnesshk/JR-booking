@@ -60,3 +60,6 @@ _*.ref/
 sim/
 test/
 test-pg-conn.js
+
+# ´óÃ½ów™n£¨Ðû‚÷Æ¬ 55MB+£¬ßí½› git£»deploy script mac-deploy.sh ÒÑ --exclude promo-videos£©
+promo-videos/
