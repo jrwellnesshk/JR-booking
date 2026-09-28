@@ -108,6 +108,16 @@ CREATE TABLE IF NOT EXISTS time_slots (
   UNIQUE(date, time)
 );
 
+CREATE TABLE IF NOT EXISTS doctors (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  specialty TEXT NOT NULL,
+  is_active INTEGER DEFAULT 1,
+  user_id INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS doctor_time_slots (
   id SERIAL PRIMARY KEY,
   date TEXT NOT NULL,
@@ -134,16 +144,6 @@ CREATE TABLE IF NOT EXISTS api_settings (
   setting_key TEXT UNIQUE NOT NULL,
   setting_value TEXT NOT NULL,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS doctors (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  specialty TEXT NOT NULL,
-  is_active INTEGER DEFAULT 1,
-  user_id INTEGER,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS symptom_categories (
