@@ -125,17 +125,32 @@ function makeAdapter(pool) {
     });
   }
 
+  // 將 (sql 之後嘅) 多餘引數收成 { params, cb }。
+  // 支援 SQLite 兩種風格：stmt.run([a,b,c]) 同 stmt.run(a,b,c)，以及可選尾隨 callback。
+  function normalizeArgs(rest) {
+    let cb;
+    if (rest.length && typeof rest[rest.length - 1] === 'function') {
+      cb = rest.pop();
+    }
+    let params;
+    if (rest.length === 0) params = [];
+    else if (rest.length === 1) params = rest[0];   // 陣列或單值
+    else params = rest;                              // 變參 → 陣列
+    if (params == null) params = [];
+    if (!Array.isArray(params)) params = [params];
+    return { params, cb };
+  }
+
   const db = {};
-  const wrap = (method) => function (sql, p, c) {
-    let params = p, cb = c;
-    if (typeof p === 'function') { cb = p; params = []; }
+  const wrap = (method) => function (sql, ...rest) {
+    const { params, cb } = normalizeArgs(rest);
     enqueue((err) => {
-      if (err) { if (cb) cb(err); return; }
+      if (err) { if (typeof cb === 'function') cb(err); return; }
       exec(sql, params).then(({ rows, lastID }) => {
-        if (method === 'get') { if (cb) cb(null, rows[0] || undefined); }
-        else if (method === 'all' || method === 'each') { if (cb) cb(null, rows); }
-        else { if (cb) cb.call({ lastID: lastID || 0 }, null); } // run / prepare.run → this.lastID
-      }).catch((e) => { if (cb) cb(e); });
+        if (method === 'get') { if (typeof cb === 'function') cb(null, rows[0] || undefined); }
+        else if (method === 'all' || method === 'each') { if (typeof cb === 'function') cb(null, rows); }
+        else { if (typeof cb === 'function') cb.call({ lastID: lastID || 0 }, null); } // run / prepare.run → this.lastID
+      }).catch((e) => { if (typeof cb === 'function') cb(e); else console.error('[db-pg] unhandled exec error:', e.message); });
     });
     return db;
   };
@@ -158,15 +173,14 @@ function makeAdapter(pool) {
   db.prepare = function (sql) {
     const stmt = {
       lastID: 0,
-      run: function (p, c) {
-        let params = p, cb = c;
-        if (typeof p === 'function') { cb = p; params = []; }
+      run: function (...rest) {
+        const { params, cb } = normalizeArgs(rest);
         enqueue((err) => {
-          if (err) { if (cb) cb(err); return; }
+          if (err) { if (typeof cb === 'function') cb(err); return; }
           exec(sql, params).then(({ lastID }) => {
             stmt.lastID = lastID || 0;
-            if (cb) cb.call(stmt, null);
-          }).catch((e) => { if (cb) cb(e); });
+            if (typeof cb === 'function') cb.call(stmt, null);
+          }).catch((e) => { if (typeof cb === 'function') cb(e); else console.error('[db-pg] unhandled exec error:', e.message); });
         });
         return stmt;
       },
