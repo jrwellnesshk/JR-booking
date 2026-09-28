@@ -6,7 +6,13 @@ const { runMigrations } = require('./migrations');
 // 引擎切換：當 DATABASE_URL 係 postgres:// 開頭，成個 db 模組改用 Amazon RDS
 // PostgreSQL（config/db-pg.js），所有 route / service 代碼唔使改。
 // 冇設 DATABASE_URL → 繼續用 SQLite（本地開發唔受影響）。
-if (process.env.DATABASE_URL && /^postgres/i.test(process.env.DATABASE_URL)) {
+// 額外：若設咗 PGHOST（RDS PostgreSQL 分項 env），亦改用 db-pg —— 避免密碼含
+// @ : / ? # % 等特殊字符時要喺 DATABASE_URL 做 URL-encode（好易錯）。db-pg.js
+// 嘅 buildPool() 喺無 DATABASE_URL 時會直接讀 PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE。
+if (
+  (process.env.DATABASE_URL && /^postgres/i.test(process.env.DATABASE_URL)) ||
+  process.env.PGHOST
+) {
   module.exports = require('./db-pg');
   return;
 }
