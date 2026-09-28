@@ -184,11 +184,14 @@ if (process.env.NODE_ENV === 'production') {
   }));
 }
 
-// 🔒 CORS：只允許同源（localhost 開發）與 ALLOWED_ORIGINS 白名單
+// 🔒 CORS：只允許同源（localhost 開發）、自家網域、與 ALLOWED_ORIGINS 白名單
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+// 自家網域兜底：即使 .env 漏帶 ALLOWED_ORIGINS，都自動允許自家網域
+//（apex / www，http 或 https 都包），避免部署後 login preflight 爆 CORS
+const SITE_DOMAIN = (process.env.SITE_DOMAIN || 'jrwellnesshk.com').toLowerCase();
 
 app.use(cors({
   origin(origin, callback) {
@@ -197,6 +200,13 @@ app.use(cors({
     // 本機開發同源
     if (/^https?:\/\/localhost(:\d+)?$/i.test(origin)) return callback(null, true);
     if (/^https?:\/\/127\.0\.0\.1(:\d+)?$/i.test(origin)) return callback(null, true);
+    // 自家網域（apex / www，http 或 https 都允許）
+    try {
+      const host = new URL(origin).host.toLowerCase();
+      if (host === SITE_DOMAIN || host === 'www.' + SITE_DOMAIN || host.endsWith('.' + SITE_DOMAIN)) {
+        return callback(null, true);
+      }
+    } catch (_) { /* ignore malformed origin */ }
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     return callback(new Error('Origin not allowed'));
   },
