@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   customer_age INTEGER,
   service_id TEXT,
   doctor_name TEXT DEFAULT '張醫師',
-  appointment_date TEXT,
+  appointment_date DATE,
   appointment_time TEXT,
   notes TEXT,
   status TEXT DEFAULT 'confirmed',
@@ -341,7 +341,7 @@ CREATE TABLE IF NOT EXISTS payments (
   card_last_four TEXT,
   status TEXT DEFAULT 'pending',
   transaction_id TEXT,
-  expires_at TEXT,
+  expires_at TIMESTAMPTZ,
   paid_at TEXT,
   refunded_at TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -356,7 +356,7 @@ CREATE TABLE IF NOT EXISTS pending_reservations (
   service_id TEXT NOT NULL,
   doctor_id INTEGER,
   doctor_name TEXT,
-  appointment_date TEXT NOT NULL,
+  appointment_date DATE NOT NULL,
   appointment_time TEXT NOT NULL,
   customer_name TEXT,
   customer_phone TEXT,
@@ -364,7 +364,7 @@ CREATE TABLE IF NOT EXISTS pending_reservations (
   notes TEXT,
   amount REAL DEFAULT 100,
   status TEXT DEFAULT 'pending_payment',
-  expires_at TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(user_id) REFERENCES users(id)
 );
@@ -373,8 +373,8 @@ CREATE TABLE IF NOT EXISTS reset_tokens (
   id SERIAL PRIMARY KEY,
   token TEXT UNIQUE NOT NULL,
   username TEXT NOT NULL,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  expires_at TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMPTZ NOT NULL,
   used INTEGER DEFAULT 0
 );
 
@@ -385,13 +385,13 @@ CREATE TABLE IF NOT EXISTS password_reset_logs (
   action TEXT NOT NULL,
   success INTEGER DEFAULT 0,
   details TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS login_attempts (
   id SERIAL PRIMARY KEY,
   username TEXT NOT NULL,
-  attempt_time TEXT DEFAULT CURRENT_TIMESTAMP,
+  attempt_time TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   success INTEGER DEFAULT 0,
   ip_address TEXT
 );
@@ -399,7 +399,7 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 CREATE TABLE IF NOT EXISTS verification_code_logs (
   id SERIAL PRIMARY KEY,
   email TEXT NOT NULL,
-  sent_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  sent_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   ip_address TEXT
 );
 
@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   user_id INTEGER NOT NULL,
   name TEXT,
   role TEXT,
-  attendance_date TEXT NOT NULL,
+  attendance_date DATE NOT NULL,
   clock_in TEXT,
   clock_out TEXT,
   work_minutes INTEGER DEFAULT 0,
@@ -432,8 +432,8 @@ CREATE TABLE IF NOT EXISTS leave_requests (
   name TEXT,
   role TEXT,
   leave_type TEXT NOT NULL,
-  start_date TEXT NOT NULL,
-  end_date TEXT NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
   reason TEXT,
   status TEXT DEFAULT 'pending',
   reviewed_by INTEGER,
@@ -581,8 +581,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   user_id INTEGER NOT NULL,
   tier TEXT NOT NULL DEFAULT 'general',
   status TEXT NOT NULL DEFAULT 'active',
-  start_date TEXT,
-  end_date TEXT,
+  start_date DATE,
+  end_date DATE,
   payment_id INTEGER,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -694,7 +694,7 @@ CREATE TABLE IF NOT EXISTS income_imports (
 
 CREATE TABLE IF NOT EXISTS income_adjustments (
   id SERIAL PRIMARY KEY,
-  adjustment_date TEXT NOT NULL,
+  adjustment_date DATE NOT NULL,
   amount REAL NOT NULL DEFAULT 0,
   type TEXT DEFAULT 'service',
   customer TEXT,

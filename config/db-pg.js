@@ -331,7 +331,41 @@ function runPgMigrations(pool) {
     'ALTER TABLE hr_user_schedules ADD COLUMN IF NOT EXISTS is_weekly INTEGER DEFAULT 0',
     "ALTER TABLE hr_user_schedules ADD COLUMN IF NOT EXISTS hours TEXT",
   ];
-  return alters.reduce((chain, sql) =>
+  // 🔧 將 SQLite 移植時被錯寫成 TEXT 嘅 timestamp/date 欄，改為 PG 真正類型。
+  //    原因：auth.js / admin.js / users.js 對呢啲欄做日期運算（julianday / datetime / strftime），
+  //    PG 唔識將 TEXT 隱式轉 timestamp → 爆 operator does not exist / function to_char(text) does not exist。
+  //    冪等：只喺欄仲係 text/varchar 嗰陣先 ALTER；用 NULLIF(col,'') 防空字串 cast 炸。
+  const dateFixes = [
+    ['login_attempts', 'attempt_time', 'TIMESTAMPTZ'],
+    ['verification_code_logs', 'sent_at', 'TIMESTAMPTZ'],
+    ['reset_tokens', 'expires_at', 'TIMESTAMPTZ'],
+    ['pending_reservations', 'expires_at', 'TIMESTAMPTZ'],
+    ['payments', 'expires_at', 'TIMESTAMPTZ'],
+    ['password_reset_logs', 'created_at', 'TIMESTAMPTZ'],
+    ['bookings', 'appointment_date', 'DATE'],
+    ['pending_reservations', 'appointment_date', 'DATE'],
+    ['income_adjustments', 'adjustment_date', 'DATE'],
+    ['subscriptions', 'start_date', 'DATE'],
+    ['subscriptions', 'end_date', 'DATE'],
+    ['leave_requests', 'start_date', 'DATE'],
+    ['leave_requests', 'end_date', 'DATE'],
+    ['attendance', 'attendance_date', 'DATE'],
+  ];
+  const dateFixSql = dateFixes
+    .map(([table, col, type]) =>
+      `DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name='${table}' AND column_name='${col}'
+                     AND data_type IN ('text','character varying','character'))
+        THEN
+          ALTER TABLE ${table} ALTER COLUMN ${col} TYPE ${type}
+            USING NULLIF(${col},'')::${type};
+        END IF;
+      END $$;`)
+    .map((s) => s.replace(/\n\s*/g, ' '));
+
+  const allSql = alters.concat(dateFixSql);
+  return allSql.reduce((chain, sql) =>
     chain.then(() => pool.query(sql).then(() => {}).catch((e) => {
       if (!/already exists|duplicate/i.test(e.message || '')) console.error('PG migration err:', e.message);
     })), Promise.resolve());
