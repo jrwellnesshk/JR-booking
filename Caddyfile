@@ -1,15 +1,17 @@
 {
-    # SSL 由 CloudFront 做（AWS ACM 證書），EC2 只跑純 HTTP
-    # 唔設 email / acme_dns：唔需要 Let's Encrypt，避免開 80/443 俾 ACME 挑戰
+    # 方案 A：SSL 由 Caddy 自動經 Let's Encrypt 攞（ACME http-01 challenge 需要 80 port 對外開放）
+    # 證書存喺 caddy_data volume，自動續期，唔使 AWS ACM / CloudFront
+    email admin@jrwellnesshk.com
 }
 
-:80 {
+jrwellnesshk.com, www.jrwellnesshk.com {
     encode gzip
     header {
         X-Content-Type-Options "nosniff"
         Referrer-Policy "no-referrer"
         -Server
-        # HSTS 由 CloudFront 嘅 Response Headers Policy 加（瀏覽器只會喺 HTTPS 尊重 HSTS）
+        # 全程 HTTPS，瀏覽器記住 1 年唔好用 HTTP
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
     # 上載大頭像等，放寬 body 大小
     request_body {
