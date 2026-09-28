@@ -93,8 +93,12 @@ function makeAdapter(pool) {
     queue.splice(0, queue.length).forEach((fn) => fn(err));
   }
 
+  // 串行化所有 SQL 執行：SQLite 係單寫入器、天然一筆筆跑，seed 段靠呢個次序
+  // 保證父表先於子表 commit；PG pool 多連線會並發，令子表快過父表 → violate FK。
+  // 用一條 promise chain 將 exec 排隊，令所有 query 嚴格按提交次序執行（同 SQLite 一致）。
+  let chain = Promise.resolve();
   function exec(sql, params) {
-    return new Promise((resolve, reject) => {
+    const task = () => new Promise((resolve, reject) => {
       const tbl = pragmaTableInfo(sql);
       let q, p;
       if (tbl) {
@@ -123,6 +127,10 @@ function makeAdapter(pool) {
         resolve({ rows, lastID });
       });
     });
+    const result = chain.then(() => task());
+    // 保持 chain 唔會因單一失敗而中斷；真正 error 仍經 result 傳返畀 caller 嘅 .catch
+    chain = result.then(() => undefined, () => undefined);
+    return result;
   }
 
   // 將 (sql 之後嘅) 多餘引數收成 { params, cb }。
