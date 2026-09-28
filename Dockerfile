@@ -50,8 +50,6 @@ COPY --chown=node:node services ./services
 COPY --chown=node:node middlewares ./middlewares
 COPY --chown=node:node js ./js
 COPY --chown=node:node css ./css
-COPY --chown=node:node design ./design
-COPY --chown=node:node picture ./picture
 
 # 🔒 清走 build-only 套件：tar / node-gyp / cacache 只會喺 npm install 時用到，
 #    喺 runtime 留低佢哋只會白蝕攻擊面（npm audit critical: tar <=7.5.20）。
