@@ -100,7 +100,7 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
   // 🆕 檢查帳戶是否被鎖定（🔒 以 帳戶+IP 組合計算，防止攻擊者惡意鎖死任何客戶嘅帳戶）
   // ⏱️ 一併計埋剩餘鎖定分鐘數，等用戶知要等幾耐
   const checkAccountLocked = (username, ipAddress) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       db.get(
         `SELECT COUNT(*) as failedAttempts,
                 CAST(CEIL((julianday(MIN(attempt_time), '+${LOCKOUT_DURATION_MINUTES} minutes') - julianday('now')) * 24 * 60) AS INTEGER) as minutesRemaining
@@ -109,16 +109,19 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
            AND attempt_time > datetime('now', '-${LOCKOUT_DURATION_MINUTES} minutes')`,
         [username, ipAddress || ''],
         (err, row) => {
+          // 🛡️ fail-open：呢個查詢任何錯誤（例如 PG 端口未 migrate 嘅 TEXT 欄）
+          // 都唔可以搞到 login 變 500 / NaN，當「未鎖定」處理
           if (err) {
-            reject(err);
-          } else {
-            const isLocked = row.failedAttempts >= MAX_LOGIN_ATTEMPTS;
-            resolve({
-              isLocked,
-              failedAttempts: row.failedAttempts,
-              minutesRemaining: isLocked ? Math.max(1, row.minutesRemaining || 1) : 0
-            });
+            console.error('checkAccountLocked error (fail-open):', err.message);
+            return resolve({ isLocked: false, failedAttempts: 0, minutesRemaining: 0 });
           }
+          const fa = Number(row && row.failedAttempts) || 0;
+          const isLocked = fa >= MAX_LOGIN_ATTEMPTS;
+          resolve({
+            isLocked,
+            failedAttempts: fa,
+            minutesRemaining: isLocked ? Math.max(1, Number(row.minutesRemaining) || 1) : 0
+          });
         }
       );
     });
