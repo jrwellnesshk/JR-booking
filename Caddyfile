@@ -1,17 +1,15 @@
 {
-    # 生產用：填管理員 email 收 Let's Encrypt 證書通知
-    email admin@yourdomain.com
-    # 用 Cloudflare DNS 挑戰（唔使開 80 port）就取消下面註解並設 CLOUDFLARE_API_TOKEN
-    # acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    # SSL 由 CloudFront 做（AWS ACM 證書），EC2 只跑純 HTTP
+    # 唔設 email / acme_dns：唔需要 Let's Encrypt，避免開 80/443 俾 ACME 挑戰
 }
 
-{$SITE_DOMAIN:localhost} {
+:80 {
     encode gzip
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "no-referrer"
         -Server
+        # HSTS 由 CloudFront 嘅 Response Headers Policy 加（瀏覽器只會喺 HTTPS 尊重 HSTS）
     }
     # 上載大頭像等，放寬 body 大小
     request_body {
