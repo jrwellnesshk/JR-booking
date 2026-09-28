@@ -37,7 +37,9 @@ function verifyPassword(password, hashedPassword) {
 // ---------- 連接池 ----------
 function buildPool() {
   const ssl = (process.env.PGSSL === 'false') ? false : { rejectUnauthorized: false };
-  const common = { ssl, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000 };
+  // 設 Hong Kong 時區，對齊 SQLite datetime('now','localtime') 嘅語意（避免 8 小時偏移）
+  const common = { ssl, max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000,
+    options: "-c timezone=Asia/Hong_Kong" };
   if (process.env.DATABASE_URL) {
     return new Pool(Object.assign({ connectionString: process.env.DATABASE_URL }, common));
   }
@@ -51,22 +53,57 @@ function buildPool() {
   }, common));
 }
 
-// ---------- SQL 轉譯：? → $n、INSERT OR IGNORE → ON CONFLICT DO NOTHING ----------
+// ---------- SQL 轉譯：SQLite 日期/時間函數 → PG 等效 ----------
+function sqliteStrftimeToPg(fmt) {
+  return fmt
+    .replace(/%Y/g, 'YYYY').replace(/%m/g, 'MM').replace(/%d/g, 'DD')
+    .replace(/%H/g, 'HH24').replace(/%M/g, 'MI').replace(/%S/g, 'SS')
+    .replace(/%w/g, 'D').replace(/%j/g, 'DDD').replace(/%W/g, 'WW')
+    .replace(/%I/g, 'HH12').replace(/%p/g, 'AM');
+}
+function translateDateFns(s) {
+  // SQLite DDL：AUTOINCREMENT / INTEGER PRIMARY KEY → PG SERIAL PRIMARY KEY
+  s = s.replace(/\bINTEGER PRIMARY KEY AUTOINCREMENT\b/gi, 'SERIAL PRIMARY KEY');
+  s = s.replace(/\bINTEGER PRIMARY KEY\b/gi, 'SERIAL PRIMARY KEY');
+  // datetime('now') / datetime('now','localtime') → NOW()
+  s = s.replace(/\bdatetime\(\s*'now'\s*(?:,\s*'localtime')?\s*\)/gi, 'NOW()');
+  // datetime('now', '+N unit' / '-N unit') → NOW() +/- INTERVAL 'N unit'
+  s = s.replace(/\bdatetime\(\s*'now'\s*,\s*'([+-])\s*(\d+)\s+([a-z]+)'\s*\)/gi,
+    (m, sign, num, unit) => `NOW() ${sign} INTERVAL '${num} ${unit}'`);
+  // 通用 datetime(X) → X（去 wrapper，保留內部表達式）
+  s = s.replace(/\bdatetime\(\s*([^)]+?)\s*\)/gi, '$1');
+  // date('now') → CURRENT_DATE
+  s = s.replace(/\bdate\(\s*'now'\s*\)/gi, 'CURRENT_DATE');
+  // 通用 date(X) → X
+  s = s.replace(/\bdate\(\s*([^)]+?)\s*\)/gi, '$1');
+  // strftime(fmt, X) → TO_CHAR(X, pgfmt)
+  s = s.replace(/\bstrftime\(\s*'([^']*)'\s*,\s*([^)]+?)\s*\)/gi,
+    (m, fmt, expr) => `TO_CHAR(${expr.trim()}, '${sqliteStrftimeToPg(fmt)}')`);
+  // julianday('now') → 自 Julian epoch 嘅 days（用 EPOCH 秒 / 86400 模擬，配合外層 *24*60 = minutes）
+  s = s.replace(/\bjulianday\(\s*'now'\s*\)/gi, "(EXTRACT(EPOCH FROM NOW()) / 86400.0)");
+  // julianday(MIN(col), '+N unit' / '-N unit') → 同上，MIN(col) 加 interval
+  s = s.replace(/\bjulianday\(\s*MIN\(\s*([^)]+?)\s*\)\s*,\s*'([+-])\s*(\d+)\s+([a-z]+)'\s*\)/gi,
+    (m, inner, sign, num, unit) => `(EXTRACT(EPOCH FROM (MIN(${inner.trim()}) ${sign} INTERVAL '${num} ${unit}')) / 86400.0)`);
+  return s;
+}
+
+// ---------- SQL 轉譯：? → $n、INSERT OR IGNORE/REPLACE → 忽略 unique violation ----------
 function translate(sql) {
   let s = String(sql);
   let isIgnore = false;
-  if (/INSERT OR IGNORE/i.test(s)) {
+  if (/INSERT OR IGNORE/i.test(s) || /INSERT OR REPLACE/i.test(s)) {
+    // OR IGNORE / OR REPLACE 喺 PG 冇直接對應；種子/預設設定場景下改做 plain INSERT，
+    // 遇到 unique violation（23505）當 OR IGNORE 處理（skip），語意可接受。
     isIgnore = true;
-    s = s.replace(/INSERT OR IGNORE/i, 'INSERT');
+    s = s.replace(/INSERT OR (IGNORE|REPLACE)/i, 'INSERT');
   }
   // SQLite 唔理大小寫嘅 COLLATE NOCASE → PG 直接去掉（username 一般小寫儲存）
   s = s.replace(/COLLATE\s+NOCASE/gi, '');
+  // SQLite 日期/時間函數 → PG 等效（必須喺 ? → $n 之前做，保留 ?）
+  s = translateDateFns(s);
   let i = 0;
   s = s.replace(/\?/g, () => '$' + (++i));
-  if (isIgnore) {
-    s = s.replace(/\bVALUES\b/i, 'ON CONFLICT DO NOTHING VALUES');
-  }
-  return s;
+  return { q: s, ignore: isIgnore };
 }
 
 function pragmaTableInfo(sql) {
@@ -100,7 +137,7 @@ function makeAdapter(pool) {
   function exec(sql, params) {
     const task = () => new Promise((resolve, reject) => {
       const tbl = pragmaTableInfo(sql);
-      let q, p;
+      let q, p, ignore = false;
       if (tbl) {
         // PRAGMA table_info(x) → information_schema（app 讀 .name / .notnull）
         q = `SELECT column_name AS name, data_type AS type,
@@ -112,7 +149,9 @@ function makeAdapter(pool) {
         // journal_mode / busy_timeout 等 → no-op
         return resolve({ rows: [] });
       } else {
-        q = translate(sql);
+        const t = translate(sql);
+        q = t.q;
+        ignore = t.ignore;
         p = params || [];
         // INSERT ... VALUES → 補 RETURNING id 攞 lastID
         if (/^\s*INSERT\b/i.test(q) && /\bVALUES\b/i.test(q) && !/RETURNING/i.test(q)) {
@@ -120,7 +159,11 @@ function makeAdapter(pool) {
         }
       }
       pool.query(q, p, (err, res) => {
-        if (err) return reject(err);
+        if (err) {
+          // SQLite INSERT OR IGNORE / OR REPLACE 語意：忽略 unique violation，當成功
+          if (ignore && err.code === '23505') return resolve({ rows: [], lastID: 0 });
+          return reject(err);
+        }
         const rows = res && res.rows ? res.rows : [];
         let lastID = 0;
         if (rows[0] && rows[0].id !== undefined && rows[0].id !== null) lastID = rows[0].id;
