@@ -134,8 +134,35 @@ function makeAdapter(pool) {
   // 保證父表先於子表 commit；PG pool 多連線會並發，令子表快過父表 → violate FK。
   // 用一條 promise chain 將 exec 排隊，令所有 query 嚴格按提交次序執行（同 SQLite 一致）。
   let chain = Promise.resolve();
+  // 每張表嘅單欄 PK 名稱快取：用嚟決定 RETURNING 咩，避免硬寫 id 撞「column id does not exist」
+  // （例如 custom_solar_terms PK=name、user_notification_preferences PK=user_id）
+  const pkCache = new Map();
+  async function getPkColumn(table) {
+    if (pkCache.has(table)) return pkCache.get(table);
+    try {
+      const r = await pool.query(
+        `SELECT kcu.column_name
+         FROM information_schema.table_constraints tc
+         JOIN information_schema.key_column_usage kcu
+           ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+          AND tc.table_name = kcu.table_name
+         WHERE tc.constraint_type = 'PRIMARY KEY'
+           AND tc.table_name = $1`,
+        [table]
+      );
+      // 淨支援單欄 PK；複合 PK 返 null（唔 append RETURNING，lastID 留 0）
+      const col = (r.rows.length === 1) ? r.rows[0].column_name : null;
+      pkCache.set(table, col);
+      return col;
+    } catch (e) {
+      pkCache.set(table, null);
+      return null;
+    }
+  }
+
   function exec(sql, params) {
-    const task = () => new Promise((resolve, reject) => {
+    const task = () => new Promise(async (resolve, reject) => {
       const tbl = pragmaTableInfo(sql);
       let q, p, ignore = false;
       if (tbl) {
@@ -153,20 +180,32 @@ function makeAdapter(pool) {
         q = t.q;
         ignore = t.ignore;
         p = params || [];
-        // INSERT ... VALUES → 補 RETURNING id 攞 lastID
+        // INSERT ... VALUES → 補 RETURNING <實際 PK 欄> 攞 lastID；唔係所有表 PK 都叫 id
         if (/^\s*INSERT\b/i.test(q) && /\bVALUES\b/i.test(q) && !/RETURNING/i.test(q)) {
-          q += ' RETURNING id';
+          const m = q.match(/INSERT\s+(?:INTO\s+)?([A-Za-z_]\w*)/i);
+          const target = m ? m[1] : null;
+          if (target) {
+            const pk = await getPkColumn(target);
+            if (pk) q += ' RETURNING ' + pk;
+          }
         }
       }
       pool.query(q, p, (err, res) => {
         if (err) {
           // SQLite INSERT OR IGNORE / OR REPLACE 語意：忽略 unique violation，當成功
           if (ignore && err.code === '23505') return resolve({ rows: [], lastID: 0 });
+          err.sql = q; // 附 SQL 落 error，畀 unhandled 日誌印出真正出事嘅語句
           return reject(err);
         }
         const rows = res && res.rows ? res.rows : [];
         let lastID = 0;
-        if (rows[0] && rows[0].id !== undefined && rows[0].id !== null) lastID = rows[0].id;
+        if (rows[0]) {
+          // RETURNING 返嘅欄即係 PK；優先 id，否則取第一欄（如 name / user_id）
+          const keys = Object.keys(rows[0]);
+          const pkKey = keys.includes('id') ? 'id' : keys[0];
+          const v = rows[0][pkKey];
+          if (typeof v === 'number') lastID = v;
+        }
         resolve({ rows, lastID });
       });
     });
@@ -201,7 +240,7 @@ function makeAdapter(pool) {
         if (method === 'get') { if (typeof cb === 'function') cb(null, rows[0] || undefined); }
         else if (method === 'all' || method === 'each') { if (typeof cb === 'function') cb(null, rows); }
         else { if (typeof cb === 'function') cb.call({ lastID: lastID || 0 }, null); } // run / prepare.run → this.lastID
-      }).catch((e) => { if (typeof cb === 'function') cb(e); else console.error('[db-pg] unhandled exec error:', e.message); });
+      }).catch((e) => { if (typeof cb === 'function') cb(e); else console.error('[db-pg] unhandled exec error:', e.message, e.sql || ''); });
     });
     return db;
   };
@@ -231,7 +270,7 @@ function makeAdapter(pool) {
           exec(sql, params).then(({ lastID }) => {
             stmt.lastID = lastID || 0;
             if (typeof cb === 'function') cb.call(stmt, null);
-          }).catch((e) => { if (typeof cb === 'function') cb(e); else console.error('[db-pg] unhandled exec error:', e.message); });
+          }).catch((e) => { if (typeof cb === 'function') cb(e); else console.error('[db-pg] unhandled exec error:', e.message, e.sql || ''); });
         });
         return stmt;
       },
