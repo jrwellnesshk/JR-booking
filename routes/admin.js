@@ -149,21 +149,25 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
               db.run("UPDATE users SET staff_no=? WHERE id=?", [staffNo, newUserId]);
             }
 
-            // 如果是醫師角色，嘗試關聯 doctors 表
+            // 如果是醫師角色，確保醫師名冊（doctors 表）即時有對應 row（單一 Source，唔使等 reboot）
             if (userRole === 'doctor') {
-              // 先嘗試用姓名匹配現有醫師
+              // 用姓名匹配現有醫師（唔理 is_active：舊 row 即使被停用都重用，避免開帳戶時 INSERT 重複同名 row）
               db.get(
-                "SELECT id FROM doctors WHERE name=? AND is_active=1",
+                "SELECT id FROM doctors WHERE name=?",
                 [name],
                 (docErr, doctor) => {
-                  if (!docErr && doctor) {
-                    // 關聯現有醫師記錄
-                    db.run("UPDATE doctors SET user_id=? WHERE id=?", [newUserId, doctor.id]);
+                  if (docErr) {
+                    console.error('⚠️ 查 doctors 失敗（唔影響開戶）：', docErr.message);
+                    return;
+                  }
+                  if (doctor) {
+                    // 重用現有醫師記錄：開帳戶即代表啟用 + 對返 user_id
+                    db.run("UPDATE doctors SET user_id=?, is_active=1 WHERE id=?", [newUserId, doctor.id]);
                   } else {
-                    // 新增醫師記錄
+                    // 新增醫師記錄（specialty 留空，由醫師資料管理補）
                     db.run(
                       "INSERT INTO doctors (name, specialty, is_active, user_id) VALUES (?, ?, 1, ?)",
-                      [name, name_en || '醫師', newUserId]
+                      [name, name_en || '', newUserId]
                     );
                   }
                 }
