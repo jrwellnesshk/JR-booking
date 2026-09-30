@@ -694,8 +694,8 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
         conds.push("(CAST(mr.doctor_user_id AS TEXT)=? OR du.name LIKE ? OR mr.booking_doctor_name LIKE ?)");
         params.push(String(doctor).trim(), `%${String(doctor).trim()}%`, `%${String(doctor).trim()}%`);
       }
-      if (from) { conds.push("COALESCE(b.appointment_date, mr.record_date) >= ?"); params.push(String(from)); }
-      if (to) { conds.push("COALESCE(b.appointment_date, mr.record_date) <= ?"); params.push(String(to)); }
+      if (from) { conds.push("COALESCE(CAST(b.appointment_date AS TEXT), mr.record_date) >= ?"); params.push(String(from)); }
+      if (to) { conds.push("COALESCE(CAST(b.appointment_date AS TEXT), mr.record_date) <= ?"); params.push(String(to)); }
       const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
 
       const records = await new Promise((resolve, reject) => {
@@ -710,7 +710,7 @@ module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => 
              LEFT JOIN bookings b ON mr.booking_id = b.id
              LEFT JOIN services s ON b.service_id = s.id
              ${where}
-            ORDER BY COALESCE(b.appointment_date, mr.record_date) DESC, mr.id DESC
+            ORDER BY COALESCE(CAST(b.appointment_date AS TEXT), mr.record_date) DESC, mr.id DESC
             LIMIT ?`,
           [...params, limit],
           (err, rows) => (err ? reject(err) : resolve(rows || []))

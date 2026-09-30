@@ -143,6 +143,12 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
             if (insertErr) return res.status(500).json({ error: insertErr.message });
             const newUserId = this.lastID;
 
+            // 🔢 員工編號：staff / admin / doctor 自動生成 ST + 4 位 id（如 ST0007）
+            if (userRole === 'staff' || userRole === 'admin' || userRole === 'doctor') {
+              const staffNo = 'ST' + String(newUserId).padStart(4, '0');
+              db.run("UPDATE users SET staff_no=? WHERE id=?", [staffNo, newUserId]);
+            }
+
             // 如果是醫師角色，嘗試關聯 doctors 表
             if (userRole === 'doctor') {
               // 先嘗試用姓名匹配現有醫師

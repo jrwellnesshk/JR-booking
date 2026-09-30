@@ -2300,7 +2300,7 @@
                       class="border-b hover:bg-slate-50"
                       :class="{ 'bg-red-50': user.is_expired, 'bg-yellow-50': user.profile_completed === 0 && !user.is_expired }"
                     >
-                      <td class="px-4 py-3 text-sm">{{ user.member_no || '—' }}</td>
+                      <td class="px-4 py-3 text-sm">{{ user.role === 'customer' ? (user.member_no || '—') : (user.staff_no || '—') }}</td>
                       <td class="px-4 py-3 text-sm font-medium">
                         {{ user.username }}
                         <span v-if="user.locked" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 align-middle" :title="'帳戶被鎖定，約 ' + (user.lock_minutes||0) + ' 分鐘後自動解鎖'"><i class="fas fa-lock mr-0.5"></i>鎖定{{ user.lock_minutes||0 }}分</span>
@@ -5451,10 +5451,8 @@
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('通知類型') }}</label>
                       <select v-model="testNotification.type" class="w-full border border-slate-300 rounded-lg px-4 py-2">
-                        <option value="solar_term">{{ t('節氣提醒') }}</option>
-                        <option value="holiday">{{ t('節日祝賀') }}</option>
-                        <option value="weather">{{ t('天氣提醒') }}</option>
-                        <option value="custom">{{ t('自訂訊息') }}</option>
+                        <option value="holiday">{{ t('節日祝賀（WhatsApp）') }}</option>
+                        <option value="custom">{{ t('自訂訊息（WhatsApp）') }}</option>
                       </select>
                     </div>
                   </div>

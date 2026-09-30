@@ -586,6 +586,10 @@ function runMigrations(db) {
       db.run("UPDATE users SET member_no = phone WHERE (member_no IS NULL OR member_no='') AND phone IS NOT NULL AND phone<>''", (e) => {
         if (!e) console.log("✅ 已回填 member_no = phone（空值）");
       });
+      // 回填：員工編號 = ST + 4 位 id（staff / admin / doctor）— 僅填空者
+      db.run("UPDATE users SET staff_no = 'ST' || substr('0000'||id, -4) WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no='')", (e) => {
+        if (!e) console.log("✅ 已回填 staff_no（空值）");
+      });
       // 🔢 重新格式化會員編號（2026-09-15 新規格，idempotent）：
       //   主帳戶 = S + 方案字母 + 電話末 4 碼（SA1234）
       //   子帳戶 = M + 方案字母 + 電話末 4 碼（MA1234）

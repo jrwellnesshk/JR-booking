@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS users (
   whatsapp_health INTEGER DEFAULT 1,
   member_invoice_no TEXT,
   payment_method TEXT,
-  staff_note TEXT DEFAULT ''
+  staff_note TEXT DEFAULT '',
+  staff_no TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS services (
@@ -644,6 +645,21 @@ CREATE TABLE IF NOT EXISTS family_invoices (
   plan TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(family_head_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS membership_plans (
+  id SERIAL PRIMARY KEY,
+  plan_key TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  price REAL NOT NULL DEFAULT 0,
+  range_label TEXT DEFAULT '',
+  intro TEXT DEFAULT '',
+  features TEXT DEFAULT '[]',
+  popular INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS exceptions (

@@ -84,6 +84,9 @@ function translateDateFns(s) {
   // julianday(MIN(col), '+N unit' / '-N unit') → 同上，MIN(col) 加 interval
   s = s.replace(/\bjulianday\(\s*MIN\(\s*([^)]+?)\s*\)\s*,\s*'([+-])\s*(\d+)\s+([a-z]+)'\s*\)/gi,
     (m, inner, sign, num, unit) => `(EXTRACT(EPOCH FROM (MIN(${inner.trim()}) ${sign} INTERVAL '${num} ${unit}')) / 86400.0)`);
+  // GROUP_CONCAT → STRING_AGG（PG 冇 GROUP_CONCAT；SQLite 保留原樣由本地 DB 處理）
+  s = s.replace(/\bGROUP_CONCAT\(\s*DISTINCT\s+([^)]+?)\s*\)/gi, 'STRING_AGG(DISTINCT $1, \',\')');
+  s = s.replace(/\bGROUP_CONCAT\(\s*([^)]+?)\s*\)/gi, 'STRING_AGG($1, \',\')');
   return s;
 }
 
@@ -313,6 +316,8 @@ function runPgMigrations(pool) {
     'ALTER TABLE users ADD COLUMN IF NOT EXISTS member_invoice_no TEXT',
     'ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method TEXT',
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_note TEXT DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_no TEXT DEFAULT ''",
+    "UPDATE users SET staff_no = 'ST' || LPAD(id::text, 4, '0') WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no = '')",
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_locked INTEGER DEFAULT 0',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS end_time TEXT',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lateness_minutes INTEGER DEFAULT 0',
@@ -422,6 +427,20 @@ function seedDatabase(db) {
        ['allergy', '過敏', 'Allergy', '皮膚紅疹、鼻敏感等', 'Skin rash, allergies, etc.', 'fa-allergies']]
         .forEach((r) => stmt.run(r[0], r[1], r[2], r[3], r[4], r[5]));
       stmt.finalize();
+    }
+  });
+  db.get("SELECT COUNT(*) as count FROM membership_plans", (e, row) => {
+    if (!e && cnt(row) === 0) {
+      const plans = [
+        ['A','家庭帳戶 A',0.01,'1-2 人','1–2 位成員的小家庭',JSON.stringify(['一般帳戶全部功能','家庭帳戶：集中管理家人預約','子女病歷查看','家庭單號 JRA 帳單']),0,1],
+        ['B','家庭帳戶 B',0.01,'3-5 人','3–5 位成員的三代同堂',JSON.stringify(['A 計劃全部功能','全家預約／病歷／療程追蹤','每成員獨立登入管理','家庭單號 JRB 帳單']),1,2],
+        ['C','家庭帳戶 C',0.01,'6-9 人','6–9 位成員的大家庭',JSON.stringify(['B 計劃全部功能','全家預約／病歷／療程追蹤','專人協助安排家庭會籍','家庭單號 JRC 帳單']),0,3],
+        ['D','家庭帳戶 D',0.01,'10 人以上','10 位以上成員的跨代大家族',JSON.stringify(['C 計劃全部功能','不設成員人數上限','最齊全家庭管理功能','家庭單號 JRD 帳單']),0,4],
+      ];
+      plans.forEach(([key,name,price,range,intro,features,popular,sort]) => {
+        db.run("INSERT INTO membership_plans (plan_key,name,price,range_label,intro,features,popular,sort,is_active) VALUES (?,?,?,?,?,?,?,?,1)",
+          [key,name,price,range,intro,features,popular,sort]);
+      });
     }
   });
   initializeAIQuestions(db);
