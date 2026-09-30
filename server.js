@@ -1050,9 +1050,20 @@ app.put("/api/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
   const { id } = req.params;
   const { name, specialty, is_active } = req.body;
 
+  // 只更新 body 有提供嘅欄位；is_active 冇傳就保留原值，
+  // 避免管理員改人名/專科時被掹落 0（舊 bug：undefined ? 1 : 0 → 0）
+  const sets = [];
+  const params = [];
+  if (name !== undefined)      { sets.push('name=?');       params.push(name); }
+  if (specialty !== undefined) { sets.push('specialty=?');   params.push(specialty); }
+  if (is_active !== undefined) { sets.push('is_active=?');   params.push(is_active ? 1 : 0); }
+
+  if (sets.length === 0) return res.json({ ok: true, unchanged: true });
+
+  params.push(id);
   db.run(
-    "UPDATE doctors SET name=?, specialty=?, is_active=? WHERE id=?",
-    [name, specialty, is_active ? 1 : 0, id],
+    `UPDATE doctors SET ${sets.join(', ')} WHERE id=?`,
+    params,
     function(err) {
       if (err) return serverError(res, err);
       res.json({ ok: true });
