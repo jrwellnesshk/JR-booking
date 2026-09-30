@@ -127,13 +127,23 @@ const sendWhatsApp = async (to, message, verifyDelivery = true) => {
     const defaultContentSid = process.env.TWILIO_CONTENT_SID_DEFAULT;
     let result;
     if (defaultContentSid) {
-      result = await client.messages.create({
-        contentSid: defaultContentSid,
-        contentVariables: JSON.stringify({ 1: message }),
-        from: TWILIO_CONFIG.whatsappNumber,
-        to: formattedPhone
-      });
-      console.log(`📤 經 Content Template (${defaultContentSid}) 發送`);
+      try {
+        result = await client.messages.create({
+          contentSid: defaultContentSid,
+          contentVariables: JSON.stringify({ 1: message }),
+          from: TWILIO_CONFIG.whatsappNumber,
+          to: formattedPhone
+        });
+        console.log(`📤 經 Content Template (${defaultContentSid}) 發送`);
+      } catch (tmplErr) {
+        // Content Template 發送失敗（ContentSid 無效 / 未批核 / 唔適用 Sandbox）→ 退落純文字（24h window 內有效）
+        console.warn(`⚠️ Content Template 發送失敗（${tmplErr.message}），退落純文字重試`);
+        result = await client.messages.create({
+          body: message,
+          from: TWILIO_CONFIG.whatsappNumber,
+          to: formattedPhone
+        });
+      }
     } else {
       result = await client.messages.create({
         body: message,
