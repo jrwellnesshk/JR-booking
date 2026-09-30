@@ -317,6 +317,8 @@ function runPgMigrations(pool) {
     'ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method TEXT',
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_note TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_no TEXT DEFAULT ''",
+    "ALTER TABLE doctors ADD COLUMN IF NOT EXISTS avatar TEXT",
+    "ALTER TABLE doctors ADD COLUMN IF NOT EXISTS bio TEXT",
     "UPDATE users SET staff_no = CASE WHEN phone IS NOT NULL AND phone ~ '[0-9]' THEN 'J' || RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 8) ELSE 'J' || LPAD(id::text, 4, '0') END WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no = '' OR staff_no LIKE 'ST%')",
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_locked INTEGER DEFAULT 0',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS end_time TEXT',

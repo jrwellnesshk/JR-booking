@@ -582,6 +582,22 @@ function runMigrations(db) {
           });
         }
       });
+      // doctors 欄位：頭像 + 個人介紹（2026-09-30，Admin 喺醫師資料管理填寫）
+      db.all("PRAGMA table_info(doctors)", (derr, dcols) => {
+        if (derr || !dcols) return;
+        const dAdd = [
+          { name: 'avatar', ddl: "ALTER TABLE doctors ADD COLUMN avatar TEXT" },
+          { name: 'bio', ddl: "ALTER TABLE doctors ADD COLUMN bio TEXT" }
+        ];
+        dAdd.forEach((c) => {
+          if (!dcols.some(col => col.name === c.name)) {
+            db.run(c.ddl, (e) => {
+              if (e) console.error(`添加 doctors.${c.name} 失敗:`, e.message);
+              else console.log(`✅ 已添加 doctors.${c.name} 欄位`);
+            });
+          }
+        });
+      });
       // 回填：會員編號 = 電話（客戶 / 家庭成員）— 僅填空者
       db.run("UPDATE users SET member_no = phone WHERE (member_no IS NULL OR member_no='') AND phone IS NOT NULL AND phone<>''", (e) => {
         if (!e) console.log("✅ 已回填 member_no = phone（空值）");

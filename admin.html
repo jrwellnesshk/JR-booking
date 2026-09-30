@@ -6865,6 +6865,28 @@
                 :placeholder="t('例如：推拿專家、針灸專家')"
               />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2"
+                >{{ t('頭像圖片網址') }}</label
+              >
+              <input
+                type="text"
+                v-model="doctorForm.avatar"
+                class="w-full border border-slate-300 rounded-lg px-4 py-2"
+                :placeholder="t('貼圖片 URL，例如 https://.../doc.jpg')"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2"
+                >{{ t('個人經驗介紹') }}</label
+              >
+              <textarea
+                v-model="doctorForm.bio"
+                rows="3"
+                class="w-full border border-slate-300 rounded-lg px-4 py-2"
+                :placeholder="t('例如：十五年臨床經驗，專注痛症與慢性疲勞。')"
+              ></textarea>
+            </div>
             <div class="flex gap-2">
               <button
                 @click="saveDoctorForm"
@@ -8189,6 +8211,8 @@
             doctorForm: {
               name: "",
               specialty: "",
+              avatar: "",
+              bio: "",
             },
 
 showPasswordModal: false,
@@ -12610,6 +12634,8 @@ phone: this.addUserForm.phone,
             this.editingDoctor = doctor;
             this.doctorForm.name = doctor.name;
             this.doctorForm.specialty = doctor.specialty;
+            this.doctorForm.avatar = doctor.avatar || "";
+            this.doctorForm.bio = doctor.bio || "";
             this.showAddDoctorModal = true;
           },
 
@@ -12618,6 +12644,8 @@ phone: this.addUserForm.phone,
             this.editingDoctor = null;
             this.doctorForm.name = "";
             this.doctorForm.specialty = "";
+            this.doctorForm.avatar = "";
+            this.doctorForm.bio = "";
           },
 
           async saveDoctorForm() {

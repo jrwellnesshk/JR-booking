@@ -1030,14 +1030,14 @@ app.get("/api/doctors", (req, res) => {
 
 // 新增醫師（限管理員）
 app.post("/api/doctors", requireAuth, requireRole('admin'), (req, res) => {
-  const { name, specialty } = req.body;
+  const { name, specialty, avatar, bio } = req.body;
   if (!name || !specialty) {
     return res.status(400).json({ error: "缺少必要欄位" });
   }
 
   db.run(
-    "INSERT INTO doctors (name, specialty, is_active) VALUES (?, ?, 1)",
-    [name, specialty],
+    "INSERT INTO doctors (name, specialty, is_active, avatar, bio) VALUES (?, ?, 1, ?, ?)",
+    [name, specialty, avatar || null, bio || null],
     function(err) {
       if (err) return serverError(res, err);
       res.json({ ok: true, id: this.lastID });
@@ -1048,7 +1048,7 @@ app.post("/api/doctors", requireAuth, requireRole('admin'), (req, res) => {
 // 更新醫師（限管理員）
 app.put("/api/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
   const { id } = req.params;
-  const { name, specialty, is_active } = req.body;
+  const { name, specialty, is_active, avatar, bio } = req.body;
 
   // 只更新 body 有提供嘅欄位；is_active 冇傳就保留原值，
   // 避免管理員改人名/專科時被掹落 0（舊 bug：undefined ? 1 : 0 → 0）
@@ -1057,6 +1057,8 @@ app.put("/api/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
   if (name !== undefined)      { sets.push('name=?');       params.push(name); }
   if (specialty !== undefined) { sets.push('specialty=?');   params.push(specialty); }
   if (is_active !== undefined) { sets.push('is_active=?');   params.push(is_active ? 1 : 0); }
+  if (avatar !== undefined)    { sets.push('avatar=?');      params.push(avatar || null); }
+  if (bio !== undefined)       { sets.push('bio=?');         params.push(bio || null); }
 
   if (sets.length === 0) return res.json({ ok: true, unchanged: true });
 

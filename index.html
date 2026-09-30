@@ -1713,6 +1713,7 @@
               </div>
               <h3>{{ doc.name }}</h3>
               <div class="aq-doc-role">{{ doc.specialty || t('註冊中醫師') }}</div>
+              <p v-if="doc.bio">{{ doc.bio }}</p>
             </div>
             <div v-if="!siteDoctors.length" class="aq-doc" data-idx="甲"><div class="aq-doc-av"><i class="fas fa-user-md"></i></div><h3>{{ t('陳醫師') }}</h3><div class="aq-doc-role">{{ t('註冊中醫師 · 針灸專科') }}</div><p>{{ t('十五年臨床經驗，專注痛症與慢性疲勞。') }}</p><span class="aq-tag">{{ t('針灸') }}</span><span class="aq-tag">{{ t('痛症') }}</span></div>
             <div v-if="!siteDoctors.length" class="aq-doc" data-idx="乙"><div class="aq-doc-av"><i class="fas fa-user-md"></i></div><h3>{{ t('李醫師') }}</h3><div class="aq-doc-role">{{ t('註冊中醫師 · 內科調理') }}</div><p>{{ t('擅長脾胃、失眠與三高調理。') }}</p><span class="aq-tag">{{ t('內科') }}</span><span class="aq-tag">{{ t('養生') }}</span></div>

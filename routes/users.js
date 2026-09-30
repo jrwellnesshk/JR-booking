@@ -60,7 +60,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
   // 🆕 公開醫師名單（官網醫師介紹，含頭像）；供 index.html 醫師團隊同步顯示
   router.get("/public-doctors", (req, res) => {
     db.all(
-      `SELECT d.id AS doctor_id, d.name, d.specialty, u.id AS user_id, u.avatar
+      `SELECT d.id AS doctor_id, d.name, d.specialty, d.avatar, d.bio, u.id AS user_id
          FROM doctors d
          LEFT JOIN users u ON u.id = d.user_id
         WHERE d.is_active = 1
