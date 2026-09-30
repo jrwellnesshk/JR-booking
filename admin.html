@@ -5284,38 +5284,6 @@
                     </div>
                   </div>
 
-                  <!-- 其他設定 -->
-                  <div class="bg-slate-50 rounded-xl p-6">
-                    <h3 class="font-semibold text-slate-800 mb-4"><i class="fas fa-sliders-h mr-2"></i>{{ t('其他設定') }}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('寒冷天氣閾值（°C）') }}</label>
-                        <input type="number" v-model="schedulerSettings.weather_cold_threshold" @change="saveSchedulerSettings" class="w-full border border-slate-300 rounded-lg px-4 py-2" min="0" max="30">
-                        <p class="text-xs text-slate-500 mt-1">{{ t('低於此溫度會發送天氣提醒') }}</p>
-                      </div>
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">{{ t('符合條件用戶數') }}</label>
-                        <div class="bg-white border border-slate-300 rounded-lg px-4 py-2 text-emerald-600 font-semibold">
-                          {{ notificationEligibleCount }} {{ t('人') }}
-                        </div>
-                        <p class="text-xs text-slate-500 mt-1">{{ t('已完善個人資料的用戶') }}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 手動執行 -->
-                  <div class="bg-amber-50 border border-amber-200 rounded-xl p-6">
-                    <h3 class="font-semibold text-slate-800 mb-4"><i class="fas fa-play-circle mr-2 text-amber-600"></i>{{ t('手動執行通知') }}</h3>
-                    <p class="text-sm text-slate-600 mb-4">{{ t('如果今天是節氣或節日，可以手動觸發發送通知給所有符合條件的用戶。') }}</p>
-                    <div class="flex gap-4">
-                      <button @click="runNotification('solar-term')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                        <i class="fas fa-leaf mr-2"></i>{{ t('發送節氣提醒') }}</button>
-                      <button @click="runNotification('holiday')" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-                        <i class="fas fa-gift mr-2"></i>{{ t('發送節日祝賀') }}</button>
-                      <button @click="runNotification('weather')" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                        <i class="fas fa-cloud-sun mr-2"></i>{{ t('發送天氣提醒') }}</button>
-                    </div>
-                  </div>
                 </div>
 
                 <!-- 節日祝賀管理 -->

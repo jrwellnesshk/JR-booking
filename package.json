@@ -1,7 +1,7 @@
 {
   "name": "booking-demo",
   "version": "1.0.0",
-  "description": "寶天醫館智能預約系統",
+  "description": "JR 醫館智能預約系統",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

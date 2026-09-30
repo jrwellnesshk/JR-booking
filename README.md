@@ -1,4 +1,4 @@
-# 寶天醫館預約系統（booking-aurora）
+# JR 醫館預約系統（booking-aurora）
 
 中環高端中醫診所嘅網上預約系統。Node.js + Express + SQLite + Vue 3。
 

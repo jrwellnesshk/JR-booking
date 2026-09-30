@@ -1,4 +1,4 @@
-# 寶天醫館預約系統 - Docker 部署（Amazon RDS PostgreSQL 版）
+# JR 醫館預約系統 - Docker 部署（Amazon RDS PostgreSQL 版）
 # 架構（方案 A）：用戶 → EC2:443(HTTPS, Caddy 自動 Let's Encrypt) → app:4000
 #   - SSL 由 Caddy 喺 EC2 本地做，DNS 留喺 Squarespace（A @ → EC2 EIP，CNAME www → 域名）
 #   - EC2 SG 需開 80(http-01 challenge) + 443(HTTPS)；email 記錄留喺 Squarespace 唔使動

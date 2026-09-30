@@ -861,36 +861,30 @@ const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextT
             return "診所已確認";
           });
 
-          // 🆕 WhatsApp 通知偏好（通訊偏好中心）
-          const whatsappPrefs = ref({ weather: true, confirm: true, health: true });
-          const whatsappPrefsSaving = ref(false);
-          const whatsappPrefsSaved = ref(false);
-          const saveWhatsappPrefs = async () => {
-            const dbId = currentMember.value?.dbId || loginId.value;
-            if (!dbId) return;
-            whatsappPrefsSaving.value = true;
-            whatsappPrefsSaved.value = false;
+          // 🆕 節日祝賀通知偏好（客人唯一可自訂嘅通知開關）
+          const holidayPrefs = ref({ enabled: true });
+          const holidayPrefsSaving = ref(false);
+          const holidayPrefsSaved = ref(false);
+          const saveHolidayPrefs = async () => {
+            holidayPrefsSaving.value = true;
+            holidayPrefsSaved.value = false;
             try {
-              const res = await fetch(`${API_URL}/users/${dbId}/notifications`, {
+              const res = await fetch(`${API_URL}/users/notification-preferences`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  whatsapp_weather: whatsappPrefs.value.weather ? 1 : 0,
-                  whatsapp_confirm: whatsappPrefs.value.confirm ? 1 : 0,
-                  whatsapp_health: whatsappPrefs.value.health ? 1 : 0,
-                }),
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` },
+                body: JSON.stringify({ receive_holidays: holidayPrefs.value.enabled ? 1 : 0 }),
               });
               if (res.ok) {
-                whatsappPrefsSaved.value = true;
-                setTimeout(() => { whatsappPrefsSaved.value = false; }, 3000);
+                holidayPrefsSaved.value = true;
+                setTimeout(() => { holidayPrefsSaved.value = false; }, 3000);
               } else {
-                alert('儲存 WhatsApp 通知偏好失敗');
+                alert('儲存節日祝賀偏好失敗');
               }
             } catch (e) {
               console.error(e);
               alert('儲存失敗，請稍後再試');
             } finally {
-              whatsappPrefsSaving.value = false;
+              holidayPrefsSaving.value = false;
             }
           };
           
@@ -976,6 +970,16 @@ const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextT
           
           // 天氣提醒相關變數
           const showWeatherAlert = ref(false);
+          // 🍃 節氣提醒登入彈窗
+          const showSolarTermModal = ref(false);
+          const pendingSolarTerm = ref(null);
+          const closeSolarTermModal = async () => {
+            if (pendingSolarTerm.value) {
+              try { await markNotificationRead(pendingSolarTerm.value.id); } catch (e) { console.error(e); }
+            }
+            showSolarTermModal.value = false;
+            pendingSolarTerm.value = null;
+          };
           const weatherData = ref(null);
           const dontShowWeatherToday = ref(false);
           let autoRefreshInterval = null;
@@ -2026,6 +2030,13 @@ const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextT
                 // 🌤️ 檢查並顯示天氣提醒
                 checkAndShowWeatherAlert();
 
+                // 🍃 檢查是否有未讀節氣提醒，登入時彈出提示
+                const solar = myNotifications.value.find(n => n.type === 'solar_term' && !n.is_read);
+                if (solar) {
+                  pendingSolarTerm.value = solar;
+                  showSolarTermModal.value = true;
+                }
+
                 // 🔝 登入成功後將畫面滾動到最頂端（初體驗預約流程則留在預約區）
                 if (!guestTrialFlow.value) {
                   nextTick(() => {
@@ -2938,12 +2949,13 @@ const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextT
                   name_last_changed: data.name_last_changed || "",
                 };
 
-                // 🆕 載入 WhatsApp 通知偏好
-                whatsappPrefs.value = {
-                  weather: Number(data.whatsapp_weather) !== 0,
-                  confirm: Number(data.whatsapp_confirm) !== 0,
-                  health: Number(data.whatsapp_health) !== 0,
-                };
+                // 🆕 載入節日祝賀通知偏好（客人唯一可自訂嘅通知開關）
+                fetch(`${API_URL}/users/notification-preferences`, {
+                  headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken') || ''}` }
+                })
+                  .then(r => r.json())
+                  .then(d => { if (d.ok) holidayPrefs.value.enabled = d.receive_holidays !== false; })
+                  .catch(e => console.error('載入通知偏好失敗', e));
 
                 // 🆕 檢查是否可以修改會員ID和中文姓名
                 checkCanChangeUsername();
@@ -5029,10 +5041,13 @@ const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextT
             healthProfileError,
             healthProfileVerifiedLabel,
             saveHealthProfile,
-            whatsappPrefs,
-            whatsappPrefsSaving,
-            whatsappPrefsSaved,
-            saveWhatsappPrefs,
+            holidayPrefs,
+            holidayPrefsSaving,
+            holidayPrefsSaved,
+            saveHolidayPrefs,
+            showSolarTermModal,
+            pendingSolarTerm,
+            closeSolarTermModal,
             // 🆕 會員ID和中文姓名修改
             editingUsername,
             editingName,

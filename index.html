@@ -3913,38 +3913,18 @@
                   </div>
                 </div>
 
-                <!-- WhatsApp 通知偏好（通訊偏好中心） -->
+                <!-- 節日祝賀通知偏好（客人唯一可自訂嘅通知開關） -->
                 <div class="rounded-lg p-4 m-box">
                   <h3 class="font-semibold text-slate-700 mb-1 flex items-center">
-                    <i class="fab fa-whatsapp mr-2" style="color:#25D366;"></i>{{ t('WhatsApp 通知偏好') }}</h3>
-                  <p class="text-xs text-slate-400 mb-3">{{ t('選擇您想透過 WhatsApp 接收的通知類型。診所將優先使用 WhatsApp Business API 與您聯絡。') }}</p>
+                    <i class="fas fa-gift mr-2" style="color:#E0B050;"></i>{{ t('節日祝賀通知') }}</h3>
+                  <p class="text-xs text-slate-400 mb-3">{{ t('您可以選擇是否經 WhatsApp 接收節日祝賀。節氣提醒與天氣提醒會於您登入時以站內提示顯示，不可關閉。') }}</p>
                   <div class="space-y-2">
                     <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
                       <span class="flex items-center gap-2 text-sm text-slate-700">
-                        <i class="fas fa-cloud-sun text-amber-500"></i>{{ t('天氣通知') }}<span class="text-xs text-slate-400">{{ t('（惡劣天氣下診所開診安排）') }}</span>
+                        <i class="fas fa-gift text-rose-500"></i>{{ t('接收節日祝賀（WhatsApp）') }}
                       </span>
                       <span class="relative inline-flex">
-                        <input type="checkbox" v-model="whatsappPrefs.weather" class="sr-only peer">
-                        <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-emerald-500 transition"></div>
-                        <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
-                      </span>
-                    </label>
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                      <span class="flex items-center gap-2 text-sm text-slate-700">
-                        <i class="fas fa-calendar-check text-emerald-500"></i>{{ t('預約確認') }}<span class="text-xs text-slate-400">{{ t('（預約成功／提醒／改期）') }}</span>
-                      </span>
-                      <span class="relative inline-flex">
-                        <input type="checkbox" v-model="whatsappPrefs.confirm" class="sr-only peer">
-                        <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-emerald-500 transition"></div>
-                        <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
-                      </span>
-                    </label>
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                      <span class="flex items-center gap-2 text-sm text-slate-700">
-                        <i class="fas fa-heartbeat text-rose-500"></i>{{ t('健康貼士') }}<span class="text-xs text-slate-400">{{ t('（養生小知識）') }}</span>
-                      </span>
-                      <span class="relative inline-flex">
-                        <input type="checkbox" v-model="whatsappPrefs.health" class="sr-only peer">
+                        <input type="checkbox" v-model="holidayPrefs.enabled" class="sr-only peer">
                         <div class="w-10 h-5 rounded-full bg-slate-300 peer-checked:bg-emerald-500 transition"></div>
                         <div class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5"></div>
                       </span>
@@ -3952,16 +3932,15 @@
                   </div>
                   <div class="mt-3 flex items-center gap-3">
                     <button
-                      @click="saveWhatsappPrefs"
+                      @click="saveHolidayPrefs"
                       class="px-4 py-2 rounded-lg text-white text-sm font-bold"
                       style="background:#25D366;"
-                      :disabled="whatsappPrefsSaving"
+                      :disabled="holidayPrefsSaving"
                     >
-                      <i class="fas fa-save mr-1"></i>{{ whatsappPrefsSaving ? t('儲存中...') : t('儲存偏好') }}
+                      <i class="fas fa-save mr-1"></i>{{ holidayPrefsSaving ? t('儲存中...') : t('儲存偏好') }}
                     </button>
-                    <span v-if="whatsappPrefsSaved" class="text-sm text-green-600">
+                    <span v-if="holidayPrefsSaved" class="text-sm text-green-600">
                       <i class="fas fa-check-circle mr-1"></i>{{ t('已儲存') }}</span>
-                    <span class="text-xs text-slate-400">{{ t('（系統已移除 SMS 及 Gmail 自動通知）') }}</span>
                   </div>
                 </div>
 
@@ -6069,6 +6048,32 @@
             <i class="fas fa-check mr-2"></i>{{ t('我知道了') }}</button>
         </div>
       </div>
+
+      <!-- 節氣提醒彈窗（登入彈出） -->
+      <div
+        v-if="showSolarTermModal && pendingSolarTerm"
+        class="m-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      >
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl m-modal">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold flex items-center text-emerald-700">
+              <i class="fas fa-leaf mr-2"></i>{{ t('節氣提醒') }}</h3>
+            <button @click="closeSolarTermModal" class="m-close-btn">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+          <div class="rounded-xl p-4 mb-4" style="background:linear-gradient(135deg,var(--i50),var(--i100));border:1px solid var(--i200);">
+            <p class="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{{ pendingSolarTerm.message }}</p>
+          </div>
+          <button
+            @click="closeSolarTermModal"
+            class="w-full py-3 rounded-lg font-medium border-none cursor-pointer text-white"
+            style="background:linear-gradient(135deg,var(--p600),var(--p500));box-shadow:0 14px 30px -16px var(--p600);"
+          >
+            <i class="fas fa-check mr-2"></i>{{ t('我知道了') }}</button>
+        </div>
+      </div>
+
           <!-- ==================== 病歷詳情 Modal ==================== -->
       <div
         v-if="showMedicalRecordDetailModal && selectedMedicalRecord"

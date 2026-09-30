@@ -195,6 +195,42 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
     );
   });
 
+  // 客人通知偏好：取得「節日祝賀」開關（限本人）
+  router.get("/notification-preferences", requireAuth, (req, res) => {
+    const uid = req.user.id;
+    db.get(
+      `SELECT receive_holidays FROM user_notification_preferences WHERE user_id = ?`,
+      [uid],
+      (e, row) => {
+        if (e) return serverError(res, e);
+        // 無紀錄即預設開啟（1）
+        res.json({ ok: true, receive_holidays: row ? row.receive_holidays === 1 : true });
+      }
+    );
+  });
+
+  // 客人通知偏好：設定「節日祝賀」開關（限本人）
+  // 客人只可以決定節日祝賀（WhatsApp）係咪接收；節氣 / 天氣提醒一律站內顯示，冇開關
+  router.put("/notification-preferences", requireAuth, (req, res) => {
+    const uid = req.user.id;
+    const receive = req.body && req.body.receive_holidays ? 1 : 0;
+    // INSERT OR IGNORE 確保有 row（PG / SQLite 都安全），再 UPDATE 設定值
+    db.run(
+      `INSERT OR IGNORE INTO user_notification_preferences (user_id, receive_holidays) VALUES (?, ?)`,
+      [uid, receive],
+      () => {
+        db.run(
+          `UPDATE user_notification_preferences SET receive_holidays = ?, updated_at = datetime('now','localtime') WHERE user_id = ?`,
+          [receive, uid],
+          (err) => {
+            if (err) return serverError(res, err);
+            res.json({ ok: true });
+          }
+        );
+      }
+    );
+  });
+
   // 更新用戶個人資料
   router.put("/:id/profile", requireAuth, (req, res) => {
     const { id } = req.params;

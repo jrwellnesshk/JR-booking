@@ -90,6 +90,21 @@ function initialize(database) {
       )
     `);
     
+    // 建立客人站內通知表（登入彈出 / 通知中心；Postgres 由呢度建，SQLite 由 db.js 建）
+    db.run(`
+      CREATE TABLE IF NOT EXISTS customer_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        phone TEXT,
+        title TEXT,
+        message TEXT,
+        type TEXT,
+        ref_date TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now', 'localtime'))
+      )
+    `);
+
     // 建立節氣自訂訊息表
     db.run(`
       CREATE TABLE IF NOT EXISTS custom_solar_terms (
@@ -514,6 +529,29 @@ async function sendNotificationToUser(user, message) {
 }
 
 /**
+ * 儲存站內通知（客人登入後於「我的通知」/ 未讀提示見到）
+ * 用於節氣提醒、天氣提醒、節日祝賀嘅 in-app 提示（唔經 WhatsApp）
+ * @param {number} userId - 用戶 ID
+ * @param {string} phone - 用戶電話（用嚟匹配 user_id 為 NULL 嘅廣播通知）
+ * @param {string} title - 通知標題
+ * @param {string} message - 通知內容
+ * @param {string} type - 通知類型（solar_term / weather / holiday）
+ * @param {string} refDate - 參考日期（節氣名 / 節日名）
+ */
+function storeInAppNotification(userId, phone, title, message, type, refDate) {
+  return new Promise((resolve) => {
+    db.run(
+      `INSERT INTO customer_notifications (user_id, phone, title, message, type, ref_date, is_read) VALUES (?, ?, ?, ?, ?, ?, 0)`,
+      [userId, phone || null, title, message, type, refDate || null],
+      (err) => {
+        if (err) console.error('⚠️ 儲存站內通知失敗:', err.message);
+        resolve();
+      }
+    );
+  });
+}
+
+/**
  * 獲取單個設定值
  */
 function getSettingValue(key) {
@@ -557,15 +595,15 @@ async function sendSolarTermNotification() {
   let successCount = 0;
   let failedCount = 0;
   
+  // 節氣提醒：只經站內通知（客人登入彈出），唔經 WhatsApp
   for (const user of eligibleUsers) {
-    const result = await sendNotificationToUser(user, message);
-    if (result.success) {
+    try {
+      await storeInAppNotification(user.id, user.phone, `【JR】節氣提醒：${todayTerm.name}`, message, 'solar_term', todayTerm.name);
       successCount++;
-    } else {
+    } catch {
       failedCount++;
     }
-    // 避免發送過快
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
   
   // 記錄發送日誌
@@ -615,12 +653,17 @@ async function sendHolidayNotification() {
   let failedCount = 0;
   
   for (const user of eligibleUsers) {
+    // 節日祝賀：保留 WhatsApp 推送
     const result = await sendNotificationToUser(user, message);
     if (result.success) {
       successCount++;
     } else {
       failedCount++;
     }
+    // 同時儲存站內通知（記錄 + 客人可於「我的通知」見到）
+    try {
+      await storeInAppNotification(user.id, user.phone, `【JR】節日祝賀：${todayHoliday.name}`, message, 'holiday', todayHoliday.name);
+    } catch { /* 唔影響 WhatsApp 發送結果 */ }
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   
@@ -693,26 +736,27 @@ async function sendWeatherNotification() {
     console.log(`🌡️ 觸發天氣提醒: ${triggerReason}，開始發送...`);
     
     const users = await getEligibleUsers();
-    const eligibleUsers = users.filter(u => u.receive_weather);
-    
-    if (eligibleUsers.length === 0) {
-      return { success: false, reason: 'no_users', message: '沒有符合條件的用戶' };
+  const eligibleUsers = users.filter(u => u.receive_weather);
+  
+  if (eligibleUsers.length === 0) {
+    return { success: false, reason: 'no_users', message: '沒有符合條件的用戶' };
+  }
+  
+  let successCount = 0;
+  let failedCount = 0;
+  
+  // 天氣提醒：只經站內通知（客人登入彈出），唔經 WhatsApp
+  for (const user of eligibleUsers) {
+    try {
+      await storeInAppNotification(user.id, user.phone, `【JR】天氣提醒`, weatherMessage, 'weather', 'weather');
+      successCount++;
+    } catch {
+      failedCount++;
     }
-    
-    let successCount = 0;
-    let failedCount = 0;
-    
-    for (const user of eligibleUsers) {
-      const result = await sendNotificationToUser(user, weatherMessage);
-      if (result.success) {
-        successCount++;
-      } else {
-        failedCount++;
-      }
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    logNotification('weather', '天氣提醒', weatherMessage, eligibleUsers.length, successCount, failedCount);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  logNotification('weather', '天氣提醒', weatherMessage, eligibleUsers.length, successCount, failedCount);
     
     console.log(`🌡️ 天氣提醒發送完成: 成功 ${successCount}, 失敗 ${failedCount}`);
     

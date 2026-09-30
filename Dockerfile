@@ -1,4 +1,4 @@
-# 寶天醫館預約系統 - 生產映像（多階段建置）
+# JR 醫館預約系統 - 生產映像（多階段建置）
 #
 # 設計重點：
 #  1. 兩階段：builder 裝齊 build toolchain（python/make/g++ 畀 sqlite3 native build），
