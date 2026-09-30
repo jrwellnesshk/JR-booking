@@ -786,11 +786,12 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       if (offErr) return serverError(res, offErr);
       if (offRow) return res.json({ date, doctors: [] });
 
-      // 拉啟用醫師（同步 doctors 表 is_active=1）
-      const q = `SELECT u.id AS user_id, u.name, u.employment_type, d.id AS doctor_id
-                 FROM users u
-                 LEFT JOIN doctors d ON d.user_id = u.id
-                 WHERE u.role = 'doctor' AND u.is_active = 1 AND (d.is_active IS NULL OR d.is_active = 1)`;
+      // 單一 Source（路 Y / Y2）：醫師名冊以 doctors 表為準（is_active=1），
+      // 經 user_id LEFT JOIN 返 users 拎 HR 排班/請假（呢啲 key 住 users.id）
+      const q = `SELECT d.id AS doctor_id, d.name, u.id AS user_id, u.employment_type
+                 FROM doctors d
+                 LEFT JOIN users u ON u.id = d.user_id AND u.role = 'doctor'
+                 WHERE d.is_active = 1`;
       db.all(q, [], (docErr, doctors) => {
         if (docErr) return serverError(res, docErr);
         if (!doctors || doctors.length === 0) return res.json({ date, doctors: [] });
@@ -802,8 +803,8 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
             if (info) result.push(info);
             pending--;
             if (pending === 0) {
-              // 同一日多醫師按 user_id 排序，結果穩定
-              result.sort((a, b) => a.user_id - b.user_id);
+              // 同一日多醫師按 doctor_id 排序，結果穩定（唔受 user_id 為 NULL 影響）
+              result.sort((a, b) => (a.doctor_id || 0) - (b.doctor_id || 0));
               res.json({ date, doctors: result });
             }
           });
