@@ -586,7 +586,7 @@ function runMigrations(db) {
       db.run("UPDATE users SET member_no = phone WHERE (member_no IS NULL OR member_no='') AND phone IS NOT NULL AND phone<>''", (e) => {
         if (!e) console.log("✅ 已回填 member_no = phone（空值）");
       });
-      // 回填：員工編號 = ST + 4 位 id（staff / admin / doctor）— 僅填空者
+      // 回填：員工編號 = J + 8 位電話（staff / admin / doctor，包埋醫生）— 僅填空者或舊 ST 制
       db.run("UPDATE users SET staff_no = 'J' || CASE WHEN phone IS NOT NULL AND phone GLOB '*[0-9]*' THEN substr('00000000' || REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'+',''), -8) ELSE substr('0000'||id,-4) END WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no='' OR staff_no LIKE 'ST%')", (e) => {
         if (!e) console.log("✅ 已回填 staff_no（空值）");
       });
