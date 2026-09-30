@@ -426,6 +426,28 @@ async function createNumberUniqueIndexes(pool) {
   console.log('✅ member_no / staff_no UNIQUE 索引已就緒');
 }
 
+// 路 Y / Y2：確保每個醫師帳戶(role='doctor')都有對應 doctors row（user_id 對應），
+// 令醫師名冊（doctors 表）做單一 Source 時唔會漏咗「冇建 row 嘅醫師帳戶」
+// （否則佢哋唔會出喺官網/預約下拉/當值醫師）。idempotent：每次開機跑都安全。
+async function ensureDoctorRoster(pool) {
+  // users 表無 specialty 欄，填 ''；is_active=1（醫師帳戶預設啟用）
+  await pool.query(`
+    INSERT INTO doctors (name, specialty, is_active, user_id, created_at)
+    SELECT u.name, '', 1, u.id, CURRENT_TIMESTAMP
+    FROM users u
+    WHERE u.role = 'doctor'
+      AND NOT EXISTS (SELECT 1 FROM doctors d WHERE d.user_id = u.id)
+  `);
+  // 順便將現有 doctors row 冇 user_id 嘅，按同名（無重複名先）對返帳戶，令當值時段計得到
+  await pool.query(`
+    UPDATE doctors d
+    SET user_id = (SELECT u.id FROM users u WHERE u.role = 'doctor' AND u.name = d.name LIMIT 1)
+    WHERE d.user_id IS NULL
+      AND EXISTS (SELECT 1 FROM users u WHERE u.role = 'doctor' AND u.name = d.name)
+  `);
+  console.log('✅ 醫師名冊 backfill 完成（每個醫師帳戶都有 doctors row，單一 Source 唔漏人）');
+}
+
 // ---------- seeds（移植自 db.js，用 adapter API，兩邊通用） ----------
 function cnt(row) { return row ? Number(row.count) : 0; }
 
@@ -704,8 +726,9 @@ function initializeDatabase() {
       try {
         await reformatMemberNumbers(pool);     // 重算舊編號（de-dup）先於 UNIQUE 索引
         await createNumberUniqueIndexes(pool); // 舊重複清完先建 UNIQUE，避免建索引失敗
+        await ensureDoctorRoster(pool);        // 路 Y/Y2：醫師帳戶補 doctors row，名冊單一 Source 唔漏人
       } catch (e) {
-        console.error('⚠️ 編號重算 / UNIQUE 索引建立失敗（唔影響開機，編號維持原狀）：', e.message);
+        console.error('⚠️ 編號重算 / UNIQUE 索引 / 醫師名冊 backfill 失敗（唔影響開機）：', e.message);
       }
       db._flush();                            // 開閘：排隊嘅查詢開始執行
       seedDatabase(db);                      // seeds 即時跑（ready）
