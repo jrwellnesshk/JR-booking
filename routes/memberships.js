@@ -18,6 +18,9 @@ if (whatsappProvider === 'android') {
   whatsappService = require('../services/whatsapp');
 }
 
+// 🔢 會員/員工編號生成（2026-09-30 v2：成個電話 + de-dup）
+const { buildMemberNo, planLetterOf, resolveUnique } = require('../config/memberno');
+
 // ==================== 關係世代分類器（模塊級，routes 與單元測試共用）====================
 // ⚠️ 關鍵需求：親戚（relation = '親戚' 或含 'relative'）必須獨立於「同輩」(兄弟姊妹/朋友)，
 //    唔可以同層渲染；兄弟姊妹等真正同輩維持原樣。前端關係圖代理 (#19) 應依此分類。
@@ -340,20 +343,22 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   // 💡 此為「會員編號」(member_no)，與 admin.js 嘅 resolveInvoiceNo()「收款單號」(JRA-/MEM-) 係兩套完全不同嘅編號，命名相近易淆。
   const planLetter = (p) => (PLAN_ORDER[p] != null ? p : 'A');
   async function recomputeMemberNo(userId) {
-    const u = await q1("SELECT id, phone, family_head_id, family_plan, member_no FROM users WHERE id=?", [userId]);
-    if (!u) return;
+    const u = await q1("SELECT id, phone, family_head_id, family_plan, member_no, role FROM users WHERE id=?", [userId]);
+    if (!u || u.role !== 'customer') return;
     let prefix;
     if (u.family_head_id && Number(u.family_head_id) !== Number(u.id)) {
       const h = await q1("SELECT family_plan FROM users WHERE id=?", [u.family_head_id]);
-      prefix = 'M' + planLetter(h && h.family_plan);
+      prefix = 'M' + planLetterOf(h && h.family_plan);
     } else if (u.family_head_id && Number(u.family_head_id) === Number(u.id)) {
-      prefix = 'S' + planLetter(u.family_plan);
+      prefix = 'S' + planLetterOf(u.family_plan);
     } else {
       prefix = 'JR';
     }
-    const digits = String(u.phone || '').replace(/\D/g, '');
-    const last4 = digits.slice(-4) || '0000';
-    const no = prefix + last4;
+    const base = buildMemberNo(prefix, u.phone);
+    const no = await resolveUnique(
+      (c) => q1("SELECT 1 FROM users WHERE member_no=? AND id<>?", [c, userId]).then((r) => !!r),
+      base
+    );
     if (no !== u.member_no) await run("UPDATE users SET member_no=? WHERE id=?", [no, userId]);
   }
 

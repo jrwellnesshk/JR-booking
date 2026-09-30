@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const XLSX = require('xlsx');
 const { validatePassword, generateTempPassword } = require('../services/passwordPolicy');
+const { buildMemberNo, buildStaffNo } = require('../config/memberno');
 
 // 🔗 診所設定（電話 / WhatsApp）— 集中讀取，唔好硬碼
 const clinicSettings = require('../services/clinicSettings');
@@ -134,8 +135,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
         const memberTier = 'general';
         // 🔢 會員編號（2026-09-15 新規格）：新開帳戶尚未有家庭連結 → 一般帳戶 = JR + 電話末 4 碼；
         //    之後若被連結入家庭，memberships.recomputeMemberNo 會自動改做 S（主）/ M（子）開頭
-        const phoneDigits = String(phone || '').replace(/\D/g, '');
-        const memberNo = userRole === 'customer' ? ('JR' + (phoneDigits.slice(-4) || '0000')) : null;
+        const memberNo = userRole === 'customer' ? buildMemberNo('JR', phone) : null;
         db.run(
           "INSERT INTO users (username, password, name, name_en, phone, email, role, employment_type, profile_completed, must_change_password, insurance_covered, membership_tier, member_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [username, hashedPassword, name, name_en || "", phone, email || "", userRole, employmentType, 1, mustChange, insurance, memberTier, memberNo],
@@ -143,9 +143,9 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
             if (insertErr) return res.status(500).json({ error: insertErr.message });
             const newUserId = this.lastID;
 
-            // 🔢 員工編號：staff / admin / doctor 自動生成 ST + 4 位 id（如 ST0007）
+            // 🔢 員工編號：staff / admin / doctor（包埋醫生）自動生成 J + 8 位電話（如 J61234567；無電話用 id 兜底）
             if (userRole === 'staff' || userRole === 'admin' || userRole === 'doctor') {
-              const staffNo = 'ST' + String(newUserId).padStart(4, '0');
+              const staffNo = buildStaffNo(phone, newUserId);
               db.run("UPDATE users SET staff_no=? WHERE id=?", [staffNo, newUserId]);
             }
 

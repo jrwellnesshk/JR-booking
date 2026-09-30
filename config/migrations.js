@@ -587,22 +587,24 @@ function runMigrations(db) {
         if (!e) console.log("✅ 已回填 member_no = phone（空值）");
       });
       // 回填：員工編號 = ST + 4 位 id（staff / admin / doctor）— 僅填空者
-      db.run("UPDATE users SET staff_no = 'ST' || substr('0000'||id, -4) WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no='')", (e) => {
+      db.run("UPDATE users SET staff_no = 'J' || CASE WHEN phone IS NOT NULL AND phone GLOB '*[0-9]*' THEN substr('00000000' || REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'+',''), -8) ELSE substr('0000'||id,-4) END WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no='' OR staff_no LIKE 'ST%')", (e) => {
         if (!e) console.log("✅ 已回填 staff_no（空值）");
       });
-      // 🔢 重新格式化會員編號（2026-09-15 新規格，idempotent）：
-      //   主帳戶 = S + 方案字母 + 電話末 4 碼（SA1234）
-      //   子帳戶 = M + 方案字母 + 電話末 4 碼（MA1234）
-      //   一般帳戶 = JR + 電話末 4 碼（JR1234）
-      //   方案字母取 family_plan（A/B/C/D），缺省 A
-      db.all("SELECT id, phone, family_head_id, family_plan, member_no FROM users", (e0, rows) => {
+      // 🔢 重新格式化會員編號（2026-09-30 v2：成個電話 + de-dup，idempotent）：
+      //   主帳戶 = S + 方案字母 + 8 位電話（SA61234567）
+      //   子帳戶 = M + 方案字母 + 8 位電話（MA61234567）
+      //   一般帳戶 = JR + 8 位電話（JR61234567）
+      //   方案字母取 family_plan（A/B/C/D），缺省 A；撞號加 -2/-3 尾綴
+      db.all("SELECT id, phone, family_head_id, family_plan, member_no, role FROM users", (e0, rows) => {
         if (e0 || !rows) return;
         const byId = {};
         rows.forEach(u => { byId[u.id] = u; });
         const planLetter = (p) => (['A', 'B', 'C', 'D'].includes(p) ? p : 'A');
+        const used = {};
         const stmt = db.prepare("UPDATE users SET member_no=? WHERE id=?");
         rows.forEach(u => {
-          let prefix;
+          if (u.role && u.role !== 'customer') return; // 員工唔使 member_no
+          let prefix = 'JR';
           if (u.family_head_id) {
             const hid = Number(u.family_head_id);
             if (hid === Number(u.id)) prefix = 'S' + planLetter(u.family_plan);
@@ -612,10 +614,13 @@ function runMigrations(db) {
             }
           } else prefix = 'JR';
           const digits = String(u.phone || '').replace(/\D/g, '');
-          const no = prefix + (digits.slice(-4) || '0000');
+          const tail = digits.length >= 8 ? digits.slice(-8) : digits.padEnd(8, '0');
+          let no = prefix + tail, n = 2;
+          while (used[no]) { no = prefix + tail + '-' + n; n++; }
+          used[no] = 1;
           if (no !== u.member_no) stmt.run(no, u.id);
         });
-        stmt.finalize(() => console.log("✅ 已重新格式化 member_no 為 S/M+方案字母 / JR + 電話後4位"));
+        stmt.finalize(() => console.log("✅ 已重新格式化 member_no 為 S/M+方案字母 / JR + 成個電話（已 de-dup）"));
       });
     });
 

@@ -1,4 +1,5 @@
 const { serverError } = require("../services/httpResp");
+const { buildMemberNo, buildStaffNo, planLetterOf } = require('../config/memberno');
 /**
  * 用戶管理路由
  * 包括：用戶資料、修改姓名/用戶名等
@@ -349,32 +350,39 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole }
           params.push(val);
         }
       });
-      // 🔢 會員編號（2026-09-15 新規格：主 S+方案字母 / 子 M+方案字母 / 一般 JR）+ 電話後 4 位
-      //   改電話即同步末 4 碼；前綴依家庭狀態重算（方案字母取 family_plan，缺省 A）
+      // 🔢 會員編號（2026-09-30 v2：主 S+方案字母 / 子 M+方案字母 / 一般 JR）+ 成個電話
+      //   改電話即同步成個號碼；前綴依家庭狀態重算（方案字母取 family_plan，缺省 A）
+      //   員工（staff/admin/doctor，包埋醫生）改電話 → 改 staff_no（J + 8 位電話），唔掂 member_no
       if (phone !== undefined) {
-        db.get("SELECT member_no, family_head_id, family_plan, id FROM users WHERE id=?", [id], (e2, urow) => {
+        db.get("SELECT member_no, family_head_id, family_plan, id, role, staff_no FROM users WHERE id=?", [id], (e2, urow) => {
           if (e2) return serverError(res, e2);
-          const planLetter = (p) => (['A', 'B', 'C', 'D'].includes(p) ? p : 'A');
+          if (!urow) return finalizeUpdate();
+          // 員工：更新 staff_no
+          if (urow.role && urow.role !== 'customer') {
+            sets.push('staff_no=?');
+            params.push(buildStaffNo(phone, urow.id));
+            finalizeUpdate();
+            return;
+          }
+          // 客戶：更新 member_no
           let prefix = 'JR';
-          if (urow && urow.family_head_id) {
+          if (urow.family_head_id) {
             const hid = Number(urow.family_head_id);
             if (hid === Number(urow.id)) {
-              prefix = 'S' + planLetter(urow.family_plan);
+              prefix = 'S' + planLetterOf(urow.family_plan);
             } else {
               // 子帳戶：需取戶主嘅方案字母
               db.get("SELECT family_plan FROM users WHERE id=?", [hid], (e3, hrow) => {
-                const hprefix = 'M' + planLetter(hrow && hrow.family_plan);
-                const digits = String(phone || '').replace(/\D/g, '');
+                const hprefix = 'M' + planLetterOf(hrow && hrow.family_plan);
                 sets.push('member_no=?');
-                params.push(hprefix + (digits.slice(-4) || '0000'));
+                params.push(buildMemberNo(hprefix, phone));
                 finalizeUpdate();
               });
               return;
             }
           }
-          const digits = String(phone || '').replace(/\D/g, '');
           sets.push('member_no=?');
-          params.push(prefix + (digits.slice(-4) || '0000'));
+          params.push(buildMemberNo(prefix, phone));
           finalizeUpdate();
         });
         return;

@@ -317,7 +317,7 @@ function runPgMigrations(pool) {
     'ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method TEXT',
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_note TEXT DEFAULT ''",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_no TEXT DEFAULT ''",
-    "UPDATE users SET staff_no = 'ST' || LPAD(id::text, 4, '0') WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no = '')",
+    "UPDATE users SET staff_no = CASE WHEN phone IS NOT NULL AND phone ~ '[0-9]' THEN 'J' || RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 8) ELSE 'J' || LPAD(id::text, 4, '0') END WHERE role IN ('staff','admin','doctor') AND (staff_no IS NULL OR staff_no = '' OR staff_no LIKE 'ST%')",
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_locked INTEGER DEFAULT 0',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS end_time TEXT',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lateness_minutes INTEGER DEFAULT 0',
@@ -374,6 +374,56 @@ function runPgMigrations(pool) {
     chain.then(() => pool.query(sql).then(() => {}).catch((e) => {
       if (!/already exists|duplicate/i.test(e.message || '')) console.error('PG migration err:', e.message);
     })), Promise.resolve());
+  }
+
+// ---------- 編號重算（2026-09-30 v2：成個電話 + de-dup）----------
+// 一次性將所有 member_no / staff_no 重算成新格式，處理舊制「尾 4 位」撞號嘅重複值。
+// 每次開機跑（idempotent：輸入唔變 → 輸出唔變），按 id 順序分配撞號尾綴，結果穩定。
+// staff / admin / doctor（包埋醫生）全部拎 J + 8 位電話。
+async function reformatMemberNumbers(pool) {
+  const { rows: users } = await pool.query(
+    "SELECT id, phone, family_head_id, family_plan, role, member_no, staff_no FROM users"
+  );
+  const byId = {};
+  users.forEach((u) => { byId[u.id] = u; });
+  const planLetter = (p) => (['A', 'B', 'C', 'D'].includes(p) ? p : 'A');
+  const tail = (phone) => {
+    const d = String(phone || '').replace(/\D/g, '');
+    return d.length >= 8 ? d.slice(-8) : d.padEnd(8, '0');
+  };
+  const used = new Set();
+  for (const u of users.slice().sort((a, b) => a.id - b.id)) {
+    if (u.role === 'customer') {
+      let prefix = 'JR';
+      if (u.family_head_id) {
+        const hid = Number(u.family_head_id);
+        prefix = (hid === Number(u.id))
+          ? 'S' + planLetter(u.family_plan)
+          : 'M' + planLetter(byId[hid] && byId[hid].family_plan);
+      }
+      let no = prefix + tail(u.phone);
+      let n = 2;
+      while (used.has(no)) { no = prefix + tail(u.phone) + '-' + n; n++; }
+      used.add(no);
+      if (no !== u.member_no) await pool.query('UPDATE users SET member_no=$1 WHERE id=$2', [no, u.id]);
+    } else if (u.role === 'staff' || u.role === 'admin' || u.role === 'doctor') {
+      const d = String(u.phone || '').replace(/\D/g, '');
+      const baseNo = d.length >= 8 ? ('J' + d.slice(-8)) : (d.length > 0 ? ('J' + d.padEnd(8, '0')) : ('J' + String(u.id).padStart(4, '0')));
+      let no = baseNo;
+      let n = 2;
+      while (used.has(no)) { no = baseNo + '-' + n; n++; }
+      used.add(no);
+      if (no !== u.staff_no) await pool.query('UPDATE users SET staff_no=$1 WHERE id=$2', [no, u.id]);
+    }
+  }
+  console.log('✅ 會員/員工編號已重算為成個電話格式（JR/S/M+/J + 8 位，已 de-dup，包埋醫生）');
+}
+
+// 建立 UNIQUE 索引（partial：只約束非空白值，空白/ NULL 唔計），防止靜默撞號
+async function createNumberUniqueIndexes(pool) {
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_member_no ON users(member_no) WHERE member_no IS NOT NULL AND member_no <> ''");
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_staff_no ON users(staff_no) WHERE staff_no IS NOT NULL AND staff_no <> ''");
+  console.log('✅ member_no / staff_no UNIQUE 索引已就緒');
 }
 
 // ---------- seeds（移植自 db.js，用 adapter API，兩邊通用） ----------
@@ -651,6 +701,12 @@ function initializeDatabase() {
       const schema = fs.readFileSync(path.join(__dirname, 'schema.pg.sql'), 'utf8');
       await pool.query(schema);              // 多語句（simple protocol）
       await runPgMigrations(pool);
+      try {
+        await reformatMemberNumbers(pool);     // 重算舊編號（de-dup）先於 UNIQUE 索引
+        await createNumberUniqueIndexes(pool); // 舊重複清完先建 UNIQUE，避免建索引失敗
+      } catch (e) {
+        console.error('⚠️ 編號重算 / UNIQUE 索引建立失敗（唔影響開機，編號維持原狀）：', e.message);
+      }
       db._flush();                            // 開閘：排隊嘅查詢開始執行
       seedDatabase(db);                      // seeds 即時跑（ready）
     } catch (e) {
