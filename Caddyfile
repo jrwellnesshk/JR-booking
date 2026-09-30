@@ -4,7 +4,7 @@
     email admin@jrwellnesshk.com
 }
 
-jrwellnesshk.com, www.jrwellnesshk.com {
+jrwellnesshk.com, www.jrwellnesshk.com, localhost, 127.0.0.1 {
     encode gzip
     header {
         X-Content-Type-Options "nosniff"
