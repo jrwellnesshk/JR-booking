@@ -24,8 +24,11 @@ COPY package*.json ./
 # 有 lockfile 就用 ci（可重現）；冇就退返 install
 RUN if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi
 
-# 淨裝 runtime 需要嘅 native binding（--ignore-scripts 之後手動 build sqlite3）
-RUN npm rebuild sqlite3
+# 🔒 生產 = RDS PostgreSQL only：app 永遠唔 require sqlite3（config/db.js 喺 Postgres
+#    guard 之後先 require sqlite3，見 commit 8bafe2e），所以唔使 rebuild sqlite3 native
+#    binary。--ignore-scripts 已經唔會跑 sqlite3 嘅 prebuild-install；如果硬 rebuild 反而
+#    會喺 bookworm（glibc 2.36）嘗試編譯/拉 GLIBC 2.38 嘅 prebuilt，白蝕 build 時間同攻擊面。
+#   本地 SQLite dev 模式（Samsung 直接 node server.js）各自 npm install 正常 build 就得。
 
 # ============================ Stage 2: runtime ============================
 FROM node:20-bookworm-slim AS runtime
