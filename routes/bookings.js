@@ -701,114 +701,42 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     });
   });
 
-  // ==================== #8 當日當值醫師 ====================
-  // ⚠️ 必須註冊喺 /:id 路由之前，避免被 :id 通配符捕獲
-  // 回傳當日有當值嘅醫師清單（只含當值者），每個含 id/name/user_id/work_start/work_end。
-  const defaultWeeklyWindow = (dow) => {
-    // dow: getDay() 0=日 1=一 ... 6=六；預設 一二三四五 10-19、六 10-13、日休
-    if (dow >= 1 && dow <= 5) return { start: '10:00', end: '19:00' };
-    if (dow === 6) return { start: '10:00', end: '13:00' };
-    return null; // 日休
-  };
-
-  const evaluateDoctorOnDuty = (doc, dow, date, cb) => {
-    const userId = doc.user_id;
-    // 1) 例外：hr_schedule_exceptions(user_id, exc_date=date)
-    db.get(
-      "SELECT is_off, work_start, work_end FROM hr_schedule_exceptions WHERE user_id = ? AND exc_date = ?",
-      [userId, date],
-      (eErr, exc) => {
-        if (eErr) { console.error('查 hr_schedule_exceptions 失敗:', eErr.message); return cb(null); }
-        if (exc) {
-          if (exc.is_off === 1) return cb(null); // 休
-          if (exc.work_start && exc.work_end) {
-            return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: exc.work_start, work_end: exc.work_end });
-          }
-          // 有例外但無時段 → 跌落下面一般邏輯
-        }
-        // 2) 兼職：employment_type='part' → 查已批報更細項
-        if (doc.employment_type === 'part') {
-          db.get(
-            `SELECT si.time_start, si.time_end
-             FROM hr_shift_items si
-             JOIN hr_shift_rosters sr ON sr.id = si.roster_id
-             WHERE si.user_id = ? AND si.shift_date = ? AND sr.status = 'approved'
-             LIMIT 1`,
-            [userId, date],
-            (sErr, shift) => {
-              if (sErr) { console.error('查 hr_shift_items 失敗:', sErr.message); return cb(null); }
-              if (shift && shift.time_start && shift.time_end) {
-                return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: shift.time_start, work_end: shift.time_end });
-              }
-              return cb(null); // 冇批更 → 休
-            }
-          );
-          return;
-        }
-        // 3) 全職：hr_user_schedules（冇記錄→預設每週時段）
-        db.get(
-          "SELECT work_start, work_end, is_weekly, hours FROM hr_user_schedules WHERE user_id = ?",
-          [userId],
-          (sErr, sch) => {
-            if (sErr) { console.error('查 hr_user_schedules 失敗:', sErr.message); return cb(null); }
-            if (!sch) {
-              const def = defaultWeeklyWindow(dow);
-              return cb(def ? { id: doc.doctor_id, name: doc.name, user_id: userId, work_start: def.start, work_end: def.end } : null);
-            }
-            if (sch.is_weekly === 1 && sch.hours) {
-              let hoursObj = {};
-              try { hoursObj = JSON.parse(sch.hours); } catch (_) { hoursObj = {}; }
-              const win = hoursObj[String(dow)];
-              if (win && win.indexOf('-') > -1) {
-                const [s, e] = win.split('-');
-                return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: s, work_end: e });
-              }
-              return cb(null); // 該 dow 無時段 → 休
-            }
-            // 單一 work_start/work_end
-            if (sch.work_start && sch.work_end) {
-              return cb({ id: doc.doctor_id, name: doc.name, user_id: userId, work_start: sch.work_start, work_end: sch.work_end });
-            }
-            return cb(null);
-          }
-        );
-      }
-    );
-  };
+  // ==================== #8 當日當值醫師（根據醫師日曆 doctor_time_slots）====================
+  // 當值醫師 = 該日在醫師「時段管理」(doctor_time_slots) 有開放時段 (status='open') 嘅醫師。
+  // 🔀 與「醫師資料管理」(doctors 表) 分開：醫師資料管理只管基本資料 + 官網同步；
+  //    當值醫師改由醫師自己開放嘅日曆時段決定（醫師冇開放該日時段 = 唔當值）。
 
   router.get("/doctors-on-duty", requireAuth, (req, res) => {
     const date = (req.query.date || getLocalTimeString().slice(0, 10)).slice(0, 10);
-    const d = new Date(date + 'T00:00:00');
-    const dow = d.getDay();
 
     // 診所休診日（全日休，無醫師當值）
     db.get("SELECT 1 FROM hr_clinic_offdays WHERE off_date = ?", [date], (offErr, offRow) => {
       if (offErr) return serverError(res, offErr);
       if (offRow) return res.json({ date, doctors: [] });
 
-      // 單一 Source（路 Y / Y2）：醫師名冊以 doctors 表為準（is_active=1），
-      // 經 user_id LEFT JOIN 返 users 拎 HR 排班/請假（呢啲 key 住 users.id）
-      const q = `SELECT d.id AS doctor_id, d.name, u.id AS user_id, u.employment_type
-                 FROM doctors d
-                 LEFT JOIN users u ON u.id = d.user_id AND u.role = 'doctor'
-                 WHERE d.is_active = 1`;
-      db.all(q, [], (docErr, doctors) => {
+      // 🔀 當值醫師 = 該日在醫師「時段管理」(doctor_time_slots) 有開放時段 (status='open') 嘅醫師。
+      //    與「醫師資料管理」(doctors 表) 分開：醫師資料管理只管基本資料 + 官網同步；
+      //    當值醫師改由醫師自己開放嘅日曆時段決定（醫師冇開放該日時段 = 唔當值）。
+      const q = `
+        SELECT d.id AS doctor_id, d.name, d.user_id, d.avatar,
+               MIN(s.time) AS work_start, MAX(s.time) AS work_end
+        FROM doctor_time_slots s
+        JOIN doctors d ON d.id = s.doctor_id
+        WHERE s.date = ? AND s.status = 'open' AND d.is_active = 1
+        GROUP BY d.id, d.name, d.user_id, d.avatar
+        ORDER BY d.id`;
+      db.all(q, [date], (docErr, doctors) => {
         if (docErr) return serverError(res, docErr);
-        if (!doctors || doctors.length === 0) return res.json({ date, doctors: [] });
-
-        const result = [];
-        let pending = doctors.length;
-        doctors.forEach((doc) => {
-          evaluateDoctorOnDuty(doc, dow, date, (info) => {
-            if (info) result.push(info);
-            pending--;
-            if (pending === 0) {
-              // 同一日多醫師按 doctor_id 排序，結果穩定（唔受 user_id 為 NULL 影響）
-              result.sort((a, b) => (a.doctor_id || 0) - (b.doctor_id || 0));
-              res.json({ date, doctors: result });
-            }
-          });
-        });
+        const result = (doctors || []).map((doc) => ({
+          id: doc.doctor_id,
+          doctor_id: doc.doctor_id,
+          name: doc.name,
+          user_id: doc.user_id,
+          avatar: doc.avatar,
+          work_start: doc.work_start,
+          work_end: doc.work_end,
+        }));
+        res.json({ date, doctors: result });
       });
     });
   });

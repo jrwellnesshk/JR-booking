@@ -5407,12 +5407,12 @@
                   <div v-else class="flex flex-wrap gap-3">
                     <button
                       v-for="doc in doctorsOnDuty"
-                      :key="doc.user_id"
+                      :key="'doc-' + doc.doctor_id"
                       type="button"
                       @click="selectOnDutyDoctor(doc)"
                       :class="[
                         'flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all',
-                        selectedOnDutyDoctor && selectedOnDutyDoctor.user_id === doc.user_id
+                        selectedOnDutyDoctor && selectedOnDutyDoctor.doctor_id === doc.doctor_id
                           ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-200'
                           : 'border-slate-200 bg-white hover:border-emerald-300'
                       ]"
@@ -5805,7 +5805,7 @@
                 <h3 class="mb-3"><i class="fas fa-user-md mr-2"></i>{{ t('今日當值醫師') }}</h3>
                 <div v-if="todayOnDutyDoctors.length === 0" class="text-sm text-slate-500">{{ t('今日暫無醫師當值資料。') }}</div>
                 <div v-else class="space-y-2">
-                  <div v-for="doc in todayOnDutyDoctors" :key="doc.user_id" class="flex items-center gap-3">
+                  <div v-for="doc in todayOnDutyDoctors" :key="'tdoc-' + doc.doctor_id" class="flex items-center gap-3">
                     <span class="w-10 h-10 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
                       <img v-if="doc.avatar" :src="doc.avatar" :alt="doc.name" style="width:100%;height:100%;object-fit:cover;" />
                       <i v-else class="fas fa-user-md"></i>
