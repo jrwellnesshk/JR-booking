@@ -260,6 +260,41 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     return { ok: true };
   };
 
+  // 🔒 醫師日曆時段把關（落單 enforce）：該醫師 date+time 必須有 status='open' 時段，
+  //    且 active 預約數 < max_capacity。解決「醫師日曆設咗 rest/leave，客人照樣落單」嘅漏洞。
+  const checkDoctorSlotOpen = async (date, time, doctorName) => {
+    if (!doctorName) return { ok: true, doctorId: null };
+    const doc = await new Promise((resolve) => {
+      db.get("SELECT id, name FROM doctors WHERE name=? AND is_active=1", [doctorName], (err, row) => resolve(row || null));
+    });
+    if (!doc) return { ok: true, doctorId: null }; // 醫師名冊搵唔到 → 唔阻擋（兼容舊資料）
+    const slot = await new Promise((resolve) => {
+      db.get(
+        "SELECT status, is_available, max_capacity FROM doctor_time_slots WHERE doctor_id=? AND date=? AND time=?",
+        [doc.id, date, time],
+        (err, row) => resolve(row || null)
+      );
+    });
+    // 醫師日曆冇呢個時段記錄 → 當未開放（醫師要喺「時段管理」開放先可約）
+    if (!slot || slot.status !== 'open' || slot.is_available !== 1) {
+      return { ok: false, error: `${doctorName} 醫師此時段未開放預約，請選其他醫師或時段`, code: 'doctor_slot_closed' };
+    }
+    const cap = slot.max_capacity || 1;
+    const count = await new Promise((resolve) => {
+      db.get(
+        `SELECT COUNT(*) AS c FROM bookings
+         WHERE appointment_date=? AND appointment_time=? AND status != 'cancelled'
+           AND (doctor_id=? OR (doctor_id IS NULL AND doctor_name=?))`,
+        [date, time, doc.id, doctorName],
+        (err, row) => resolve(row ? Number(row.c) : 0)
+      );
+    });
+    if (count >= cap) {
+      return { ok: false, error: `${doctorName} 醫師此時段已約滿`, code: 'doctor_slot_full' };
+    }
+    return { ok: true, doctorId: doc.id };
+  };
+
   const isHolidaySafe = (holidaysSvc, date) => {
     try {
       if (typeof holidaysSvc.isHoliday === 'function') return holidaysSvc.isHoliday(date);
@@ -288,6 +323,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
     }
     // 🆕 同時接受 camelCase（前端）+ snake_case（API 契約統一），第一個有值嘅 wins
     const b = b0;
+    let resolvedDoctorId = null;
     const customerName       = b.customerName       || b.customer_name;
     const customerNameEn     = b.customerNameEn     || b.customer_name_en;
     const customerPhone      = b.customerPhone      || b.customer_phone;
@@ -353,6 +389,13 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       if (!openCheck.ok) {
         return res.status(400).json({ error: openCheck.error, code: openCheck.code });
       }
+
+      // 🔒 醫師日曆時段把關：該醫師該 date+time 必須有 open 時段，且未達 max_capacity
+      const docSlotCheck = await checkDoctorSlotOpen(appointmentDate, appointmentTime, doctorName || "張醫師");
+      if (!docSlotCheck.ok) {
+        return res.status(400).json({ error: docSlotCheck.error, code: docSlotCheck.code });
+      }
+      resolvedDoctorId = docSlotCheck.doctorId;
 
       const localTime = getLocalTimeString();
 
@@ -484,7 +527,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
         };
 
         const stmt = db.prepare(
-          "INSERT INTO bookings (user_id, customer_name, customer_name_en, customer_phone, customer_email, customer_age, service_id, doctor_name, appointment_date, appointment_time, end_time, notes, doctor_user_id, bed_type, bed_number, is_free, created_at, is_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+          "INSERT INTO bookings (user_id, customer_name, customer_name_en, customer_phone, customer_email, customer_age, service_id, doctor_name, appointment_date, appointment_time, end_time, notes, doctor_user_id, doctor_id, bed_type, bed_number, is_free, created_at, is_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         );
 
         stmt.run(
@@ -501,6 +544,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
           endTime,
           notes || "",
           doctorUserId,
+          resolvedDoctorId,
           bedType || null,
           assignedBedNumber,
           isFreeBooking,
@@ -718,12 +762,14 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
       //    與「醫師資料管理」(doctors 表) 分開：醫師資料管理只管基本資料 + 官網同步；
       //    當值醫師改由醫師自己開放嘅日曆時段決定（醫師冇開放該日時段 = 唔當值）。
       const q = `
-        SELECT d.id AS doctor_id, d.name, d.user_id, d.avatar,
+        SELECT d.id AS doctor_id, d.name, d.user_id,
+               COALESCE(u.avatar, d.avatar) AS avatar,
                MIN(s.time) AS work_start, MAX(s.time) AS work_end
         FROM doctor_time_slots s
         JOIN doctors d ON d.id = s.doctor_id
+        LEFT JOIN users u ON u.id = d.user_id
         WHERE s.date = ? AND s.status = 'open' AND d.is_active = 1
-        GROUP BY d.id, d.name, d.user_id, d.avatar
+        GROUP BY d.id, d.name, d.user_id, d.avatar, u.avatar
         ORDER BY d.id`;
       db.all(q, [date], (docErr, doctors) => {
         if (docErr) return serverError(res, docErr);
@@ -1605,7 +1651,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
             
             // 獲取該日期的預約記錄 - 使用正確的欄位名
             db.all(
-              "SELECT doctor_name, appointment_time, COUNT(*) as count FROM bookings WHERE appointment_date = ? AND status != 'cancelled' GROUP BY doctor_name, appointment_time",
+              "SELECT doctor_id, doctor_name, appointment_time, COUNT(*) as count FROM bookings WHERE appointment_date = ? AND status != 'cancelled' GROUP BY doctor_id, doctor_name, appointment_time",
               [date],
               (err, bookings) => {
                 if (err) return serverError(res, err);
@@ -1627,7 +1673,7 @@ module.exports = (db, emailService, getLocalTimeString, { requireAuth, requireRo
                   result.slots[time] = {};
                   doctors.forEach(doctor => {
                     const dbSlot = doctorSlots ? doctorSlots.find(s => s.time === time && s.doctor_id === doctor.id) : null;
-                    const booking = bookings ? bookings.find(b => b.appointment_time === time && b.doctor_name === doctor.name) : null;
+                    const booking = bookings ? bookings.find(b => b.appointment_time === time && (b.doctor_id === doctor.id || (!b.doctor_id && b.doctor_name === doctor.name))) : null;
                     
                     result.slots[time][doctor.id] = {
                       is_available: dbSlot ? dbSlot.is_available === 1 : true,

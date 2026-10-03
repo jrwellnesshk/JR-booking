@@ -1002,6 +1002,7 @@ function runMigrations(db) {
       bAdd('customer_age', "ALTER TABLE bookings ADD COLUMN customer_age INTEGER");
       bAdd('customer_name_en', "ALTER TABLE bookings ADD COLUMN customer_name_en TEXT");
       bAdd('is_free', "ALTER TABLE bookings ADD COLUMN is_free INTEGER DEFAULT 0");
+      bAdd('doctor_id', "ALTER TABLE bookings ADD COLUMN doctor_id INTEGER");
     });
 
     // services 欄位擴展：床位需求（S6 一定要等 requires_bed 欄位存在先插入，否則 fresh DB 會 race 撞「no column named requires_bed」）

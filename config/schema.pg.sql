@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   notes TEXT,
   status TEXT DEFAULT 'confirmed',
   doctor_user_id INTEGER,
+  doctor_id INTEGER,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
   end_time TEXT,

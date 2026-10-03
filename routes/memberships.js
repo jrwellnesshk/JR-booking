@@ -1929,10 +1929,10 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
       const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
       const notes = (extraNotes ? extraNotes + ' ' : '') + `[代約 by ${req.user.name}#${req.user.id}]`;
       const r = await run(
-        `INSERT INTO bookings (user_id, customer_name, customer_phone, customer_email, service_id, doctor_name, doctor_user_id, appointment_date, appointment_time, end_time, status, notes, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
+        `INSERT INTO bookings (user_id, customer_name, customer_phone, customer_email, service_id, doctor_name, doctor_user_id, doctor_id, appointment_date, appointment_time, end_time, status, notes, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))`,
         [forUserId, customerName || member.name, customerPhone || null, customerEmail || null,
-         serviceId, doctorName, doctorUserId, apptDate, apptTime,
+         serviceId, doctorName, doctorUserId, docRow ? docRow.id : null, apptDate, apptTime,
          endTime,
          'confirmed', notes]
       );

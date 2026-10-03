@@ -1765,10 +1765,10 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
       const slotParams = partial ? [exc.time_open, exc.time_close] : [];
       await new Promise((resolve, reject) => {
         if (isClinic) {
-          db.run(`UPDATE doctor_time_slots SET status='leave', is_available=0, updated_at=CURRENT_TIMESTAMP WHERE date=? ${slotFilterSql}`,
+          db.run(`UPDATE doctor_time_slots SET status='leave', is_available=0, updated_at=CURRENT_TIMESTAMP WHERE date=? AND status='open' ${slotFilterSql}`,
             [exc.exception_date, ...slotParams], (e) => e ? reject(e) : resolve());
         } else {
-          db.run(`UPDATE doctor_time_slots SET status='leave', is_available=0, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? ${slotFilterSql}`,
+          db.run(`UPDATE doctor_time_slots SET status='leave', is_available=0, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? AND status='open' ${slotFilterSql}`,
             [doctorSlotId, exc.exception_date, ...slotParams], (e) => e ? reject(e) : resolve());
         }
       });
@@ -1894,7 +1894,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
         db.run(`UPDATE bookings SET reassignment_status=NULL, updated_at=CURRENT_TIMESTAMP WHERE appointment_date=? AND reassignment_status='needs_arrange'`,
           [exc.exception_date], (eR) => {
           if (eR) console.error('重置 reassignment_status 失敗(clinic):', eR.message);
-          db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE date=? ${slotSql}`,
+          db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE date=? AND status='leave' ${slotSql}`,
             [exc.exception_date, ...slotParams], (e2) => {
             if (e2) return res.status(500).json({ error: e2.message });
             finish();
@@ -1907,7 +1907,7 @@ module.exports = (db, hashPassword, verifyPassword, { requireAuth, requireRole, 
           db.run(`UPDATE bookings SET reassignment_status=NULL, updated_at=CURRENT_TIMESTAMP WHERE appointment_date=? AND doctor_user_id=? AND reassignment_status='needs_arrange'`,
             [exc.exception_date, exc.doctor_user_id], (eR) => {
             if (eR) console.error('重置 reassignment_status 失敗(individual):', eR.message);
-            db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? ${slotSql}`,
+            db.run(`UPDATE doctor_time_slots SET status='open', is_available=1, updated_at=CURRENT_TIMESTAMP WHERE doctor_id=? AND date=? AND status='leave' ${slotSql}`,
               [doctorSlotId, exc.exception_date, ...slotParams], (e2) => {
               if (e2) return res.status(500).json({ error: e2.message });
               finish();

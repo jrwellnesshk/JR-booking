@@ -328,6 +328,9 @@ function runPgMigrations(pool) {
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_age INTEGER',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_name_en TEXT',
     'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_free INTEGER DEFAULT 0',
+    'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS doctor_id INTEGER',
+    // 🔄 回填舊預約嘅 doctor_id（按醫師名稱對齊 doctors.id，冪等：只更新 NULL 行）
+    "UPDATE bookings SET doctor_id = (SELECT d.id FROM doctors d WHERE d.name = bookings.doctor_name AND d.is_active = 1 LIMIT 1) WHERE doctor_id IS NULL AND doctor_name IS NOT NULL",
     'ALTER TABLE services ADD COLUMN IF NOT EXISTS requires_bed INTEGER DEFAULT 0',
     'ALTER TABLE services ADD COLUMN IF NOT EXISTS short_name TEXT',
     'ALTER TABLE payments ADD COLUMN IF NOT EXISTS note TEXT',

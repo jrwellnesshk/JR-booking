@@ -168,7 +168,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   });
 
   // 新增醫師
-  router.post("/doctors", (req, res) => {
+  router.post("/doctors", requireAuth, requireRole('admin'), (req, res) => {
     const { name, specialty } = req.body;
     if (!name || !specialty) {
       return res.status(400).json({ error: "缺少必要欄位" });
@@ -185,7 +185,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   });
 
   // 更新醫師
-  router.put("/doctors/:id", (req, res) => {
+  router.put("/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
     const { id } = req.params;
     const { name, specialty } = req.body;
     
@@ -200,7 +200,7 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
   });
 
   // 刪除醫師（軟刪除）
-  router.delete("/doctors/:id", (req, res) => {
+  router.delete("/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
     const { id } = req.params;
     
     db.run(
