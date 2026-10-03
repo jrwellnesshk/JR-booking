@@ -9205,7 +9205,7 @@ addUserForm: {
               const url = this.editingCase ? `/api/admin/content/cases/${this.editingCase.id}` : '/api/admin/content/cases';
               const resp = await fetch(url, {
                 method: this.editingCase ? 'PUT' : 'POST',
-                headers: this.adminAuthHeaders(),
+                headers: this.adminAuthHeaders('application/json'),
                 body: JSON.stringify(this.caseForm),
               });
               const data = await resp.json().catch(() => ({}));
@@ -9223,7 +9223,7 @@ addUserForm: {
             try {
               const resp = await fetch(`/api/admin/content/cases/${c.id}`, {
                 method: 'PUT',
-                headers: this.adminAuthHeaders(),
+                headers: this.adminAuthHeaders('application/json'),
                 body: JSON.stringify({ is_published: c.is_published ? 0 : 1 }),
               });
               if (resp.ok) await this.loadAdminCases();
