@@ -30,14 +30,14 @@ const init = (dbInstance) => {
     db.run(
       `CREATE TABLE IF NOT EXISTS revoked_tokens (
         jti TEXT PRIMARY KEY,
-        exp INTEGER NOT NULL
+        exp BIGINT NOT NULL
       )`,
       (err) => { if (err) console.error('建立 revoked_tokens 表失敗:', err.message); }
     );
     db.run(
       `CREATE TABLE IF NOT EXISTS user_revoked (
         user_id INTEGER PRIMARY KEY,
-        revoked_at INTEGER NOT NULL
+        revoked_at BIGINT NOT NULL
       )`,
       (err) => { if (err) console.error('建立 user_revoked 表失敗:', err.message); }
     );
