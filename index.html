@@ -2938,14 +2938,8 @@
               v-if="findUserIdResult"
               class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg"
             >
-              <p class="font-medium mb-2">{{ t('✅ 找到您的會員資料：') }}</p>
-              <p><strong>{{ t('姓名：') }}</strong>{{ findUserIdResult.name }}</p>
-              <p>
-                <strong>{{ t('會員ID：') }}</strong
-                ><span class="text-lg font-bold text-green-600"
-                  >{{ findUserIdResult.username }}</span
-                >
-              </p>
+              <p class="font-medium mb-1">{{ t('✅ 我們已處理你的請求') }}</p>
+              <p>{{ t('若資料正確，登入用戶名已發送到你的登記 WhatsApp / 電郵。短時間內未收到請聯絡診所熱線 2555-1136 查詢。') }}</p>
             </div>
             <button
               @click="handleFindUserId"

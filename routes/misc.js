@@ -4,13 +4,23 @@ const { serverError } = require("../services/httpResp");
  * 包括：聊天機器人、伺服器時間、公共 FAQ 等
  */
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
+
+// 🔒 公開 AI 客服限流：防止匿名灌水（本地 bot 唔使錢，但避免被刷）
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { reply: "消息發送過於頻繁，請稍後再試 😊" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 const { getHongKongHolidays, isHoliday, getHolidaysInRange } = require('../services/holidays');
 
 module.exports = (db, getLocalTimeString, { requireAuth, requireRole } = {}) => {
 
   // AI 客服（連接外部AI）
-  router.post("/chat", async (req, res) => {
+  router.post("/chat", chatLimiter, async (req, res) => {
     const { message } = req.body;
     if (!message) return res.json({ reply: "請輸入問題 😊" });
 

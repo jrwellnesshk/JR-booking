@@ -650,26 +650,37 @@ module.exports = (db, hashPassword, verifyPassword, signSession, { requireAuth, 
   });
 
   // 查找用戶ID（加入速率限制防止帳戶枚舉）
+  // 🔒 防帳號枚舉：無論是否匹配，API 一律回傳相同成功訊息，絕不暴露「用戶是否存在」或「用戶名」。
+  //    匹配成功才靜悄悄經 WhatsApp / 電郵發送到本人登記渠道（best-effort，不阻塞回應）。
   router.post("/find-user-id", verifyEmailLimiter, (req, res) => {
     const { name, phone, email } = req.body;
-    
+
     if (!name || !email) {
       return res.status(400).json({ error: "請提供姓名和電子郵件" });
     }
 
-    let query = "SELECT username FROM users WHERE name=? AND email=? AND role IN ('customer', 'user')";
+    let query = "SELECT username, phone, email FROM users WHERE name=? AND email=? AND role IN ('customer', 'user')";
     let params = [name, email];
-    
+
     if (phone) {
-      query = "SELECT username FROM users WHERE name=? AND email=? AND phone=? AND role IN ('customer', 'user')";
+      query = "SELECT username, phone, email FROM users WHERE name=? AND email=? AND phone=? AND role IN ('customer', 'user')";
       params = [name, email, phone];
     }
 
     db.get(query, params, (err, row) => {
       if (err) return serverError(res, err);
-      if (!row) return res.status(404).json({ error: "找不到符合的用戶" });
-      
-      res.json({ ok: true, username: row.username });
+      if (row && row.username) {
+        try {
+          const msg = `【JR 寶天醫館】你的登入用戶名為：${row.username}\n如非本人操作，請盡快聯絡診所熱線 2555-1136。`;
+          if (row.phone && typeof whatsappService?.sendWhatsApp === 'function') {
+            whatsappService.sendWhatsApp(row.phone, msg).catch(() => {});
+          }
+          if (row.email && global.__emailService && typeof global.__emailService.sendUsernameRecovery === 'function') {
+            global.__emailService.sendUsernameRecovery(row.email, row.username).catch(() => {});
+          }
+        } catch (_) { /* 靜默失敗 */ }
+      }
+      res.json({ ok: true, message: "若你提交的資料正確，我們已將登入用戶名發送到你的登記 WhatsApp / 電郵。如短時間內未收到，請聯絡診所熱線 2555-1136 查詢。" });
     });
   });
 

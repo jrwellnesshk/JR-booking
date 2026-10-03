@@ -157,62 +157,6 @@ module.exports = (db, { requireAuth, requireRole } = {}) => {
     });
   });
 
-  // ==================== 醫師管理 ====================
-
-  // 取得所有醫師
-  router.get("/doctors", (req, res) => {
-    db.all("SELECT * FROM doctors WHERE is_active=1 ORDER BY id ASC", [], (err, rows) => {
-      if (err) return serverError(res, err);
-      res.json(rows);
-    });
-  });
-
-  // 新增醫師
-  router.post("/doctors", requireAuth, requireRole('admin'), (req, res) => {
-    const { name, specialty } = req.body;
-    if (!name || !specialty) {
-      return res.status(400).json({ error: "缺少必要欄位" });
-    }
-    
-    db.run(
-      "INSERT INTO doctors (name, specialty, is_active) VALUES (?, ?, 1)",
-      [name, specialty],
-      function(err) {
-        if (err) return serverError(res, err);
-        res.json({ success: true, id: this.lastID });
-      }
-    );
-  });
-
-  // 更新醫師
-  router.put("/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
-    const { id } = req.params;
-    const { name, specialty } = req.body;
-    
-    db.run(
-      "UPDATE doctors SET name=?, specialty=? WHERE id=?",
-      [name, specialty, id],
-      function(err) {
-        if (err) return serverError(res, err);
-        res.json({ success: true });
-      }
-    );
-  });
-
-  // 刪除醫師（軟刪除）
-  router.delete("/doctors/:id", requireAuth, requireRole('admin'), (req, res) => {
-    const { id } = req.params;
-    
-    db.run(
-      "UPDATE doctors SET is_active=0 WHERE id=?",
-      [id],
-      function(err) {
-        if (err) return serverError(res, err);
-        res.json({ success: true });
-      }
-    );
-  });
-
   // ==================== 服務管理 ====================
 
   // 取得所有服務

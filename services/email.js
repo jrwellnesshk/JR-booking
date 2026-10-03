@@ -106,6 +106,61 @@ async function sendVerificationCode(to, code, username) {
 }
 
 /**
+ * 發送「找回用戶名」郵件（帳號恢復用）
+ * 用途：用戶於登入頁輸入姓名＋電話/電郵後，系統靜悄悄將用戶名發送到其登記渠道，
+ *       前端一律顯示「已發送」，不會在 API 回應中暴露用戶名或是否存在（防帳號枚舉）。
+ */
+async function sendUsernameRecovery(to, username) {
+  if (!to || !username) return { success: false, error: 'missing params' };
+  const mailOptions = {
+    from: `"${CLINIC_INFO.name}" <${SENDER_EMAIL}>`,
+    to: to,
+    subject: `【${CLINIC_INFO.name}】你的登入用戶名`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8">
+        <style>
+          body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #306050, #1e3d33); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; }
+          .uname { background: #fff; border: 2px dashed #306050; padding: 18px; text-align: center; margin: 20px 0; border-radius: 10px; font-size: 26px; font-weight: bold; color: #306050; letter-spacing: 2px; }
+          .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; }
+          .footer { background: #1e293b; color: #94a3b8; padding: 20px; text-align: center; font-size: 12px; border-radius: 0 0 10px 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1>${CLINIC_INFO.name} 寶天醫館</h1><p>找回登入用戶名</p></div>
+          <div class="content">
+            <p>你好，</p>
+            <p>根據你提交的資料，你的登入用戶名如下。請使用此用戶名登入，如忘記密碼可在登入頁選擇「忘記密碼」。</p>
+            <div class="uname">${username}</div>
+            <div class="warning">⚠️ 如非本人操作，請盡快聯絡診所熱線 ${clinicSettings.getClinicPhone()}，並檢查帳戶安全。</div>
+            <p>多謝惠顧！</p>
+          </div>
+          <div class="footer">
+            <p>${CLINIC_INFO.name}</p>
+            <p>📍 ${CLINIC_INFO.address}</p>
+            <p>📞 ${clinicSettings.getClinicPhone()}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ 用戶名恢復郵件已發送:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ 發送用戶名恢復郵件失敗:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * 發送預約確認郵件
  */
 async function sendBookingConfirmation(to, booking) {
@@ -449,6 +504,7 @@ async function testConnection() {
 
 module.exports = {
   sendVerificationCode,
+  sendUsernameRecovery,
   sendBookingConfirmation,
   sendBookingUpdate,
   sendBookingCancellation,

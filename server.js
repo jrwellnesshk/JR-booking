@@ -611,31 +611,51 @@ const legacyFindUserLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// 🔒 防帳號枚舉：無論是否匹配，API 一律回傳相同成功訊息，絕不暴露「用戶是否存在」或「用戶名」。
+//    若匹配成功，則靜悄悄將用戶名經 WhatsApp / 電郵發送到本人登記渠道（best-effort，不阻塞回應）。
+//    發送失敗不影響回應（用戶可改經診所熱線查詢），避免攻擊者以「發送成功/失敗」作為枚舉信號。
+function deliverUsernameRecovery(username, phone, email) {
+  try {
+    const msg = `【JR 寶天醫館】你的登入用戶名為：${username}\n如非本人操作，請盡快聯絡診所熱線 2555-1136。`;
+    if (phone && typeof whatsappService?.sendWhatsApp === 'function') {
+      whatsappService.sendWhatsApp(phone, msg).catch(() => {});
+    }
+    if (email && global.__emailService && typeof global.__emailService.sendUsernameRecovery === 'function') {
+      global.__emailService.sendUsernameRecovery(email, username).catch(() => {});
+    }
+  } catch (_) { /* 靜默失敗，不影響主流程 */ }
+}
+
+// 統一回應訊息（無論有冇匹配都相同，杜絕枚舉信號）
+const FIND_USER_GENERIC_OK = {
+  ok: true,
+  message: "若你提交的資料正確，我們已將登入用戶名發送到你的登記 WhatsApp / 電郵。如短時間內未收到，請聯絡診所熱線 2555-1136 查詢。"
+};
+
 app.post("/api/find-user-id", legacyFindUserLimiter, (req, res) => {
   const { name, phone } = req.body;
-  
-  console.log("find-user-id 收到:", { name, phone });
-  
+
   if (!name || !phone) {
     return res.status(400).json({ error: "請提供姓名和電話號碼" });
   }
 
   // 移除電話號碼中的分隔符進行比對
   const cleanPhone = phone.replace(/[-\s]/g, '');
-  
+
   // 同時查詢中文名(name)和英文名(name_en)
   db.get(
-    `SELECT username, name, name_en, email, phone as db_phone FROM users 
-     WHERE (name=? OR name_en=?) 
+    `SELECT username, name, name_en, email, phone as db_phone FROM users
+     WHERE (name=? OR name_en=?)
      AND (phone=? OR REPLACE(REPLACE(phone, '-', ''), ' ', '')=?)`,
     [name, name, phone, cleanPhone],
     (err, row) => {
-      console.log("查詢結果:", { err, row });
       if (err) return serverError(res, err);
-      if (!row) return res.status(404).json({ error: "找不到匹配的用戶" });
-      
-      // 返回用戶名和姓名（優先返回中文名，如果沒有則返回英文名）
-      res.json({ ok: true, username: row.username, name: row.name || row.name_en || name });
+      // 🔒 無論是否匹配，回應完全一致；匹配才靜默發送，攻擊者無法由 HTTP 回應判斷帳號是否存在
+      if (row && row.username) {
+        deliverUsernameRecovery(row.username, row.db_phone || phone, row.email);
+      }
+      res.json(FIND_USER_GENERIC_OK);
     }
   );
 });

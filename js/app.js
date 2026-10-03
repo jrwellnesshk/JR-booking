@@ -2895,10 +2895,8 @@ const { createApp, ref, computed, reactive, onMounted, onUnmounted, watch, nextT
               const data = await response.json();
 
               if (response.ok) {
-                findUserIdResult.value = {
-                  username: data.username,
-                  name: data.name,
-                };
+                // 🔒 後端一律回傳相同成功訊息，絕不回傳 username（防帳號枚舉）；前端只顯示靜態提示
+                findUserIdResult.value = { message: data.message || "" };
               } else {
                 findUserIdError.value = data.error || "找不到符合的用戶資料";
               }
